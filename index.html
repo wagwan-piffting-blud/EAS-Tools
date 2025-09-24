@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EAS Tools</title>
+    <link rel="stylesheet" href="assets/hack.css">
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header>
+    <h1>EAS Tools</h1>
+    <nav class="tab-set">
+        <button type="button" class="active" data-tool="decoder">Decoder</button>
+        <button type="button" data-tool="encoder">Encoder</button>
+    </nav>
+</header>
+<main>
+    <section id="decoder-panel" class="tool-panel active" aria-labelledby="tab-decoder">
+        <h2 class="section-heading">SAME Decoder</h2>
+        <div data-mic-container style="display: none;">Select Microphone: <select id="device"></select></div>
+            <button type="button" data-decoder-toggle>Start Decoder</button><br>
+            <div class="level-meter" role="meter" aria-label="Input level" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" data-level-meter>
+                <span class="level-meter__label">Level</span>
+                <div class="level-meter__bars">
+                    <div class="level-meter__fill" data-level-fill></div>
+                </div>
+            </div>
+            <!--Enter threshold:<input type="number" onchange="thres = parseInt(this.value);"><br>-->
+            <div id="sync">STATUS: WAITING...</div><br>
+            <div id="afsk"></div>
+            <p id="output"></p>
+            <div class="modalContainer" style="display: none;">
+                <div class="modalBox">
+                    <div class="modalClose" id="close">X</div>
+                    <div class="modalContent">
+                        <div class="modalTitle">Alert Details</div>
+                        <div class="modalInfo">
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </section>
+
+    <section id="encoder-panel" class="tool-panel" aria-labelledby="tab-encoder">
+        <h2 class="section-heading">SAME Encoder</h2>
+        <label for="events">Select EAS Event Type:</label>
+          <select id="events">
+          <optgroup label="Weather-Related Events">
+            <option value="BZW">Blizzard Warning</option>
+            <option value="CFA">Coastal Flood Watch</option>
+            <option value="CFW">Coastal Flood Warning</option>
+            <option value="DSW">Dust Storm Warning</option>
+            <option value="EWW">Extreme Wind Warning</option>
+            <option value="FFA">Flash Flood Watch</option>
+            <option value="FFW">Flash Flood Warning</option>
+            <option value="FFS">Flash Flood Statement</option>
+            <option value="FLA">Flood Watch</option>
+            <option value="FLW">Flood Warning</option>
+            <option value="FLS">Flood Statement</option>
+            <option value="HWA">High Wind Watch</option>
+            <option value="HWW">High Wind Warning</option>
+            <option value="HUA">Hurricane Watch</option>
+            <option value="HUW">Hurricane Warning</option>
+            <option value="HLS">Hurricane Statement</option>
+            <option value="SVA">Severe Thunderstorm Watch</option>
+            <option value="SVR">Severe Thunderstorm Warning</option>
+            <option value="SVS">Severe Weather Statement</option>
+            <option value="SQW">Snow Squall Warning</option>
+            <option value="SMW">Special Marine Warning</option>
+            <option value="SPS">Special Weather Statement</option>
+            <option value="SSA">Storm Surge Watch</option>
+            <option value="SSW">Storm Surge Warning</option>
+            <option value="TOA">Tornado Watch</option>
+            <option value="TOR" selected>Tornado Warning</option>
+            <option value="TRA">Tropical Storm Watch</option>
+            <option value="TRW">Tropical Storm Warning</option>
+            <option value="TSA">Tsunami Watch</option>
+            <option value="TSW">Tsunami Warning</option>
+            <option value="WSA">Winter Storm Watch</option>
+            <option value="WSW">Winter Storm Warning</option>
+          </optgroup>
+          <optgroup label="Non-Weather-Related Events">
+            <option value="AVA">Avalanche Watch</option>
+            <option value="AVW">Avalanche Warning</option>
+            <option value="BLU">Blue Alert</option>
+            <option value="CAE">Child Abduction Emergency</option>
+            <option value="CDW">Civil Danger Warning</option>
+            <option value="CEM">Civil Emergency Message</option>
+            <option value="EQW">Earthquake Warning</option>
+            <option value="EVI">Evacuation Immediate</option>
+            <option value="FRW">Fire Warning</option>
+            <option value="HMW">Hazardous Materials Warning</option>
+            <option value="LEW">Law Enforcement Warning</option>
+            <option value="LAE">Local Area Emergency</option>
+            <option value="TOE">911 Telephone Outage Emergency</option>
+            <option value="NUW">Nuclear Power Plant Warning</option>
+            <option value="RHW">Radiological Hazard Warning</option>
+            <option value="SPW">Shelter in Place Warning</option>
+            <option value="VOW">Volcano Warning</option>
+          </optgroup>
+          <optgroup label="Administrative Events">
+            <option value="ADR">Administrative Message</option>
+            <option value="EAN">Emergency Action Notification</option>
+            <option value="DMO">Practice/Demo Warning</option>
+            <option value="RMT">Required Monthly Test</option>
+            <option value="RWT">Required Weekly Test</option>
+          </optgroup>
+          </select><br>
+          <label for="originators">Select Originator:</label>
+          <select id="originators">
+            <option value="EAS">Emergency Alert System</option>
+            <option value="CIV">Civil Authorities</option>
+            <option value="WXR" selected>National Weather Service</option>
+            <option value="PEP">Primary Entry Point</option>
+          </select>
+          <br>Time the alert is effective for:<br>
+          <label for="hr">Hr:</label>
+          <select id="hr" class="small" value="00">
+            <option value="00">00</option>
+            <option value="01">01</option>
+            <option value="02">02</option>
+            <option value="03">03</option>
+            <option value="04">04</option>
+            <option value="05">05</option>
+            <option value="06">06</option>
+            <option value="07">07</option>
+            <option value="08">08</option>
+          </select>
+          <label for="min">Min:</label>
+          <select id="min">
+            <option>00</option>
+            <option>15</option>
+            <option>30</option>
+            <option selected>45</option>
+          </select><br>
+          <label for="time">Select Start Date and Time:</label>
+          <input type="datetime-local" id="time"><button type="button" data-encoder-now>Now</button><br>
+          <label for="par">Sender ID(8 characters long):</label>
+          <input id="par" minlength="8" value="senderid">
+          <br>State: <select id="stateselect"></select> County: <select id="countyselect"></select> Region: <select id="rgselect"></select>
+          <button type="button" data-encoder-add-loc>Add</button>&nbsp;(Click a county to remove it)
+          <table id="fips">
+        <tbody>
+        <tr class="title"><td>County</td><td>State</td><td>Region</td><td>FIPS Code</td></tr>
+        </tbody>
+        <tbody id="container"></tbody>
+        </table>
+          <div id="locs"></div>Select Attention Tone: <select id="att">
+            <option value="1" selected>NWR Attention Tone(1050hz)</option>
+            <option value="0">EBS Attention Tones</option>
+          </select><br>Attention tone time(8-25sec): <input type="number" id="tlen" min="8" max="25" value="10"><br>Generate Extra Marks(for SAGE encoders):<input type="checkbox" id="em"><br>Generate Extra Spaces(for NWR encoding):<input type="checkbox" id="spaces" checked><br>Clip Signal(for authenticity):<input type="checkbox" id="clip" checked><br>Use custom SAME Header:<input type="checkbox" data-encoder-custom id="useCustomHeader"><div id="samediv" style="display:none;"><label for="sh">Enter SAME Header here:</label><br><textarea id="cheader" name="sh" placeholder="ZCZC-WXR-TOR..."></textarea></div><br><br>
+          <div class="control-panel">
+            <button type="button" data-encoder-generate>Generate</button><button type="button" id="play">Play
+              Samples</button><button type="button" id="save" style="display:none;">Save as wav file</button><button type="button" data-encoder-clear
+              id="clr" style="display:none;">Clear Logs</button>
+          </div>
+          <p id="status"></p><br><div>Credit goes to: <a href="https://github.com/nicksmadscience/eas-same-encoder">nicksmadscience same encoder python</a>, <a href="https://github.com/Mab879/eas_encoder">Mab879 C++ same encoder</a>, and <a href="https://anon64.bitkit.us/eas-gen/">Anon64 EAS Header Generator</a></div>
+    </section>
+</main>
+
+<script src="assets/wavefile.js"></script>
+<script src="assets/wave-resampler.js"></script>
+<script src="decoder-bundle.js"></script>
+<script src="encoder-bundle.js"></script>
+<script>
+(() => {
+    const buttons = document.querySelectorAll('button[data-tool]');
+    const panels = {
+        decoder: document.getElementById('decoder-panel'),
+        encoder: document.getElementById('encoder-panel'),
+    };
+
+    const activate = (target) => {
+        buttons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tool === target));
+        Object.entries(panels).forEach(([name, panel]) => {
+            panel.classList.toggle('active', name === target);
+        });
+    };
+
+    buttons.forEach((btn) => {
+        btn.addEventListener('click', () => activate(btn.dataset.tool));
+    });
+
+    document.querySelectorAll('[data-switch-to]').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            activate(link.dataset.switchTo);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('header')) {
+        activate('encoder');
+    }
+
+})();
+</script>
+</body>
+</html>

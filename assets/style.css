@@ -1,0 +1,242 @@
+html {
+    height: 100%;
+    width: 100%;
+}
+
+#status {
+    font-family: Hack;
+}
+
+.control-panel button {
+    display: inline-block;
+}
+
+table {
+    border-collapse: collapse;
+    border: 1px solid black;
+    font-size: 1.04em;
+}
+
+table td {
+    border: 2px solid black;
+}
+
+.title {
+    font-weight: bold;
+}
+
+.entry {
+    cursor: pointer;
+    user-select: none;
+}
+
+:root {
+    color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #050505;
+    color: #f5f5f5;
+    font-family: "Hack", monospace;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 20px;
+    background: linear-gradient(140deg, #121212, #1f1f1f 65%, #0b0b0b);
+    border-bottom: 1px solid #242424;
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tab-set {
+    display: flex;
+    gap: 10px;
+}
+
+button[data-tool] {
+    border: 1px solid #303030;
+    background: #161616;
+    color: inherit;
+    font: inherit;
+    padding: 8px 18px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+button[data-tool]:hover {
+    background: #252525;
+}
+
+button[data-tool].active {
+    background: #ff7800;
+    color: #050505;
+    border-color: #ff7800;
+}
+
+main {
+    flex: 1 1 auto;
+    position: relative;
+    overflow: hidden;
+}
+
+.tool-panel {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 24px clamp(18px, 2vw, 32px);
+    display: none;
+}
+
+.tool-panel.active {
+    display: block;
+}
+
+[data-mic-container] {
+    margin-bottom: 8px;
+}
+
+#decoder-panel {
+    background: #000;
+    color: #fff;
+}
+
+#decoder-panel #output {
+    font-family: "Hack", monospace;
+    white-space: pre-wrap;
+}
+
+#decoder-panel #sync {
+    font-family: monospace;
+    font-size: 1.5em;
+}
+
+#decoder-panel .level-meter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 0 18px;
+}
+
+#decoder-panel .level-meter__label {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9a9a9a;
+    min-width: 56px;
+}
+
+#decoder-panel .level-meter__bars {
+    position: relative;
+    flex: 1 1 auto;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #141414;
+    border: 1px solid #232323;
+}
+
+#decoder-panel .level-meter__fill {
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    background: linear-gradient(90deg, #34c759, #ffcc00 60%, #ff453a 90%);
+    transition: width 80ms linear;
+}
+
+#decoder-panel .modalContainer {
+    left: 0;
+    top: 0;
+    z-index: 999;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#decoder-panel .modalBox {
+    z-index: 1000;
+    font-family: monospace;
+    padding: 10px;
+    margin: 15px;
+    background-color: #0e0e0e;
+    border: 1px solid #2b2b2b;
+}
+
+#decoder-panel .modalContent {
+    padding: 20px;
+    height: 50%;
+    position: relative;
+}
+
+#decoder-panel .modalClose {
+    position: absolute;
+    font-size: 1.5em;
+    cursor: pointer;
+    z-index: 1001;
+    margin: 6px;
+}
+
+#decoder-panel .watch {
+    color: #ff7800;
+}
+
+#decoder-panel .warning {
+    color: #ff4d4d;
+}
+
+#encoder-panel {
+    background: #0b0b0d;
+    color: #f0f0f0;
+}
+
+#encoder-panel a {
+    color: #ff9a3c;
+}
+
+#encoder-panel table,
+#encoder-panel th,
+#encoder-panel td {
+    border: 1px solid #444;
+}
+
+#encoder-panel table {
+    border-collapse: collapse;
+    font-size: 1.04em;
+}
+
+#encoder-panel td,
+#encoder-panel th {
+    padding: 6px 8px;
+}
+
+#encoder-panel .control-panel button {
+    display: inline-block;
+}
+
+.section-heading {
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0 0 18px;
+    color: #ff7800;
+}
