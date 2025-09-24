@@ -4107,7 +4107,7 @@ function showAlertInfo(header) { //takes a parsed header
     infoContainer.appendChild(createInfo(`Sender ID: ${header.sender}`));
     //infoContainer.appendChild(createInfo(`Alert Text: ${headerToText(header)}`));
     const encodedHeader = encodeURIComponent(header.rawHeader);
-    infoContainer.appendChild(createInfo(`<a href="index.php?header=${encodedHeader}">Open in SAME Encoder</a>`));
+    infoContainer.appendChild(createInfo(`<a href="index.html?header=${encodedHeader}">Open in SAME Encoder</a>`));
 }
 
 function timeToReadable(time, use24) {
