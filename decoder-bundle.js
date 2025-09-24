@@ -630,6 +630,7 @@ const events = {
   "HMW": "Hazardous Materials Warning",
   "LEW": "Law Enforcement Warning",
   "LAE": "Local Area Emergency",
+  "MEP": "Missing Endangered Person",
   "TOE": "911 Telephone Outage Emergency",
   "NUW": "Nuclear Power Plant Warning",
   "RHW": "Radiological Hazard Warning",
