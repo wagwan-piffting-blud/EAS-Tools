@@ -3625,6 +3625,8 @@ async function getPiperPcm(text, targetRate) {
   if (!text || !text.trim()) return null;
   await ensurePiperLoaded();
 
+  addStatus("Generating TTS audio... this may take a while, especially if your text is longer than a few sentences.");
+
   if (window.PiperTTS?.pcmFor) {
     return await window.PiperTTS.pcmFor(text, PIPER_VOICE_ID, targetRate);
   }
@@ -3633,7 +3635,7 @@ async function getPiperPcm(text, targetRate) {
   if (window.PiperTTS?.synthToWavBlob) {
     wavBlob = await window.PiperTTS.synthToWavBlob(text);
   } else {
-    console.warn('PiperTTS: no synthToWavBlob/pcmFor found.');
+    addStatus('PiperTTS: no synthToWavBlob/pcmFor found.', "WARN");
     return null;
   }
 
@@ -3661,7 +3663,7 @@ async function getPiperPcm(text, targetRate) {
     return out;
   }
 
-  console.warn('No decoder for WAV → PCM.');
+  addStatus('No decoder for WAV to PCM.', "WARN");
   return null;
 }
 
@@ -3864,6 +3866,7 @@ function create_raw_alert(h) {
 
 async function create_alert_async(origin, event, locations, length, date, par, ttsText) {
   document.getElementById("generate").disabled = true;
+  addStatus("Generating EAS...");
 
   var h = create_header_string(origin, event, locations, length, date, par);
   create_header_tones(h);
@@ -3881,11 +3884,13 @@ async function create_alert_async(origin, event, locations, length, date, par, t
 
   create_eom_tones();
 
+  addStatus("EAS Generated!");
   document.getElementById("generate").disabled = false;
 }
 
 async function create_raw_alert_async(h, ttsText) {
   document.getElementById("generate").disabled = true;
+  addStatus("Generating EAS...");
 
   create_header_tones(h);
   if (tone) { create_nwr_tone(); } else { create_wat(); }
@@ -3902,6 +3907,7 @@ async function create_raw_alert_async(h, ttsText) {
 
   create_eom_tones();
 
+  addStatus("EAS Generated!");
   document.getElementById("generate").disabled = false;
 }
 
