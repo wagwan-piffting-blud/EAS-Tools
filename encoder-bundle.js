@@ -3884,7 +3884,6 @@ async function create_alert_async(origin, event, locations, length, date, par, t
 
   create_eom_tones();
 
-  addStatus("EAS Generated!");
   document.getElementById("generate").disabled = false;
 }
 
@@ -3907,7 +3906,6 @@ async function create_raw_alert_async(h, ttsText) {
 
   create_eom_tones();
 
-  addStatus("EAS Generated!");
   document.getElementById("generate").disabled = false;
 }
 
