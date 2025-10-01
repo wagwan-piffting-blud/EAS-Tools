@@ -3534,6 +3534,147 @@ function generate_silence(length) {
   }
 }
 
+const PIPER_BUNDLE_URL = 'assets/piper-tts/piper.tts.bundle.js';
+const ORT_WASM_BASE    = 'assets/piper-tts/onnxruntime-web/';
+
+const PIPER_VOICE_ID   = 'en_US-joe-medium';
+const PIPER_VOICE = {
+  modelUrl:  'assets/piper-tts/voices/en_US-joe-medium.onnx',
+  configUrl: 'assets/piper-tts/voices/en_US-joe-medium.onnx.json',
+};
+
+let __piperLoading = null;
+async function ensurePiperLoaded() {
+  if (window.PiperTTS?.pcmFor || window.PiperTTS?.predict) return;
+
+  if (!__piperLoading) {
+    __piperLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = PIPER_BUNDLE_URL;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  await __piperLoading;
+
+  if (window.ort?.env?.wasm) {
+    window.ort.env.wasm.wasmPaths = ORT_WASM_BASE;
+  }
+
+  const HF_URL_HINT = '/rhasspy/piper-voices/resolve';
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : (input?.url || '');
+    if (url.includes(HF_URL_HINT) || /voices(\.json)?$/.test(url)) {
+      const manifest = {};
+      manifest[PIPER_VOICE_ID] = { model: PIPER_VOICE.modelUrl, config: PIPER_VOICE.configUrl };
+      return new Response(new Blob([JSON.stringify(manifest)], { type: 'application/json' }), { status: 200 });
+    }
+    return origFetch(input, init);
+  };
+
+  if (window.PiperTTS?.init) {
+    try { await window.PiperTTS.init({ voiceId: PIPER_VOICE_ID, warmup: false }); } catch {}
+  }
+}
+
+function dbToLin(db){ return Math.pow(10, db/20); }
+
+function normalizeTtsPcm(pcm, {
+  targetDb = -3,
+  maxGainDb = 24,
+  softClip = true,
+  softClipK = 1.5
+} = {}) {
+  if (!pcm || !pcm.length) return pcm;
+
+  let peak = 0;
+  for (let i = 0; i < pcm.length; i++) {
+    const a = Math.abs(pcm[i]);
+    if (a > peak) peak = a;
+  }
+  if (peak <= 1e-8) return pcm;
+
+  const target = dbToLin(targetDb);
+  let gain = target / peak;
+  const maxGain = dbToLin(maxGainDb);
+  if (gain > maxGain) gain = maxGain;
+
+  const out = new Float32Array(pcm.length);
+  if (softClip) {
+    const k = softClipK;
+    const denom = Math.tanh(k);
+    for (let i = 0; i < pcm.length; i++) {
+      const x = pcm[i] * gain;
+      out[i] = Math.tanh(k * x) / denom;
+    }
+  } else {
+    for (let i = 0; i < pcm.length; i++) {
+      let x = pcm[i] * gain;
+      if (x > 0.999) x = 0.999; else if (x < -0.999) x = -0.999;
+      out[i] = x;
+    }
+  }
+  return out;
+}
+
+
+async function getPiperPcm(text, targetRate) {
+  if (!text || !text.trim()) return null;
+  await ensurePiperLoaded();
+
+  if (window.PiperTTS?.pcmFor) {
+    return await window.PiperTTS.pcmFor(text, PIPER_VOICE_ID, targetRate);
+  }
+
+  let wavBlob = null;
+  if (window.PiperTTS?.synthToWavBlob) {
+    wavBlob = await window.PiperTTS.synthToWavBlob(text);
+  } else {
+    console.warn('PiperTTS: no synthToWavBlob/pcmFor found.');
+    return null;
+  }
+
+  if (window.wavefile?.WaveFile) {
+    const WaveFile = window.wavefile.WaveFile;
+    const ab = await wavBlob.arrayBuffer();
+    let w = new WaveFile(new Uint8Array(ab));
+    if (w.fmt.sampleRate !== targetRate) {
+      w.toSampleRate(targetRate, { algorithm: 'sinc' });
+    }
+    w.toBitDepth('32f');
+    const f64 = w.getSamples();
+    return new Float32Array(f64);
+  }
+
+  if (window.PiperTTS?.wavBlobToPcm) {
+    const { pcm, sampleRate } = await window.PiperTTS.wavBlobToPcm(wavBlob);
+    if (sampleRate === targetRate) return pcm;
+    const ratio = sampleRate / targetRate, out = new Float32Array(Math.round(pcm.length / ratio));
+    for (let i = 0; i < out.length; i++) {
+      const x = i * ratio, xi = Math.floor(x), xf = x - xi;
+      const a = pcm[xi] ?? 0, b = pcm[xi + 1] ?? a;
+      out[i] = a + (b - a) * xf;
+    }
+    return out;
+  }
+
+  console.warn('No decoder for WAV → PCM.');
+  return null;
+}
+
+function appendPcmToSamples(pcm) {
+  if (!pcm) return;
+  for (let i = 0; i < pcm.length; i++) {
+    let s = pcm[i];
+    if (s > 0.99) s = 0.99;
+    else if (s < -0.99) s = -0.99;
+    samples.push(s);
+  }
+}
+
 function playSample() {
   const audioBuffer = context.createBuffer(1, samples.length, SAMPLE_RATE);
   const channelData = audioBuffer.getChannelData(0);
@@ -3721,6 +3862,49 @@ function create_raw_alert(h) {
   create_eom_tones();
 }
 
+async function create_alert_async(origin, event, locations, length, date, par, ttsText) {
+  document.getElementById("generate").disabled = true;
+
+  var h = create_header_string(origin, event, locations, length, date, par);
+  create_header_tones(h);
+  if (tone) { create_nwr_tone(); } else { create_wat(); }
+
+  const pcmRaw = await getPiperPcm(ttsText, SAMPLE_RATE);
+  if (pcmRaw) {
+    const pcm = normalizeTtsPcm(pcmRaw, { targetDb: 3, maxGainDb: 24, softClip: true, softClipK: 1.6 });
+    generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+    appendPcmToSamples(pcm);
+    generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+  } else {
+    generate_silence(SAMPLE_RATE);
+  }
+
+  create_eom_tones();
+
+  document.getElementById("generate").disabled = false;
+}
+
+async function create_raw_alert_async(h, ttsText) {
+  document.getElementById("generate").disabled = true;
+
+  create_header_tones(h);
+  if (tone) { create_nwr_tone(); } else { create_wat(); }
+
+  const pcmRaw = await getPiperPcm(ttsText, SAMPLE_RATE);
+  if (pcmRaw) {
+    const pcm = normalizeTtsPcm(pcmRaw, { targetDb: 3, maxGainDb: 24, softClip: true, softClipK: 1.6 });
+    generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+    appendPcmToSamples(pcm);
+    generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+  } else {
+    generate_silence(SAMPLE_RATE);
+  }
+
+  create_eom_tones();
+
+  document.getElementById("generate").disabled = false;
+}
+
     // END encode/alert.js
     // BEGIN encode/main.js
 var events = document.getElementById("events");
@@ -3744,6 +3928,7 @@ var countyselect = document.getElementById("countyselect");
 var spaces = document.getElementById("spaces");
 var regionselect = document.getElementById("rgselect");
 var samediv = document.getElementById("samediv");
+var ttsDiv = document.getElementById("ttsDiv");
 var rawinput = document.getElementById("cheader");
 saveb.addEventListener("click", saveToWav);
 var NWR = 1;
@@ -3772,6 +3957,9 @@ function updateCustom(t){
     samediv.style.display=t?"block":"none";
     usecustom=t;
 }
+function updateTts(t){
+    ttsDiv.style.display=t?"block":"none";
+}
 hrselect.addEventListener("change", function() {
   hr = parseInt(hrselect.value);
   minselect.innerHTML = "";
@@ -3786,14 +3974,16 @@ splay.addEventListener("click", function() {
     splay.innerHTML = "Stop";
   } else { play.stop(); splay.innerHTML = "Play Samples"; } isPlaying = !isPlaying;
 });
-function generateEas() {
+async function generateEas() {
   samples.length = 0;
   startTime = performance.now();
-  cl=clip.checked;
+  cl = clip.checked;
   calcAFSKArray();
+
   var par = parinput.value;
   if (par.length != 8) { addStatus("Sender ID must be 8 characters long!", "ERROR"); return; }
   if (locations.length < 1) { addStatus("There must be at least one location!", "ERROR"); return; }
+
   var time = new Date(timeselect.value);
   var originator = originators.value;
   var event = events.value;
@@ -3802,12 +3992,21 @@ function generateEas() {
   var l = hr.toString().padStart(2,"0") + min.toString().padStart(2,"0");
   tone = parseInt(att.value);
   em = extram.checked;
-  es=spaces.checked;
-  if(usecustom){create_raw_alert(rawinput.value);}else{create_alert(originator, event, locations, l, time, par);}
+  es = spaces.checked;
+
+  const ttsText = (document.getElementById('ttsText')?.value || '').trim();
+
+  if (usecustom) {
+    await create_raw_alert_async(rawinput.value, ttsText);
+  } else {
+    await create_alert_async(originator, event, locations, l, time, par, ttsText);
+  }
+
   saveb.style.display = "inline-block";
-  addStatus("EAS Generated! Samples: " + samples.length + (showTime?(" Time: " + (performance.now()-startTime).toFixed(2) + "ms"):""));
+  addStatus("EAS Generated! Samples: " + samples.length + (showTime ? ("  Time: " + (performance.now()-startTime).toFixed(2) + "ms") : ""));
   addStatus("Generated header: " + (usecustom ? rawinput.value : create_header_string(originator, event, locations, l, time, par)));
 }
+
 function gen_header() {
   var par = parinput.value;
   if (par.length != 8) { addStatus("Sender ID must be 8 characters long!", "ERROR"); return; }
@@ -4053,5 +4252,9 @@ if (headerParam) {
     const customHeader = document.getElementById('useCustomHeader');
     if (customHeader) {
         customHeader.addEventListener('change', (event) => updateCustom(event.target.checked));
+    }
+    const tts = document.getElementById('useTTS');
+    if (tts) {
+        tts.addEventListener('change', (event) => updateTts(event.target.checked));
     }
 })();

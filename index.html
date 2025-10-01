@@ -150,9 +150,10 @@
           <div id="locs"></div>Select Attention Tone: <select id="att">
             <option value="1" selected>NWR Attention Tone(1050hz)</option>
             <option value="0">EBS Attention Tones</option>
-          </select><br>Attention tone time(8-25sec): <input type="number" id="tlen" min="8" max="25" value="10"><br>Generate Extra Marks(for SAGE encoders):<input type="checkbox" id="em"><br>Generate Extra Spaces(for NWR encoding):<input type="checkbox" id="spaces" checked><br>Clip Signal(for authenticity):<input type="checkbox" id="clip" checked><br>Use custom SAME Header:<input type="checkbox" data-encoder-custom id="useCustomHeader"><div id="samediv" style="display:none;"><label for="sh">Enter SAME Header here:</label><br><textarea id="cheader" name="sh" placeholder="ZCZC-WXR-TOR..."></textarea></div><br><br>
+          </select><br>Attention tone time(8-25sec): <input type="number" id="tlen" min="8" max="25" value="10"><br>Generate Extra Marks(for SAGE encoders):<input type="checkbox" id="em"><br>Generate Extra Spaces(for NWR encoding):<input type="checkbox" id="spaces" checked><br>Clip Signal(for authenticity):<input type="checkbox" id="clip" checked><br>Use custom SAME Header:<input type="checkbox" data-encoder-custom id="useCustomHeader"><div id="samediv" style="display:none;"><label for="sh">Enter SAME Header here:</label><br><textarea id="cheader" name="sh" placeholder="ZCZC-WXR-TOR..."></textarea></div><br><label for="ttsText">Spoken message:</label><input type="checkbox" data-encoder-tts id="useTTS"><div id="ttsDiv" style="display:none;">
+<br><textarea id="ttsText" rows="3" placeholder="Type the message to speak…"></textarea></div><br><br>
           <div class="control-panel">
-            <button type="button" data-encoder-generate>Generate</button><button type="button" id="play">Play
+            <button type="button" data-encoder-generate id="generate">Generate</button><button type="button" id="play">Play
               Samples</button><button type="button" id="save" style="display:none;">Save as wav file</button><button type="button" data-encoder-clear
               id="clr" style="display:none;">Clear Logs</button>
           </div>
