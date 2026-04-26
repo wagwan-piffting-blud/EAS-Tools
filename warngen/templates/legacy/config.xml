@@ -1,0 +1,15 @@
+<configuration>
+    <warngenOfficeShort>UNLOCALIZED SITE</warngenOfficeShort>
+    <warngenOfficeLoc>UNLOCALIZED SITE</warngenOfficeLoc>
+    <backupCWAs></backupCWAs>
+    <siteNode>OMA</siteNode>
+    <defaultTemplate>impactSevereThunderstormWarning</defaultTemplate>
+    <mainWarngenProducts>IBW Tornado Warning/impactTornadoWarning,IBW Severe Thunderstorm Warning/impactSevereThunderstormWarning,IBW Marine Warning/impactSpecialMarineWarning,IBW Severe Weather Statement/impactSevereWeatherStatement,IBW Significant Weather Advisory/impactSignificantWeatherAdvisory,IBW Flash Flood Warning/impactFlashFloodWarning,Snow Squall Warning/impactSnowSquallWarning,Extreme Wind Warning/extremeWindWarning,Marine Weather Statement/marineWeatherStatement</mainWarngenProducts>
+    <otherWarngenProducts>IBW Flash Flood Statement/impactFlashFloodWarningFollowup,IBW Non-Convective FFW (incl. Dam Break)/impactNonConvectiveFlashFloodWarning,IBW Non-Convective Flash Flood Statement/impactNonConvectiveFlashFloodWarningFollowup,Legacy Tornado Warning/tornadoWarning,Legacy Severe Thunderstorm Warning/severeThunderstormWarning,Legacy Marine Warning/specialMarineWarning,Legacy Flash Flood Warning/flashFloodWarning,Legacy Flash Flood Statement/flashFloodStatement,Legacy Non-Convective FFW (incl. Dam Break)/nonConvectiveFlashFloodWarning,Legacy Non-Convective Flash Flood Statement/nonConvectiveFlashFloodWarningFollowup,Legacy Significant Weather Advisory/significantWeatherAdvisory,Areal Flood Warning/arealFloodWarning,Areal Flood Warning Followup/arealFloodWarningFollowup,Areal Flood Advisory/arealFloodAdvisory,Areal Flood Advisory Followup/arealFloodAdvisoryFollowup,Special Weather Statement/specialWeatherStatement,Short Term Forecast/shortTermForecast,Fire Warning/fireWarning</otherWarngenProducts>
+  <!-- Sites should override nx, ny with the values found in their site .gelt file -->
+    <gridSpacing>
+        <nx>600</nx>
+        <ny>600</ny>
+        <keepAspectRatio>true</keepAspectRatio>
+    </gridSpacing>
+</configuration>

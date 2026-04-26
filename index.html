@@ -731,27 +731,12 @@
                 <pre id="phonemeOutput"></pre>
             </section>
 
-            <section id="normalizer-panel" class="tool-panel" aria-labelledby="tab-normalizer">
-                <h2 class="section-heading">VTAC/AWIPS Product Normalizer</h2>
-                <hr>
-                <label for="shouldRepeat">Include "Repeating..." line: </label>
-                <input type="checkbox" id="shouldRepeat" name="shouldRepeat">
-                <br>
-                <br>
-                <label for="productToNormalize">Enter raw VTAC/AWIPS product text:</label>
-                <br>
-                <br>
-                <textarea id="productToNormalize" class="ttsText normalizerCM"></textarea>
-                <br>
-                <br>
-                <button id="normalizeButton">Normalize</button>
-                <button id="normalizeCopyToClipboard">Copy Normalized Product to Clipboard</button>
-                <button id="normalizeClear">Clear</button>
-                <hr>
-                <label for="normalizedProduct">Normalized Product Output:</label>
-                <br>
-                <pre id="normalizedProduct"></pre>
+            <section id="warngen-panel" class="tool-panel" aria-labelledby="tab-warngen">
+                <div id="warngen-container">
+                    <!-- Warngen-lite iframe will be injected here when activated -->
+                </div>
             </section>
+
             <section id="muxer-panel" class="tool-panel" aria-labelledby="tab-muxer">
                 <h2 class="section-heading">Video/Audio Muxer</h2>
                 <hr>
@@ -844,7 +829,6 @@
         <script type="module" src="assets/js/crawl-bundle.js"></script>
         <script type="module" src="assets/js/splicer-bundle.js"></script>
         <script type="module" src="assets/js/phoneme-bundle.js"></script>
-        <script type="module" src="assets/js/normalizer-bundle.js"></script>
         <script>
             (function () {
                 const panels = {
@@ -868,13 +852,25 @@
                         element: document.getElementById('phoneme-panel'),
                         name: "Phoneme Converter/Generator"
                     },
-                    normalizer: {
-                        element: document.getElementById('normalizer-panel'),
-                        name: "VTAC/AWIPS Product Normalizer"
+                    warngen: {
+                        element: document.getElementById('warngen-panel'),
+                        name: "WarnGen",
+                        iframe: {
+                            container: document.getElementById('warngen-container'),
+                            src: 'warngen/',
+                            title: 'WarnGen',
+                            minHeight: '1070px',
+                        },
                     },
                     muxer: {
                         element: document.getElementById('muxer-panel'),
-                        name: "Video/Audio Muxer"
+                        name: "Video/Audio Muxer",
+                        iframe: {
+                            container: document.getElementById('muxer-container'),
+                            src: 'muxer.html',
+                            title: 'Video/Audio Muxer',
+                            minHeight: '1080px',
+                        },
                     },
                 };
 
@@ -893,19 +889,28 @@
                 const buttons = document.querySelectorAll('button[data-tool]');
                 const params = new URLSearchParams(window.location.search);
 
-                const muxerContainer = document.getElementById('muxer-container');
-                let muxerIframe;
+                const iframeInstances = {};
 
-                const ensureMuxerIframe = () => {
-                    if (muxerIframe || !muxerContainer) return;
-                    muxerIframe = document.createElement('iframe');
-                    muxerIframe.title = 'Video/Audio Muxer';
-                    muxerIframe.loading = 'lazy';
-                    muxerIframe.style.width = '100%';
-                    muxerIframe.style.minHeight = '1080px';
-                    muxerIframe.style.border = '0';
-                    muxerIframe.src = 'muxer.html';
-                    muxerContainer.appendChild(muxerIframe);
+                const ensureIframe = (tool) => {
+                    const config = panels[tool]?.iframe;
+                    if (!config || !config.container || iframeInstances[tool]) return;
+                    const iframe = document.createElement('iframe');
+                    iframe.title = config.title;
+                    iframe.loading = 'lazy';
+                    iframe.style.width = '100%';
+                    iframe.style.minHeight = config.minHeight ?? '1080px';
+                    iframe.style.border = '0';
+                    iframe.src = config.src;
+                    config.container.appendChild(iframe);
+                    iframeInstances[tool] = iframe;
+                };
+
+                const unloadIframe = (tool) => {
+                    const iframe = iframeInstances[tool];
+                    if (!iframe) return;
+                    try { iframe.src = 'about:blank'; } catch {}
+                    iframe.remove();
+                    delete iframeInstances[tool];
                 };
 
                 const requestEditorRefresh = (target) => {
@@ -914,7 +919,10 @@
                 };
 
                 const activate = (target) => {
-                    if (target === 'muxer') ensureMuxerIframe();
+                    Object.keys(iframeInstances).forEach((tool) => {
+                        if (tool !== target) unloadIframe(tool);
+                    });
+                    if (panels[target]?.iframe) ensureIframe(target);
                     buttons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tool === target));
                     Object.entries(panels).forEach(([name, { element }]) => {
                         if (element) element.classList.toggle('active', name === target);

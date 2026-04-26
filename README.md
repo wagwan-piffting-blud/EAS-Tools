@@ -32,6 +32,10 @@ Web‑based **EAS / SAME Tools** that run entirely in your browser. Packed to th
   * Combine multiple custom audio samples into one continuous WAV file
   * Useful for creating custom audio without the use of programs like Audacity
   * Supports inserting silence between samples, trimming audio, splits, macros, and much more
+* **WarnGen**
+  * Web‑based AWIPS CAVE WarnGen clone for creating/editing AWIPS/VTEC products
+  * Map interface for selecting affected areas and form‑based interface for entering product details
+  * Export products in standard .kml/.txt format
 * **Phoneme Converter/Generator**
   * Convert regular text into phoneme representations for use with TTS voices
   * Helps customize TTS pronunciations by providing phoneme output for specific words/phrases
@@ -138,6 +142,13 @@ What you’ll see:
 4. The generated phonemes will be displayed in the output section below the button
 5. You can then copy the generated phonemes to your clipboard for use with the Web TTS service or your own local copy of whatever TTS voice(s) you have available
 
+### WarnGen
+1. Go to the **WarnGen** tab
+2. Select the desired product template and era from the dropdowns (e.g., Tornado Warning, Flash Flood Warning, etc.; era options include "Current" for the most recent templates used in AWIPS CAVE, and "Legacy" for older, CRS era templates)
+3. Fill out the form fields with the appropriate information for your product (e.g., event type, affected areas, start/end times, product-specific details, forecaster fill-ins, etc.)
+4. Use the map interface to select the affected areas for your product by drawing a polygon on the map
+5. Click the **Export polygon** button or **Export AWIPS .txt** to generate the product in the standard .kml/.txt formats
+
 ### Video/Audio Muxer (combiner)
 
 1. Go to **Video/Audio Muxer** tab
@@ -154,6 +165,7 @@ Use the tabs at the top of the page to switch between the various available tool
 * `?tool=crawl` – Opens the **Text Crawl Generator** tab
 * `?tool=splicer` – Opens the **Audio Splicer** tab
 * `?tool=phoneme` – Opens the **Phoneme Converter/Generator** tab
+* `?tool=warngen` – Opens the **WarnGen** tab
 * `?tool=muxer` – Opens the **Video/Audio Muxer** tab
 
 ### Documentation
@@ -184,6 +196,7 @@ For a demonstration of each individual TTS voice, see the [voice demo page](http
 * SAME decoding/encoding logic: Original code by CryptoDude3 (removed GitHub Pages site), maintained and expanded by wagwan-piffting-blud; with credit to EAS.js (by [GWES](https://globaleas.org/)) for reference implementation for specific ENDEC profiles for both decoder and encoder logic
 
 * Inspiration / references:
+  * CryptoDude3 GitHub Pages site (removed) for most of the original code (encoder/decoder logic) and current page looks
   * [nicksmadscience SAME Encoder, Python](https://github.com/nicksmadscience/eas-same-encoder)
   * [Mab879 C++ SAME Encoder](https://github.com/Mab879/eas_encoder)
   * Anon64 EAS Header Generator (removed)
@@ -200,7 +213,16 @@ For a demonstration of each individual TTS voice, see the [voice demo page](http
   * [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm)
   * [phonemeize](https://github.com/hans00/phonemize)
   * [EAS.js](https://github.com/globaleas/EAS.js/)
-  * CryptoDude3 GitHub Pages site (removed) for most of the original code (encoder/decoder logic) and current page looks
+  * [velocity.js](https://github.com/shepherdwind/velocity.js)
+  * [Leaflet](https://leafletjs.com/)
+  * [us-atlas](https://github.com/topojson/us-atlas)
+  * [topojson-client](https://github.com/topojson/topojson-client)
+  * [all-the-cities](https://github.com/zeke/all-the-cities)
+  * [Streaming Shapefile Parser](https://github.com/mbostock/shapefile)
+  * [US Census Bureau TIGER/Line Shapefiles](https://www.census.gov/cgi-bin/geo/shapefiles/index.php)
+  * [NOAA / National Weather Service County Warning Area Shapefile](https://www.weather.gov/gis/ZoneCounty)
+  * [GeoNames](https://www.geonames.org/)
+  * [U.S. Geological Survey GNIS](https://www.usgs.gov/tools/geographic-names-information-system-gnis)
 
 > See each upstream project for their respective licenses.
 
@@ -216,4 +238,4 @@ This project is licensed under **GPL‑3.0** (see [`LICENSE`](./LICENSE)).
 
 This tool decodes and synthesizes EAS/SAME signals for **lab, testing, hobbyist, and educational** purposes only. You are responsible for complying with all laws, regulations, and organizational policies applicable to your use. The author is NOT responsible for ANY misuse of this software toolkit. You must also adhere to the EAS Tools [Terms of Service](https://eas.tools/terms.html) at all times when using the app.
 
-## GenAI Disclosure Notice: Portions of this repository have been generated using Generative AI tools (ChatGPT, ChatGPT Codex, GitHub Copilot).
+## GenAI Disclosure Notice: Portions of this repository have been generated using Generative AI tools (ChatGPT, ChatGPT Codex, GitHub Copilot, Claude, Claude Code).

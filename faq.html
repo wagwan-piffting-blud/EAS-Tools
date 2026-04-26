@@ -65,7 +65,7 @@
                         <li><a href="#">Where can I report bugs or request features without knowing how to code?</a></li>
                         <li><a href="#">You mentioned a web TTS service? What's that, and how does it work?</a></li>
                         <li><a href="#">How can I support the development of EAS Tools?</a></li>
-                        <li><a href="#">Are there currently any known issues or limitations with EAS Tools? (updated as of 2026-02-15)</a></li>
+                        <li><a href="#">Are there currently any known issues or limitations with EAS Tools? (updated as of 2026-04-26)</a></li>
                         <li><a href="#">How can I get more involved in the overall EAS community?</a></li>
                     </ul>
                 </div>
@@ -124,11 +124,11 @@
                 <section>
                     <h3>Are there currently any known issues or limitations with EAS Tools?</h3>
                     <p>Every effort is made to make sure EAS Tools works at its best. Some features may not work as expected on all browsers or devices, and there may be occasional bugs or glitches with the code. Changes are made regularly to improve the application and address any issues that possibly arise. A best effort is made to keep the application as stable and functional as possible, but please understand that this is a hobby project developed in my free time with no monetary support. If you encounter any issues, please report them on the project's <a href="https://github.com/wagwan-piffting-blud/EAS-Tools/issues" target="_blank">GitHub Issues page</a> as soon as you notice them, and they will get addressed ASAP.</p>
-                    <p>Current issues:</p>
+                    <p>Currently known issues:</p>
                     <ul>
-                        <li>Some of the state machines in the tools to update things like available options or retrieve/save options may not work 100% as expected (a popular example is options not appearing on initial page load). These require targeted updates to the JS code, but everything is being actively worked on and maintained for the most optimal experience possible. If you find options missing when they shouldn't be, or vice versa, let me know and I will fix it!</li>
-                        <li>The phoneme generator/converter is very much "in beta", meaning it will have bugs with some phonemes being generated incorrectly, or re-converted from phoneme to text incorrectly, that kind of thing. If you have a specific word you find is incorrect, please submit an issue or pull request on the GitHub repository. I welcome any specific phonemes you may wish to contribute to the overrides section so that they are always correct for the next user.</li>
-                        <li>The "ENDEC Used" inside the Decoder tool is a best-guess based on the entirety of the SAME header being processed. It may not be 100% accurate, and may be missing data about some ENDEC models and how they operate within the context of tone generation. The "DEFAULT" profile means no addition of extra data within the tones, and no difference in silence gaps (1000ms). If you have audio that is mis-matched ENDEC profile-wise, please send a copy of the audio you have, what ENDEC profile it is ACTUALLY using, and what profile it MATCHES UNDER in the interface, and I will try my best to fix it without breaking other profile matches. All current ENDEC profiles within EAS Tools match 100%, IF there is no audio post-processing. Post-processing can affect detection of the ENDEC profile.</li>
+                        <li>Accessibility of the tools may not be 100% where I like it to be. There are a lot of missing aria attributes that help promote accessibility when using assistive technologies like screen readers, etc. This is something I am actively working on improving.</li>
+                        <li>WarnGen is a very new tool, meaning it is bound to have unexpected behavior in some scenarios compared to the real AWIPS CAVE WarnGen. While I tried my best to make it absolutely as close as I could to the original (comparing against multiple VTEC archives), there may be discrepancies in certain cases. For example, county names may not be listed in the correct order, cities may be missing from the path list, highway mile markers and numbers may be inconsistent, or the generated warning may not include all the necessary information. Most of these issues are simply data-related, meaning that I am not able to fix them myself, as they originate from outside the code I made if that makes sense. An example of this is specifically the cities, only cities with a population of 1,000 or more are included in pathcasts. This is because of the source I used, all-the-cities, which ONLY includes cities with a population of 1,000 or more in its corpus (data). This means that, unless the maintainer of THAT source updates it, these issues will persist, and I am not able to fix them.</li>
+                        <li>As well, WarnGen currently only supports "short-fused" products. Things like tornado warnings, severe thunderstorm warnings, etc. ARE currently supported, but "long-fused" products (like blizzard warnings, winter weather advisories, most severe weather watches, etc.) are NOT currently supported. Support <em><b>may</b></em> be added in the future, depending on demand and if I can find the time and resources to implement them. They will likely need to be implemented as a new tool entirely, as they are completely separate in AWIPS and use zones/whole counties vs polygons, too.</li>
                     </ul>
                 </section>
                 <section>
@@ -148,6 +148,7 @@
                         <li><a href="#">Tool: Text Crawl Generator</a></li>
                         <li><a href="#">Tool: Audio Splicer</a></li>
                         <li><a href="#">Tool: Phoneme Converter/Generator</a></li>
+                        <li><a href="#">Tool: WarnGen</a></li>
                         <li><a href="#">Tool: Video/Audio Muxer</a></li>
                         <li><a href="#">Troubleshooting</a></li>
                     </ul>
@@ -247,6 +248,17 @@
                         <li>You can then copy the generated phonemes to your clipboard for use with the Web TTS service or your own local copy of whatever TTS voice(s) you have available.</li>
                     </ol>
                     <p>The generated phonemes can then be used for the express purpose of customizing TTS word pronunciations to your liking.</p>
+                </section>
+                <section>
+                    <h3>Tool: WarnGen</h3>
+                    <p>The WarnGen tool is much like the original WarnGen tool in AWIPS CAVE, but is simplified and much lighter in terms of functionality. If you're unfamiliar, WarnGen allows forecasters at the National Weather Service to do as the name suggests: GENerate WARNings. These mostly are for common product types: Severe Thunderstorms, Tornadoes, Flash Flooding, etc. You get the point. As far as the functionality goes, it's a simplified version of the original tool. The formatting templates, however, are DIRECTLY from AWIPS WarnGen itself. This means that the product output is nearly 1:1 identical to the original, with some minor (known) differences like county order, incorrect highway numbers/mile markers, cities missing, etc. This is nothing that is directly fixable currently as it would require more data that is not currently available in an easy-to-use format.</p>
+                    <p>To use the WarnGen tool, follow these steps:</p>
+                    <ol>
+                        <li>Choose a product type from the dropdown menu. You can also choose between eras, both CRS (legacy) and BMH (non-Impact-Based Warnings and modern IBWs) are supported.</li>
+                        <li>Select your Weather Forecast Office (WFO) and draw a polygon on the map to select the affected area for the warning for that office's Coverage Warning Area (CWA).</li>
+                        <li>Fill out the form with the required information, such as the event type, origination time, duration, forecaster name/initials, hazards, etc.</li>
+                    </ol>
+                    <p>Once you have drawn your polygon, the tool will automatically generate the warning product based on the selected area and product type/hazards selected. The generated product will be displayed in the output section to the right of and below the hazard selection, where you can review and copy it for use in your projects or testing. You can also export the polygon as a KML file and the AWIPS product as a plain text file.</p>
                 </section>
                 <section>
                     <h3>Tool: Video/Audio Muxer</h3>

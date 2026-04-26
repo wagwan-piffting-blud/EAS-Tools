@@ -1,0 +1,23 @@
+{
+    "_comment": [
+        "Hand-curated mile-marker anchor overrides. Entries here take",
+        "precedence over the auto-anchor baked into each feature's",
+        "properties.mmOffset at build time.",
+        "",
+        "Key format: cls:num:lon:lat where lon/lat are the Natural Earth",
+        "feature's first vertex (AFTER the build tool's low-MM-end",
+        "normalization) rounded to 3 decimal places. Value is { mm: N }",
+        "where N is the real-world mile marker at that vertex.",
+        "",
+        "Add entries here only when the auto-anchor gets a specific",
+        "route significantly wrong (e.g., route with spurs or alternates",
+        "that confuse the sort-by-distance-from-origin heuristic). For",
+        "typical end-to-end routes the auto-anchor is within ~2-5 mi of",
+        "real mile markers, which is well within Natural Earth's",
+        "alignment drift anyway.",
+        "",
+        "Example entry (uncomment and edit to use):",
+        "  \"us:183:-99.378:41.742\": { \"mm\": 122, \"route\": \"US 183 NE\" }"
+    ],
+    "anchors": {}
+}

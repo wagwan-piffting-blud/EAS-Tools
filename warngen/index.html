@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>WarnGen</title>
+        <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+        <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
+        <link rel="stylesheet" href="warngen.css">
+    </head>
+    <body class="app-body">
+        <header>
+            <h1>WarnGen</h1>
+        </header>
+        <div class="controls">
+            <label for="template-select">Template:</label>
+            <select id="template-select">
+                <option value="severeThunderstormWarning.vm">Severe Thunderstorm Warning (legacy)</option>
+                <option value="tornadoWarning.vm">Tornado Warning (legacy)</option>
+            </select>
+            <label for="era-select">Era:</label>
+            <select id="era-select">
+                <option value="legacy" selected>Legacy/CRS</option>
+                <option value="modern">Modern/BMH (Impact-Based)</option>
+            </select>
+            <label class="checkbox-label">
+                <input type="checkbox" id="allcaps-cb">
+                All caps
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="wrap-cb" checked>
+                Word Wrap
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="crsfmt-cb">
+                CRS format
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="crosstz-cb">
+                Crosses TZ boundary
+            </label>
+            <label class="checkbox-label" id="normalize-cb-label"
+                title="Replace the raw AWIPS bulletin with a human-readable normalized version (powered by the EAS Tools Normalizer)">
+                <input type="checkbox" id="normalize-cb" disabled>
+                Normalized
+            </label>
+            <label class="checkbox-label" id="highways-cb-label"
+                title="Append a list of Interstates, US Routes, and state highways whose centerlines pass through the warning polygon">
+                <input type="checkbox" id="highways-cb">
+                Highways impacted
+            </label>
+            <button id="start-draw-btn" class="primary-btn">Draw polygon</button>
+            <button id="clear-poly-btn">Clear</button>
+            <button id="import-poly-btn" class="secondary-btn" title="Load a polygon from a GeoJSON or KML file (e.g. IEM vtec.kml from the NWS archive)">Import polygon</button>
+            <input type="file" id="import-poly-file" accept=".geojson,.json,.kml,application/json,application/geo+json,application/vnd.google-earth.kml+xml" style="display:none">
+            <button id="importtxt-poly-btn" class="secondary-btn" title="Parse AWIPS bulletin from text">Import AWIPS .txt</button>
+            <button id="export-poly-btn" class="secondary-btn" title="Download current polygon as GeoJSON">Export polygon</button>
+            <button id="download-btn" class="secondary-btn">Export AWIPS .txt</button>
+            <button id="copy-btn" class="secondary-btn">Copy AWIPS to clipboard</button>
+        </div>
+        <div class="status-bar">
+            <span>STATUS: </span><span id="status"></span>
+        </div>
+        <div class="help-bar">
+            <strong>How to draw:</strong> Click <em>Draw polygon</em> &rarr;
+            click on the map to place vertices &rarr; click the first vertex (or
+            double-click anywhere) to close the shape. The bulletin re-renders
+            live with the impacted counties. Click <em class="redEm">Clear</em> to start over fresh.
+        </div>
+        <div class="storm-bar">
+            <strong>Storm motion:</strong>
+            <label>Moving toward <input type="number" id="motion-bearing" min="0" max="359" value="45" step="5">
+                &deg;</label>
+            <span id="motion-label" class="motion-label">NE</span>
+            <label>Speed <input type="number" id="motion-speed" min="0" max="120" value="35"> mph</label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="centroid-auto-cb" checked>
+                Auto storm position (polygon rear edge)
+            </label>
+            <label>Lat <input type="number" id="centroid-lat" step="0.01" value="41.35" disabled></label>
+            <label>Lon <input type="number" id="centroid-lon" step="0.01" value="-96.10" disabled></label>
+            <span id="pathcount"></span>
+        </div>
+        <div class="meta-bar">
+            <strong>Product:</strong>
+            <label>Office
+                <select id="office-select">
+                    <option value="OAX" selected>KOAX Omaha/Valley NE</option>
+                </select>
+            </label>
+            <label>ETN <input type="number" id="etn-input" min="1" max="9999" value="42"></label>
+            <label>Action
+                <select id="action-select">
+                    <option value="NEW" selected>NEW</option>
+                    <option value="COR">COR</option>
+                </select>
+            </label>
+            <label>Duration
+                <select id="duration-select">
+                    <option value="30" selected>30 min</option>
+                </select>
+            </label>
+            <label>Issued
+                <input type="datetime-local" id="issued-input" step="60">
+                <button type="button" id="now-btn" title="Set issuance time to now">Now</button>
+            </label>
+            <span class="meta-note">Office picker swaps the visible counties to that CWA's coverage area + updates
+                headers/VTEC</span>
+        </div>
+        <main class="split">
+            <div id="map"></div>
+            <div class="output-pane">
+                <div class="impacted-bar">
+                    <span class="impacted-label">Impacted:</span>
+                    <span id="impacted-list">none (draw a polygon)</span>
+                </div>
+                <div id="bullet-panel" class="bullet-panel-container">
+                    <div class="panel-label">Bullet picker</div>
+                    <div id="bullet-list"></div>
+                </div>
+                <div id="fillin-panel" class="fillin-panel-container" style="display: none;">
+                    <div class="panel-label">Fill-ins <span class="panel-hint">(forecaster-supplied values)</span></div>
+                    <div id="fillin-list"></div>
+                </div>
+                <pre id="output">Draw a polygon on the map to render a bulletin.</pre>
+            </div>
+        </main>
+        <script src="vendor/leaflet/leaflet.js"></script>
+        <script src="vendor/leaflet-draw/leaflet.draw.js"></script>
+        <script src="vendor/velocityjs.bundle.js"></script>
+        <script src="vendor/tz-lookup/tz.js"></script>
+        <script src="src/engine/utils.js"></script>
+        <script src="src/engine/ugc.js"></script>
+        <script src="src/engine/render.js"></script>
+        <script src="src/engine/context.js"></script>
+        <script src="src/engine/parser.js"></script>
+        <script src="src/geo/intersect.js"></script>
+        <script src="src/geo/cities.js"></script>
+        <script src="src/geo/highways.js"></script>
+        <script src="src/config/xmlParser.js"></script>
+        <script src="src/ui/BulletPanel.js"></script>
+        <script>
+            var TEMPLATE_FILES_BY_ERA = {
+                legacy: [
+                    "VM_global_library.vm", "config.vm", "forecasterName.vm",
+                    "mileMarkers.vm", "damInfo.vm", "dssEvents.vm", "dupCounties.vm",
+                    "impactStatements.vm",
+                    "severeThunderstormWarning.vm", "tornadoWarning.vm",
+                    "extremeWindWarning.vm", "specialWeatherStatement.vm",
+                    "flashFloodWarning.vm"
+                ],
+                modern: [
+                    "VM_global_library.vm", "config.vm", "forecasterName.vm",
+                    "mileMarkers.vm", "damInfo.vm", "dssEvents.vm", "dupCounties.vm",
+                    "impactStatements.vm",
+                    "severeThunderstormWarning.vm", "tornadoWarning.vm",
+                    "impactSevereThunderstormWarning.vm", "impactTornadoWarning.vm",
+                    "extremeWindWarning.vm", "specialWeatherStatement.vm",
+                    "flashFloodWarning.vm"
+                ]
+            };
+            var XML_FILES_BY_ERA = {
+                legacy: [
+                    "severeThunderstormWarning.xml", "tornadoWarning.xml",
+                    "extremeWindWarning.xml",
+
+                    "specialWeatherStatement.xml", "flashFloodWarning.xml"
+                ],
+                modern: [
+                    "severeThunderstormWarning.xml", "tornadoWarning.xml",
+                    "impactSevereThunderstormWarning.xml", "impactTornadoWarning.xml",
+                    "extremeWindWarning.xml", "specialWeatherStatement.xml",
+                    "flashFloodWarning.xml"
+                ]
+            };
+
+            var TEMPLATE_META = {
+                "severeThunderstormWarning.vm": {
+                    productId: "SVR",
+                    xml: "severeThunderstormWarning.xml",
+                    defaults: ["doppler"]
+                },
+                "tornadoWarning.vm": {
+                    productId: "TOR",
+                    xml: "tornadoWarning.xml",
+                    defaults: ["doppler"]
+                },
+                "impactSevereThunderstormWarning.vm": {
+                    productId: "SVR",
+                    xml: "impactSevereThunderstormWarning.xml",
+                    defaults: ["doppler"]
+                },
+                "impactTornadoWarning.vm": {
+                    productId: "TOR",
+                    xml: "impactTornadoWarning.xml",
+                    defaults: ["doppler"]
+                },
+                "extremeWindWarning.vm": {
+                    productId: "EWW",
+                    xml: "extremeWindWarning.xml",
+                    defaults: ["basis1", "var1"]
+                },
+                "specialWeatherStatement.vm": {
+                    productId: "SPS",
+                    xml: "specialWeatherStatement.xml",
+                    defaults: ["strongThunderstorm", "listofcities"]
+                },
+                "flashFloodWarning.vm": {
+                    productId: "FFW",
+                    xml: "flashFloodWarning.xml",
+                    defaults: ["doppler"]
+                }
+            };
+
+            var TEMPLATE_OPTIONS_BY_ERA = {
+                legacy: [
+                    { value: "severeThunderstormWarning.vm", label: "Severe Thunderstorm Warning (legacy)" },
+                    { value: "tornadoWarning.vm", label: "Tornado Warning (legacy)" },
+                    { value: "extremeWindWarning.vm", label: "Extreme Wind Warning (legacy)" },
+                    { value: "specialWeatherStatement.vm", label: "Special Weather Statement (legacy)" },
+                    { value: "flashFloodWarning.vm", label: "Flash Flood Warning (legacy)" }
+                ],
+                modern: [
+                    { value: "severeThunderstormWarning.vm", label: "Severe Thunderstorm Warning (modern)" },
+                    { value: "impactSevereThunderstormWarning.vm", label: "Severe Thunderstorm Warning (modern, IBW)" },
+                    { value: "tornadoWarning.vm", label: "Tornado Warning (modern)" },
+                    { value: "impactTornadoWarning.vm", label: "Tornado Warning (modern, IBW)" },
+                    { value: "extremeWindWarning.vm", label: "Extreme Wind Warning (modern)" },
+                    { value: "specialWeatherStatement.vm", label: "Special Weather Statement (modern)" },
+                    { value: "flashFloodWarning.vm", label: "Flash Flood Warning (modern)" }
+                ]
+            };
+
+            var ALL_US = "_ALL_US_";
+
+            function getOfficeMeta(siteId) {
+                if (siteId === ALL_US) {
+                    return {
+                        short: "{OFFICE_SHORT_NAME}",
+                        loc: "{OFFICE_LOCATION}",
+                        siteId: "{SITE}",
+                        vtecOffice: "{VTEC_OFFICE}"
+                    };
+                }
+                var label = OFFICE_LABELS[siteId];
+                if (!label) {
+                    return {
+                        short: siteId,
+                        loc: siteId,
+                        siteId: siteId,
+                        vtecOffice: "K" + siteId
+                    };
+                }
+
+                if (!/^[A-Z]{4} /.test(label)) {
+                    return {
+                        short: label,
+                        loc: label,
+                        siteId: siteId,
+                        vtecOffice: "K" + siteId
+                    };
+                }
+                var callsign = label.slice(0, 4);
+                var rest = label.slice(5);
+                var loc = rest.replace(/\s+[A-Z]{2}$/, "");
+                return {
+                    short: rest,
+                    loc: loc,
+                    siteId: siteId,
+                    vtecOffice: callsign
+                };
+            }
+
+            var WMO_PRODUCT_PREFIX = {
+                TOR: "WFUS", SVR: "WUUS", EWW: "WUUS", FFW: "WGUS", SPS: "WWUS"
+            };
+            var WFO_REGION = {
+
+                HFO: 0, GUM: 0, PPG: 0,
+
+                AKQ: 1, ALY: 1, BGM: 1, BOX: 1, BTV: 1, BUF: 1, CAR: 1,
+                CLE: 1, CTP: 1, GYX: 1, LWX: 1, OKX: 1, PBZ: 1, PHI: 1,
+                RLX: 1,
+
+                BMX: 2, CAE: 2, CHS: 2, FFC: 2, GSP: 2, HUN: 2, ILM: 2,
+                ILN: 2, JAN: 2, JAX: 2, JKL: 2, KEY: 2, LCH: 2, LIX: 2,
+                LMK: 2, LUB: 2, LZK: 2, MEG: 2, MFL: 2, MHX: 2, MLB: 2,
+                MOB: 2, MRX: 2, OHX: 2, PAH: 2, RAH: 2, RNK: 2, SHV: 2,
+                SJU: 2, TAE: 2, TBW: 2, TSA: 2,
+
+                ABR: 3, APX: 3, ARX: 3, BIS: 3, DDC: 3, DLH: 3, DMX: 3,
+                DTX: 3, DVN: 3, EAX: 3, FGF: 3, FSD: 3, GID: 3, GJT: 3,
+                GLD: 3, GRB: 3, GRR: 3, ICT: 3, ILX: 3, IND: 3, IWX: 3,
+                LBF: 3, LOT: 3, LSX: 3, MKX: 3, MPX: 3, MQT: 3, OAX: 3,
+                SGF: 3, TOP: 3, UNR: 3,
+
+                ABQ: 4, AMA: 4, BRO: 4, CRP: 4, EPZ: 4, EWX: 4, FWD: 4,
+                HGX: 4, MAF: 4, OUN: 4, SJT: 4,
+
+                BOU: 5, BYZ: 5, CYS: 5, GGW: 5, MSO: 5, PIH: 5, PUB: 5,
+                RIW: 5, TFX: 5,
+
+                BOI: 6, EKA: 6, FGZ: 6, HNX: 6, LKN: 6, LOX: 6, MFR: 6,
+                MTR: 6, OTX: 6, PDT: 6, PQR: 6, PSR: 6, REV: 6, SEW: 6,
+                SGX: 6, STO: 6, TWC: 6, VEF: 6,
+
+                AJK: 7,
+
+                AFC: 8, AFG: 8
+            };
+
+            function getWmoHeading(productId, siteId) {
+                if (siteId === ALL_US) return "{WMO_HEADING}";
+                var prefix = WMO_PRODUCT_PREFIX[productId] || "WUUS";
+                var region = (WFO_REGION[siteId] != null) ? WFO_REGION[siteId] : 3;
+                return prefix + "5" + region;
+            }
+
+            var IANA_TO_NWS = {
+
+                "America/New_York": ["EST", false],
+                "America/Detroit": ["EST", false],
+                "America/Kentucky/Louisville": ["EST", false],
+                "America/Kentucky/Monticello": ["EST", false],
+                "America/Indiana/Indianapolis": ["EST", false],
+                "America/Indiana/Vincennes": ["EST", false],
+                "America/Indiana/Winamac": ["EST", false],
+                "America/Indiana/Marengo": ["EST", false],
+                "America/Indiana/Petersburg": ["EST", false],
+                "America/Indiana/Vevay": ["EST", false],
+
+                "America/Chicago": ["CST", false],
+                "America/Menominee": ["CST", false],
+                "America/Indiana/Tell_City": ["CST", false],
+                "America/Indiana/Knox": ["CST", false],
+                "America/North_Dakota/Center": ["CST", false],
+                "America/North_Dakota/New_Salem": ["CST", false],
+                "America/North_Dakota/Beulah": ["CST", false],
+
+                "America/Denver": ["MST", false],
+                "America/Boise": ["MST", false],
+                "America/Phoenix": ["MST", true],
+
+                "America/Los_Angeles": ["PST", false],
+
+                "America/Anchorage": ["AKST", false],
+                "America/Juneau": ["AKST", false],
+                "America/Sitka": ["AKST", false],
+                "America/Yakutat": ["AKST", false],
+                "America/Nome": ["AKST", false],
+                "America/Metlakatla": ["AKST", false],
+
+                "Pacific/Honolulu": ["HST", true],
+                "America/Adak": ["HST", false],
+
+                "America/Puerto_Rico": ["AST", true],
+                "America/St_Thomas": ["AST", true],
+
+                "Pacific/Guam": ["CHST", true],
+                "Pacific/Saipan": ["CHST", true],
+                "Pacific/Pago_Pago": ["SST", true],
+
+                "America/Tijuana": ["PST", false],
+                "America/Hermosillo": ["MST", true],
+                "America/Ciudad_Juarez": ["MST", false],
+                "America/Ojinaga": ["MST", false],
+                "America/Matamoros": ["CST", false],
+                "America/Chihuahua": ["CST", true],
+                "America/Monterrey": ["CST", true],
+                "America/Mexico_City": ["CST", true],
+                "America/Bahia_Banderas": ["CST", true],
+                "America/Mazatlan": ["MST", true],
+                "America/Cancun": ["EST", true],
+
+                "America/Vancouver": ["PST", false],
+                "America/Edmonton": ["MST", false],
+                "America/Regina": ["CST", true],
+                "America/Swift_Current": ["CST", true],
+                "America/Winnipeg": ["CST", false],
+                "America/Resolute": ["CST", false],
+                "America/Rankin_Inlet": ["CST", false],
+                "America/Toronto": ["EST", false],
+                "America/Iqaluit": ["EST", false],
+                "America/Halifax": ["AST", false],
+                "America/Glace_Bay": ["AST", false],
+                "America/Moncton": ["AST", false],
+                "America/Goose_Bay": ["AST", false],
+                "America/St_Johns": ["AST", false],
+                "America/Whitehorse": ["MST", true],
+                "America/Dawson": ["MST", true],
+                "America/Cambridge_Bay": ["MST", false],
+                "America/Inuvik": ["MST", false]
+            };
+            function getTimezoneFor(lon, lat) {
+
+                var iana;
+                try { iana = window.tzlookup(lat, lon); }
+                catch (e) { return { abbr: "CST", dstLess: false }; }
+                var tuple = IANA_TO_NWS[iana];
+                if (tuple) return { abbr: tuple[0], dstLess: tuple[1] };
+
+                return { abbr: "CST", dstLess: false };
+            }
+
+            function detectTimezoneCrossing(ring, siteId) {
+                var empty = {
+                    primary: null, second: null, crosses: false,
+                    primaryDstLess: false, secondDstLess: false
+                };
+                if (!ring || ring.length < 4 || typeof window.tzlookup !== "function") {
+                    return empty;
+                }
+                function tzAt(lon, lat) { return getTimezoneFor(lon, lat); }
+
+                var primary = null;
+                var wfoLoc = siteId && wfoLocations[siteId];
+                if (wfoLoc) {
+                    primary = tzAt(wfoLoc[0], wfoLoc[1]);
+                }
+                if (!primary) {
+
+                    primary = tzAt(ring[0][0], ring[0][1]);
+                }
+                if (!primary) return empty;
+
+                var minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+                for (var i = 0; i < ring.length - 1; i++) {
+                    if (ring[i][0] < minx) minx = ring[i][0];
+                    if (ring[i][0] > maxx) maxx = ring[i][0];
+                    if (ring[i][1] < miny) miny = ring[i][1];
+                    if (ring[i][1] > maxy) maxy = ring[i][1];
+                }
+                var midLon = (minx + maxx) / 2;
+                var midLat = (miny + maxy) / 2;
+                var samples = [];
+                for (var v = 0; v < ring.length - 1; v++) samples.push([ring[v][0], ring[v][1]]);
+
+                samples.push([minx, midLat]);
+                samples.push([maxx, midLat]);
+                samples.push([midLon, miny]);
+                samples.push([midLon, maxy]);
+
+                var counts = {};
+                var dstLessByAbbr = {};
+                samples.forEach(function (p) {
+                    var tz = tzAt(p[0], p[1]);
+                    if (!tz) return;
+                    counts[tz.abbr] = (counts[tz.abbr] || 0) + 1;
+                    dstLessByAbbr[tz.abbr] = tz.dstLess;
+                });
+
+                var secondAbbr = primary.abbr, bestCount = 0;
+                Object.keys(counts).forEach(function (abbr) {
+                    if (abbr === primary.abbr) return;
+                    if (counts[abbr] > bestCount) { secondAbbr = abbr; bestCount = counts[abbr]; }
+                });
+
+                return {
+                    primary: primary.abbr,
+                    second: secondAbbr,
+                    crosses: secondAbbr !== primary.abbr,
+                    primaryDstLess: !!primary.dstLess,
+                    secondDstLess: !!dstLessByAbbr[secondAbbr]
+                };
+            }
+
+            var selectedBullets = [];
+            var currentProductId = "SVR";
+            var currentDurations = [30];
+            var currentDefaultDuration = 30;
+
+            var templates = { legacy: {}, modern: {} };
+            var xmlConfigs = { legacy: {}, modern: {} };
+            var countyGeojson = null;
+            var cwaCountyIndex = {};
+            var visibleCounties = null;
+            var cityDB = [];
+            var cityDBAll = [];
+            var highwaysGeojson = { type: "FeatureCollection", features: [] };
+            var highwayAnchors = { anchors: {} };
+            var wfoLocations = {};
+            var currentPolygon = null;
+            var currentRing = null;
+            var bulletPanelCtrl = null;
+            var stormMarker = null;
+            var pendingDuration = null;
+            var pendingNormalize = false;
+
+            var STORAGE_KEY = "warngen-state-v1";
+            var saveTimer = null;
+
+            function saveState() {
+                try {
+                    var state = {
+                        polygon: currentRing,
+                        form: {
+                            template: document.getElementById("template-select").value,
+                            era: document.getElementById("era-select").value,
+                            allcaps: document.getElementById("allcaps-cb").checked,
+                            wrap: document.getElementById("wrap-cb").checked,
+                            crsfmt: document.getElementById("crsfmt-cb").checked,
+                            crosstz: document.getElementById("crosstz-cb").checked,
+                            normalize: document.getElementById("normalize-cb").checked,
+                            highways: document.getElementById("highways-cb").checked,
+                            bearing: document.getElementById("motion-bearing").value,
+                            speed: document.getElementById("motion-speed").value,
+                            centroidAuto: document.getElementById("centroid-auto-cb").checked,
+                            centroidLat: document.getElementById("centroid-lat").value,
+                            centroidLon: document.getElementById("centroid-lon").value,
+                            office: document.getElementById("office-select").value,
+                            etn: document.getElementById("etn-input").value,
+                            action: document.getElementById("action-select").value,
+                            duration: document.getElementById("duration-select").value,
+                            issued: document.getElementById("issued-input").value
+                        },
+                        bullets: selectedBullets.slice(),
+                        fillIns: Object.assign({}, fillInValues)
+                    };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                } catch (e) { }
+            }
+
+            function queueSave() {
+                if (saveTimer) clearTimeout(saveTimer);
+                saveTimer = setTimeout(saveState, 300);
+            }
+
+            function loadState() {
+                try {
+                    var raw = localStorage.getItem(STORAGE_KEY);
+                    if (!raw) return null;
+                    return JSON.parse(raw);
+                } catch (e) { return null; }
+            }
+
+            function applyFormState(f) {
+                if (!f) return;
+                function set(id, v) { if (v != null) document.getElementById(id).value = v; }
+                function chk(id, v) { if (v != null) document.getElementById(id).checked = !!v; }
+
+                set("era-select", f.era);
+                rebuildTemplateOptions();
+                set("template-select", f.template);
+                chk("allcaps-cb", f.allcaps);
+                chk("wrap-cb", f.wrap);
+                chk("crsfmt-cb", f.crsfmt);
+                chk("crosstz-cb", f.crosstz);
+
+                if (f.normalize) pendingNormalize = true;
+                chk("highways-cb", f.highways);
+                set("motion-bearing", f.bearing);
+                set("motion-speed", f.speed);
+                chk("centroid-auto-cb", f.centroidAuto);
+                set("centroid-lat", f.centroidLat);
+                set("centroid-lon", f.centroidLon);
+                if (f.centroidAuto != null) {
+                    document.getElementById("centroid-lat").disabled = !!f.centroidAuto;
+                    document.getElementById("centroid-lon").disabled = !!f.centroidAuto;
+                }
+                set("office-select", f.office);
+                set("etn-input", f.etn);
+                set("action-select", f.action);
+                set("issued-input", f.issued);
+
+                if (f.duration != null) pendingDuration = f.duration;
+            }
+
+            function formatLocalDatetime(d) {
+                function pad(n) { return n < 10 ? "0" + n : "" + n; }
+                return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate())
+                    + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+            }
+
+            function restorePolygon(savedRing) {
+                if (!savedRing || savedRing.length < 3) return;
+
+                var latlngs = savedRing.slice(0, -1).map(function (p) {
+                    return [p[1], p[0]];
+                });
+                var poly = L.polygon(latlngs, {
+                    color: "#fb4934",
+                    weight: 3,
+                    fillColor: "#fb493422",
+                    fillOpacity: 0.4
+                });
+                drawLayer.clearLayers();
+                drawLayer.addLayer(poly);
+                currentPolygon = poly;
+                currentRing = savedRing;
+            }
+
+            function setStatus(msg, isError) {
+                var el = document.getElementById("status");
+                el.textContent = msg;
+                el.className = isError ? "error" : "ok";
+            }
+
+            function loadTemplates(era) {
+                var jobs = TEMPLATE_FILES_BY_ERA[era].map(function (name) {
+                    return fetch("templates/" + era + "/" + name).then(function (r) {
+                        if (!r.ok) return null;
+                        return r.text().then(function (t) { templates[era][name] = t; });
+                    }).catch(function () { return null; });
+                });
+                return Promise.all(jobs);
+            }
+
+            function loadXmlConfigs(era) {
+
+                var jobs = XML_FILES_BY_ERA[era].map(function (name) {
+                    return fetch("templates/" + era + "/" + name)
+                        .then(function (r) {
+                            if (r.ok) return r.text();
+                            if (era !== "modern") {
+                                return fetch("templates/modern/" + name).then(function (r2) {
+                                    return r2.ok ? r2.text() : null;
+                                });
+                            }
+                            return null;
+                        })
+                        .then(function (t) {
+                            if (t) xmlConfigs[era][name] = t;
+                        })
+                        .catch(function () { return null; });
+                });
+                return Promise.all(jobs);
+            }
+
+            function loadCounties() {
+                return Promise.all([
+                    fetch("data/us_counties.geojson").then(function (r) { return r.json(); }),
+                    fetch("data/cwa_county_index.json").then(function (r) { return r.json(); })
+                ]).then(function (parts) {
+                    countyGeojson = parts[0];
+                    cwaCountyIndex = parts[1] || {};
+                });
+            }
+
+            function filterCountiesByCwa(cwa) {
+                if (!countyGeojson) return null;
+                var fipsList = cwaCountyIndex[cwa];
+                if (!fipsList || !fipsList.length) {
+
+                    return countyGeojson;
+                }
+                var keep = new Set(fipsList);
+                return {
+                    type: "FeatureCollection",
+                    features: countyGeojson.features.filter(function (f) {
+                        return keep.has(f.properties.fips);
+                    })
+                };
+            }
+
+            function applyCwaFilter(cwa) {
+                visibleCounties = filterCountiesByCwa(cwa);
+                countyLayer.clearLayers();
+                if (visibleCounties) {
+                    countyLayer.addData(visibleCounties);
+                    try {
+                        if (cwa === ALL_US) {
+
+                            map.fitBounds(ALL_US_BOUNDS);
+                        } else {
+                            var b = countyLayer.getBounds();
+
+                            if (b.isValid()) map.fitBounds(b.pad(0.05), { maxZoom: 9 });
+                        }
+                    } catch (e) { }
+                }
+
+                var fipsList = cwaCountyIndex[cwa];
+                if (fipsList && fipsList.length) {
+                    var cwaSet = new Set(fipsList);
+                    cityDB = cityDBAll.filter(function (c) { return cwaSet.has(c.fips); });
+                } else {
+                    cityDB = cityDBAll.slice();
+                }
+            }
+
+            function loadCities() {
+                return fetch("data/us_cities.json")
+                    .then(function (r) { return r.json(); })
+                    .then(function (db) { cityDBAll = db.cities || []; });
+            }
+
+            function loadHighways() {
+                return fetch("data/us_highways.geojson")
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (db) {
+                        highwaysGeojson = db || { type: "FeatureCollection", features: [] };
+                    })
+                    .catch(function () {
+                        highwaysGeojson = { type: "FeatureCollection", features: [] };
+                    });
+            }
+
+            function loadHighwayAnchors() {
+                return fetch("data/hwy_mm_anchors.json")
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (tab) { highwayAnchors = tab || { anchors: {} }; })
+                    .catch(function () { highwayAnchors = { anchors: {} }; });
+            }
+
+            function loadWfoLocations() {
+                return fetch("data/wfo_locations.json")
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (tab) { wfoLocations = (tab && tab.offices) || {}; })
+                    .catch(function () { wfoLocations = {}; });
+            }
+
+            var OFFICE_LABELS = {
+                ABQ: "KABQ Albuquerque NM",
+                ABR: "KABR Aberdeen SD",
+                AFC: "PAFC Anchorage AK",
+                AFG: "PAFG Fairbanks AK",
+                AJK: "PAJK Juneau AK",
+                AKQ: "KAKQ Wakefield VA",
+                ALY: "KALY Albany NY",
+                AMA: "KAMA Amarillo TX",
+                APX: "KAPX Gaylord MI",
+                ARX: "KARX La Crosse WI",
+                BGM: "KBGM Binghamton NY",
+                BIS: "KBIS Bismarck ND",
+                BMX: "KBMX Birmingham AL",
+                BOI: "KBOI Boise ID",
+                BOU: "KBOU Denver CO",
+                BOX: "KBOX Boston/Norton MA",
+                BRO: "KBRO Brownsville TX",
+                BTV: "KBTV Burlington VT",
+                BUF: "KBUF Buffalo NY",
+                BYZ: "KBYZ Billings MT",
+                CAE: "KCAE Columbia SC",
+                CAR: "KCAR Caribou ME",
+                CHS: "KCHS Charleston SC",
+                CLE: "KCLE Cleveland OH",
+                CRP: "KCRP Corpus Christi TX",
+                CTP: "KCTP State College PA",
+                CYS: "KCYS Cheyenne WY",
+                DDC: "KDDC Dodge City KS",
+                DLH: "KDLH Duluth MN",
+                DMX: "KDMX Des Moines IA",
+                DTX: "KDTX Detroit/Pontiac MI",
+                DVN: "KDVN Davenport/Quad Cities IA",
+                EAX: "KEAX Kansas City/Pleasant Hill MO",
+                EKA: "KEKA Eureka CA",
+                EPZ: "KEPZ El Paso TX",
+                EWX: "KEWX Austin/San Antonio TX",
+                FFC: "KFFC Peachtree City GA",
+                FGF: "KFGF Grand Forks ND",
+                FGZ: "KFGZ Flagstaff AZ",
+                FSD: "KFSD Sioux Falls SD",
+                FWD: "KFWD Fort Worth TX",
+                GGW: "KGGW Glasgow MT",
+                GID: "KGID Hastings NE",
+                GJT: "KGJT Grand Junction CO",
+                GLD: "KGLD Goodland KS",
+                GRB: "KGRB Green Bay WI",
+                GRR: "KGRR Grand Rapids MI",
+                GSP: "KGSP Greenville-Spartanburg SC",
+                GUM: "PGUM Tiyan GU",
+                GYX: "KGYX Gray ME",
+                HFO: "PHFO Honolulu HI",
+                HGX: "KHGX Houston/Galveston TX",
+                HNX: "KHNX San Joaquin Valley CA",
+                HUN: "KHUN Huntsville AL",
+                ICT: "KICT Wichita KS",
+                ILM: "KILM Wilmington NC",
+                ILN: "KILN Wilmington OH",
+                ILX: "KILX Lincoln IL",
+                IND: "KIND Indianapolis IN",
+                IWX: "KIWX Northern Indiana",
+                JAN: "KJAN Jackson MS",
+                JAX: "KJAX Jacksonville FL",
+                JKL: "KJKL JACKSON KY",
+                KEY: "KKEY Key West FL",
+                LBF: "KLBF North Platte NE",
+                LCH: "KLCH Lake Charles LA",
+                LIX: "KLIX New Orleans LA",
+                LKN: "KLKN Elko NV",
+                LMK: "KLMK Louisville KY",
+                LOT: "KLOT Chicago/Romeoville",
+                LOX: "KLOX OXNARD CA",
+                LSX: "KLSX St Louis MO",
+                LUB: "KLUB Lubbock TX",
+                LWX: "KLWX Baltimore MD/Washington DC",
+                LZK: "KLZK Little Rock AR",
+                MAF: "KMAF Midland/Odessa TX",
+                MEG: "KMEG Memphis TN",
+                MFL: "KMFL Miami FL",
+                MFR: "KMFR Medford OR",
+                MHX: "KMHX Newport/Morehead City NC",
+                MKX: "KMKX Milwaukee/Sullivan WI",
+                MLB: "KMLB Melbourne FL",
+                MOB: "KMOB Mobile AL",
+                MPX: "KMPX Twin Cities/Chanhassen MN",
+                MQT: "KMQT Marquette MI",
+                MRX: "KMRX Morristown TN",
+                MSO: "KMSO Missoula MT",
+                MTR: "KMTR San Francisco CA",
+                OAX: "KOAX Omaha/Valley NE",
+                OHX: "KOHX Nashville TN",
+                OKX: "KOKX New York NY",
+                OTX: "KOTX Spokane WA",
+                OUN: "KOUN Norman OK",
+                PAH: "KPAH Paducah KY",
+                PBZ: "KPBZ Pittsburgh PA",
+                PDT: "KPDT Pendleton OR",
+                PHI: "KPHI Mount Holly NJ",
+                PIH: "KPIH Pocatello ID",
+                PPG: "NSTU Pago Pago AS",
+                PQE: "Pacific Region East",
+                PQR: "KPQR Portland OR",
+                PQW: "Pacific Region West",
+                PSR: "KPSR Phoenix AZ",
+                PUB: "KPUB Pueblo CO",
+                RAH: "KRAH Raleigh NC",
+                REV: "KREV Reno NV",
+                RIW: "KRIW Riverton WY",
+                RLX: "KRLX Charleston WV",
+                RNK: "KRNK BLACKSBURG VA",
+                SEW: "KSEW Seattle WA",
+                SGF: "KSGF Springfield MO",
+                SGX: "KSGX San Diego CA",
+                SHV: "KSHV Shreveport LA",
+                SJT: "KSJT San Angelo TX",
+                SJU: "TJSJ San Juan PR",
+                SLC: "KSLC Salt Lake City UT",
+                STO: "KSTO Sacramento CA",
+                TAE: "KTAE Tallahassee FL",
+                TBW: "KTBW Tampa Bay Area Ruskin FL",
+                TFX: "KTFX Great Falls MT",
+                TOP: "KTOP Topeka KS",
+                TSA: "KTSA Tulsa OK",
+                TWC: "KTWC Tucson AZ",
+                UNR: "KUNR Rapid City SD",
+                VEF: "KVEF Las Vegas NV",
+            };
+
+            var NORMALIZED_OFFICE_LABELS_ONLY = {
+                CAR: "Caibou Maine",
+                CTP: "State College PA",
+                DLH: "Duluth MN",
+                DMX: "Des Moines ", //yes, des moines with an extra space, per their AWIPS/VTEC archives; ex. https://mesonet.agron.iastate.edu/vtec/#2019-O-NEW-KDMX-SVR-0001
+                DVN: "the Quad Cities",
+                EAX: "Pleasant Hill",
+                EWX: "Austin San Antonio",
+                GYX: "Gray Maine",
+                HGX: "League City",
+                HNX: "Hanford CA",
+                HUN: "Huntsville Alabama",
+                JKL: "JACKSON KY",
+                LKN: "Elko Nevada",
+                LOT: "Chicago",
+                LWX: "Sterling Virginia",
+                MAF: "Midland",
+                MHX: "Newport",
+                MPX: "the Twin Cities",
+                MTR: "The San Francisco Bay Area",
+                OAX: "Omaha",
+                OKX: "Upton NY",
+                PDT: "Pendleton Oregon",
+                PHI: "Mount Holly NJ",
+                RLX: "Charleston West Virginia",
+                TBW: "Ruskin",
+            }
+
+            function rebuildOfficeOptions() {
+                var sel = document.getElementById("office-select");
+                var prev = sel.value;
+                var cwas = Object.keys(cwaCountyIndex).sort();
+                sel.innerHTML = "";
+
+                var allOpt = document.createElement("option");
+                allOpt.value = ALL_US;
+                allOpt.textContent = "-- All US (auto-pick office on draw) --";
+                sel.appendChild(allOpt);
+
+                var prevValid = (prev === ALL_US);
+                cwas.forEach(function (cwa) {
+                    var opt = document.createElement("option");
+                    opt.value = cwa;
+                    opt.textContent = OFFICE_LABELS[cwa] || cwa;
+                    sel.appendChild(opt);
+                    if (cwa === prev) prevValid = true;
+                });
+                sel.value = prevValid ? prev : (OFFICE_LABELS.OAX ? "OAX" : cwas[0]);
+            }
+
+            function rebuildTemplateOptions() {
+                var era = document.getElementById("era-select").value;
+                var tsel = document.getElementById("template-select");
+                var prev = tsel.value;
+
+                if (era === "modern" && prev === "tornadoWarning.vm") {
+                    prev = "impactTornadoWarning.vm";
+                }
+                var opts = TEMPLATE_OPTIONS_BY_ERA[era] || TEMPLATE_OPTIONS_BY_ERA.legacy;
+                tsel.innerHTML = "";
+                var prevStillValid = false;
+                opts.forEach(function (o) {
+                    var opt = document.createElement("option");
+                    opt.value = o.value;
+                    opt.textContent = o.label;
+                    tsel.appendChild(opt);
+                    if (o.value === prev) prevStillValid = true;
+                });
+                tsel.value = prevStillValid ? prev : opts[0].value;
+            }
+
+            function rebuildBulletPanel(bulletOverrides) {
+                var era = document.getElementById("era-select").value;
+                var tmpl = document.getElementById("template-select").value;
+                var action = document.getElementById("action-select").value;
+                var meta = TEMPLATE_META[tmpl] || TEMPLATE_META["severeThunderstormWarning.vm"];
+                var xmlName = meta.xml;
+                var xmlText = xmlConfigs[era][xmlName];
+                var container = document.getElementById("bullet-list");
+
+                if (!xmlText) {
+                    container.innerHTML = "<em class='bullet-empty'>No companion XML for " + tmpl + "</em>";
+                    currentProductId = meta.productId;
+                    return;
+                }
+
+                var cfg = WarngenXmlParser.parseBulletConfig(xmlText);
+
+                currentProductId = cfg.productId || meta.productId;
+
+                if (cfg.durations && cfg.durations.length > 0) {
+                    currentDurations = cfg.durations;
+                    currentDefaultDuration = cfg.defaultDuration || cfg.durations[0];
+                } else {
+                    currentDurations = [15, 20, 25, 30, 40, 45, 60];
+                    currentDefaultDuration = meta.productId === "TOR" ? 30 : 30;
+                }
+                var durSel = document.getElementById("duration-select");
+                var prevDur = parseInt(durSel.value, 10) || currentDefaultDuration;
+                durSel.innerHTML = "";
+                currentDurations.forEach(function (d) {
+                    var opt = document.createElement("option");
+                    opt.value = d;
+                    opt.textContent = d + " min";
+                    if (d === prevDur || (!currentDurations.includes(prevDur) && d === currentDefaultDuration)) {
+                        opt.selected = true;
+                    }
+                    durSel.appendChild(opt);
+                });
+
+                bulletPanelCtrl = WarngenBulletPanel.build(container, cfg, {
+                    action: action,
+                    initialOverrides: bulletOverrides || meta.defaults,
+                    onChange: function (names) {
+                        selectedBullets = names;
+                        doRender();
+                        saveState();
+                    }
+                });
+            }
+
+            var map = L.map("map", {
+                center: [41.40, -96.20],
+                zoom: 8,
+                zoomControl: true,
+                attributionControl: false,
+
+                zoomSnap: 0.25
+            });
+
+            var ALL_US_BOUNDS = L.latLngBounds([12, -130], [49, -66]);
+
+            var countyLayer = L.geoJSON(null, {
+                style: {
+                    color: "#666",
+                    weight: 1,
+                    fillColor: "#1f242b",
+                    fillOpacity: 0.3
+                },
+                onEachFeature: function (feature, layer) {
+                    layer.bindTooltip(
+                        feature.properties.name + " " + feature.properties.state,
+                        { sticky: true, direction: "top" }
+                    );
+
+                    layer.on("tooltipopen", function () {
+                        if (isDrawing) layer.closeTooltip();
+                    });
+                }
+            }).addTo(map);
+
+            var hitLayer = L.geoJSON(null, {
+                style: {
+                    color: "#f0c674",
+                    weight: 2,
+                    fillColor: "#f0c67455",
+                    fillOpacity: 0.5
+                }
+            }).addTo(map);
+
+            var drawLayer = new L.FeatureGroup();
+            map.addLayer(drawLayer);
+
+            var STORM_ICON = L.divIcon({
+                className: "storm-marker-icon",
+                iconSize: [22, 22],
+                iconAnchor: [11, 11],
+                html: '<div class="storm-marker-inner"></div>'
+            });
+
+            function ensureStormMarker() {
+                if (stormMarker) return;
+                stormMarker = L.marker([0, 0], {
+                    icon: STORM_ICON,
+                    draggable: true,
+                    zIndexOffset: 1000
+                }).bindTooltip("Storm centroid (drag to reposition)", { direction: "top" }).addTo(map);
+                stormMarker.on("dragend", function () {
+                    var pos = stormMarker.getLatLng();
+
+                    var autoCb = document.getElementById("centroid-auto-cb");
+                    autoCb.checked = false;
+                    document.getElementById("centroid-lat").disabled = false;
+                    document.getElementById("centroid-lon").disabled = false;
+                    document.getElementById("centroid-lat").value = pos.lat.toFixed(3);
+                    document.getElementById("centroid-lon").value = pos.lng.toFixed(3);
+                    doRender();
+                    saveState();
+                });
+            }
+
+            function hideStormMarker() {
+                if (stormMarker) {
+                    map.removeLayer(stormMarker);
+                    stormMarker = null;
+                }
+            }
+
+            var drawControl = new L.Control.Draw({
+                position: "topright",
+                draw: {
+                    polygon: {
+                        allowIntersection: false,
+                        showArea: false,
+                        shapeOptions: {
+                            color: "#fb4934",
+                            weight: 3,
+                            fillColor: "#fb493422",
+                            fillOpacity: 0.4
+                        }
+                    },
+                    polyline: false,
+                    circle: false,
+                    rectangle: false,
+                    marker: false,
+                    circlemarker: false
+                },
+                edit: {
+                    featureGroup: drawLayer,
+                    remove: true
+                }
+            });
+            map.addControl(drawControl);
+
+            var polygonDrawer = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
+
+            document.getElementById("start-draw-btn").addEventListener("click", function () {
+                polygonDrawer.enable();
+                setStatus("Click on the map to place vertices. Click the first vertex (or double-click) to close.", false);
+            });
+
+            var COMPOSITE_TRANSFORMS = [
+                {
+                    name: "AK",
+                    src: [-152, 63], dst: [-117, 21],
+                    scaleLon: 0.35, scaleLat: 0.75, normalizePositiveLon: true,
+                    realBbox: [-180, 50, -125, 72],
+                    realBboxAlt: [150, 50, 180, 72],
+                    compositeBbox: [-130, 12, -109, 29]
+                },
+                {
+                    name: "HI",
+                    src: [-157, 20], dst: [-105, 26],
+                    scaleLon: 1.0, scaleLat: 1.0,
+                    realBbox: [-161, 18, -154, 23],
+                    compositeBbox: [-109, 24, -102, 29]
+                },
+                {
+                    name: "AS",
+                    src: [-170, -14], dst: [-101, 24],
+                    scaleLon: 1.0, scaleLat: 1.0,
+                    realBbox: [-172, -15, -169, -13],
+                    compositeBbox: [-102, 23, -100, 25]
+                },
+                {
+                    name: "GU",
+                    src: [144, 13], dst: [-112, 32],
+                    scaleLon: 1.0, scaleLat: 1.0,
+                    realBbox: [143, 13, 146, 14],
+                    compositeBbox: [-113, 31, -110, 33]
+                },
+                {
+                    name: "MP",
+                    src: [145, 16], dst: [-112, 34],
+                    scaleLon: 1.0, scaleLat: 1.0,
+                    realBbox: [143, 14, 146, 21],
+                    compositeBbox: [-113, 31, -110, 38]
+                },
+                {
+                    name: "PR",
+                    src: [-66, 18], dst: [-76, 25],
+                    scaleLon: 1.0, scaleLat: 1.0,
+                    realBbox: [-68, 17, -65, 19],
+                    compositeBbox: [-78, 24, -74, 26]
+                },
+                {
+                    name: "VI",
+                    src: [-65, 18], dst: [-75, 26],
+                    scaleLon: 1.0, scaleLat: 1.0,
+                    realBbox: [-65, 17, -64, 19],
+                    compositeBbox: [-76, 25, -74, 27]
+                }
+            ];
+
+            function detectTerritory(lon, lat, bboxKey) {
+                for (var i = 0; i < COMPOSITE_TRANSFORMS.length; i++) {
+                    var t = COMPOSITE_TRANSFORMS[i];
+                    var b = t[bboxKey];
+                    if (b && lon >= b[0] && lat >= b[1] && lon <= b[2] && lat <= b[3]) return t;
+
+                    if (bboxKey === "realBbox" && t.realBboxAlt) {
+                        var ba = t.realBboxAlt;
+                        if (lon >= ba[0] && lat >= ba[1] && lon <= ba[2] && lat <= ba[3]) return t;
+                    }
+                }
+                return null;
+            }
+
+            function forwardTransformPoint(lon, lat, t) {
+                if (t.normalizePositiveLon && lon > 0) lon -= 360;
+                return [
+                    (lon - t.src[0]) * t.scaleLon + t.dst[0],
+                    (lat - t.src[1]) * t.scaleLat + t.dst[1]
+                ];
+            }
+
+            function inverseTransformPoint(lon, lat, t) {
+                var rlon = (lon - t.dst[0]) / t.scaleLon + t.src[0];
+                var rlat = (lat - t.dst[1]) / t.scaleLat + t.src[1];
+
+                if (t.normalizePositiveLon && rlon < -180) rlon += 360;
+                return [rlon, rlat];
+            }
+
+            function transformRing(ring, pointFn) {
+                return ring.map(function (p) { return pointFn(p[0], p[1]); });
+            }
+
+            function autoResolveCwaFromPolygon(force) {
+                var sel = document.getElementById("office-select");
+                if (!currentRing || currentRing.length < 4) return false;
+                if (!countyGeojson) return false;
+                if (!force && sel.value !== ALL_US) return false;
+
+                var c = WarngenCities.polygonCentroid(currentRing);
+                var feat = WarngenIntersect.findFeatureContaining([c.lon, c.lat], countyGeojson);
+                if (!feat) {
+                    if (!force) {
+                        setStatus("Polygon centroid not over any US county; staying on All US.", true);
+                    }
+                    return false;
+                }
+                var cwa = feat.properties && feat.properties.cwa;
+                if (!cwa) {
+                    if (!force) {
+                        setStatus("County under polygon centroid (" + (feat.properties && feat.properties.name)
+                            + ") has no CWA stamp; staying on All US.", true);
+                    }
+                    return false;
+                }
+                if (cwa === sel.value) return false;
+
+                var prev = sel.value;
+                sel.value = cwa;
+                applyCwaFilter(cwa);
+                if (force && prev !== ALL_US) {
+                    setStatus("Switched office from " + (OFFICE_LABELS[prev] || prev)
+                        + " to " + (OFFICE_LABELS[cwa] || cwa)
+                        + " to match imported polygon (" + feat.properties.name + " "
+                        + feat.properties.state + ").", false);
+                } else {
+                    setStatus("Auto-picked office " + (OFFICE_LABELS[cwa] || cwa)
+                        + " from polygon centroid (" + feat.properties.name + " "
+                        + feat.properties.state + ").", false);
+                }
+                return true;
+            }
+
+            function onPolygonChanged(latLngs) {
+
+                var ring = latLngs.map(function (p) { return [p.lng, p.lat]; });
+                if (ring.length > 0) {
+                    ring.push(ring[0]);
+                }
+                currentRing = ring;
+
+                autoResolveCwaFromPolygon();
+                doRender();
+                saveState();
+            }
+
+            var isDrawing = false;
+            map.on(L.Draw.Event.DRAWSTART, function () {
+                isDrawing = true;
+
+                countyLayer.eachLayer(function (layer) { layer.closeTooltip(); });
+            });
+            map.on(L.Draw.Event.DRAWSTOP, function () { isDrawing = false; });
+
+            map.on(L.Draw.Event.CREATED, function (e) {
+                drawLayer.clearLayers();
+                currentPolygon = e.layer;
+                drawLayer.addLayer(currentPolygon);
+
+                var ring = currentPolygon.getLatLngs()[0].map(function (p) { return [p.lng, p.lat]; });
+                ring.push(ring[0]);
+                var guessed = Math.round(WarngenCities.guessMotionToDeg(ring));
+                document.getElementById("motion-bearing").value = guessed;
+                updateBearingLabel();
+
+                document.getElementById("centroid-auto-cb").checked = true;
+                document.getElementById("centroid-lat").disabled = true;
+                document.getElementById("centroid-lon").disabled = true;
+                onPolygonChanged(currentPolygon.getLatLngs()[0]);
+            });
+
+            map.on(L.Draw.Event.EDITED, function (e) {
+                e.layers.eachLayer(function (layer) {
+                    onPolygonChanged(layer.getLatLngs()[0]);
+                });
+            });
+
+            function resetAfterPolygonClear() {
+                hitLayer.clearLayers();
+                hideStormMarker();
+
+                var autoCb = document.getElementById("centroid-auto-cb");
+                autoCb.checked = true;
+                document.getElementById("centroid-lat").disabled = true;
+                document.getElementById("centroid-lon").disabled = true;
+                document.getElementById("output").textContent = "Draw a polygon on the map to render a bulletin.";
+                document.getElementById("impacted-list").textContent = "none (draw a polygon)";
+                rebuildFillInPanel([]);
+            }
+
+            function clearLocalStorage() {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({}));
+            }
+
+            map.on(L.Draw.Event.DELETED, function () {
+                currentPolygon = null;
+                currentRing = null;
+                resetAfterPolygonClear();
+                setStatus("Polygon cleared.", false);
+                saveState();
+            });
+
+            document.getElementById("clear-poly-btn").addEventListener("click", function () {
+                drawLayer.clearLayers();
+                currentPolygon = null;
+                currentRing = null;
+                resetAfterPolygonClear();
+                clearLocalStorage();
+                setStatus("Data cleared.", false);
+                saveState();
+            });
+
+            function isErrorPlaceholder(label) {
+                if (label.length > 50) return true;
+                var u = label.toUpperCase();
+                return /\b(?:SELECT|REGENERATE|RE-GENERATE|CLOSE THIS WINDOW|PLEASE ENTER|WARNGEN GUI)\b/.test(u);
+            }
+
+            function extractFillIns(text) {
+                var re = /!\*\*\s*([^*]+?)\s*\*\*!/g;
+                var seen = {};
+                var order = [];
+                var m;
+                while ((m = re.exec(text)) !== null) {
+                    var label = m[1];
+                    if (isErrorPlaceholder(label)) continue;
+                    if (!seen[label]) {
+                        seen[label] = true;
+                        order.push(label);
+                    }
+                }
+                return order;
+            }
+
+            var fillInValues = {};
+            var lastRawOutput = "";
+
+            function rebuildFillInPanel(labels) {
+                var panel = document.getElementById("fillin-panel");
+                var list = document.getElementById("fillin-list");
+                if (labels.length === 0) {
+                    panel.style.display = "none";
+                    list.innerHTML = "";
+                    return;
+                }
+                panel.style.display = "flex";
+                list.innerHTML = "";
+                labels.forEach(function (label) {
+                    var row = document.createElement("div");
+                    row.className = "fillin-row";
+
+                    var lab = document.createElement("label");
+                    lab.className = "fillin-label";
+                    lab.textContent = label;
+                    lab.title = label;
+
+                    var input = document.createElement("input");
+                    input.type = "text";
+                    input.className = "fillin-input";
+                    input.placeholder = label;
+                    input.value = fillInValues[label] || "";
+                    input.addEventListener("input", function () {
+                        fillInValues[label] = input.value;
+                        applyFillInsAndFormat();
+                    });
+
+                    row.appendChild(lab);
+                    row.appendChild(input);
+                    list.appendChild(row);
+                });
+            }
+
+            var normalizerAvailable = false;
+
+            var lastFormattedOutput = "";
+            var cachedNormalizedOutput = null;
+
+            function applyNormalizedView() {
+                var cb = document.getElementById("normalize-cb");
+                var showNormalized = normalizerAvailable && cb.checked
+                    && typeof window.normalizeNwsBulletin === "function";
+                if (!showNormalized) {
+                    document.getElementById("output").textContent = lastFormattedOutput;
+                    return;
+                }
+                if (cachedNormalizedOutput === null) {
+                    try {
+                        cachedNormalizedOutput = window.normalizeNwsBulletin(lastFormattedOutput) || "";
+                    } catch (e) {
+
+                        setStatus("Normalizer error: " + (e.message || e) + " (showing raw)", true);
+                        cb.checked = false;
+                        cachedNormalizedOutput = null;
+                        document.getElementById("output").textContent = lastFormattedOutput;
+                        return;
+                    }
+                }
+                document.getElementById("output").textContent = cachedNormalizedOutput;
+            }
+
+            function applyFillInsAndFormat() {
+                var out = lastRawOutput;
+
+                Object.keys(fillInValues).forEach(function (label) {
+                    var val = fillInValues[label];
+                    if (!val) return;
+                    var escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    var re = new RegExp("!\\*\\*\\s*" + escaped + "\\s*\\*\\*!", "g");
+                    out = out.replace(re, val);
+                });
+
+                var allCaps = document.getElementById("allcaps-cb").checked;
+                var wrap = document.getElementById("wrap-cb").checked;
+                var crsFormat = document.getElementById("crsfmt-cb").checked;
+                if (crsFormat) {
+                    out = WarngenRender.formatCRS(out);
+                } else if (wrap) {
+                    out = WarngenRender.wrapBulletin(out, 68);
+                }
+                out = WarngenRender.formatCase(out, !allCaps);
+
+                lastFormattedOutput = out;
+                cachedNormalizedOutput = null;
+                applyNormalizedView();
+            }
+
+            var preCrsFormatState = null;
+
+            function updateFormattingControlState(opts) {
+                opts = opts || {};
+                var crsfmt = document.getElementById("crsfmt-cb");
+                var normalize = document.getElementById("normalize-cb");
+                var allcaps = document.getElementById("allcaps-cb");
+                var wrap = document.getElementById("wrap-cb");
+
+                var crsOn = crsfmt.checked;
+                var normalizeOn = normalize.checked;
+
+                if (opts.crsTransition) {
+                    if (crsOn && preCrsFormatState === null) {
+                        preCrsFormatState = {
+                            allcaps: allcaps.checked,
+                            wrap: wrap.checked
+                        };
+                        allcaps.checked = true;
+                        wrap.checked = true;
+                    } else if (!crsOn && preCrsFormatState !== null) {
+                        allcaps.checked = preCrsFormatState.allcaps;
+                        wrap.checked = preCrsFormatState.wrap;
+                        preCrsFormatState = null;
+                    }
+                }
+
+                crsfmt.disabled = normalizeOn;
+                allcaps.disabled = crsOn || normalizeOn;
+                wrap.disabled = crsOn || normalizeOn;
+            }
+
+            function doRender() {
+                try {
+                    var era = document.getElementById("era-select").value;
+                    var tmpl = document.getElementById("template-select").value;
+                    var crossTz = document.getElementById("crosstz-cb").checked;
+
+                    if (!templates[era][tmpl]) {
+                        setStatus("Templates not yet loaded for era '" + era + "'", true);
+                        return;
+                    }
+
+                    var hits = [];
+                    if (currentRing && visibleCounties) {
+                        hits = WarngenIntersect.findIntersectingFeatures(currentRing, visibleCounties);
+                    }
+
+                    hitLayer.clearLayers();
+                    if (hits.length > 0) hitLayer.addData({ type: "FeatureCollection", features: hits });
+
+                    document.getElementById("impacted-list").textContent = hits.length === 0
+                        ? "no intersection -- adjust polygon"
+                        : hits.map(function (f) { return f.properties.name + " " + f.properties.state; }).join(", ");
+
+                    if (hits.length === 0 || !currentRing) {
+                        document.getElementById("output").textContent = currentRing
+                            ? "Polygon does not intersect any county. Adjust the polygon to cover at least one county."
+                            : "Draw a polygon on the map to render a bulletin.";
+                        rebuildFillInPanel([]);
+                        return;
+                    }
+
+                    var areas = hits.map(function (feat) {
+                        var area = WarngenContext.featureToArea(feat);
+
+                        area.partOfArea = WarngenIntersect.directionalSubdivision(currentRing, feat);
+                        return area;
+                    });
+                    var areaPoly = currentRing.map(function (p) { return { x: p[0], y: p[1] }; });
+
+                    var motionToDeg = parseFloat(document.getElementById("motion-bearing").value) || 0;
+                    var motionSpeed = parseFloat(document.getElementById("motion-speed").value) || 0;
+                    var autoCentroid = document.getElementById("centroid-auto-cb").checked;
+
+                    var motionFromDeg = (motionToDeg + 180) % 360;
+
+                    var stormPos;
+                    if (autoCentroid) {
+
+                        stormPos = (motionSpeed > 0)
+                            ? WarngenCities.polygonRearPoint(currentRing, motionFromDeg)
+                            : WarngenCities.polygonCentroid(currentRing);
+                        document.getElementById("centroid-lat").value = stormPos.lat.toFixed(3);
+                        document.getElementById("centroid-lon").value = stormPos.lon.toFixed(3);
+                    } else {
+                        stormPos = {
+                            lat: parseFloat(document.getElementById("centroid-lat").value) || 0,
+                            lon: parseFloat(document.getElementById("centroid-lon").value) || 0
+                        };
+                    }
+
+                    ensureStormMarker();
+                    stormMarker.setLatLng([stormPos.lat, stormPos.lon]);
+
+                    var nearAny = WarngenCities.nearestCity(cityDB, stormPos);
+                    var nearMajor = WarngenCities.nearestCity(cityDB, stormPos, 25000);
+                    var closestPoints = nearAny
+                        ? [WarngenCities.toClosestPoint(nearAny.city, stormPos)]
+                        : [];
+                    var otherClosestPoints = (nearMajor && (!nearAny || nearMajor.city.name !== nearAny.city.name))
+                        ? [WarngenCities.toClosestPoint(nearMajor.city, stormPos)]
+                        : [];
+
+                    var inPoly = WarngenCities.citiesInPolygon(cityDB, currentRing);
+                    inPoly.sort(function (a, b) { return b.pop - a.pop; });
+                    var cityList = inPoly.slice(0, 8).map(function (c) {
+                        return { name: c.name, partOfArea: [] };
+                    });
+
+                    var duration = parseInt(document.getElementById("duration-select").value, 10) || 30;
+
+                    var issuedRaw = document.getElementById("issued-input").value;
+                    var issuedDate = issuedRaw ? new Date(issuedRaw) : new Date();
+                    if (isNaN(issuedDate.getTime())) issuedDate = new Date();
+
+                    var pcResult = WarngenCities.computePathCast(
+                        cityDB, currentRing, stormPos, motionFromDeg, motionSpeed,
+                        issuedDate,
+                        crossTz ? "CDT" : "CDT",
+                        { maxMinutes: duration }
+                    );
+                    var pathCast = pcResult.pathCast;
+                    var otherPoints = pcResult.otherPoints;
+
+                    var pathCityCount = pathCast.reduce(function (n, b) { return n + b.points.length; }, 0);
+                    document.getElementById("pathcount").textContent =
+                        pathCityCount > 0
+                            ? "(" + pathCityCount + " cities in path across " + pathCast.length + " buckets"
+                            + (otherPoints.length > 0 ? ", +" + otherPoints.length + " other" : "") + ")"
+                            : (otherPoints.length > 0
+                                ? "(" + otherPoints.length + " cities impacted, none in direct path)"
+                                : "(no cities in storm path)");
+
+                    var siteId = document.getElementById("office-select").value;
+                    var officeMeta = getOfficeMeta(siteId);
+                    var etnRaw = parseInt(document.getElementById("etn-input").value, 10) || 1;
+                    var etn = String(etnRaw).padStart(4, "0");
+                    var action = document.getElementById("action-select").value;
+                    var bbbid = etnRaw + String(issuedDate.getUTCHours()).padStart(2, "0") + String(issuedDate.getUTCMinutes()).padStart(2, "0");
+
+                    var tzInfo = detectTimezoneCrossing(currentRing, siteId);
+                    var localtimezone = tzInfo.primary || undefined;
+                    var effectiveCrossTz = crossTz || tzInfo.crosses;
+                    var secondtimezone;
+                    var secondDstLess;
+                    if (tzInfo.crosses) {
+                        secondtimezone = tzInfo.second;
+                        secondDstLess = tzInfo.secondDstLess;
+                    } else if (crossTz) {
+                        secondtimezone = undefined;
+                        secondDstLess = false;
+                    }
+
+                    // if officeMeta.siteID is in the variable NORMALIZED_OFFICE_LABELS_ONLY, use that instead of the "true" office label, as some offices customize this in AWIPS.
+
+                    if (NORMALIZED_OFFICE_LABELS_ONLY[officeMeta.siteId]) {
+                        officeMeta = Object.assign({}, officeMeta, {
+                            loc: NORMALIZED_OFFICE_LABELS_ONLY[officeMeta.siteId]
+                        });
+                    }
+
+                    var ctx = WarngenContext.buildMockContext({
+                        crossesTimezone: effectiveCrossTz,
+                        localtimezone: localtimezone,
+                        localtimezoneDstLess: tzInfo.primaryDstLess,
+                        secondtimezone: secondtimezone,
+                        secondtimezoneDstLess: secondDstLess,
+                        areas: areas,
+                        areaPoly: areaPoly,
+                        bullets: selectedBullets,
+                        now: issuedDate,
+                        eventLocation: [{ x: stormPos.lon, y: stormPos.lat }],
+                        movementSpeed: motionSpeed,
+                        movementInKnots: Math.round(motionSpeed * 0.868976),
+                        movementDirection: motionFromDeg,
+                        closestPoints: closestPoints,
+                        otherClosestPoints: otherClosestPoints,
+                        cityList: cityList,
+                        pathCast: pathCast,
+                        otherPoints: otherPoints,
+                        BBBId: bbbid,
+
+                        siteId: officeMeta.siteId,
+                        vtecOffice: officeMeta.vtecOffice,
+                        WMOId: getWmoHeading(currentProductId, officeMeta.siteId),
+                        productId: currentProductId,
+                        officeShort: officeMeta.short,
+                        officeLoc: officeMeta.loc,
+                        action: action,
+                        etn: etn,
+                        duration: duration
+                    });
+
+                    var t0 = performance.now();
+                    lastRawOutput = WarngenRender.render(tmpl, templates[era], ctx);
+
+                    if (document.getElementById("highways-cb").checked
+                        && currentRing
+                        && highwaysGeojson.features.length) {
+                        var hwyHits = WarngenHighways.findHighwaysInPolygon(currentRing, highwaysGeojson, { anchors: highwayAnchors });
+                        var hwyBlock = WarngenHighways.formatHighwayBullet(hwyHits);
+                        if (hwyBlock) {
+
+                            var m = lastRawOutput.match(/^PRECAUTIONARY\/PREPAREDNESS ACTIONS/m);
+                            var anchor = m ? m.index : -1;
+                            if (anchor < 0) {
+                                m = lastRawOutput.match(/^LAT\.\.\.LON/m);
+                                anchor = m ? m.index : -1;
+                            }
+                            if (anchor < 0) anchor = lastRawOutput.indexOf("\n&&");
+                            if (anchor >= 0) {
+                                lastRawOutput = lastRawOutput.slice(0, anchor)
+                                    + hwyBlock + "\n\n"
+                                    + lastRawOutput.slice(anchor);
+                            }
+                        }
+                    }
+                    var labels = extractFillIns(lastRawOutput);
+                    rebuildFillInPanel(labels);
+                    applyFillInsAndFormat();
+                    var dt = (performance.now() - t0).toFixed(1);
+
+                    var allCaps = document.getElementById("allcaps-cb").checked;
+                    var wrap = document.getElementById("wrap-cb").checked;
+                    var crsFormat = document.getElementById("crsfmt-cb").checked;
+                    var tags = [];
+                    if (allCaps) tags.push("ALL CAPS");
+                    if (crsFormat) tags.push("CRS FMT");
+                    else if (wrap) tags.push("WRAP");
+                    if (effectiveCrossTz) {
+                        tags.push("DUAL TZ " + (tzInfo.primary || "?") + "/" + (tzInfo.second || "?"));
+                    } else {
+                        tags.push(tzInfo.primary || "single TZ");
+                    }
+                    if (labels.length > 0) tags.push(labels.length + " FILL-IN" + (labels.length === 1 ? "" : "S"));
+                    setStatus("Rendered " + hits.length + " counties in " + dt + " ms [" + tags.join(", ") + "]", false);
+                } catch (e) {
+                    document.getElementById("output").textContent = "ERROR\n\n" + e.stack;
+                    setStatus("Render failed: " + e.message, true);
+                }
+            }
+
+            document.getElementById("allcaps-cb").addEventListener("change", applyFillInsAndFormat);
+            document.getElementById("wrap-cb").addEventListener("change", applyFillInsAndFormat);
+
+            document.getElementById("crsfmt-cb").addEventListener("change", function () {
+                updateFormattingControlState({ crsTransition: true });
+                applyFillInsAndFormat();
+            });
+
+            document.getElementById("crosstz-cb").addEventListener("change", doRender);
+
+            document.getElementById("highways-cb").addEventListener("change", doRender);
+
+            var COMPASS_NAMES = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+                "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+            function updateBearingLabel() {
+                var deg = parseFloat(document.getElementById("motion-bearing").value) || 0;
+                var idx = Math.round(((deg % 360) / 22.5)) % 16;
+                document.getElementById("motion-label").textContent = COMPASS_NAMES[idx];
+            }
+            document.getElementById("motion-bearing").addEventListener("input", function () {
+                updateBearingLabel();
+                doRender();
+            });
+            document.getElementById("motion-speed").addEventListener("input", doRender);
+            document.getElementById("centroid-auto-cb").addEventListener("change", function () {
+                var auto = this.checked;
+                document.getElementById("centroid-lat").disabled = auto;
+                document.getElementById("centroid-lon").disabled = auto;
+                doRender();
+            });
+            document.getElementById("centroid-lat").addEventListener("input", doRender);
+            document.getElementById("centroid-lon").addEventListener("input", doRender);
+            updateBearingLabel();
+
+            document.getElementById("era-select").addEventListener("change", function () {
+                rebuildTemplateOptions();
+                rebuildBulletPanel();
+                doRender();
+            });
+            document.getElementById("template-select").addEventListener("change", function () {
+                rebuildBulletPanel();
+                doRender();
+            });
+            document.getElementById("action-select").addEventListener("change", function () {
+
+                rebuildBulletPanel();
+                doRender();
+            });
+            document.getElementById("office-select").addEventListener("change", function () {
+                var sel = document.getElementById("office-select");
+
+                if (sel.value === ALL_US && currentPolygon) {
+                    drawLayer.clearLayers();
+                    currentPolygon = null;
+                    currentRing = null;
+                    resetAfterPolygonClear();
+                    setStatus("Switched to All US -- polygon cleared. Draw a new one to auto-pick an office.", false);
+                }
+                applyCwaFilter(sel.value);
+                doRender();
+            });
+            document.getElementById("etn-input").addEventListener("input", doRender);
+            document.getElementById("duration-select").addEventListener("change", doRender);
+            document.getElementById("issued-input").addEventListener("change", doRender);
+            document.getElementById("now-btn").addEventListener("click", function () {
+                document.getElementById("issued-input").value = formatLocalDatetime(new Date());
+                doRender();
+                queueSave();
+            });
+
+            document.getElementById("copy-btn").addEventListener("click", function () {
+                var text = document.getElementById("output").textContent || "";
+                var ok = function () { setStatus("Copied " + text.length + " chars to clipboard.", false); };
+                var fail = function (e) { setStatus("Copy failed: " + (e && e.message || e), true); };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(ok).catch(fail);
+                } else {
+                    try {
+                        var ta = document.createElement("textarea");
+                        ta.value = text;
+                        ta.style.position = "fixed";
+                        ta.style.top = "-1000px";
+                        document.body.appendChild(ta);
+                        ta.select();
+                        var success = document.execCommand("copy");
+                        document.body.removeChild(ta);
+                        if (success) ok(); else fail("execCommand returned false");
+                    } catch (e) { fail(e); }
+                }
+            });
+
+            document.getElementById("download-btn").addEventListener("click", function () {
+                var text = document.getElementById("output").textContent || "";
+                var siteId = document.getElementById("office-select").value;
+                var etn = String(parseInt(document.getElementById("etn-input").value, 10) || 0).padStart(4, "0");
+                var fname = currentProductId + siteId + "_" + etn + ".txt";
+                var blob = new Blob([text], { type: "text/plain" });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement("a");
+                a.href = url;
+                a.download = fname;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () {
+                    URL.revokeObjectURL(url);
+                    a.remove();
+                }, 500);
+                setStatus("Downloaded " + fname, false);
+            });
+
+            document.getElementById("export-poly-btn").addEventListener("click", function () {
+                if (!currentRing || currentRing.length < 4) {
+                    setStatus("No polygon to export -- draw one first.", true);
+                    return;
+                }
+                var siteId = document.getElementById("office-select").value;
+                var etn = String(parseInt(document.getElementById("etn-input").value, 10) || 0).padStart(4, "0");
+
+                var cent = WarngenCities.polygonCentroid(currentRing);
+                var territory = detectTerritory(cent.lon, cent.lat, "compositeBbox");
+                var exportRing = territory
+                    ? transformRing(currentRing, function (lon, lat) {
+                        return inverseTransformPoint(lon, lat, territory);
+                    })
+                    : currentRing.slice();
+                var feature = {
+                    type: "Feature",
+                    properties: {
+                        exported_by: "WarnGen",
+                        exported_at: new Date().toISOString(),
+                        office: siteId,
+                        productId: currentProductId,
+                        etn: etn,
+                        template: document.getElementById("template-select").value,
+
+                        composite_source: territory ? territory.name : "CONUS"
+                    },
+                    geometry: {
+                        type: "Polygon",
+
+                        coordinates: [exportRing]
+                    }
+                };
+                var fname = "warngen_" + currentProductId + siteId + "_" + etn + ".geojson";
+                var blob = new Blob([JSON.stringify(feature, null, 2)], { type: "application/geo+json" });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement("a");
+                a.href = url;
+                a.download = fname;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 500);
+                setStatus("Exported " + fname + " (" + (currentRing.length - 1) + " vertices).", false);
+            });
+
+            document.getElementById("import-poly-btn").addEventListener("click", function () {
+                document.getElementById("import-poly-file").click();
+            });
+
+            var KML_PRODUCT_TO_TEMPLATE = {
+                legacy: {
+                    "tornado warning": "tornadoWarning.vm",
+                    "severe thunderstorm warning": "severeThunderstormWarning.vm",
+                    "flash flood warning": "flashFloodWarning.vm",
+                    "extreme wind warning": "extremeWindWarning.vm",
+                    "special weather statement": "specialWeatherStatement.vm"
+                },
+                modern: {
+                    "tornado warning": "impactTornadoWarning.vm",
+                    "severe thunderstorm warning": "severeThunderstormWarning.vm",
+                    "flash flood warning": "flashFloodWarning.vm",
+                    "extreme wind warning": "extremeWindWarning.vm",
+                    "special weather statement": "specialWeatherStatement.vm"
+                }
+            };
+
+            function parseKmlPolygon(text) {
+                var doc = new DOMParser().parseFromString(text, "text/xml");
+                var err = doc.querySelector("parsererror");
+                if (err) throw new Error("Malformed KML (XML parse error).");
+
+                var polys = doc.getElementsByTagName("Polygon");
+                if (!polys.length) {
+                    throw new Error("No <Polygon> in KML. If you downloaded four KMLs from the NWS/IEM archive for a single warning, use vtec.kml (the Warning KML) -- the others are line-based (County Intersection, LSR, Gibson Ridge placefile) and don't carry the warning polygon in Polygon form.");
+                }
+                var coordsEl = polys[0].getElementsByTagName("coordinates")[0];
+                if (!coordsEl) throw new Error("<Polygon> has no <coordinates>.");
+
+                var pairs = coordsEl.textContent.trim().split(/\s+/).filter(Boolean);
+                if (pairs.length < 3) throw new Error("Polygon ring needs at least 3 vertices.");
+                var ring = pairs.map(function (p) {
+                    var parts = p.split(",");
+                    return [Number(parts[0]), Number(parts[1])];
+                });
+
+                var first = ring[0], last = ring[ring.length - 1];
+                if (first[0] !== last[0] || first[1] !== last[1]) {
+                    ring.push([first[0], first[1]]);
+                }
+                if (ring.length < 4) throw new Error("Polygon ring needs at least 4 points (including close).");
+
+                var productName = null;
+                var placemarks = doc.getElementsByTagName("Placemark");
+                if (placemarks.length) {
+                    var nameEl = placemarks[0].getElementsByTagName("name")[0]
+                        || placemarks[0].getElementsByTagName("n")[0];
+                    if (nameEl) productName = nameEl.textContent.trim();
+                }
+                return { ring: ring, productName: productName };
+            }
+
+            function parseGeoJsonPolygon(text) {
+                var parsed = JSON.parse(text);
+                var geom = null;
+                if (parsed && parsed.type === "Polygon") {
+                    geom = parsed;
+                } else if (parsed && parsed.type === "Feature" && parsed.geometry &&
+                    parsed.geometry.type === "Polygon") {
+                    geom = parsed.geometry;
+                } else if (parsed && parsed.type === "FeatureCollection" &&
+                    Array.isArray(parsed.features)) {
+                    for (var i = 0; i < parsed.features.length; i++) {
+                        var f = parsed.features[i];
+                        if (f && f.geometry && f.geometry.type === "Polygon") {
+                            geom = f.geometry;
+                            break;
+                        }
+                    }
+                }
+                if (!geom) throw new Error("No Polygon geometry found in file.");
+                var ring = geom.coordinates && geom.coordinates[0];
+                if (!Array.isArray(ring) || ring.length < 4) {
+                    throw new Error("Polygon ring needs >=4 vertices.");
+                }
+                ring = ring.map(function (p) { return [Number(p[0]), Number(p[1])]; });
+                var first = ring[0], last = ring[ring.length - 1];
+                if (first[0] !== last[0] || first[1] !== last[1]) {
+                    ring.push([first[0], first[1]]);
+                }
+                return { ring: ring, productName: null };
+            }
+
+            document.getElementById("import-poly-file").addEventListener("change", function (ev) {
+                var file = ev.target.files && ev.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var ring, productName;
+                    try {
+
+                        var lower = (file.name || "").toLowerCase();
+                        var result = lower.endsWith(".kml")
+                            ? parseKmlPolygon(reader.result)
+                            : parseGeoJsonPolygon(reader.result);
+                        ring = result.ring;
+                        productName = result.productName;
+
+                        var icent = [0, 0], np = ring.length - 1;
+                        for (var ii = 0; ii < np; ii++) { icent[0] += ring[ii][0]; icent[1] += ring[ii][1]; }
+                        icent[0] /= np; icent[1] /= np;
+                        var importTerritory = detectTerritory(icent[0], icent[1], "realBbox");
+                        if (importTerritory) {
+                            ring = transformRing(ring, function (lon, lat) {
+                                return forwardTransformPoint(lon, lat, importTerritory);
+                            });
+                        }
+                    } catch (e) {
+                        setStatus("Import failed: " + e.message, true);
+                        ev.target.value = "";
+                        return;
+                    }
+
+                    drawLayer.clearLayers();
+                    currentPolygon = null;
+                    currentRing = null;
+                    resetAfterPolygonClear();
+                    restorePolygon(ring);
+
+                    var guessed = Math.round(WarngenCities.guessMotionToDeg(currentRing));
+                    document.getElementById("motion-bearing").value = guessed;
+                    updateBearingLabel();
+                    document.getElementById("centroid-auto-cb").checked = true;
+                    document.getElementById("centroid-lat").disabled = true;
+                    document.getElementById("centroid-lon").disabled = true;
+
+                    if (currentPolygon) {
+                        map.fitBounds(currentPolygon.getBounds().pad(0.1));
+                    }
+
+                    var officeBeforeImport = document.getElementById("office-select").value;
+
+                    autoResolveCwaFromPolygon(true);
+
+                    var matchedTemplate = null;
+                    if (productName) {
+
+                        var eraForMap = document.getElementById("era-select").value;
+                        var productMap = KML_PRODUCT_TO_TEMPLATE[eraForMap]
+                            || KML_PRODUCT_TO_TEMPLATE.legacy;
+                        matchedTemplate = productMap[productName.toLowerCase()];
+                        if (matchedTemplate) {
+                            var tsel = document.getElementById("template-select");
+                            var haveIt = false;
+                            for (var ti = 0; ti < tsel.options.length; ti++) {
+                                if (tsel.options[ti].value === matchedTemplate) {
+                                    haveIt = true;
+                                    break;
+                                }
+                            }
+                            if (haveIt) {
+                                tsel.value = matchedTemplate;
+                                tsel.dispatchEvent(new Event("change"));
+                            } else {
+                                matchedTemplate = null;
+                            }
+                        }
+                    }
+
+                    doRender();
+                    saveState();
+                    var msg = "Imported polygon (" + (ring.length - 1) + " vertices)";
+                    if (productName) {
+                        msg += " -- " + productName;
+                        if (matchedTemplate) msg += ", template switched";
+                        else msg += " (no matching template; keeping current)";
+                    }
+                    var officeAfter = document.getElementById("office-select").value;
+                    if (officeAfter !== officeBeforeImport) {
+                        msg += "; office -> " + (OFFICE_LABELS[officeAfter] || officeAfter);
+                    }
+                    setStatus(msg + ".", false);
+                    ev.target.value = "";
+                };
+                reader.onerror = function () {
+                    setStatus("File read failed.", true);
+                    ev.target.value = "";
+                };
+                reader.readAsText(file);
+            });
+
+            function customPrompt(message) {
+                return new Promise(function (resolve) {
+                    var overlay = document.createElement("div");
+                    overlay.className = "modal-overlay";
+                    var box = document.createElement("div");
+                    box.className = "modal-box";
+                    var msgEl = document.createElement("div");
+                    msgEl.className = "modal-message";
+                    msgEl.textContent = message;
+                    var textarea = document.createElement("textarea");
+                    textarea.className = "modal-textarea";
+                    textarea.value = "";
+                    var btnContainer = document.createElement("div");
+                    btnContainer.className = "modal-buttons";
+                    var cancelBtn = document.createElement("button");
+                    cancelBtn.className = "secondary-btn";
+                    cancelBtn.textContent = "Cancel";
+                    var okBtn = document.createElement("button");
+                    okBtn.className = "primary-btn";
+                    okBtn.textContent = "OK";
+                    btnContainer.appendChild(cancelBtn);
+                    btnContainer.appendChild(okBtn);
+                    box.appendChild(msgEl);
+                    box.appendChild(textarea);
+                    box.appendChild(btnContainer);
+                    overlay.appendChild(box);
+                    document.body.appendChild(overlay);
+                    textarea.focus();
+
+                    function cleanup() { document.body.removeChild(overlay); }
+                    okBtn.addEventListener("click", function () {
+                        resolve(textarea.value);
+                        cleanup();
+                    });
+                    cancelBtn.addEventListener("click", function () {
+                        resolve(null);
+                        cleanup();
+                    });
+                });
+            }
+
+            document.getElementById("importtxt-poly-btn").addEventListener("click", function () {
+                customPrompt("Paste full AWIPS/VTEC bulletin here...").then(function (importText) {
+                    if (!importText) return;
+                    var result = WarngenParser.parseBulletin(importText);
+                    if (!result || !result.polygon) {
+                        setStatus("Failed to parse polygon from input text. Make sure you pasted a full AWIPS/VTEC bulletin with a polygon in it.", true);
+                        return;
+                    }
+
+                    var ring = result.polygon.map(function (p) { return [p[1], p[0]]; });
+                    var icent = [0, 0], np = ring.length - 1;
+                    for (var ii = 0; ii < np; ii++) { icent[0] += ring[ii][0]; icent[1] += ring[ii][1]; }
+                    icent[0] /= np; icent[1] /= np;
+                    var importTerritory = detectTerritory(icent[0], icent[1], "realBbox");
+                    if (importTerritory) {
+                        ring = transformRing(ring, function (lon, lat) {
+                            return forwardTransformPoint(lon, lat, importTerritory);
+                        });
+                    }
+
+                    drawLayer.clearLayers();
+                    currentPolygon = null;
+                    currentRing = null;
+                    resetAfterPolygonClear();
+                    restorePolygon(ring);
+                    if (currentPolygon) {
+                        map.fitBounds(currentPolygon.getBounds().pad(0.1));
+                    }
+
+                    var officeBeforeImport = document.getElementById("office-select").value;
+                    var officeChangedToParsed = false;
+                    var sel = document.getElementById("office-select");
+                    var siteId = result.siteId;
+                    var haveOfficeOption = false;
+                    if (siteId) {
+                        for (var oi = 0; oi < sel.options.length; oi++) {
+                            if (sel.options[oi].value === siteId) { haveOfficeOption = true; break; }
+                        }
+                    }
+                    if (haveOfficeOption) {
+                        sel.value = siteId;
+                        applyCwaFilter(siteId);
+                        officeChangedToParsed = (siteId !== officeBeforeImport);
+                    } else {
+                        autoResolveCwaFromPolygon(true);
+                    }
+
+                    var matchedTemplate = null;
+                    if (result.event) {
+                        var eraForMap = document.getElementById("era-select").value;
+                        var productMap = KML_PRODUCT_TO_TEMPLATE[eraForMap]
+                            || KML_PRODUCT_TO_TEMPLATE.legacy;
+                        matchedTemplate = productMap[result.event.toLowerCase()];
+                        if (matchedTemplate) {
+                            var tsel = document.getElementById("template-select");
+                            var haveIt = false;
+                            for (var ti = 0; ti < tsel.options.length; ti++) {
+                                if (tsel.options[ti].value === matchedTemplate) {
+                                    haveIt = true; break;
+                                }
+                            }
+                            if (haveIt) {
+                                tsel.value = matchedTemplate;
+                                tsel.dispatchEvent(new Event("change"));
+                            } else {
+                                matchedTemplate = null;
+                            }
+                        }
+                    }
+
+                    if (result.etn) {
+                        document.getElementById("etn-input").value = parseInt(result.etn, 10) || 1;
+                    }
+                    var actionSel = document.getElementById("action-select");
+                    actionSel.value = (result.action === "COR") ? "COR" : "NEW";
+
+                    if (result.startTime instanceof Date && !isNaN(result.startTime.getTime())) {
+                        document.getElementById("issued-input").value = formatLocalDatetime(result.startTime);
+                    }
+                    if (result.startTime && result.endTime) {
+                        var durMin = Math.round((result.endTime.getTime() - result.startTime.getTime()) / 60000);
+                        if (durMin > 0) {
+                            var durSel = document.getElementById("duration-select");
+                            var foundDur = false;
+                            for (var di = 0; di < durSel.options.length; di++) {
+                                if (parseInt(durSel.options[di].value, 10) === durMin) {
+                                    durSel.value = String(durMin);
+                                    foundDur = true;
+                                    break;
+                                }
+                            }
+                            if (!foundDur) {
+                                var opt = document.createElement("option");
+                                opt.value = String(durMin);
+                                opt.textContent = durMin + " min";
+                                durSel.appendChild(opt);
+                                durSel.value = String(durMin);
+                            }
+                        }
+                    }
+
+                    if (result.motion) {
+                        var toDeg = ((result.motion.bearingFrom || 0) + 180) % 360;
+                        document.getElementById("motion-bearing").value = toDeg;
+                        document.getElementById("motion-speed").value =
+                            Math.round((result.motion.speedKt || 0) * 1.15078);
+                    } else {
+                        var guessed = Math.round(WarngenCities.guessMotionToDeg(currentRing));
+                        document.getElementById("motion-bearing").value = guessed;
+                    }
+                    updateBearingLabel();
+
+                    document.getElementById("centroid-auto-cb").checked = true;
+                    document.getElementById("centroid-lat").disabled = true;
+                    document.getElementById("centroid-lon").disabled = true;
+
+                    doRender();
+                    saveState();
+
+                    var msg = "Imported bulletin: " + (result.event || result.product || "unknown product")
+                        + " (" + (ring.length - 1) + " vertices, ETN " + (result.etn || "?") + ")";
+                    if (matchedTemplate) msg += "; template switched";
+                    if (officeChangedToParsed) {
+                        msg += "; office -> " + (OFFICE_LABELS[siteId] || siteId);
+                    }
+                    setStatus(msg + ".", false);
+                });
+            });
+
+            Promise.all([
+                loadTemplates("legacy"),
+                loadTemplates("modern"),
+                loadXmlConfigs("legacy"),
+                loadXmlConfigs("modern"),
+                loadCounties(),
+                loadCities(),
+                loadHighways(),
+                loadHighwayAnchors(),
+                loadWfoLocations()
+            ]).then(function () {
+
+                rebuildOfficeOptions();
+
+                var saved = loadState();
+                var savedBullets = null;
+                if (saved) {
+                    applyFormState(saved.form);
+                    savedBullets = saved.bullets && saved.bullets.length ? saved.bullets : null;
+                    if (saved.fillIns) fillInValues = saved.fillIns;
+                    updateBearingLabel();
+                }
+
+                updateFormattingControlState();
+
+                applyCwaFilter(document.getElementById("office-select").value);
+
+                var issuedInput = document.getElementById("issued-input");
+                if (!issuedInput.value) {
+                    issuedInput.value = formatLocalDatetime(new Date());
+                }
+
+                rebuildTemplateOptions();
+
+                rebuildBulletPanel(savedBullets);
+
+                if (pendingDuration != null) {
+                    var durSel = document.getElementById("duration-select");
+
+                    for (var i = 0; i < durSel.options.length; i++) {
+                        if (durSel.options[i].value === String(pendingDuration)) {
+                            durSel.value = String(pendingDuration);
+                            break;
+                        }
+                    }
+                    pendingDuration = null;
+                }
+
+                if (saved && saved.polygon) {
+
+                    if (savedBullets) selectedBullets = savedBullets.slice();
+                    restorePolygon(saved.polygon);
+
+                    autoResolveCwaFromPolygon();
+                    doRender();
+                    setStatus("Restored previous session. Draw a new polygon or Clear to start fresh.", false);
+                } else {
+                    setStatus("Successfully loaded " + countyGeojson.features.length + " US counties ("
+                        + (visibleCounties ? visibleCounties.features.length : 0)
+                        + " in current CWA), "
+                        + cityDBAll.length + " US cities ("
+                        + cityDB.length + " in current CWA), and bullet config. "
+                        + "Click the 'Draw Polygon' button to begin.", false);
+                }
+
+                document.addEventListener("input", queueSave);
+                document.addEventListener("change", queueSave);
+
+                loadNormalizer().then(function (ok) {
+                    var label = document.getElementById("normalize-cb-label");
+                    var cb = document.getElementById("normalize-cb");
+                    if (ok && typeof window.normalizeNwsBulletin === "function") {
+                        normalizerAvailable = true;
+                        cb.disabled = false;
+                        if (pendingNormalize) {
+                            cb.checked = true;
+                            pendingNormalize = false;
+                            applyNormalizedView();
+                        }
+                    } else {
+                        label.style.display = "none";
+                    }
+
+                    updateFormattingControlState();
+                });
+            }).catch(function (e) {
+                setStatus("Boot failed: " + e.message, true);
+            });
+
+            function loadNormalizer() {
+                function tryLoad(src) {
+                    return new Promise(function (resolve) {
+                        var s = document.createElement("script");
+                        s.src = src;
+                        s.async = true;
+                        s.onload = function () {
+                            resolve(typeof window.normalizeNwsBulletin === "function");
+                        };
+                        s.onerror = function () { resolve(false); };
+                        document.head.appendChild(s);
+                    });
+                }
+                return tryLoad("../assets/js/normalizer-core.js").then(function (ok) {
+                    return ok || tryLoad("vendor/normalizer-core.js");
+                });
+            }
+
+            document.getElementById("normalize-cb").addEventListener("change", function () {
+                updateFormattingControlState();
+                applyNormalizedView();
+            });
+        </script>
+    </body>
+</html>
