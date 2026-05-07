@@ -66,7 +66,7 @@
 
     function toClosestPoint(city, stormPos) {
         var d = distanceMiles(city, stormPos);
-        var b = bearingDeg(city, stormPos);
+        var b = bearingDeg(stormPos, city);
         return {
             name:                   city.name,
             roundedDistance:        Math.round(d),
