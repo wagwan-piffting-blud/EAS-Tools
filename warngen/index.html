@@ -1504,10 +1504,24 @@
                     var issuedDate = issuedRaw ? new Date(issuedRaw) : new Date();
                     if (isNaN(issuedDate.getTime())) issuedDate = new Date();
 
+                    var siteId = document.getElementById("office-select").value;
+                    var tzInfo = detectTimezoneCrossing(currentRing, siteId);
+                    var localtimezone = tzInfo.primary || undefined;
+                    var effectiveCrossTz = crossTz || tzInfo.crosses;
+                    var secondtimezone;
+                    var secondDstLess;
+                    if (tzInfo.crosses) {
+                        secondtimezone = tzInfo.second;
+                        secondDstLess = tzInfo.secondDstLess;
+                    } else if (crossTz) {
+                        secondtimezone = undefined;
+                        secondDstLess = false;
+                    }
+
                     var pcResult = WarngenCities.computePathCast(
                         cityDB, currentRing, stormPos, motionFromDeg, motionSpeed,
                         issuedDate,
-                        crossTz ? "CDT" : "CDT",
+                        localtimezone || "CST",
                         { maxMinutes: duration }
                     );
                     var pathCast = pcResult.pathCast;
@@ -1522,25 +1536,11 @@
                                 ? "(" + otherPoints.length + " cities impacted, none in direct path)"
                                 : "(no cities in storm path)");
 
-                    var siteId = document.getElementById("office-select").value;
                     var officeMeta = getOfficeMeta(siteId);
                     var etnRaw = parseInt(document.getElementById("etn-input").value, 10) || 1;
                     var etn = String(etnRaw).padStart(4, "0");
                     var action = document.getElementById("action-select").value;
                     var bbbid = etnRaw + String(issuedDate.getUTCHours()).padStart(2, "0") + String(issuedDate.getUTCMinutes()).padStart(2, "0");
-
-                    var tzInfo = detectTimezoneCrossing(currentRing, siteId);
-                    var localtimezone = tzInfo.primary || undefined;
-                    var effectiveCrossTz = crossTz || tzInfo.crosses;
-                    var secondtimezone;
-                    var secondDstLess;
-                    if (tzInfo.crosses) {
-                        secondtimezone = tzInfo.second;
-                        secondDstLess = tzInfo.secondDstLess;
-                    } else if (crossTz) {
-                        secondtimezone = undefined;
-                        secondDstLess = false;
-                    }
 
                     // if officeMeta.siteID is in the variable NORMALIZED_OFFICE_LABELS_ONLY, use that instead of the "true" office label, as some offices customize this in AWIPS.
 
