@@ -277,8 +277,32 @@
         return r;
     }
 
+    // CWA + product-class overrides for "in <part of state>" phrasing.
+    // Most state-region phrasing is driven by the FE_AREA-derived
+    // partOfParentRegion in us_counties.geojson; this table is only for the
+    // narrow set of cases where the real bulletin template suppresses or
+    // alters that phrasing based on the product type. Example: MEG's Flash
+    // Flood Warnings drop the "west" qualifier and just say "in Tennessee".
+    var CWA_STATE_REGION_OVERRIDES = {
+        MEG: { TN: { FFW: "Tennessee" } }
+    };
+
+    function applyCwaRegionOverride(area, siteId, productId) {
+        if (!area || !siteId || !productId) return area;
+        var byOffice = CWA_STATE_REGION_OVERRIDES[siteId];
+        if (!byOffice) return area;
+        var byState = byOffice[area.stateabbr];
+        if (!byState) return area;
+        var phrase = byState[productId];
+        if (!phrase) return area;
+        area.partOfParentRegion = [];
+        area.parentRegion = phrase;
+        return area;
+    }
+
     return {
-        buildMockContext: buildMockContext,
-        featureToArea:    featureToArea
+        buildMockContext:        buildMockContext,
+        featureToArea:           featureToArea,
+        applyCwaRegionOverride:  applyCwaRegionOverride
     };
 }));

@@ -1305,7 +1305,7 @@ async function fetchAndStore() {
             };
 
             const finishWithSilence = () => {
-                generate_silence(SAMPLE_RATE);
+                generate_silence(Math.floor(SAMPLE_RATE * 1));
                 safeResolve();
             };
 
@@ -1697,6 +1697,9 @@ async function fetchAndStore() {
                     break;
                 case "1":
                     create_header_tones(header);
+                    if(endecMode === "NWS_CRS") {
+                        generate_silence(Math.floor(SAMPLE_RATE * 1));
+                    }
                     create_nwr_tone();
                     break;
                 case "2":
@@ -1724,14 +1727,14 @@ async function fetchAndStore() {
                     addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This text will not be processed by the voice correctly. There will instead be silence. Try getting rid of ANY phoneme markups, if you're trying to use the WebAssembly voices.", "ERROR");
                     document.getElementById("generate").disabled = false;
                     document.getElementById("save").disabled = false;
-                    generate_silence(SAMPLE_RATE);
+                    generate_silence(Math.floor(SAMPLE_RATE * 1));
                     return;
                 }
                 const pcmRaw = await getPiperPcm(window.ttsText, SAMPLE_RATE);
                 if (pcmRaw) {
                     appendAnnouncement(pcmRaw);
                 } else {
-                    generate_silence(SAMPLE_RATE);
+                    generate_silence(Math.floor(SAMPLE_RATE * 1));
                 }
             }
 
@@ -1739,14 +1742,14 @@ async function fetchAndStore() {
                 const announcementText = (window.ttsText || '').trim();
                 if (!announcementText) {
                     addStatus("NanoTTS requires announcement text. There will instead be silence.", "ERROR");
-                    generate_silence(SAMPLE_RATE);
+                    generate_silence(Math.floor(SAMPLE_RATE * 1));
                 } else {
                     try {
                         if (await validateMarkupAndText() !== true) {
                             addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This text will not be processed by the voice correctly. There will instead be silence. Try getting rid of ANY phoneme markups, if you're trying to use the WebAssembly voices.", "ERROR");
                             document.getElementById("generate").disabled = false;
                             document.getElementById("save").disabled = false;
-                            generate_silence(SAMPLE_RATE);
+                            generate_silence(Math.floor(SAMPLE_RATE * 1));
                             return;
                         }
                         const result = await synthNanoTts(announcementText);
@@ -1755,12 +1758,12 @@ async function fetchAndStore() {
                             appendAnnouncement(resampled);
                         } else {
                             addStatus("NanoTTS did not return audio. There will instead be silence.", "ERROR");
-                            generate_silence(SAMPLE_RATE);
+                            generate_silence(Math.floor(SAMPLE_RATE * 1));
                         }
                     } catch (error) {
                         console.error(error);
                         addStatus("NanoTTS generation failed. There will instead be silence.", "ERROR");
-                        generate_silence(SAMPLE_RATE);
+                        generate_silence(Math.floor(SAMPLE_RATE * 1));
                     }
                 }
             }
@@ -1769,7 +1772,7 @@ async function fetchAndStore() {
                 const announcementText = (window.ttsText || '').trim();
                 if (!announcementText) {
                     addStatus("Native TTS requires announcement text. There will instead be silence.", "ERROR");
-                    generate_silence(SAMPLE_RATE);
+                    generate_silence(Math.floor(SAMPLE_RATE * 1));
                 } else if (window.EASBridge) {
                     addStatus("Generating native iOS TTS audio...");
                     const voiceId = selectedVoiceRaw.slice('ios-native:'.length);
@@ -1790,7 +1793,7 @@ async function fetchAndStore() {
 
                     if (nativeTTSResult.error) {
                         addStatus("Native TTS error: " + nativeTTSResult.error + ". There will instead be silence.", "ERROR");
-                        generate_silence(SAMPLE_RATE);
+                        generate_silence(Math.floor(SAMPLE_RATE * 1));
                     } else if (nativeTTSResult.base64) {
                         const binary = atob(nativeTTSResult.base64);
                         const bytes = new Uint8Array(binary.length);
@@ -1803,11 +1806,11 @@ async function fetchAndStore() {
                         addStatus("Native TTS audio generated successfully.");
                     } else {
                         addStatus("Native TTS returned no audio. There will instead be silence.", "ERROR");
-                        generate_silence(SAMPLE_RATE);
+                        generate_silence(Math.floor(SAMPLE_RATE * 1));
                     }
                 } else {
                     addStatus("Native TTS is not available in this environment. There will instead be silence.", "ERROR");
-                    generate_silence(SAMPLE_RATE);
+                    generate_silence(Math.floor(SAMPLE_RATE * 1));
                 }
             }
 
@@ -1816,7 +1819,7 @@ async function fetchAndStore() {
                     addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This will not be processed by the voice correctly. There will instead be silence.", "ERROR");
                     document.getElementById("generate").disabled = false;
                     document.getElementById("save").disabled = false;
-                    generate_silence(SAMPLE_RATE);
+                    generate_silence(Math.floor(SAMPLE_RATE * 1));
                     return;
                 }
 
@@ -1824,7 +1827,7 @@ async function fetchAndStore() {
             }
 
             else {
-                generate_silence(SAMPLE_RATE);
+                generate_silence(Math.floor(SAMPLE_RATE * 1));
             }
         }
 
@@ -1847,7 +1850,7 @@ async function fetchAndStore() {
             }
             else {
                 addStatus("You must select a custom audio file when using Custom Audio! There will instead be silence.", "ERROR");
-                generate_silence(SAMPLE_RATE);
+                generate_silence(Math.floor(SAMPLE_RATE * 1));
             }
         }
 
@@ -1857,6 +1860,9 @@ async function fetchAndStore() {
                     create_eom_tones();
                     break;
                 case "1":
+                    if(endecMode === "NWS_CRS") {
+                        generate_silence(Math.floor(SAMPLE_RATE * 1));
+                    }
                     create_eom_tones();
                     break;
                 case "2":
@@ -2832,6 +2838,7 @@ async function fetchAndStore() {
 
     const attentionToneDiv = document.getElementById("tlenContainer");
     const currentAttentionTone = document.getElementById("att");
+
     currentAttentionTone.addEventListener("change", function () {
         if (currentAttentionTone.value !== "3") {
             attentionToneDiv.style.display = "inline";
@@ -2840,14 +2847,38 @@ async function fetchAndStore() {
         }
     });
 
-    currentAttentionTone.dispatchEvent(new Event('change'));
-    encoderModeSelect.dispatchEvent(new Event('change'));
-    announcementTypeSelect.dispatchEvent(new Event('change'));
-    ttsTextInput.dispatchEvent(new Event('change'));
-    voiceSelect.dispatchEvent(new Event('change'));
-    ttsRate.dispatchEvent(new Event('change'));
-    ttsPitch.dispatchEvent(new Event('change'));
-    hrselect.dispatchEvent(new Event('change'));
+    const endecModeSelect = document.getElementById("overallEndecMode");
+
+    endecModeSelect.addEventListener("change", function () {
+        if (endecModeSelect.value.includes("NWS")) {
+            tone = 1;
+
+            if (currentAttentionTone) {
+                currentAttentionTone.value = "1";
+            }
+        }
+
+        else {
+            tone = 0;
+
+            if (currentAttentionTone) {
+                currentAttentionTone.value = "0";
+            }
+        }
+    });
+
+    const changeEvent = new Event('change');
+
+    currentAttentionTone.dispatchEvent(changeEvent);
+    endecModeSelect.dispatchEvent(changeEvent);
+    currentAttentionTone.dispatchEvent(changeEvent);
+    encoderModeSelect.dispatchEvent(changeEvent);
+    announcementTypeSelect.dispatchEvent(changeEvent);
+    ttsTextInput.dispatchEvent(changeEvent);
+    voiceSelect.dispatchEvent(changeEvent);
+    ttsRate.dispatchEvent(changeEvent);
+    ttsPitch.dispatchEvent(changeEvent);
+    hrselect.dispatchEvent(changeEvent);
 
     const clearAllLocationsButton = document.querySelector('[data-encoder-clear-locs]');
     if (clearAllLocationsButton) {

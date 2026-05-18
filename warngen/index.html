@@ -837,7 +837,7 @@
             };
 
             var NORMALIZED_OFFICE_LABELS_ONLY = {
-                CAR: "Caibou Maine",
+                CAR: "Caribou Maine",
                 CTP: "State College PA",
                 DLH: "Duluth MN",
                 DMX: "Des Moines ", //yes, des moines with an extra space, per their AWIPS/VTEC archives; ex. https://mesonet.agron.iastate.edu/vtec/#2019-O-NEW-KDMX-SVR-0001
@@ -1451,10 +1451,13 @@
                         return;
                     }
 
+                    var siteId = document.getElementById("office-select").value;
+
                     var areas = hits.map(function (feat) {
                         var area = WarngenContext.featureToArea(feat);
 
                         area.partOfArea = WarngenIntersect.directionalSubdivision(currentRing, feat);
+                        WarngenContext.applyCwaRegionOverride(area, siteId, currentProductId);
                         return area;
                     });
                     var areaPoly = currentRing.map(function (p) { return { x: p[0], y: p[1] }; });
@@ -1504,7 +1507,6 @@
                     var issuedDate = issuedRaw ? new Date(issuedRaw) : new Date();
                     if (isNaN(issuedDate.getTime())) issuedDate = new Date();
 
-                    var siteId = document.getElementById("office-select").value;
                     var tzInfo = detectTimezoneCrossing(currentRing, siteId);
                     var localtimezone = tzInfo.primary || undefined;
                     var effectiveCrossTz = crossTz || tzInfo.crosses;

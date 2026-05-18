@@ -1,3 +1,11 @@
+2026-05-17:
+
+- Add extra 1 second of silence to the beginning and end of NWS_CRS mode. This is because CRS tones have this extra silence built in, so adding it to the generated tones makes them sound more natural and similar to actual CRS tones.
+- Update "National Emergency Action Notification" (EAN code) to "National Emergency Message". The FCC made this change in 2022, but the same_us.json file still had the old name. This update ensures that the phrasing of EAN products in the encoder is accurate and consistent with the current terminology used by the FCC.
+- Update FE_AREA data from c_16ap26.dbf (3352 rows) and run the partOfParentRegion repair on the geojson. The repair process updates the partOfParentRegion property for each feature in the geojson based on the FE_AREA code from the shapefile. Results can be found in warngen/tools/output/repair_report.md. TL;DR: More accurate "x County in FE_AREA State" phrasing for almost all counties in the continental US. For example, "Scott County in FE_AREA Tennessee". FE_AREA previously was "northeastern", but has since been updated to be "east" because the data was "empirically derived" before, it is now "single source of truth" based on c_16ap26.dbf. This should make the phrasing of affected areas in products more accurate and consistent with the actual FE_AREA codes used by the NWS. The repair process also identified some discrepancies between the original geojson and the shapefile data, which have been corrected in the updated geojson. Overall, this update should improve the accuracy and reliability of the geographic data used in WarnGen for determining affected areas and generating product text.
+
+---
+
 2026-05-07:
 
 - Update GitHub Pages deployment action to remove deprecation warning for Node.js 20.
