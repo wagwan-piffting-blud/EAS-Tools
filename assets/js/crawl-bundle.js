@@ -18,6 +18,7 @@ async function initCrawlEditor() {
             lineWrapping: true,
         });
 
+        crawlEditor.getInputField().setAttribute('aria-label', 'Text to display in the scrolling crawl');
         crawlEditor.setSize('27vw', '15rem');
 
         const crawlWrapper = crawlEditor.getWrapperElement();
@@ -4567,7 +4568,7 @@ async function initCrawlEditor() {
         const canvas = _crawlPreviewCanvas;
         const ctx = _crawlPreviewCtx;
 
-        const text = document.getElementById('crawlText').value || 'Preview';
+        const text = 'Preview';
         const fontSize = Math.max(1, Number(document.getElementById('crawlFontSize').value) || 24);
         const textColor = document.getElementById('crawlTextColor').value || '#FFFFFF';
         const bgColor = document.getElementById('crawlBgColor').value || '#000000';

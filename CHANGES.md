@@ -1,3 +1,9 @@
+2026-05-21:
+
+- Improve accessibility of the website by adding ARIA labels to interactive elements and ensuring that all content is properly structured for screen readers. This includes adding appropriate roles and labels to buttons, links, and form elements, as well as ensuring that the overall structure of the page is logical and easy to navigate for users with assistive technologies. These improvements will help make the website more inclusive and usable for a wider range of users, including those with visual impairments or other disabilities. **NOTE: If you use a screen reader and notice any issues with the accessibility of the website after this change, please let me know so I can address them!**
+
+---
+
 2026-05-17:
 
 - Add extra 1 second of silence to the beginning and end of NWS_CRS mode. This is because CRS tones have this extra silence built in, so adding it to the generated tones makes them sound more natural and similar to actual CRS tones.

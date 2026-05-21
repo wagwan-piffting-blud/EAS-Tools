@@ -38,18 +38,20 @@
     </head>
     <body>
         <header>
-            <h1><a href="." id="eas-tools-logo"></a></h1>
-            <nav id="tab-set">
+            <h1><a href="." id="eas-tools-logo" aria-label="EAS Tools home"></a></h1>
+            <nav id="tab-set" aria-label="Tool selector">
                 <div id="nav-buttons">
                     <!-- will get filled in by js below -->
                 </div>
                 <div id="nav-selector" style="display: none;">
+                    <label for="nav-select" class="visually-hidden">Select tool</label>
                     <select id="nav-select">
                         <!-- will get filled in by js below -->
                     </select>
                 </div>
             </nav>
         </header>
+        <div id="alert-announcer" role="alert" aria-live="assertive" class="visually-hidden"></div>
         <main>
             <section id="decoder-panel" class="tool-panel active" aria-labelledby="tab-decoder">
                 <h2 class="section-heading">SAME Decoder</h2>
@@ -58,7 +60,7 @@
                 <span>
                     <button type="button" data-decoder-toggle>Start Microphone Decoder</button>
                     <button type="button" data-decoder-stream-toggle>Start Stream Decoder</button>
-                    <input type="file" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;" id="audiofile" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    <input type="file" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;" tabindex="-1" aria-hidden="true" id="audiofile" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
                     <button type="button" data-decoder-load>Upload Audio File</button>
                     <button type="button" data-decoder-load-raw>Load/Analyze Raw ZCZC Header</button>
                     <button type="button" data-decoder-record-toggle disabled>Start Recording (alerts toggle this automatically)</button>
@@ -71,7 +73,7 @@
                 </span>
                 <br>
                 <div class="level-meter" role="meter" aria-label="Input level" aria-valuemin="0" aria-valuemax="1"
-                    aria-valuenow="0" data-level-meter>
+                    aria-valuenow="0" aria-valuetext="No signal" data-level-meter>
                     <span class="level-meter__label">Level</span>
                     <div class="level-meter__stack">
                         <div class="level-meter__bars">
@@ -92,17 +94,18 @@
                     </div>
                 </div>
                 <hr>
-                <div id="sync">STATUS: WAITING...</div>
+                <div id="sync" role="status" aria-live="polite" aria-atomic="true">STATUS: WAITING...</div>
+                <span id="signal-status" class="visually-hidden" aria-live="polite"></span>
                 <hr>
                 <div id="afsk"></div>
-                <p id="output"></p>
-                <div class="modalContainer" style="display: none;">
+                <p id="output" role="status" aria-live="polite"></p>
+                <div class="modalContainer" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-info">
                     <div class="modalBox">
-                        <div class="modalClose" id="close">X</div>
+                        <button type="button" class="modalClose" id="close" aria-label="Close alert details">X</button>
                         <div class="modalContent">
-                            <div class="modalTitle"><strong>Alert Details</strong></div>
+                            <div class="modalTitle" id="modal-title"><strong>Alert Details</strong></div>
                             <br>
-                            <div class="modalInfo">
+                            <div class="modalInfo" id="modal-info">
                             </div>
                         </div>
                     </div>
@@ -426,9 +429,9 @@
                     <label for="crawlInset">Crawl Inset (pixels, 0-500):</label>
                     <input type="number" id="crawlInset" min="0" max="500" value="0">
                     <br>
-                    <label for="crawlTopLeftPixel">Crawl Top-Left Location (X [left/right], Y [up/down]):</label>
-                    <input type="number" id="crawlTopLeftPixelX" min="0" max="3840" value="0">
-                    <input type="number" id="crawlTopLeftPixelY" min="0" max="2160" value="0">
+                    <span id="crawlTopLeftPixelLabel">Crawl Top-Left Location (X [left/right], Y [up/down]):</span>
+                    <input type="number" id="crawlTopLeftPixelX" min="0" max="3840" value="0" aria-label="Crawl top-left X coordinate (pixels from left)">
+                    <input type="number" id="crawlTopLeftPixelY" min="0" max="2160" value="0" aria-label="Crawl top-left Y coordinate (pixels from top)">
                     <br>
                     <label for="crawlKerning">Crawl Kerning (percentage, 0 to 100%):</label>
                     <input type="number" id="crawlKerning" min="0" max="100" value="0">
@@ -496,7 +499,7 @@
                 <div id="crawlPreviewDiv">
                     <label for="crawlPreview">Live Preview (updates after any settings change):</label>
                     <br>
-                    <canvas id="crawlPreview" width="1200" height="150" style="border: 1px solid #ff0000;"></canvas>
+                    <canvas id="crawlPreview" width="1200" height="150" style="border: 1px solid #ff0000;" role="img" aria-label="Live visual preview of the text crawl being generated. The crawl text is announced in the status region below."></canvas>
                 </div>
                 <hr>
                 <div class="control-panel" style="position: sticky; top: 0; padding-top: 10px; padding-bottom: 10px; z-index: 10;">
@@ -530,7 +533,7 @@
                 <hr>
                 <div class="splice-grid">
                     <div class="waveform-card">
-                        <canvas id="spliceWaveform" width="1000" height="200"></canvas>
+                        <canvas id="spliceWaveform" width="1000" height="200" role="img" aria-label="Audio waveform preview. Use the timestamp inputs and macro controls below to edit segments without dragging."></canvas>
                         <div class="waveform-meta">
                             <div>
                                 Selection:
@@ -900,15 +903,28 @@
 
                 const navButtons = document.getElementById('nav-buttons');
                 if (navButtons) {
+                    navButtons.setAttribute('role', 'tablist');
+                    navButtons.setAttribute('aria-label', 'EAS tools');
                     const buttonElement = document.createElement('button');
                     buttonElement.type = 'button';
-                    Object.entries(panels).forEach(([key, { name }]) => {
+                    Object.entries(panels).forEach(([key, { name, element }]) => {
                         const btn = buttonElement.cloneNode();
+                        btn.id = 'tab-' + key;
                         btn.dataset.tool = key;
                         btn.textContent = name;
+                        btn.setAttribute('role', 'tab');
+                        btn.setAttribute('aria-selected', 'false');
+                        btn.setAttribute('tabindex', '-1');
+                        if (element?.id) btn.setAttribute('aria-controls', element.id);
                         navButtons.appendChild(btn);
                     });
                 }
+
+                Object.values(panels).forEach(({ element }) => {
+                    if (!element) return;
+                    element.setAttribute('role', 'tabpanel');
+                    element.setAttribute('tabindex', '0');
+                });
 
                 const buttons = document.querySelectorAll('button[data-tool]');
                 const params = new URLSearchParams(window.location.search);
@@ -942,12 +958,17 @@
                     requestAnimationFrame(() => window.__ensureTextEditorsRefreshed(target));
                 };
 
-                const activate = (target) => {
+                const activate = (target, { focusTab = false } = {}) => {
                     Object.keys(iframeInstances).forEach((tool) => {
                         if (tool !== target) unloadIframe(tool);
                     });
                     if (panels[target]?.iframe) ensureIframe(target);
-                    buttons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tool === target));
+                    buttons.forEach((btn) => {
+                        const isActive = btn.dataset.tool === target;
+                        btn.classList.toggle('active', isActive);
+                        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                        btn.setAttribute('tabindex', isActive ? '0' : '-1');
+                    });
                     Object.entries(panels).forEach(([name, { element }]) => {
                         if (element) element.classList.toggle('active', name === target);
                     });
@@ -956,10 +977,14 @@
                     newParams.set('tool', target);
                     window.history.replaceState({}, '', `${window.location.pathname}?${newParams}`);
                     requestEditorRefresh(target);
+                    if (focusTab) {
+                        const activeBtn = Array.from(buttons).find((b) => b.dataset.tool === target);
+                        activeBtn?.focus();
+                    }
                 };
 
                 buttons.forEach((btn) => {
-                    btn.addEventListener('click', () => activate(btn.dataset.tool));
+                    btn.addEventListener('click', () => activate(btn.dataset.tool, { focusTab: true }));
                     const panelList = document.getElementById('nav-select');
                     if (panelList) {
                         const option = document.createElement('option');
@@ -967,6 +992,31 @@
                         option.textContent = btn.textContent;
                         panelList.appendChild(option);
                     }
+                });
+
+                const tabList = Array.from(buttons);
+                navButtons?.addEventListener('keydown', (event) => {
+                    const currentIndex = tabList.findIndex((b) => b === document.activeElement);
+                    if (currentIndex === -1) return;
+                    let nextIndex = null;
+                    switch (event.key) {
+                        case 'ArrowRight':
+                            nextIndex = (currentIndex + 1) % tabList.length;
+                            break;
+                        case 'ArrowLeft':
+                            nextIndex = (currentIndex - 1 + tabList.length) % tabList.length;
+                            break;
+                        case 'Home':
+                            nextIndex = 0;
+                            break;
+                        case 'End':
+                            nextIndex = tabList.length - 1;
+                            break;
+                        default:
+                            return;
+                    }
+                    event.preventDefault();
+                    activate(tabList[nextIndex].dataset.tool, { focusTab: true });
                 });
 
                 const panelList = document.getElementById('nav-select');

@@ -17,6 +17,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             lineWrapping: true,
         });
 
+        splicerEditor.getInputField().setAttribute('aria-label', 'Text to convert to speech');
         splicerEditor.setSize('27vw', '15rem');
 
         const splicerWrapper = splicerEditor.getWrapperElement();

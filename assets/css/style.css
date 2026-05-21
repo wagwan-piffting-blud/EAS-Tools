@@ -1,3 +1,16 @@
+/* Accessibility helpers */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
 /* Animation CSS */
 @keyframes fill-progress {
   0% {
@@ -453,6 +466,7 @@ button[disabled] {
     cursor: pointer;
     z-index: 1001;
     margin: 2px;
+    right: 20vw;
 }
 
 #decoder-panel .watch {
@@ -965,6 +979,46 @@ button[disabled] {
     animation: announcement-slide-out 0.2s ease-in forwards !important;
 }
 
+.changelog-content {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.changelog-content h2 {
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-orange);
+    font-size: 1.25rem;
+}
+
+.changelog-content h2:first-child {
+    margin-top: 0;
+}
+
+.changelog-content ul {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0 1rem;
+}
+
+.changelog-content li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.changelog-content hr {
+    border: 0;
+    border-top: 1px dashed var(--color-border);
+    margin: 1.5rem 0;
+}
+
+.changelog-content code {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+}
+
 /* Media Queries */
 /* Mobile devices */
 @media screen and (max-width: 1079px) {
@@ -1381,47 +1435,6 @@ button[disabled] {
         bottom: 10px;
         max-width: none;
     }
-}
-
-/* Change Log page */
-.changelog-content {
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.changelog-content h2 {
-    margin-top: 2rem;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.25rem;
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-orange);
-    font-size: 1.25rem;
-}
-
-.changelog-content h2:first-child {
-    margin-top: 0;
-}
-
-.changelog-content ul {
-    padding-left: 1.5rem;
-    margin: 0.5rem 0 1rem;
-}
-
-.changelog-content li {
-    margin-bottom: 0.5rem;
-    line-height: 1.5;
-}
-
-.changelog-content hr {
-    border: 0;
-    border-top: 1px dashed var(--color-border);
-    margin: 1.5rem 0;
-}
-
-.changelog-content code {
-    background: rgba(255, 255, 255, 0.08);
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
 }
 
 /* Reduced motion */

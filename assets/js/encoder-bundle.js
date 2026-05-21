@@ -27,6 +27,7 @@ if (typeof window !== 'undefined') {
             lineWrapping: true,
         });
 
+        encoderEditor.getInputField().setAttribute('aria-label', 'Text to speak in the alert announcement');
         encoderEditor.setSize('27vw', '15rem');
 
         const encoderWrapper = encoderEditor.getWrapperElement();

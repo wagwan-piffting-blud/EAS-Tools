@@ -67,6 +67,7 @@
                         <li><a href="#">How can I support the development of EAS Tools?</a></li>
                         <li><a href="#">Are there currently any known issues or limitations with EAS Tools? (updated as of 2026-04-26)</a></li>
                         <li><a href="#">How can I get more involved in the overall EAS community?</a></li>
+                        <li><a href="#">Does EAS Tools work with screen readers (NVDA, JAWS)?</a></li>
                     </ul>
                 </div>
                 <section>
@@ -134,6 +135,24 @@
                 <section>
                     <h3>How can I get more involved in the overall EAS community?</h3>
                     <p>You can get more involved in the EAS community by joining online forums, participating in discussions on social media, and connecting with other hobbyists and professionals interested in the EAS. There are many online communities dedicated to the EAS where you can share your experiences, and connect with others who share your interest. Some popular places to start include the <a href="https://globaleas.org/" target="_blank">Global Weather and EAS Society Discord</a> (of which I am an active member), <a href="https://www.reddit.com/r/EmergencyAlertSystem/" target="_blank">the EAS sub-reddit</a>, and I'm sure there are more that are not mentioned here. Additionally, consider reaching out to local professionals that deal with the EAS, such as your local broadcasters or even HAM radio operators.</p>
+                </section>
+                <section id="faq-screen-readers">
+                    <h3>Does EAS Tools work with screen readers (NVDA, JAWS)?</h3>
+                    <p>The main tools page is built to be navigable by NVDA and JAWS on Windows. The Decoder, Encoder, Text Crawl Generator, Audio Splicer, Phoneme Converter, and AWIPS Product Normalizer expose ARIA roles, labels, and live regions so screen-reader users can:</p>
+                    <ul>
+                        <li>Use arrow keys to move between the tool tabs at the top of the page.</li>
+                        <li>Hear "Audio signal present" / "No audio signal" announcements while the microphone or stream decoder is running.</li>
+                        <li>Hear the status of the SAME sync detector update in real time.</li>
+                        <li>Receive an "Alert decoded" announcement when the Decoder identifies a SAME header, with the alert details modal trapping focus until you press <kbd>Escape</kbd> or activate the close button.</li>
+                    </ul>
+                    <p><strong>Known limitations:</strong></p>
+                    <ul>
+                        <li>The WarnGen polygon-drawing map (Leaflet) and the Video/Audio Muxer are not yet screen-reader-friendly. Avoid them when using assistive tech, or ask a sighted helper for those tasks.</li>
+                        <li>The Audio Splicer's waveform editor exposes a visual-only drag-select. Use the numeric "Insert Silence", loudness, and macro controls for keyboard-only editing.</li>
+                        <li>Generated TTS preview audio plays through your speakers and will overlap with your screen reader's speech. See the note in the TTS documentation for how to handle this.</li>
+                    </ul>
+                    <p><strong>Recommended setup:</strong> NVDA or JAWS on Windows + Chrome. Browse mode (the default) handles page navigation; the app will flip into focus mode automatically when you enter the tablist, a form control, or the alert-details dialog.</p>
+                </section>
             </article>
             <hr>
             <article style="padding-left: 2rem; padding-right: 2rem; padding-bottom: 2rem;" id="documentation">

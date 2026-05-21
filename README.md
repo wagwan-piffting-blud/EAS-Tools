@@ -168,6 +168,10 @@ Use the tabs at the top of the page to switch between the various available tool
 * `?tool=warngen` – Opens the **WarnGen** tab
 * `?tool=muxer` – Opens the **Video/Audio Muxer** tab
 
+### Accessibility
+
+The main tools page is built to be navigable by NVDA and JAWS on Windows with arrow-key tab navigation, focus-trapped alert-details dialog, and live-region announcements for sync status, signal presence, and decoded alerts. See the [Screen reader users FAQ entry](https://eas.tools/faq.html#faq-screen-readers) for the full notes, including known limitations (WarnGen map, waveform drag-select) and the recommended NVDA/JAWS + Chrome setup.
+
 ### Documentation
 
 For more detailed documentation on the TTS feature, see the [TTS docs page](https://eas.tools/tts-docs.html).

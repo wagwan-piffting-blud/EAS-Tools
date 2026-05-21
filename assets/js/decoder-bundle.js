@@ -887,6 +887,20 @@ async function fetchAndStore() {
     let meterInputSource = null;
     const meterElement = document.querySelector("[data-level-meter]");
     const meterFill = meterElement ? meterElement.querySelector("[data-level-fill]") : null;
+    const signalStatusEl = document.getElementById("signal-status");
+    const SIGNAL_THRESHOLD = 0.05;
+    let signalPresent = false;
+    let lastSignalAnnounceAt = 0;
+    function announceSignalTransition(level) {
+        if (!signalStatusEl) return;
+        const now = performance.now();
+        const isPresent = level >= SIGNAL_THRESHOLD;
+        if (isPresent === signalPresent) return;
+        if (now - lastSignalAnnounceAt < 2000) return;
+        signalPresent = isPresent;
+        lastSignalAnnounceAt = now;
+        signalStatusEl.textContent = isPresent ? "Audio signal present." : "No audio signal.";
+    }
     let levelAnalyser = null;
     let levelBuffer = null;
     let levelFreqBuffer = null;
@@ -1000,7 +1014,14 @@ async function fetchAndStore() {
         meterFill.style.webkitClipPath = "inset(0 " + meterRightInset + " 0 0)";
         if (meterElement) {
             meterElement.setAttribute("aria-valuenow", meterLevel.toFixed(3));
+            let levelLabel;
+            if (meterLevel < SIGNAL_THRESHOLD) levelLabel = "No signal";
+            else if (meterLevel < 0.25) levelLabel = "Signal: low";
+            else if (meterLevel < 0.7) levelLabel = "Signal: medium";
+            else levelLabel = "Signal: high";
+            meterElement.setAttribute("aria-valuetext", levelLabel);
         }
+        announceSignalTransition(meterLevel);
         meterAnimation = requestAnimationFrame(renderMeter);
     }
 
@@ -1026,7 +1047,11 @@ async function fetchAndStore() {
         }
         if (meterElement) {
             meterElement.setAttribute("aria-valuenow", "0");
+            meterElement.setAttribute("aria-valuetext", "No signal");
         }
+        signalPresent = false;
+        lastSignalAnnounceAt = 0;
+        if (signalStatusEl) signalStatusEl.textContent = "";
     }
 
     if (decodeContext.audioWorklet && typeof decodeContext.audioWorklet.addModule === "function") {
@@ -3720,18 +3745,61 @@ async function fetchAndStore() {
     const infoContainer = document.querySelector(".modalInfo");
     const modalBox = document.querySelector(".modalBox");
     let modalRequestToken = 0;
-    modalClose.addEventListener("click", () => {
-        if (window.modalShown) {
-            modalRequestToken++;
-            modalContainer.style.display = "none";
+
+    let previousFocus = null;
+
+    function getDialogTabbables() {
+        return Array.from(modalContainer.querySelectorAll(
+            'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+        )).filter((el) => !el.disabled && el.offsetParent !== null);
+    }
+
+    function onModalKeydown(event) {
+        if (event.key === 'Escape' && window.modalShown) {
+            closeModal();
+            return;
         }
-    });
+        if (event.key !== 'Tab') return;
+        const tabbables = getDialogTabbables();
+        if (tabbables.length === 0) {
+            event.preventDefault();
+            return;
+        }
+        const first = tabbables[0];
+        const last = tabbables[tabbables.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
+    function openModalA11y() {
+        previousFocus = document.activeElement;
+        document.addEventListener('keydown', onModalKeydown);
+        requestAnimationFrame(() => {
+            modalClose.focus();
+        });
+    }
+
+    function closeModal() {
+        if (!window.modalShown) return;
+        modalRequestToken++;
+        modalContainer.style.display = "none";
+        window.modalShown = false;
+        document.removeEventListener('keydown', onModalKeydown);
+        if (previousFocus && typeof previousFocus.focus === 'function') {
+            try { previousFocus.focus(); } catch {}
+        }
+        previousFocus = null;
+    }
+
+    modalClose.addEventListener("click", closeModal);
 
     modalContainer.addEventListener("click", (e) => {
-        if (e.target === modalContainer && window.modalShown) {
-            modalRequestToken++;
-            modalContainer.style.display = "none";
-        }
+        if (e.target === modalContainer) closeModal();
     });
 
     async function showAlertInfo(header) {
@@ -3891,7 +3959,17 @@ async function fetchAndStore() {
 
     function showModal(parsedHeader) {
         modalContainer.style.display = "flex";
+        window.modalShown = true;
         showAlertInfo(parsedHeader);
+        openModalA11y();
+        const announcer = document.getElementById("alert-announcer");
+        if (announcer) {
+            const eventName = (events && events[parsedHeader.event]) || parsedHeader.event || "alert";
+            announcer.textContent = "";
+            requestAnimationFrame(() => {
+                announcer.textContent = "Alert decoded: " + eventName + ".";
+            });
+        }
     }
 
     async function testAudioStream(url) {

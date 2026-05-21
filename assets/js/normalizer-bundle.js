@@ -17,6 +17,7 @@ import { CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEM
             lineWrapping: true,
         });
 
+        normalizerEditor.getInputField().setAttribute('aria-label', 'Raw VTAC or AWIPS product text to normalize');
         normalizerEditor.setSize('27vw', '15rem');
 
         const normalizerWrapper = normalizerEditor.getWrapperElement();

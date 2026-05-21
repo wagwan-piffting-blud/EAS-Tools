@@ -19,6 +19,7 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
             lineWrapping: true,
         });
 
+        phonemeEditor.getInputField().setAttribute('aria-label', 'Text or phoneme string to convert');
         phonemeEditor.setSize('27vw', '15rem');
 
         const phonemeWrapper = phonemeEditor.getWrapperElement();

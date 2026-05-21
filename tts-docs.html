@@ -68,6 +68,7 @@
                     <li>The quality of the generated speech may vary depending on the selected voice. See below for pronunciation notes and examples.</li>
                     <li>There is a per-user limit of <span id="tts-requests-per-user-limit"></span> successful requests per day for the server-side voices to prevent abuse. This limit resets daily at midnight Central Time. All processed audio is also cleared at this time, so make sure you download your audio before then.</li>
                     <li>Each TTS request is allowed up to 90 seconds to complete itself. If a request takes longer than this, it will be terminated and abandoned by the server. Most requests should complete LONG before this timer is up, but know that <b>you may need to adjust your text input or try a different voice if you encounter timeouts.</b> Timeouts usually result in an "x-empty" response by the TTS server.</li>
+                    <li><strong>Screen reader users:</strong> TTS preview audio plays through your computer's speakers and will overlap with your screen reader's speech. Recommended workflow: wear headphones, or temporarily silence the screen reader before pressing Play (NVDA: press <kbd>Insert</kbd>+<kbd>S</kbd> to cycle the speech mode to "off"; JAWS: press <kbd>Insert</kbd>+<kbd>Space</kbd> then <kbd>S</kbd>, or just press <kbd>Ctrl</kbd> to silence the current utterance). The decoded audio from the SAME Decoder behaves the same way.</li>
                 </ul>
                 <h3>Pronunciation Notes and Examples</h3>
                 <p>Here are some pronunciation notes and examples for the different voices available in EAS Tools:</p>
@@ -162,6 +163,7 @@ The current time is, ${currentTime}.
 
 <vtml_speed value="70">And this sentence is spoken at a slower rate than normal.</vtml_speed>`);
 
+                    vtmlCodePre.getInputField().setAttribute('aria-label', 'VTML phoneme example (read-only)');
                     const vtmlPreWrapper = vtmlCodePre.getWrapperElement();
 
                     vtmlPreWrapper.classList.add('vtml-codemirror-pre', 'codemirror-example');
@@ -201,6 +203,7 @@ The current time is, ${currentTime}.
 
 <rate absspeed="-3">And this sentence is spoken at a slower rate than normal.</rate>`);
 
+                    balCodePre.getInputField().setAttribute('aria-label', 'Balabolka phoneme example (read-only)');
                     const balPreWrapper = balCodePre.getWrapperElement();
 
                     balPreWrapper.classList.add('bal-codemirror-pre', 'codemirror-example');
@@ -242,6 +245,7 @@ This is NOAA All Hazards Radio Station K I H 61 in Omaha, Nebraska.
 
 [:np][:dv ap 120][:rate 100] And this sentence is spoken at a slower rate than normal. [:sync]`);
 
+                    dtCodePre.getInputField().setAttribute('aria-label', 'DECtalk phoneme example (read-only)');
                     const dtPreWrapper = dtCodePre.getWrapperElement();
 
                     dtPreWrapper.classList.add('dt-codemirror-pre', 'codemirror-example');
