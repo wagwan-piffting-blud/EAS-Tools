@@ -154,6 +154,7 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
         "beatrice": "B IY0 AE1 T R IH0 S",
         "pickrell": "P IH0 K ER0 L",
         "speechify": "S P IY0 CH AH0 F AY0",
+        "louisville": "L UW1 AH V IH L",
     };
 
     mode.addEventListener("change", () => {

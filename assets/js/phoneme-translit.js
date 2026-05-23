@@ -12,16 +12,16 @@ export const Backend = Object.freeze({
 });
 
 export const BAL_SYMBOLS = new Set(["-", "!", "&", ",", ".", "?", "_"]);
-export const BAL_STRESS  = new Set(["1", "2"]);
+export const BAL_STRESS = new Set(["1", "2"]);
 export const BAL_PHONES = new Set([
-  "aa","ae","ah","ao","aw","ax","ay",
-  "b","ch","d","dh",
-  "eh","er","ey",
-  "f","g","h",
-  "ih","iy",
-  "jh","k","l","m","n","ng",
-  "ow","oy","p","r","s","sh","t","th",
-  "uh","uw","v","w","y","z","zh",
+    "aa", "ae", "ah", "ao", "aw", "ax", "ay",
+    "b", "ch", "d", "dh",
+    "eh", "er", "ey",
+    "f", "g", "h",
+    "ih", "iy",
+    "jh", "k", "l", "m", "n", "ng",
+    "ow", "oy", "p", "r", "s", "sh", "t", "th",
+    "uh", "uw", "v", "w", "y", "z", "zh",
 ]);
 
 const VTML_DOC_PHONES = new Set([
@@ -51,13 +51,13 @@ const DT_PHONES = new Set([
 ]);
 
 export const BAL_ALIASES = Object.freeze({
-  "hh": "h",
-  "dx": "d",
-  "el": "l",
-  "em": "m",
-  "en": "n",
-  "ix": "ih",
-  "axr": "er",
+    "hh": "h",
+    "dx": "d",
+    "el": "l",
+    "em": "m",
+    "en": "n",
+    "ix": "ih",
+    "axr": "er",
 });
 
 
@@ -65,7 +65,7 @@ const DT_STRESS_PREFIX = new Set(["'", "`", '"']);
 const DT_SYNTACTIC = new Set(["-", "*", "#", "(", ")", ",", ".", "?", "!", "+"]);
 
 const DT_ALIASES = Object.freeze({
-  "er": "rr",
+    "er": "rr",
 });
 
 const CMU_PARSE_ALIASES = Object.freeze({
@@ -78,6 +78,12 @@ const CMU_PARSE_ALIASES = Object.freeze({
     UHR: "UH",
     UX: "UW",
     WH: "W",
+});
+
+const CMU_EXPANSIONS = Object.freeze({
+    UY: ["UW", "IY"],
+    TS: ["T", "S"],
+    IN: ["IY", "N"],
 });
 
 function phoneToken(cmu, stress = null) {
@@ -94,32 +100,32 @@ const CMU_VOWELS = new Set([
 ]);
 
 const CMU_TO_BAL = {
-  AA:"aa", AE:"ae", AH:"ah", AO:"ao", AW:"aw", AX:"ax", AY:"ay",
-  EH:"eh", ER:"er", EY:"ey", IH:"ih", IY:"iy", OW:"ow", OY:"oy",
-  UH:"uh", UW:"uw",
-  B:"b", CH:"ch", D:"d", DH:"dh",
-  F:"f", G:"g",
-  HH:"h",
-  JH:"jh", K:"k", L:"l", M:"m", N:"n", NG:"ng",
-  P:"p", R:"r", S:"s", SH:"sh", T:"t", TH:"th",
-  V:"v", W:"w", Y:"y", Z:"z", ZH:"zh",
-  DX:"d",
-  EL:"l", EM:"m", EN:"n",
-  IX:"ih",
-  AXR:"er",
-  WH:"w",
-  Q:"k",
+    AA: "aa", AE: "ae", AH: "ah", AO: "ao", AW: "aw", AX: "ax", AY: "ay",
+    EH: "eh", ER: "er", EY: "ey", IH: "ih", IY: "iy", OW: "ow", OY: "oy",
+    UH: "uh", UW: "uw",
+    B: "b", CH: "ch", D: "d", DH: "dh",
+    F: "f", G: "g",
+    HH: "h",
+    JH: "jh", K: "k", L: "l", M: "m", N: "n", NG: "ng",
+    P: "p", R: "r", S: "s", SH: "sh", T: "t", TH: "th",
+    V: "v", W: "w", Y: "y", Z: "z", ZH: "zh",
+    DX: "d",
+    EL: "l", EM: "m", EN: "n",
+    IX: "ih",
+    AXR: "er",
+    WH: "w",
+    Q: "k",
 };
 
 const BAL_TO_CMU = {
-  aa: "AA", ae: "AE", ah: "AH", ao: "AO", aw: "AW", ax: "AX", ay: "AY",
-  b: "B", ch: "CH", d: "D", dh: "DH",
-  eh: "EH", er: "ER", ey: "EY",
-  f: "F", g: "G", h: "HH",
-  ih: "IH", iy: "IY",
-  jh: "JH", k: "K", l: "L", m: "M", n: "N", ng: "NG",
-  ow: "OW", oy: "OY", p: "P", r: "R", s: "S", sh: "SH", t: "T", th: "TH",
-  uh: "UH", uw: "UW", v: "V", w: "W", y: "Y", z: "Z", zh: "ZH",
+    aa: "AA", ae: "AE", ah: "AH", ao: "AO", aw: "AW", ax: "AX", ay: "AY",
+    b: "B", ch: "CH", d: "D", dh: "DH",
+    eh: "EH", er: "ER", ey: "EY",
+    f: "F", g: "G", h: "HH",
+    ih: "IH", iy: "IY",
+    jh: "JH", k: "K", l: "L", m: "M", n: "N", ng: "NG",
+    ow: "OW", oy: "OY", p: "P", r: "R", s: "S", sh: "SH", t: "T", th: "TH",
+    uh: "UH", uw: "UW", v: "V", w: "W", y: "Y", z: "Z", zh: "ZH",
 };
 
 const CMU_TO_DT = {
@@ -509,6 +515,21 @@ export function parseVTML(input) {
         const parsed = splitCmuToken(t);
         if (!parsed) continue;
         const { base, stress } = parsed;
+
+        const expansion = CMU_EXPANSIONS[base];
+        if (expansion) {
+            let vowelSeen = false;
+            for (const expBase of expansion) {
+                if (CMU_VOWELS.has(expBase)) {
+                    out.push(phoneToken(expBase, vowelSeen ? 0 : (stress ?? 0)));
+                    vowelSeen = true;
+                } else {
+                    out.push(phoneToken(expBase, null));
+                }
+            }
+            continue;
+        }
+
         out.push(phoneToken(base, CMU_VOWELS.has(base) ? (stress ?? 0) : null));
     }
     return out;

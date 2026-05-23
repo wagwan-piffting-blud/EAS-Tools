@@ -1,3 +1,9 @@
+2026-05-23:
+
+- Update phonemizer tool to handle more edge cases (the word "Louisville", for example, no longer causes an error). Thank you to Jasmine in the GWES Discord for reporting this issue.
+
+---
+
 2026-05-21:
 
 - Improve accessibility of the website by adding ARIA labels to interactive elements and ensuring that all content is properly structured for screen readers. This includes adding appropriate roles and labels to buttons, links, and form elements, as well as ensuring that the overall structure of the page is logical and easy to navigate for users with assistive technologies. These improvements will help make the website more inclusive and usable for a wider range of users, including those with visual impairments or other disabilities. **NOTE: If you use a screen reader and notice any issues with the accessibility of the website after this change, please let me know so I can address them!**
