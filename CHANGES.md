@@ -1,3 +1,9 @@
+2026-05-24:
+
+- Update web TTS voice list and demos. Festvox Kal is now the same version used on the DASDEC (with credit to GitHub user [ElijahHamilton](https://github.com/ElijahHamilton/) for providing the binary and command-line options for Kal!), and Fonix Roger has been added. [Fonix Roger](https://github.com/wagwan-piffting-blud/Fonix-Roger) was one of the contenders for CRS-era NOAA Weather Radio voices (~2002), but ultimately lost out to the Speechify lineup. Fonix Roger comes from the same Fonix as the DECTalk lineup after the buyout of Digital Equipment Corporation, and has a similar, robotic voice quality to the DECTalk voices. Fonix Roger is a good addition to the web TTS voice lineup because it provides another option for users who prefer a more "classic" TTS voice, which can be useful for certain types of products or for users who want a "what if" experience with a voice that was considered for use in NOAA Weather Radio during the CRS era. Enjoy!
+
+---
+
 2026-05-23:
 
 - Update phonemizer tool to handle more edge cases (the word "Louisville", for example, no longer causes an error). Thank you to Jasmine in the GWES Discord for reporting this issue.
