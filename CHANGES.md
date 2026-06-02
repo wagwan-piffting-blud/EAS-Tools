@@ -1,6 +1,12 @@
+2026-06-01:
+
+- Update FAQ to add common resource links for users who want to learn more about the EAS, audio/video editing in general, TTS, that kind of thing. Update other page docs as necessary. Thanks to [JP's EAS Mocks](https://www.youtube.com/@jps-EAS-Mocks) for the inspiration for the resources section!
+
+---
+
 2026-05-29:
 
-- Fonix Roger has been superseded by AcuVoice Roger. Same voice, MUCH better quality. The web TTS voice list and demos have been updated to reflect this change. AcuVoice Roger is the Desktop version of Fonix Roger, and has a much higher quality than the original Fonix Roger voice. The original Fonix Roger voice was a bit robotic and had some weird pronunciation issues, but AcuVoice Roger has much better pronunciation and slightly clearer voice quality. Enjoy.
+- Fonix Roger has been superseded by [AcuVoice Roger](https://github.com/wagwan-piffting-blud/AcuVoice-Roger). Same voice as Fonix Roger, MUCH better quality. The web TTS voice list and demos have been updated to reflect this change. AcuVoice Roger is the Desktop version of Fonix Roger, and has a much higher quality than the original Fonix Roger voice. The original Fonix Roger had some weird pronunciation issues, but AcuVoice Roger has much better pronunciation and slightly clearer voice quality. **As a result, Fonix Roger is no longer available from the Web TTS service due to the superior quality of AcuVoice Roger.** Fonix Roger can still be installed locally, however, as a standalone SAPI voice from the link below. Enjoy AcuVoice Roger!
 
 ---
 
