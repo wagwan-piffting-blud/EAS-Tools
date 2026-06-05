@@ -1,6 +1,6 @@
 2026-06-05:
 
-- Update WarnGen a slight bit to prepare for mobile app deployment.
+- Update WarnGen a bit to prepare for mobile app deployment. These changes should be invisible on web, but they are necessary to ensure that the mobile app can properly load and run WarnGen without any issues.
 - Update workflow to add Digital Asset Links file for mobile app deployment. This allows the mobile app to verify that it is associated with the correct website, which is necessary for certain features such as deep linking and app-to-web communication.
 
 ---
