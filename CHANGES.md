@@ -1,3 +1,10 @@
+2026-06-05:
+
+- Update WarnGen a slight bit to prepare for mobile app deployment.
+- Update workflow to add Digital Asset Links file for mobile app deployment. This allows the mobile app to verify that it is associated with the correct website, which is necessary for certain features such as deep linking and app-to-web communication.
+
+---
+
 2026-06-01:
 
 - Update FAQ to add common resource links for users who want to learn more about the EAS, audio/video editing in general, TTS, that kind of thing. Update other page docs as necessary. Thanks to [JP's EAS Mocks](https://www.youtube.com/@jps-EAS-Mocks) for the inspiration for the resources section!

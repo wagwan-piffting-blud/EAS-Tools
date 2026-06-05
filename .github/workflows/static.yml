@@ -38,6 +38,10 @@ jobs:
         with:
           # Upload entire repository
           path: '.'
+          # Include dot-prefixed files/dirs (e.g. .well-known/assetlinks.json).
+          # Without this the action runs `tar --exclude=.[^/]*`, which strips
+          # every top-level hidden entry and 404s the Digital Asset Links file.
+          include-hidden-files: true
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
