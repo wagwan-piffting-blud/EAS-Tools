@@ -80,7 +80,7 @@
         ]
     },
     "XJ_WXR_KIH61_CRS": {
-        "label": "XJ – WXR – KIH61 (CRS)",
+        "label": "XJ - WXR - KIH61 (CRS)",
         "effects": [
             "highpass",
             "300",
@@ -101,7 +101,7 @@
         ]
     },
     "XJ_FM_MODERN": {
-        "label": "XJ – FM Modern",
+        "label": "XJ - FM Modern",
         "effects": [
             "highpass",
             "50",
@@ -336,7 +336,7 @@
         ]
     },
     "NWR_KZZ58_WIRELESS": {
-        "label": "NWR – What if KZZ58 went wireless",
+        "label": "NWR - What if KZZ58 went wireless",
         "effects": [
             "gain",
             "-5",
@@ -357,10 +357,12 @@
             "+6",
             "treble",
             "-6",
-            "rate",
-            "8500",
-            "rate",
-            "48000",
+            "downsample",
+            "3",
+            "upsample",
+            "3",
+            "lowpass",
+            "3800",
             "gain",
             "-2",
             "dither",
@@ -368,7 +370,7 @@
         ]
     },
     "NWR_WIRELESS_NO_NOISE": {
-        "label": "NWR – WIRELESS (no noise)",
+        "label": "NWR - WIRELESS (no noise)",
         "effects": [
             "gain",
             "-3",
@@ -376,10 +378,12 @@
             "-6",
             "treble",
             "-6",
-            "rate",
-            "10000",
-            "rate",
-            "48000",
+            "downsample",
+            "3",
+            "upsample",
+            "3",
+            "lowpass",
+            "5000",
             "gain",
             "-1",
             "dither",
@@ -387,7 +391,7 @@
         ]
     },
     "NWR_KIG79_WIRELESS_PROTO_2": {
-        "label": "NWR – KIG79 Wireless Proto 2",
+        "label": "NWR - KIG79 Wireless Proto 2",
         "effects": [
             "gain",
             "-6",
@@ -408,10 +412,12 @@
             "+10",
             "treble",
             "-8",
-            "rate",
-            "9000",
-            "rate",
-            "48000",
+            "downsample",
+            "3",
+            "upsample",
+            "3",
+            "lowpass",
+            "3800",
             "gain",
             "-3",
             "dither",
@@ -419,7 +425,7 @@
         ]
     },
     "NWR_WIRELESS_BUT_VERY_BASSY": {
-        "label": "NWR – WIRELESS (very bassy)",
+        "label": "NWR - WIRELESS (very bassy)",
         "effects": [
             "gain",
             "-8",
@@ -440,10 +446,12 @@
             "overdrive",
             "5",
             "12",
-            "rate",
-            "8500",
-            "rate",
-            "48000",
+            "downsample",
+            "3",
+            "upsample",
+            "3",
+            "lowpass",
+            "3600",
             "gain",
             "-3",
             "dither",
@@ -451,7 +459,7 @@
         ]
     },
     "NWR_WIRELESS_NOT_AS_BASSY": {
-        "label": "NWR – WIRELESS (not as bassy)",
+        "label": "NWR - WIRELESS (not as bassy)",
         "effects": [
             "gain",
             "-4",
@@ -469,10 +477,12 @@
             "-8",
             "-90",
             "0.2",
-            "rate",
-            "10000",
-            "rate",
-            "48000",
+            "downsample",
+            "3",
+            "upsample",
+            "3",
+            "lowpass",
+            "4200",
             "gain",
             "-2",
             "dither",

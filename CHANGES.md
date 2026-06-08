@@ -1,3 +1,9 @@
+2026-06-07:
+
+- Update audio splicer tool in multiple ways, including adding a new, dedicated "60hz Hum" effect and bitcrush/alias effect, un-gate static noise so it's not only available when using a macro (meaning, it can now be used on its own without needing to be part of a macro; this also applies to the new effects), macro render results are now cached (so if you pause/play the audio with a macro active, it does not re-render the entire macro from scratch every time), and various other bug fixes and improvements to the code. Playback is also now seekable rather than only allowing pausing/playing from the beginning, which is a nice quality of life improvement for those that want to listen to certain parts of the audio rather than listening to the entire file.
+
+---
+
 2026-06-05:
 
 - Update WarnGen a bit to prepare for mobile app deployment. These changes should be invisible on web, but they are necessary to ensure that the mobile app can properly load and run WarnGen without any issues.

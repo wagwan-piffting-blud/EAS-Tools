@@ -78,9 +78,16 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     let previewMacroBtnDisabledByTask = false;
     const enableStaticNoiseCheckbox = panel.querySelector('#enable-static-noise');
     const staticNoiseOptions = panel.querySelector('#staticNoiseOptions');
+    const enable60HzHumCheckbox = panel.querySelector('#enable-60hz-hum');
+    const humOptions = panel.querySelector('#humOptions');
     const staticNoiseLevelInput = panel.querySelector('#static-noise-level');
     const staticNoiseFadeDepthInput = panel.querySelector('#static-noise-fade-depth');
     const staticNoiseFadeRateInput = panel.querySelector('#static-noise-fade-rate');
+    const humLevelInput = panel.querySelector('#hum-level');
+    const enableBitcrushCheckbox = panel.querySelector('#enable-bitcrush');
+    const bitcrushOptions = panel.querySelector('#bitcrushOptions');
+    const bitcrushBitsInput = panel.querySelector('#bitcrush-bits');
+    const bitcrushDownsampleInput = panel.querySelector('#bitcrush-downsample');
     const shouldBitcrushSpeechifyDiv = panel.querySelector('#shouldBitcrushSpeechifyContainer2');
     const shouldBitcrushSpeechifyCheckbox = panel.querySelector('#shouldBitcrushSpeechify2');
 
@@ -101,11 +108,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         queue: [],
         currentJob: null,
     };
+    let enable60HzHum = enable60HzHumCheckbox?.checked === true;
     let currentSegmentId = null;
     const segmentPlayButtons = new Map();
     let pendingSegmentPlay = null;
     let macroPreviewPlayback = null;
     let macroPreviewMarkerInterval = null;
+    let macroRenderBlobCache = null;
     let macroWaveformPcm = null;
     let macroWaveformSampleRate = 0;
     let macroWaveformActiveKey = null;
@@ -130,10 +139,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     let playSpan = 0;
     let playStartedAt = 0;
     let pausedPlayback = null;
+    let playheadTime = 0;
     let dragMode = null;
     let touchSelectionId = null;
     let pinchState = null;
     let touchPan = null;
+    let touchPlayhead = null;
     let cacheDbPromise = null;
     let ttsLoader = null;
     let voiceListLoaded = false;
@@ -223,7 +234,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (!state.pcm.length) return false;
         const macroId = (typeof getSelectedMacroId === 'function' ? getSelectedMacroId() : 'FLAT') || 'FLAT';
         const staticEnabled = enableStaticNoiseCheckbox?.checked === true;
-        return macroId !== 'FLAT' || staticEnabled;
+        const bitcrushEnabled = enableBitcrushCheckbox?.checked === true;
+        return macroId !== 'FLAT' || staticEnabled || bitcrushEnabled;
     };
 
     const getMacroWaveformKey = () => {
@@ -231,12 +243,16 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const macroId = (typeof getSelectedMacroId === 'function' ? getSelectedMacroId() : 'FLAT') || 'FLAT';
         const staticEnabled = enableStaticNoiseCheckbox?.checked === true;
         const opts = staticEnabled ? getStaticNoiseOptions() : null;
+        const bitcrushEnabled = enableBitcrushCheckbox?.checked === true;
         const parts = [
             macroId,
             staticEnabled ? '1' : '0',
             opts ? opts.level : '0',
             opts ? opts.fadeDepth : '0',
             opts ? opts.fadeRateHz : '0',
+            bitcrushEnabled ? '1' : '0',
+            bitcrushEnabled ? (bitcrushBitsInput?.value ?? '') : '',
+            bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
             state.pcm.length,
             state.sampleRate,
         ];
@@ -296,19 +312,15 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         (async () => {
             let processed = null;
             try {
-                const blob = await renderMacroWithSox(pcmRef, sr, macroId, 0);
+                const fxPcm = applyExportFxToPcm(pcmRef, sr, macroId);
+                const blob = await renderMacroWithSox(fxPcm, sr, macroId, 0);
                 if (blob) {
                     processed = await decodeWavBlobToFloat32(blob);
+                } else if (fxPcm !== pcmRef) {
+                    processed = { pcm: fxPcm, sampleRate: sr };
                 }
             } catch (err) {
                 console.error('Macro waveform render failed', err);
-            }
-
-            if (!processed && enableStaticNoiseCheckbox?.checked === true) {
-                processed = {
-                    pcm: addStaticNoiseToPcm(pcmRef, sr, getStaticNoiseOptions()),
-                    sampleRate: sr,
-                };
             }
 
             if (jobId !== macroWaveformJobSeq) return;
@@ -536,6 +548,15 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                         level: staticNoiseLevelInput ? staticNoiseLevelInput.value : null,
                         fadeDepth: staticNoiseFadeDepthInput ? staticNoiseFadeDepthInput.value : null,
                         fadeRateHz: staticNoiseFadeRateInput ? staticNoiseFadeRateInput.value : null,
+                    },
+                    humEnabled: enable60HzHumCheckbox ? enable60HzHumCheckbox.checked : false,
+                    humOptions: {
+                        level: humLevelInput ? humLevelInput.value : null,
+                    },
+                    bitcrushEnabled: enableBitcrushCheckbox ? enableBitcrushCheckbox.checked : false,
+                    bitcrushOptions: {
+                        bits: bitcrushBitsInput ? bitcrushBitsInput.value : null,
+                        downsample: bitcrushDownsampleInput ? bitcrushDownsampleInput.value : null,
                     },
                 };
                 tx.objectStore(STORE).put(payload, CACHE_KEY);
@@ -1112,6 +1133,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         ctx.fillRect(selStartX, 0, selWidth, h);
         ctx.strokeStyle = 'rgba(90, 180, 255, 0.7)';
         ctx.strokeRect(selStartX + 0.5, 0.5, selWidth - 1, h - 1);
+
+        drawPlayhead();
     };
 
     const getMacroPreviewAbsoluteTime = () => {
@@ -1124,32 +1147,72 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return null;
     };
 
-    const updatePlaybackMarker = () => {
-        if (!playingSource || playSpan <= 0) return;
+    const PLAYHEAD_HANDLE_ZONE_PX = 22;
+    const PLAYHEAD_GRAB_PX = 10;
+    const PLAYHEAD_TOUCH_ZONE_PX = 48;
+    const PLAYHEAD_TOUCH_GRAB_PX = 30;
+    const POINTER_IS_COARSE = (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches) || ((navigator.maxTouchPoints || 0) > 0);
 
-        drawWaveform();
-
-        let absoluteTime = getMacroPreviewAbsoluteTime();
-        if (absoluteTime === null) {
+    const getNeedleTime = () => {
+        if (playingSource && playSpan > 0) {
+            const macroT = getMacroPreviewAbsoluteTime();
+            if (macroT !== null) return macroT;
             const ctxAudio = audioCtx || getAudioCtx();
             const elapsed = Math.max(0, ctxAudio.currentTime - playStartedAt);
-            absoluteTime = playStartOffset + elapsed;
+            return Math.min(playStartOffset + elapsed, playStartOffset + playSpan);
         }
+        return clamp(playheadTime, 0, duration());
+    };
 
+    const drawPlayhead = () => {
+        const d = duration();
+        if (d <= 0) return;
+        const viewStart = state.viewStart ?? 0;
+        const viewEnd = state.viewEnd ?? d;
+        const viewSpan = Math.max(0.001, viewEnd - viewStart);
+        const t = getNeedleTime();
+        if (t < viewStart || t > viewEnd) return;
+        const isPlaying = !!playingSource && playSpan > 0;
+        const xr = Math.round(((t - viewStart) / viewSpan) * canvas.width);
+        const lineW = POINTER_IS_COARSE ? 6 : 2;
+        const hw = POINTER_IS_COARSE ? 34 : 7;
+        const hh = POINTER_IS_COARSE ? 26 : 13;
+        ctx.save();
+        ctx.fillStyle = isPlaying ? 'rgba(255, 60, 60, 0.95)' : '#ff9800';
+        ctx.fillRect(xr - Math.floor(lineW / 2), 0, lineW, canvas.height);
+        ctx.beginPath();
+        ctx.moveTo(xr - hw, 0);
+        ctx.lineTo(xr + hw, 0);
+        ctx.lineTo(xr, hh);
+        ctx.closePath();
+        ctx.fill();
+        if (POINTER_IS_COARSE) {
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        ctx.restore();
+    };
+
+    const setPlayhead = (t) => {
+        playheadTime = clamp(t, 0, duration());
+        drawWaveform();
+    };
+
+    const isOnPlayheadHandle = (xCss, yCss, rectWidth, zonePx = PLAYHEAD_HANDLE_ZONE_PX, grabPx = PLAYHEAD_GRAB_PX) => {
+        if (yCss > zonePx) return false;
         const viewStart = state.viewStart ?? 0;
         const viewEnd = state.viewEnd ?? duration();
         const viewSpan = Math.max(0.001, viewEnd - viewStart);
+        const t = getNeedleTime();
+        if (t < viewStart || t > viewEnd) return false;
+        const needleXCss = ((t - viewStart) / viewSpan) * rectWidth;
+        return Math.abs(xCss - needleXCss) <= grabPx;
+    };
 
-        const tClamped = Math.min(Math.max(absoluteTime, viewStart), viewEnd);
-        const markerX = ((tClamped - viewStart) / viewSpan) * canvas.width;
-
-        ctx.save();
-        try {
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-            ctx.fillRect(Math.round(markerX), 0, 2, canvas.height);
-        } finally {
-            ctx.restore();
-        }
+    const updatePlaybackMarker = () => {
+        if (!playingSource || playSpan <= 0) return;
+        drawWaveform();
     };
 
 
@@ -1224,6 +1287,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
     };
 
+    const getPlaybackPcm = () => {
+        const macroId = (typeof getSelectedMacroId === 'function' ? getSelectedMacroId() : 'FLAT') || 'FLAT';
+        return applyExportFxToPcm(state.pcm, state.sampleRate, macroId);
+    };
+
     const playSelection = async () => {
         if (!state.pcm.length) return;
         const blob = pcmToWav(state.pcm, state.sampleRate);
@@ -1234,7 +1302,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const resumeInfo = (pausedPlayback && pausedPlayback.mode === 'selection' && pausedPlayback.resumeFrom >= selectionStart && pausedPlayback.resumeFrom <= selectionEnd)
             ? pausedPlayback
             : null;
-        const start = resumeInfo ? resumeInfo.resumeFrom : selectionStart;
+        const playheadInSelection = playheadTime > selectionStart && playheadTime < selectionEnd;
+        const start = resumeInfo ? resumeInfo.resumeFrom : (playheadInSelection ? playheadTime : selectionStart);
         const endPos = resumeInfo ? Math.min(selectionEnd, resumeInfo.end) : selectionEnd;
         const len = Math.max(0.001, endPos - start);
         if (start >= duration() || len <= 0) return;
@@ -1243,7 +1312,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (ctxAudio.state === 'suspended') await ctxAudio.resume();
         const buffer = ctxAudio.createBuffer(1, state.pcm.length, state.sampleRate);
         const playbackGain = getExportGain();
-        applyGainToAudioBuffer(buffer, state.pcm, playbackGain);
+        applyGainToAudioBuffer(buffer, getPlaybackPcm(), playbackGain);
         const source = ctxAudio.createBufferSource();
         source.buffer = buffer;
         source.connect(ctxAudio.destination);
@@ -1271,7 +1340,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const playWholeFile = async () => {
         if (!state.pcm.length) return;
         const resumeInfo = pausedPlayback && pausedPlayback.mode === 'all' ? pausedPlayback : null;
-        const start = resumeInfo ? resumeInfo.resumeFrom : 0;
+        const start = resumeInfo ? resumeInfo.resumeFrom : clamp(playheadTime, 0, duration());
         const endPos = duration();
         const len = Math.max(0.001, endPos - start);
         if (start >= endPos || len <= 0) return;
@@ -1280,7 +1349,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (ctxAudio.state === 'suspended') await ctxAudio.resume();
         const buffer = ctxAudio.createBuffer(1, state.pcm.length, state.sampleRate);
         const playbackGain = getExportGain();
-        applyGainToAudioBuffer(buffer, state.pcm, playbackGain);
+        applyGainToAudioBuffer(buffer, getPlaybackPcm(), playbackGain);
         const source = ctxAudio.createBufferSource();
         source.buffer = buffer;
         source.connect(ctxAudio.destination);
@@ -1584,7 +1653,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             }
             voiceListLoaded = true;
 
-            // Append iOS native voices if available
             if (window.EASBridge) {
                 window.EASBridge.on('splicer:nativeVoicesData', (data) => {
                     const voices = data?.voices;
@@ -2142,6 +2210,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             if (!state.pcm.length) return;
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
             syncViewWindow();
             const viewSpan = state.viewEnd - state.viewStart;
             const t = clamp(state.viewStart + (x / rect.width) * viewSpan, 0, duration());
@@ -2150,7 +2219,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 viewStart: state.viewStart,
                 viewEnd: state.viewEnd,
             };
-            if (event.shiftKey) {
+            if (!event.shiftKey && isOnPlayheadHandle(x, y, rect.width)) {
+                dragMode = 'playhead';
+                if (playingSource) stopPlayback();
+                setPlayhead(t);
+            } else if (event.shiftKey) {
                 dragMode = 'pan';
             } else {
                 const distStart = Math.abs(t - state.selection.start);
@@ -2161,7 +2234,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
             const move = (e) => {
                 const nx = e.clientX - rect.left;
-                if (dragMode === 'pan') {
+                if (dragMode === 'playhead') {
+                    setPlayhead(clamp(state.viewStart + (nx / rect.width) * viewSpan, 0, duration()));
+                } else if (dragMode === 'pan') {
                     const deltaPixels = e.clientX - panState.startX;
                     const deltaTime = (deltaPixels / rect.width) * (panState.viewEnd - panState.viewStart);
                     let newStart = panState.viewStart - deltaTime;
@@ -2191,6 +2266,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             };
             document.addEventListener('mousemove', move);
             document.addEventListener('mouseup', up);
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            if (dragMode || !state.pcm.length) return;
+            const rect = canvas.getBoundingClientRect();
+            const overHandle = isOnPlayheadHandle(event.clientX - rect.left, event.clientY - rect.top, rect.width);
+            canvas.style.cursor = overHandle ? 'ew-resize' : '';
         });
 
         canvas.addEventListener('wheel', (event) => {
@@ -2234,18 +2316,32 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
             if (event.touches.length === 1) {
                 const t = event.touches[0];
-                touchPan = {
-                    id: t.identifier,
-                    startX: t.clientX,
-                    startY: t.clientY,
-                    startViewStart: state.viewStart,
-                    startViewEnd: state.viewEnd,
-                    moved: false,
-                    startTime: Date.now(),
-                };
-                pinchState = null;
-                touchSelectionId = null;
-                dragMode = null;
+                const xCss = t.clientX - rect.left;
+                const yCss = t.clientY - rect.top;
+                if (isOnPlayheadHandle(xCss, yCss, rect.width, PLAYHEAD_TOUCH_ZONE_PX, PLAYHEAD_TOUCH_GRAB_PX)) {
+                    touchPlayhead = { id: t.identifier };
+                    touchPan = null;
+                    pinchState = null;
+                    touchSelectionId = null;
+                    dragMode = null;
+                    if (playingSource) stopPlayback();
+                    const span = state.viewEnd - state.viewStart;
+                    setPlayhead(clamp(state.viewStart + (xCss / rect.width) * span, 0, duration()));
+                } else {
+                    touchPan = {
+                        id: t.identifier,
+                        startX: t.clientX,
+                        startY: t.clientY,
+                        startViewStart: state.viewStart,
+                        startViewEnd: state.viewEnd,
+                        moved: false,
+                        startTime: Date.now(),
+                    };
+                    pinchState = null;
+                    touchSelectionId = null;
+                    touchPlayhead = null;
+                    dragMode = null;
+                }
             } else if (event.touches.length === 2) {
                 const a = event.touches[0];
                 const b = event.touches[1];
@@ -2261,11 +2357,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 };
                 touchPan = null;
                 touchSelectionId = null;
+                touchPlayhead = null;
                 dragMode = null;
             } else {
                 pinchState = null;
                 touchPan = null;
                 touchSelectionId = null;
+                touchPlayhead = null;
                 dragMode = null;
             }
         }, { passive: false });
@@ -2275,7 +2373,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             if (!state.pcm.length) return;
             const rect = canvas.getBoundingClientRect();
 
-            if (event.touches.length === 1 && touchPan && getTouchById(event.touches, touchPan.id)) {
+            if (event.touches.length === 1 && touchPlayhead && getTouchById(event.touches, touchPlayhead.id)) {
+                const t = getTouchById(event.touches, touchPlayhead.id);
+                const span = state.viewEnd - state.viewStart;
+                setPlayhead(clamp(state.viewStart + ((t.clientX - rect.left) / rect.width) * span, 0, duration()));
+            } else if (event.touches.length === 1 && touchPan && getTouchById(event.touches, touchPan.id)) {
                 const t = getTouchById(event.touches, touchPan.id);
                 const span = touchPan.startViewEnd - touchPan.startViewStart;
                 const deltaPixels = t.clientX - touchPan.startX;
@@ -2338,7 +2440,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }, { passive: false });
 
         canvas.addEventListener('touchend', (event) => {
-            if (touchPan && !touchPan.moved) {
+            if (!touchPlayhead && touchPan && !touchPan.moved) {
                 const elapsed = Date.now() - touchPan.startTime;
                 if (elapsed <= TAP_MAX_MS) {
                     const rect = canvas.getBoundingClientRect();
@@ -2355,6 +2457,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 }
             }
 
+            if (touchPlayhead && !getTouchById(event.touches, touchPlayhead.id)) {
+                touchPlayhead = null;
+            }
+
             if (event.touches.length === 1) {
                 const remaining = event.touches[0];
                 touchPan = {
@@ -2367,11 +2473,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     startTime: Date.now(),
                 };
                 pinchState = null;
+                touchPlayhead = null;
             } else {
                 touchPan = null;
                 pinchState = null;
                 touchSelectionId = null;
                 dragMode = null;
+                touchPlayhead = null;
             }
         }, { passive: false });
 
@@ -2380,6 +2488,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             pinchState = null;
             touchSelectionId = null;
             dragMode = null;
+            touchPlayhead = null;
         });
 
         fileInput?.addEventListener('change', (e) => {
@@ -2431,9 +2540,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             stopPlayback();
             state.segments = [];
             state.pcm = new Float32Array(0);
+            playheadTime = 0;
             setSelection(0, 0);
             updateSegmentsList();
             invalidateMacroWaveformCache(true);
+            macroRenderBlobCache = null;
             drawWaveform();
             clearCache();
             setButtonDisabledState(true);
@@ -2569,13 +2680,22 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         voiceSelect.value = payload.ttsVoiceSelection || PIPER_VOICE;
         ttsInput.value = payload.ttsText || '';
         macroSelect.value = payload.macroSelection || 'FLAT';
-        spliceSilenceInput.value = payload.spliceOptions?.silence || 0.5;
-        spliceLoudnessInput.value = payload.spliceOptions?.loudness || 0;
+        spliceSilenceInput.value = payload.spliceSilenceInput ?? 0.5;
+        spliceLoudnessInput.value = payload.spliceLoudnessInput ?? 0;
         enableStaticNoiseCheckbox.checked = payload.staticEnabled || false;
         syncStaticNoiseUi();
         staticNoiseLevelInput.value = payload.staticOptions?.level || 0.14;
         staticNoiseFadeDepthInput.value = payload.staticOptions?.fadeDepth || 0.45;
         staticNoiseFadeRateInput.value = payload.staticOptions?.fadeRateHz || 0.6;
+        enable60HzHumCheckbox.checked = payload.humEnabled || false;
+        sync60HzHumUi();
+        humLevelInput.value = payload.humOptions?.level || 0.01;
+        if (enableBitcrushCheckbox) {
+            enableBitcrushCheckbox.checked = payload.bitcrushEnabled || false;
+            syncBitcrushUi();
+            if (bitcrushBitsInput) bitcrushBitsInput.value = payload.bitcrushOptions?.bits || 8;
+            if (bitcrushDownsampleInput) bitcrushDownsampleInput.value = payload.bitcrushOptions?.downsample || 1;
+        }
         window.splicerEditor.setValue(payload.ttsText || '');
         state.sampleRate = payload.sampleRate || state.sampleRate;
         state.segments = payload.segments.map((s) => ({
@@ -2723,6 +2843,117 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return out;
     }
 
+    function bitcrushPcm(pcm, sampleRate, options) {
+        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
+            return pcm;
+        }
+
+        const bitsRaw = options && Number.isFinite(options.bits) ? options.bits : 8;
+        const bits = Math.max(1, Math.min(16, Math.round(bitsRaw)));
+
+        const factorRaw = options && Number.isFinite(options.downsampleFactor) ? options.downsampleFactor : 1;
+        const factor = Math.max(1, Math.min(64, Math.round(factorRaw)));
+
+        if (bits >= 16 && factor <= 1) {
+            return pcm;
+        }
+
+        const out = new Float32Array(pcm.length);
+        const levels = Math.pow(2, bits - 1);
+        let held = 0;
+
+        for (let i = 0; i < pcm.length; i++) {
+            if (i % factor === 0) {
+                let q = Math.round(pcm[i] * levels) / levels;
+                if (q > 1) q = 1;
+                else if (q < -1) q = -1;
+                held = q;
+            }
+            out[i] = held;
+        }
+
+        return out;
+    }
+
+    function add60HzHumToPcm(pcm, sampleRate, level = 0.01) {
+        const out = new Float32Array(pcm.length);
+        const twoPi = 2 * Math.PI;
+        const sr = sampleRate || 44100;
+
+        for (let i = 0; i < pcm.length; i++) {
+            const s = pcm[i];
+            const t = i / sr;
+
+            const hum = Math.sin(twoPi * 60 * t) * level;
+
+            let v = s + hum;
+            if (v > 1) v = 1;
+            else if (v < -1) v = -1;
+
+            out[i] = v;
+        }
+
+        return out;
+    }
+
+    function applyExportFxToPcm(pcm, sampleRate, macroId) {
+        const id = (macroId || 'FLAT').toUpperCase();
+        let workingPcm = pcm;
+
+        const enableBitcrushEl = document.getElementById('enable-bitcrush');
+        const enableBitcrush = enableBitcrushEl ? enableBitcrushEl.checked === true : false;
+
+        if (enableBitcrush) {
+            const bitsInput = document.getElementById('bitcrush-bits');
+            const bits = bitsInput ? parseFloat(bitsInput.value) : 8;
+
+            const downsampleInput = document.getElementById('bitcrush-downsample');
+            const downsampleFactor = downsampleInput ? parseFloat(downsampleInput.value) : 1;
+
+            workingPcm = bitcrushPcm(workingPcm, sampleRate, {
+                bits: bits,
+                downsampleFactor: downsampleFactor
+            });
+        }
+
+        const enableStaticNoiseEl = document.getElementById('enable-static-noise');
+        const enableStaticNoise = enableStaticNoiseEl ? enableStaticNoiseEl.checked === true : false;
+
+        if (enableStaticNoise && id !== 'NOISY_DX_RECORDING') {
+            const noiseLevelInput = document.getElementById('static-noise-level');
+            const noiseLevel = noiseLevelInput ? parseFloat(noiseLevelInput.value) : 0.01;
+
+            const fadeDepthInput = document.getElementById('static-noise-fade-depth');
+            const fadeDepth = fadeDepthInput ? parseFloat(fadeDepthInput.value) : 0.0;
+
+            const fadeRateInput = document.getElementById('static-noise-fade-rate');
+            const fadeRateHz = fadeRateInput ? parseFloat(fadeRateInput.value) : 0.0;
+
+            workingPcm = addStaticNoiseToPcm(workingPcm, sampleRate, {
+                level: noiseLevel,
+                fadeDepth: fadeDepth,
+                fadeRateHz: fadeRateHz
+            });
+        }
+
+        else if (id === 'NOISY_DX_RECORDING') {
+            workingPcm = addStaticNoiseToPcm(workingPcm, sampleRate, {
+                level: 0.14,
+                fadeDepth: 0.45,
+                fadeRateHz: 0.6
+            });
+        }
+
+        if (enable60HzHum) {
+            const humLevelInput = document.getElementById('hum-level');
+            const humLevel = humLevelInput ? parseFloat(humLevelInput.value) : 0.01;
+
+            workingPcm = add60HzHumToPcm(workingPcm, sampleRate, humLevel);
+        }
+
+        return workingPcm;
+    }
+
     async function renderMacroWithSox(pcm, sampleRate, macroId, loudnessDbfs = getExportLoudnessDbfs()) {
         const id = (macroId || 'FLAT').toUpperCase();
 
@@ -2743,35 +2974,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const loudnessArgs = buildSoxLoudnessArgs(loudnessDbfs);
         if (loudnessArgs.length) effects.push(...loudnessArgs);
 
-        let workingPcm = pcm;
-        const enableStaticNoise = document.getElementById('enable-static-noise').checked === true;
-
-        if (enableStaticNoise && id !== 'NOISY_DX_RECORDING') {
-            const noiseLevelInput = document.getElementById('static-noise-level');
-            const noiseLevel = noiseLevelInput ? parseFloat(noiseLevelInput.value) : 0.01;
-
-            const fadeDepthInput = document.getElementById('static-noise-fade-depth');
-            const fadeDepth = fadeDepthInput ? parseFloat(fadeDepthInput.value) : 0.0;
-
-            const fadeRateInput = document.getElementById('static-noise-fade-rate');
-            const fadeRateHz = fadeRateInput ? parseFloat(fadeRateInput.value) : 0.0;
-
-            workingPcm = addStaticNoiseToPcm(pcm, sampleRate, {
-                level: noiseLevel,
-                fadeDepth: fadeDepth,
-                fadeRateHz: fadeRateHz
-            });
-        }
-
-        else if (id === 'NOISY_DX_RECORDING') {
-            workingPcm = addStaticNoiseToPcm(pcm, sampleRate, {
-                level: 0.14,
-                fadeDepth: 0.45,
-                fadeRateHz: 0.6
-            });
-        }
-
-        const raw = float32ToSoxRaw(workingPcm);
+        const raw = float32ToSoxRaw(pcm);
 
         const moduleConfig = {
             arguments: [
@@ -2855,11 +3058,14 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
         const id = macroId || 'FLAT';
         const loudnessDbfs = getExportLoudnessDbfs();
+
+        const fxPcm = applyExportFxToPcm(pcm, sampleRate, id);
+
         const exportGain = Math.pow(10, loudnessDbfs / 20);
-        const pcmForExport = clonePcmWithGain(pcm, exportGain);
+        const pcmForExport = clonePcmWithGain(fxPcm, exportGain);
 
         try {
-            const soxBlob = await renderMacroWithSox(pcm, sampleRate, id, loudnessDbfs);
+            const soxBlob = await renderMacroWithSox(fxPcm, sampleRate, id, loudnessDbfs);
             if (soxBlob) {
                 return soxBlob;
             }
@@ -2872,6 +3078,51 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
     window.EASSplicerFX = window.EASSplicerFX || {};
     window.EASSplicerFX.renderMacroToWavFromPcm = renderMacroToWavFromPcm;
+
+    const getMacroRenderKey = (macroId) => {
+        const staticEnabled = enableStaticNoiseCheckbox?.checked === true;
+        const humEnabled = enable60HzHumCheckbox?.checked === true;
+        const bitcrushEnabled = enableBitcrushCheckbox?.checked === true;
+        return [
+            (macroId || 'FLAT').toUpperCase(),
+            state.sampleRate,
+            getExportLoudnessDbfs(),
+            staticEnabled ? '1' : '0',
+            staticEnabled ? (staticNoiseLevelInput?.value ?? '') : '',
+            staticEnabled ? (staticNoiseFadeDepthInput?.value ?? '') : '',
+            staticEnabled ? (staticNoiseFadeRateInput?.value ?? '') : '',
+            humEnabled ? '1' : '0',
+            humEnabled ? (humLevelInput?.value ?? '') : '',
+            bitcrushEnabled ? '1' : '0',
+            bitcrushEnabled ? (bitcrushBitsInput?.value ?? '') : '',
+            bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
+        ].join('|');
+    };
+
+    const getSegmentPcmRefs = () => state.segments.map((seg) => seg.pcm);
+
+    const sameSegmentPcmRefs = (a, b) => {
+        if (!a || !b || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    };
+
+    const renderMacroBlobCached = async (macroId) => {
+        const key = getMacroRenderKey(macroId);
+        const segRefs = getSegmentPcmRefs();
+        if (macroRenderBlobCache
+            && macroRenderBlobCache.key === key
+            && sameSegmentPcmRefs(macroRenderBlobCache.segRefs, segRefs)) {
+            return macroRenderBlobCache.blob;
+        }
+        const blob = await renderMacroToWavFromPcm(state.pcm, state.sampleRate, macroId);
+        if (blob) {
+            macroRenderBlobCache = { key, blob, segRefs };
+        }
+        return blob;
+    };
 
     async function previewCurrentMacro() {
         if (typeof state === 'undefined' || !state.pcm || !state.pcm.length) {
@@ -2888,11 +3139,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         console.log('[Splicer] previewCurrentMacro macroId =', macroId);
 
         try {
-            const blob = await renderMacroToWavFromPcm(
-                state.pcm,
-                state.sampleRate,
-                macroId
-            );
+            const blob = await renderMacroBlobCached(macroId);
 
             if (playingSource) {
                 stopPlayback();
@@ -3011,11 +3258,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         console.log('[Splicer] exportWavWithCurrentMacro macroId =', macroId);
 
         try {
-            const blob = await renderMacroToWavFromPcm(
-                state.pcm,
-                state.sampleRate,
-                macroId
-            );
+            const blob = await renderMacroBlobCached(macroId);
 
             let label = macroId;
             if (macroSelect && macroSelect.selectedIndex >= 0) {
@@ -3044,6 +3287,23 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             staticNoisePreference = enabled;
         }
         staticNoiseOptions.style.display = enabled ? 'block' : 'none';
+        return enabled;
+    };
+
+    const sync60HzHumUi = () => {
+        if (!enable60HzHumCheckbox || !humOptions) return false;
+        const enabled = enable60HzHumCheckbox.checked === true;
+        if (!enable60HzHumCheckbox.disabled) {
+            enable60HzHum = enabled;
+        }
+        humOptions.style.display = enabled ? 'block' : 'none';
+        return enabled;
+    };
+
+    const syncBitcrushUi = () => {
+        if (!enableBitcrushCheckbox || !bitcrushOptions) return false;
+        const enabled = enableBitcrushCheckbox.checked === true;
+        bitcrushOptions.style.display = enabled ? 'block' : 'none';
         return enabled;
     };
 
@@ -3097,6 +3357,45 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             invalidateMacroPreview();
             scheduleMacroWaveformUpdate();
         });
+    }
+
+    if (enable60HzHumCheckbox) {
+        sync60HzHumUi();
+        enable60HzHumCheckbox.addEventListener('change', () => {
+            sync60HzHumUi();
+            invalidateMacroPreview();
+            scheduleMacroWaveformUpdate();
+        });
+    }
+
+    if (enableBitcrushCheckbox) {
+        syncBitcrushUi();
+        enableBitcrushCheckbox.addEventListener('change', () => {
+            syncBitcrushUi();
+            invalidateMacroPreview();
+            scheduleMacroWaveformUpdate();
+        });
+    }
+
+    if (bitcrushBitsInput && bitcrushDownsampleInput) {
+        const handleBitcrushParamChange = () => {
+            const bits = parseFloat(bitcrushBitsInput.value);
+            const downsample = parseFloat(bitcrushDownsampleInput.value);
+
+            if (Number.isNaN(bits) || bits < 1 || bits > 16) {
+                bitcrushBitsInput.value = '8';
+            }
+
+            if (Number.isNaN(downsample) || downsample < 1 || downsample > 64) {
+                bitcrushDownsampleInput.value = '1';
+            }
+
+            invalidateMacroPreview();
+            scheduleMacroWaveformUpdate();
+        };
+
+        bitcrushBitsInput.addEventListener('change', handleBitcrushParamChange);
+        bitcrushDownsampleInput.addEventListener('change', handleBitcrushParamChange);
     }
 
     if (staticNoiseLevelInput && staticNoiseFadeDepthInput && staticNoiseFadeRateInput) {
@@ -3208,6 +3507,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     staticNoiseLevelInput?.dispatchEvent(changeEvent);
     staticNoiseFadeDepthInput?.dispatchEvent(changeEvent);
     staticNoiseFadeRateInput?.dispatchEvent(changeEvent);
+    enableBitcrushCheckbox?.dispatchEvent(changeEvent);
     spliceLoudnessInput?.dispatchEvent(changeEvent);
 
     await loadSoxMacroDefs();
