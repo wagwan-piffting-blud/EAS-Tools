@@ -1,0 +1,43 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Low-passFilter:frequency="4500" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.005" Type="White"
+SelectAll:
+MixAndRender:
+Derez:Rate="0.63599998" Rez="1"
+Low-passFilter:frequency="4000" rolloff="dB24"
+Low-passFilter:frequency="5000" rolloff="dB48"
+TrimExtend:end-adjust="0.001" error-control="Show errors" start-adjust="0.001" t-units="seconds"
+SelectAll:
+MixAndRender:
+Select:End="0.1" Mode="Set" RelativeTo="ProjectEnd"
+Silence:Use_Preset="<Current Settings>"
+NewMonoTrack:
+Select:End="0.002" Mode="Set" RelativeTo="ProjectStart" Start="0" Track="1"
+Tone:Amplitude="0.125" Frequency="30" Interpolation="Linear" Waveform="Sine"
+TrimExtend:end-adjust="0.005" error-control="Show errors" start-adjust="0.005" t-units="seconds"
+Low-passFilter:frequency="4000" rolloff="dB24"
+NewMonoTrack:
+Select:End="0.002" Mode="Set" RelativeTo="ProjectEnd" Start="0" Track="2"
+Tone:Amplitude="0.125" Frequency="30" Interpolation="Linear" Waveform="Sine"
+Reverse:Use_Preset="<Factory Defaults>"
+TrimExtend:end-adjust="0.012" error-control="Show errors" start-adjust="0.012" t-units="seconds"
+Low-passFilter:frequency="4000" rolloff="dB24"
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="0" error-control="Show errors" start-adjust="0.325" t-units="seconds"
+NewMonoTrack:
+Select:End="0.001" Mode="Set" RelativeTo="ProjectStart" Start="0" Track="1"
+Tone:Amplitude="0.05" Frequency="128" Interpolation="Linear" Waveform="Sine"
+TrimExtend:end-adjust="0.012" error-control="Show errors" start-adjust="0.012" t-units="seconds"
+Low-passFilter:frequency="4000" rolloff="dB24"
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="1" error-control="Show errors" start-adjust="1" t-units="seconds"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="0.50118721"

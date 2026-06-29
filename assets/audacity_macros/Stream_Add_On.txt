@@ -1,0 +1,15 @@
+FilterCurve:f0="35.381823" f1="55.141023" f2="77.787795" f3="102.06756" f4="135.14394" f5="199.47843" f6="294.43897" f7="629.98312" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="0.60952377" v1="11.298412" v2="0.84444427" v3="0.84444427" v4="12.120635" v5="4.7206345" v6="0.022221565" v7="-0.21269894"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="4" Threshold_dB="-10.457575" Type="Leveller"
+Amplify:AllowClipping="0" Ratio="0.56234133"
+Flanger(linear):decrease="3" pos="193" sign="0" wet="81"
+Amplify:AllowClipping="0" Ratio="0.50118721"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+Roughrider2:Attack="0" Make-Up_Gain="0.12800001" Mix="0.46399999" Ratio="1" Release="0" Sensitivity="0.257"
+NoiseReduction:Use_Preset="<Factory Defaults>"
+Roughrider2:Attack="0" Make-Up_Gain="0.99599999" Mix="0.90799999" Ratio="1" Release="0" Sensitivity="0.61299998"
+High-passFilter:frequency="150" rolloff="dB12"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="0.79432821"

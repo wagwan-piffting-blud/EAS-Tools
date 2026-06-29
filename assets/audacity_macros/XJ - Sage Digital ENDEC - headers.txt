@@ -1,0 +1,4 @@
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="800" rolloff="dB12"
+High-passFilter:frequency="500" rolloff="dB12"
+FilterCurve:f0="192.89855" f1="939.75051" f2="998.90842" f3="1061.7904" f4="1867.6048" f5="1992.7607" f6="2078.1788" f7="7991.4991" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-48.036957" v1="-1.9966393" v2="-0.51063919" v3="0.01007843" v4="0.11422348" v5="-0.71892548" v6="-2.1332588" v7="-48.036957"

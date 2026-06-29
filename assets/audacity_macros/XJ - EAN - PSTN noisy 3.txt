@@ -1,0 +1,33 @@
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="3" bands="8" gain="3"
+MultibandEq:band="5" bands="8" gain="24"
+MultibandEq:band="6" bands="8" gain="24"
+MultibandEq:band="7" bands="8" gain="24"
+MultibandEq:band="8" bands="8" gain="18"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="5" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+SetProject:Rate="9600"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+FilterCurve:f0="30.104981" f1="64.642725" f10="4491.0075" f11="4800" f2="90.576209" f3="122.81406" f4="156.87503" f5="215.00823" f6="3152.5054" f7="3361.7099" f8="3673.9552" f9="3999.7271" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-47.900337" v1="-17.024635" v10="-15.521839" v11="-22.991848" v2="-6.7782745" v3="-2.1332588" v4="-0.49383926" v5="0.052631378" v6="0.18925095" v7="-0.083984375" v8="-1.7234077" v9="-5.821949"
+NotchFilter:frequency="250" q="0.75"
+NotchFilter:frequency="720" q="0.75"
+NotchFilter:frequency="1150" q="0.75"
+NotchFilter:frequency="1650" q="0.75"
+NotchFilter:frequency="2100" q="0.75"
+NotchFilter:frequency="2600" q="0.75"
+NotchFilter:frequency="3100" q="0.75"
+NotchFilter:frequency="3500" q="0.75"
+NotchFilter:frequency="4000" q="0.75"
+Amplify:Ratio="3.9810717"
+Sc4:Attack_time_(ms)="25" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="5" Release_time_(ms)="125" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="4000" rolloff="dB48"
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:

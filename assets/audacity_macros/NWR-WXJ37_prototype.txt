@@ -1,0 +1,19 @@
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-18" type="HardLimit"
+High-passFilter:frequency="250" rolloff="dB12"
+Amplify:AllowClipping="0" Ratio="3.1622777"
+FilterCurve:f0="20" f1="98.323265" f10="22050" f2="136.90563" f3="210.34262" f4="292.88174" f5="523.9049" f6="2500" f7="3150" f8="4000" f9="5000" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-94.087" v1="-14.425398" v10="-61.247805" v2="-6.3206367" v3="-1.6222219" v4="-0.21269894" v5="0.022221565" v6="0" v7="-0.874" v8="-3.992" v9="-9.993"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="0"
+High-passFilter:frequency="160" rolloff="dB12"
+DblueCrusher:BitDepth="0.094999999" Foldback="0.70899999" Mix="0.013" Reduction="0.02" Smoothing="1" SmoothMode="0.071000002"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="44100"
+MixAndRender:
+BassAndTreble:Bass="2" Gain="0" Link_Sliders="0" Treble="0"
+Roughrider2:Attack="0.0080000004" Make-Up_Gain="0" Mix="0.90799999" Ratio="1" Release="0.02" Sensitivity="0.141"
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Message:Text="made by tmyk"

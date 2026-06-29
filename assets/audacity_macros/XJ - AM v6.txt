@@ -1,0 +1,26 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Allpassphase:Frequency="0.565" Intensity="0.17200001" Mix="1" Q="0.53299999"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0" Gain_1="0.25" Gain_2="0.10576923" Gain_3="0.29807693" Limiter="1" Out="1" Pregain="0" Ratio_1="0.53846157" Ratio_2="0.31730768" Ratio_3="0.76923078" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.55769229" Threshold_2="0.57692307" Threshold_3="0.48076922" Width_limit="1" Xover1="0.30000001" Xover2="0.30000001"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="8" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-18" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="50" Parameter_2="75" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Amplify:Ratio="0.0031622776"
+NewMonoTrack:
+Noise:Amplitude="0.0015" Type="White"
+Low-passFilter:frequency="4000" rolloff="dB24"
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="1" Treble="0"
+SelectAll:
+MixAndRender:

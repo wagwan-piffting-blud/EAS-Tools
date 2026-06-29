@@ -1,0 +1,53 @@
+# Auto-regenerates assets/audacity_macros/manifest.json whenever macro files change.
+name: Regenerate macro manifest
+
+on:
+  push:
+    branches: ["main"]
+    # Trigger on any change inside the macro folder, EXCEPT the manifest itself.
+    # The negation stops the bot's own manifest commit from re-triggering this
+    # workflow (which would otherwise loop). The Pages deploy workflow has no
+    # path filter, so it still runs on the manifest commit and publishes it.
+    paths:
+      - "assets/audacity_macros/**"
+      - "!assets/audacity_macros/manifest.json"
+      - "tools/generate-macro-manifest.mjs"
+
+  # Allows manual regeneration from the Actions tab.
+  workflow_dispatch:
+
+# Needed so the GITHUB_TOKEN can push the regenerated manifest back.
+permissions:
+  contents: write
+
+# If several macro pushes land quickly, only finish the newest regeneration.
+concurrency:
+  group: "macro-manifest-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Regenerate manifest
+        run: node tools/generate-macro-manifest.mjs
+
+      - name: Commit and push if changed
+        run: |
+          if [ -n "$(git status --porcelain assets/audacity_macros/manifest.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add assets/audacity_macros/manifest.json
+            git commit -m "chore: regenerate audacity macro manifest"
+            git push
+          else
+            echo "Manifest already up to date; nothing to commit."
+          fi

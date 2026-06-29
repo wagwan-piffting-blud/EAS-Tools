@@ -1,0 +1,41 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Allpassphase:Frequency="0.53299999" Intensity="0.213" Mix="1" Q="0.71100003"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0" Gain_1="0.20192307" Gain_2="0.16346154" Gain_3="0.40384614" Limiter="1" Out="1" Pregain="0" Ratio_1="0.52884614" Ratio_2="0.375" Ratio_3="0.86538464" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.69999999" Threshold_2="0.60000002" Threshold_3="0.40000001" Width_limit="1" Xover1="0.11538462" Xover2="0.009615385"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="8" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-20"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-9" type="SoftLimit"
+FilterCurve:f0="49.403229" f1="66.274986" f10="4145.8386" f11="4941.2584" f2="71.258054" f3="78.390003" f4="88.57005" f5="110.93126" f6="2524.6049" f7="3222.8927" f8="3669.3251" f9="3975.4348" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-47.900337" v1="-15.111984" v10="-13.7458" v11="-47.763718" v2="-7.8712196" v3="-3.4994392" v4="-0.90369415" v5="0.052631378" v6="0.052631378" v7="-1.0403137" v8="-3.9092941" v9="-8.4176941"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="0" Repeats="5" Threshold_dB="-24" Type="Hard Clipping"
+Silhouette:Dry_Wet="1"
+Amplify:Ratio="0.3548134"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.64899999"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-18" Type="Expand and Compress"
+MultibandEq:band="2" bands="4" gain="12"
+Amplify:Ratio="0.70794576"
+SelectAll:
+MixAndRender:
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="2" ReleaseTime="4" Threshold="-24" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+SetProject:Rate="6000"
+SelectAll:
+MixAndRender:
+SetProject:Rate="8000"
+NewMonoTrack:
+Noise:Amplitude="0.0025" Type="White"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="1.25" Parameter_2="100" Repeats="5" Threshold_dB="-18" Type="Expand and Compress"
+Low-passFilter:frequency="3000" rolloff="dB12"
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="1.25" Parameter_2="100" Repeats="5" Threshold_dB="-18" Type="Even Harmonics"

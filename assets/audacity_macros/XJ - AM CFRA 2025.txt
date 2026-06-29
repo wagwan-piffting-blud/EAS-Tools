@@ -1,0 +1,45 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Allpassphase:Frequency="0.53299999" Intensity="0.089000002" Mix="1" Q="0.71200001"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0" Gain_1="0.11538462" Gain_2="0.2" Gain_3="0.25" Limiter="1" Out="1" Pregain="0" Ratio_1="0.51923078" Ratio_2="0.32692307" Ratio_3="0.625" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.69999999" Threshold_2="0.60000002" Threshold_3="0.40000001" Width_limit="1" Xover1="0.30000001" Xover2="0.30000001"
+MultibandEq:band="1" bands="2" gain="-3"
+MultibandEq:band="3" bands="4" gain="-3"
+MultibandEq:band="1" bands="6" gain="-21"
+MultibandEq:band="3" bands="5" gain="6"
+Sc4:Attack_time_(ms)="25" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="5" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-18" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Hard Clipping"
+Silhouette:Dry_Wet="1"
+Low-passFilter:frequency="2000" rolloff="dB12"
+Amplify:Ratio="0.012589254"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="60" Interpolation="Linear" Waveform="Square"
+MultibandEq:band="2" bands="2" gain="24"
+MultibandEq:band="1" bands="3" gain="-24"
+Low-passFilter:frequency="360" rolloff="dB6"
+ParametricEq:freq="540" gain="6" width="0"
+ParametricEq:freq="900" gain="12" width="0"
+ParametricEq:freq="1980" gain="15" width="0"
+ParametricEq:freq="2970" gain="15" width="0"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="120" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="240" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0005" Frequency="900" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0002" Frequency="9600" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.005" Type="White"
+Low-passFilter:frequency="3000" rolloff="dB12"
+NewMonoTrack:
+Noise:Amplitude="0.002" Type="White"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="1.678804"

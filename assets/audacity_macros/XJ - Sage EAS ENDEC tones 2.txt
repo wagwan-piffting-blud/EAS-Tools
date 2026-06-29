@@ -1,0 +1,45 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+FilterCurve:f0="522.18447" f1="615.28725" f10="3050.3556" f11="3215.0119" f12="3993.6043" f2="703.19428" f3="719.47837" f4="750.31823" f5="788.47404" f6="834.91725" f7="2376.2819" f8="2710.0558" f9="2894.1322" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-59.851067" v1="-32.787239" v10="-6" v11="-10.400002" v12="-59.200005" v2="-4.316906" v3="-2.0593491" v4="-0.80514908" v5="-0.17805481" v6="0.072788239" v7="0" v8="-0.79999924" v9="-2.6000023"
+Amplify:Ratio="0.25118864"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-24"
+Duplicate:
+Select:Mode="Set" Track="1"
+Low-passFilter:frequency="1000" rolloff="dB48"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-30"
+Select:Mode="Set" Track="0"
+Flutter:Flutter="0.40000001"
+AutoDuck:DuckAmountDb="-24" InnerFadeDownLen="0" InnerFadeUpLen="0" MaximumPause="0.1" OuterFadeDownLen="0.2" OuterFadeUpLen="0.2" ThresholdDb="-30"
+AutoDuck:DuckAmountDb="-24" InnerFadeDownLen="0" InnerFadeUpLen="0" MaximumPause="0.1" OuterFadeDownLen="0.2" OuterFadeUpLen="0.2" ThresholdDb="-30"
+Duplicate:
+Select:Mode="Set" Track="2"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-24"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-11.44" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-11.44" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Low-passFilter:frequency="2083.33" rolloff="dB48"
+Low-passFilter:frequency="2083.33" rolloff="dB48"
+High-passFilter:frequency="1562.5" rolloff="dB48"
+Amplify:Ratio="0.12589253"
+SelectAll:
+MixAndRender:
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-11.44" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-11.44" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-11.44" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Duplicate:
+Select:Mode="Set" Track="1"
+MultibandEq:band="1" bands="2" gain="9"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+Low-passFilter:frequency="2500" rolloff="dB48"
+Amplify:Ratio="0.0056234132"
+Select:Mode="Set" Track="2"
+Amplify:Ratio="0.0031622776"
+Amplify:Ratio="0.25118864"
+Low-passFilter:frequency="7000" rolloff="dB48"
+SelectAll:
+MixAndRender:
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-18"

@@ -1,0 +1,27 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Extra Narrow" right-mix-L="0" right-mix-R="0"
+Allpassphase:Frequency="0.53299999" Intensity="0.213" Mix="1" Q="0.57099998"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0" Gain_1="0.25961539" Gain_2="0.067307696" Gain_3="0.25" Limiter="1" Out="1" Pregain="0" Ratio_1="0.50961536" Ratio_2="0.31730768" Ratio_3="0.85576922" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.48076922" Threshold_2="0.60000002" Threshold_3="0.40000001" Width_limit="1" Xover1="0.17307693" Xover2="0.048076924"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="5" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="4000" rolloff="dB12"
+FilterCurve:f0="49.592089" f1="67.03797" f10="9812.0098" f11="9980.1471" f2="72.078404" f3="78.990492" f4="88.232751" f5="100.07212" f6="9295.5882" f7="9487.7451" f8="9655.8824" f9="9751.9608" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-47.763718" v1="-10.057114" v10="-7.324749" v11="-47.900337" v2="-5.4120941" v3="-2.1332588" v4="-0.35722351" v5="0.18925095" v6="0.18925095" v7="-0.083984375" v8="-1.3135529" v9="-3.7726784"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="2.5" Parameter_2="100" Repeats="5" Threshold_dB="-10" Type="Even Harmonics"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="0" Repeats="5" Threshold_dB="-24" Type="Hard Clipping"
+Silhouette:Dry_Wet="1"
+Amplify:Ratio="0.063095734"
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Extra Narrow" right-mix-L="0" right-mix-R="0"
+Low-passFilter:frequency="4000" rolloff="dB12"
+NewStereoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-10" Type="Expand and Compress"
+BassAndTreble:Bass="3" Gain="0" Link_Sliders="0" Treble="0"
+Low-passFilter:frequency="4000" rolloff="dB12"
+Amplify:Ratio="0.050118722"
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Extra Narrow" right-mix-L="0" right-mix-R="0"
+SelectAll:
+MixAndRender:

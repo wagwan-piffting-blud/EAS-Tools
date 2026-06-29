@@ -1,0 +1,35 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Flutter:Flutter="0.426"
+High-passFilter:frequency="1000" rolloff="dB12"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Amplify:Ratio="0.50118721"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="1" Threshold_dB="-24" Type="Hard Clipping"
+Silhouette:Dry_Wet="1"
+MultibandEq:band="1" bands="2" gain="12"
+MultibandEq:band="1" bands="3" gain="6"
+ParametricEq:freq="1822.92" gain="6" width="1.5"
+Low-passFilter:frequency="4000" rolloff="dB24"
+High-passFilter:frequency="60" rolloff="dB6"
+Amplify:Ratio="0.012589254"
+SelectAll:
+MixAndRender:
+Duplicate:
+Select:Mode="Set" Track="1"
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="20" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-30"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-18"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="-15"
+Select:Mode="Set" Track="0"
+Duplicate:
+Select:Mode="Set" Track="2"
+Reverse:
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="20" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-30"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-18"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="-15"
+Reverse:
+SelectAll:
+MixAndRender:

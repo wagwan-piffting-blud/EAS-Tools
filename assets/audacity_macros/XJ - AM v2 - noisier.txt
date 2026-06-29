@@ -1,0 +1,81 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+NoiseGate:attack="125" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-48"
+Allpassphase:Frequency="0.465" Intensity="0.11" Mix="1" Q="0.42500001"
+Sc4:Attack_time_(ms)="5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="12" Ratio_(1_n)="5" Release_time_(ms)="125" RMS_peak="0" Threshold_level_(dB)="-18"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0.5" Gain_1="0.29807693" Gain_2="0.40384614" Gain_3="0.5" Limiter="1" Out="1" Pregain="0" Ratio_1="0.77884614" Ratio_2="0.35576922" Ratio_3="1" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.5" Threshold_2="0.27884614" Threshold_3="0.29807693" Width_limit="1" Xover1="0.30000001" Xover2="0.30000001"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="1030" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="1230" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="1410" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="1610" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="1800" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="1980" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="2180" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="2410" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="2620" Interpolation="Linear" Waveform="Sine"
+Select:Mode="Set" Track="1" TrackCount="9"
+RandomPitchModulation:depth="0.15" factor="25" maxdepth="0.5" maxspeed="0.5"
+Flutter:Flutter="0.5"
+MixAndRender:
+Select:Mode="Set" Track="1"
+Amplify:Ratio="10"
+SetTrack:Pan="100"
+Select:Mode="Set" Track="0"
+SetTrack:Pan="-100"
+SelectAll:
+MixAndRender:
+Talkbox:Carrier_="0" Dry="0.49900001" Quality="0.68900001" Wet="0.15099999"
+Stereo to Mono:
+Low-passFilter:frequency="3500" rolloff="dB48"
+High-passFilter:frequency="150" rolloff="dB6"
+Amplify:Ratio="1.4125376"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Leveller"
+Silhouette:Dry_Wet="1"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Amplify:Ratio="0.063095734"
+Select:Mode="Set" Track="0"
+Duplicate:
+Select:Mode="Set" Track="2"
+Dustbunny:Bunny="1"
+Select:Mode="Set" Track="1" TrackCount="2"
+MixAndRender:
+Low-passFilter:frequency="3000" rolloff="dB24"
+Amplify:Ratio="0.50118721"
+Select:Mode="Set" Track="0" TrackCount="2"
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="1.25" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Amplify:Ratio="1.4125376"
+NewMonoTrack:
+Tone:Amplitude="0.007" Frequency="4000" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.35" factor="100" maxdepth="0.5" maxspeed="0.125"
+RandomAmplitudeModulation:factor="50" maxspeed="0.125"
+NoiseGate:attack="500" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-48.5"
+Amplify:Ratio="1.4125376"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.02" Type="White"
+Low-passFilter:frequency="4000" rolloff="dB12"
+SelectAll:
+MixAndRender:

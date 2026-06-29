@@ -1,0 +1,16 @@
+NewMonoTrack:
+Tone:Amplitude="0.0005" Frequency="300" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0005" Frequency="1000" Interpolation="Linear" Waveform="Sawtooth"
+BassAndTreble:Bass="-30" Gain="0" Link_Sliders="0" Treble="30"
+Low-passFilter:frequency="4000" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-18" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-18" Type="Expand and Compress"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.025118865"
+Select:Mode="Set" Track="1" TrackCount="3"
+MixAndRender:
+Low-passFilter:frequency="4000" rolloff="dB6"
+Message:Text="Adjust gain to preferred level"

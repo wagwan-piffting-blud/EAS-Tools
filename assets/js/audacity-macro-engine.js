@@ -5,6 +5,9 @@
         pluginDir: 'assets/audacity_plugins/',
         macroDir:  'assets/audacity_macros/',
         noiseDir:  'assets/audacity_noises/',
+        githubRepo: 'wagwan-piffting-blud/EAS-Tools',
+        githubBranch: 'main',
+        discoverTimeoutMs: 6000,
         block: 512,
         log: (...a) => console.log('[AME]', ...a),
     };
@@ -17,6 +20,57 @@
     const macroTextCache = new Map();
 
     function norm(s) { return String(s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+    function isLocalHost() {
+        const h = (global.location && global.location.hostname) || '';
+        return !h || h === 'localhost' || h === '127.0.0.1' || h === '::1' ||
+               h.endsWith('.local') || h.endsWith('.test') || h.endsWith('.localhost');
+    }
+
+    async function discoverMacrosFromGitHub() {
+        if (!cfg.githubRepo || typeof fetch !== 'function') return null;
+        const path = cfg.macroDir.replace(/^\/+|\/+$/g, '');
+        const url = `https://api.github.com/repos/${cfg.githubRepo}/contents/${path}?ref=${encodeURIComponent(cfg.githubBranch)}`;
+        let ctl = null, timer = null;
+        try {
+            if (typeof AbortController === 'function') {
+                ctl = new AbortController();
+                timer = setTimeout(() => ctl.abort(), cfg.discoverTimeoutMs);
+            }
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/vnd.github+json' },
+                signal: ctl ? ctl.signal : undefined,
+            });
+            if (!res.ok) { cfg.log(`discover: GitHub API ${res.status}; using manifest`); return null; }
+            const data = await res.json();
+            if (!Array.isArray(data)) return null;
+            return data
+                .filter((e) => e && e.type === 'file' && /\.txt$/i.test(e.name))
+                .map((e) => e.name);
+        } catch (e) {
+            cfg.log(`discover: GitHub API failed (${(e && e.name) || e}); using manifest`);
+            return null;
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    }
+
+    function mergeMacroLists(manifestList, discovered) {
+        const base = Array.isArray(manifestList) ? manifestList.slice() : [];
+        if (!Array.isArray(discovered) || !discovered.length) return base;
+        const seen = new Set(base);
+        const extra = discovered.filter((f) => !seen.has(f)).sort((a, b) => a.localeCompare(b));
+        return base.concat(extra);
+    }
+
+    async function discoverMacros(manifestList) {
+        if (isLocalHost()) return manifestList || [];
+        const discovered = await discoverMacrosFromGitHub();
+        if (!discovered) return manifestList || [];
+        const merged = mergeMacroLists(manifestList, discovered);
+        cfg.log(`discover: ${discovered.length} via GitHub, ${merged.length} total after merge`);
+        return merged;
+    }
 
     async function ready() {
         if (M) return M;
@@ -32,8 +86,8 @@
                     fetch(cfg.macroDir + 'manifest.json').then(r => r.json()).catch(() => []),
                 ]);
                 pluginManifest = pm;
-                macroManifest = mm;
-                cfg.log(`ready: ${pm.length} plugins, ${mm.length} macros`);
+                macroManifest = await discoverMacros(mm);
+                cfg.log(`ready: ${pm.length} plugins, ${macroManifest.length} macros`);
                 return M;
             });
         }
@@ -48,10 +102,25 @@
         }));
     }
 
+    const NATIVE_NORMS = new Set([
+        'amplify','normalize','invert','reverse','highpassfilter','lowpassfilter','bassandtreble',
+        'distortion','noisething','compressor','compressdynamics','tremolo','changespeed','limiter',
+        'hardlimiter','noisegate','filtercurve','graphiceq','multibandeq','harmonicenhancer',
+        'setproject','mixandrender','mixandrendertonewtrack','copy','cut','paste','undo','redo',
+        'panleft','panright','pancenter','stereotomono','newmonotrack','newstereotrack','selectall',
+        'selalltracks','selecttracks','select','selecttime','seltrackstarttoend','duplicate',
+        'removetracks','removeaudiotracks','tone','chirp','noise','silence','import2','delete',
+        'reverb','echo','vibrato','chorus','phaser','wahwah','eq','equalization','paulstretch',
+        'changepitch','changetempo','clickremoval','noisereduction','repeat','truncatesilence',
+        'fadein','fadeout','autoduck','flutter',
+    ]);
     function resolvePluginEntry(cmd) {
         if (!pluginManifest) return null;
         const n = norm(cmd);
-        return pluginManifest.find(p => p.norm === n) || null;
+        const exact = pluginManifest.find(p => p.norm === n);
+        if (exact) return exact;
+        if (NATIVE_NORMS.has(n)) return null;
+        return pluginManifest.find(p => p.norm.replace(/(?:32|64)$/, '') === n) || null;
     }
     function resolvePlugin(cmd) {
         const e = resolvePluginEntry(cmd);
@@ -1098,6 +1167,14 @@
             report(0);
             await applyStep(proj, cmd, params, report);
             report(1);
+            if (typeof process !== 'undefined' && process.env && process.env.EMU_STEPTRACE) {
+                const parts = proj.tracks.map((t, ti) => {
+                    const ch = isStereo(t) ? [t.L, t.R] : [t]; let r = 0, n = 0, pk = 0;
+                    for (const c of ch) { for (let j = 0; j < c.length; j++) { r += c[j]*c[j]; const a = Math.abs(c[j]); if (a > pk) pk = a; } n += c.length; }
+                    return `${proj.selected.has(ti)?'*':' '}T${ti}rms=${(n?Math.sqrt(r/n):0).toExponential(1)}pk=${pk.toExponential(1)}`;
+                });
+                cfg.log(`    TR[${s+1}] ${cmd}: ${parts.join(' ')}`);
+            }
         }
         if (onProgress) onProgress({ step: total, total, cmd: 'done', fraction: 1 });
         cfg.log(`done: ${total} steps -> ${proj.tracks.length} track[s] @ ${proj.sr} Hz`);

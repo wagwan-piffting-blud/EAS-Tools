@@ -1,0 +1,40 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-6" Type="Leveller"
+Low-passFilter:frequency="1200" rolloff="dB12"
+Low-passFilter:frequency="2800" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB24"
+FilterCurve:f0="100.99803" f1="100.99803" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-120" v1="-0.47619057"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Tone:Amplitude="0.5" Frequency="180" Interpolation="Linear" Waveform="Square"
+Tremolo:lfo="120" phase="0" wave="Sine" wet="100"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="100"
+Low-passFilter:frequency="60" rolloff="dB12"
+High-passFilter:frequency="70" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.2" Frequency="515" Interpolation="Linear" Waveform="Sawtooth"
+Low-passFilter:frequency="1030" rolloff="dB36"
+High-passFilter:frequency="850" rolloff="dB24"
+RandomPitchModulation:depth="0.001" factor="7" maxdepth="0.01" maxspeed="20"
+NewMonoTrack:
+Noise:Amplitude="0.08" Type="White"
+Low-passFilter:frequency="3500" rolloff="dB12"
+SelectAll:
+MixAndRender:
+Allpassphase:Frequency="0.903" Intensity="0.21799999" Mix="0.25299999" Q="0.57099998"
+FilterCurve:f0="4364.9425" f1="4364.9425" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="0" v1="-120"
+NewMonoTrack:
+Noise:Amplitude="0.02" Type="White"
+Low-passFilter:frequency="300" rolloff="dB6"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="1030" Interpolation="Linear" Waveform="Sawtooth"
+Low-passFilter:frequency="515" rolloff="dB6"
+SelectAll:
+MixAndRender:
+FilterCurve:f0="14981.609" f1="15009.77" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-0.47619057" v1="-120"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

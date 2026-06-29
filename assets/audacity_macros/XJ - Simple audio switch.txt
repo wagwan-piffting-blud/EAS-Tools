@@ -1,0 +1,17 @@
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="0.001" error-control="Show errors" start-adjust="0.001" t-units="seconds"
+SelectAll:
+MixAndRender:
+NewMonoTrack:
+Select:End="0.001" Mode="Set" RelativeTo="ProjectStart" Start="0" Track="1"
+Tone:Amplitude="0.5" Frequency="60" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Select:End="0.001" Mode="Set" RelativeTo="ProjectEnd" Start="0" Track="2"
+Tone:Amplitude="0.5" Frequency="60" Interpolation="Linear" Waveform="Sine"
+Reverse:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="0.025" error-control="Show errors" start-adjust="0.025" t-units="seconds"
+SelectAll:
+MixAndRender:

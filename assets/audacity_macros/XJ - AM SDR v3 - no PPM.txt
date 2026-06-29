@@ -1,0 +1,40 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Allpassphase:Frequency="0.53299999" Intensity="0.21600001" Mix="1" Q="0.57200003"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0.69999999" Gain_1="0" Gain_2="0.13461539" Gain_3="0" Limiter="1" Out="1" Pregain="0" Ratio_1="0.625" Ratio_2="0.32692307" Ratio_3="0.73076922" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.5" Threshold_2="0.25" Threshold_3="0.25" Width_limit="1" Xover1="0.2" Xover2="0.40000001"
+Sc4:Attack_time_(ms)="12.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="2.5" Release_time_(ms)="125" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-18" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Amplify:Ratio="0.25118864"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Amplify:Ratio="1.9952623"
+SelectAll:
+MixAndRender:
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="1.5" ReleaseTime="4" Threshold="-36" UsePeak="0"
+SetProject:Rate="5000"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="0.50118721"

@@ -1,0 +1,27 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+NewMonoTrack:
+Noise:Amplitude="1" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+SelectAll:
+DynamicMirror:inverse="Mirror" mode="Peak" range-max="1" range-min="0" resolution="0.01"
+Select:Mode="Set" Track="1"
+FilterCurve:f0="10000" f1="10500" f2="11000" f3="11000" f4="15000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+Amplify:Ratio="0.17782794"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="2.5" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Even Harmonics"
+NewMonoTrack:
+Noise:Amplitude="0.02" Type="Pink"
+FilterCurve:f0="10000" f1="10500" f2="11000" f3="11000" f4="15000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+FilterCurve:f0="10000" f1="10500" f2="11000" f3="11000" f4="15000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+Amplify:Ratio="0.17782794"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="120" Interpolation="Linear" Waveform="Sawtooth"
+SelectAll:
+MixAndRender:

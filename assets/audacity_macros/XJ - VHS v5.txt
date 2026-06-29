@@ -1,0 +1,35 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Extra Narrow" right-mix-L="0" right-mix-R="0"
+Low-passFilter:frequency="4000" rolloff="dB12"
+FilterCurve:f0="39.595455" f1="62.112567" f10="15516.667" f2="65.196889" f3="69.352272" f4="74.596557" f5="15000.245" f6="15120.343" f7="15216.422" f8="15264.461" f9="15300.49" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-48.036957" v1="-3.2262039" v10="-47.763718" v2="-1.0403137" v3="-0.083984375" v4="0.18925095" v5="0.052631378" v6="-0.22060394" v7="-1.0403137" v8="-2.2698746" v9="-4.5923882"
+Flutter:Flutter="0.45300001"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+TapeSaturationLimiter:hfgain="-5" hfhz="4500" makeup="Off" ratio="2" thres="-3"
+Low-passFilter:frequency="14000" rolloff="dB48"
+NewStereoTrack:
+Noise:Amplitude="0.5" Type="White"
+Tremolo:lfo="60" phase="0" wave="Sawtooth" wet="100"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+RandomAmplitudeModulation:factor="100" maxspeed="1"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-6"
+Low-passFilter:frequency="4000" rolloff="dB12"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="60" Interpolation="Linear" Waveform="Sawtooth"
+MultibandEq:band="2" bands="2" gain="6"
+ParametricEq:freq="180" gain="6" width="0"
+Low-passFilter:frequency="180" rolloff="dB6"
+Amplify:Ratio="0.3548134"
+NewMonoTrack:
+Tone:Amplitude="0.0005" Frequency="8000" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="15734" Interpolation="Linear" Waveform="Sine"
+NewStereoTrack:
+Noise:Amplitude="0.005" Type="White"
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Extra Narrow" right-mix-L="0" right-mix-R="0"
+Low-passFilter:frequency="4000" rolloff="dB6"
+MultibandEq:band="1" bands="2" gain="6"
+SelectAll:
+MixAndRender:
+Compressor:AttackTime="0.1" NoiseFloor="-50" Normalize="1" Ratio="1.2" ReleaseTime="4" Threshold="-30" UsePeak="0"

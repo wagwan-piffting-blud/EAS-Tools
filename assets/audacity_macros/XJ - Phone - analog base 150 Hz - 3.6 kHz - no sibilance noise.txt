@@ -1,0 +1,15 @@
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="3" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+FilterCurve:f0="49.781484" f1="133.19654" f10="3548.4593" f11="3774.6236" f12="4000" f2="160.32248" f3="194.46888" f4="244.23047" f5="302.02376" f6="2402.4332" f7="2869.4493" f8="3123.8852" f9="3310.1813" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-60.195969" v1="-14.42889" v10="-17.707722" v11="-31.916016" v12="-60.059349" v2="-7.8712196" v3="-3.6360588" v4="-0.7670784" v5="0.18925095" v6="0.18925095" v7="-1.1769333" v8="-3.2262039" v9="-7.324749"
+Ulawencode:Dry_Wet="1" Gain="1"
+Derez:Rate="0.56599998" Rez="0.5"
+Ulawdecode:Dry_Wet="1" Gain="1"
+Low-passFilter:frequency="3500" rolloff="dB48"
+Low-passFilter:frequency="3500" rolloff="dB48"
+High-passFilter:frequency="150" rolloff="dB6"
+High-passFilter:frequency="150" rolloff="dB6"
+FilterCurve:f0="49.781484" f1="133.19654" f10="3548.4593" f11="3774.6236" f12="4000" f2="160.32248" f3="194.46888" f4="244.23047" f5="302.02376" f6="2402.4332" f7="2869.4493" f8="3123.8852" f9="3310.1813" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-60.195969" v1="-14.42889" v10="-17.707722" v11="-31.916016" v12="-60.059349" v2="-7.8712196" v3="-3.6360588" v4="-0.7670784" v5="0.18925095" v6="0.18925095" v7="-1.1769333" v8="-3.2262039" v9="-7.324749"

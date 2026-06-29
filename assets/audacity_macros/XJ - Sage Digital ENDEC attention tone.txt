@@ -1,0 +1,13 @@
+SetProject:Rate="44100"
+NewMonoTrack:
+Select:End="8.6" Mode="Set" RelativeTo="ProjectStart" Track="0"
+Tone:Amplitude="0.1" Frequency="853" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Select:End="8.6" Mode="Set" RelativeTo="ProjectStart" Track="1"
+Tone:Amplitude="0.1" Frequency="960" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="0.025" error-control="Show errors" start-adjust="0.025" t-units="seconds"
+SelectAll:
+MixAndRender:
+MultibandEq:band="1" bands="3" gain="18"

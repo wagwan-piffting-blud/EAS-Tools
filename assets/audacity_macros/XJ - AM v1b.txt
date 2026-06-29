@@ -1,0 +1,39 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+LoudnessNormalization:DualMono="1" LUFSLevel="-18" NormalizeTo="0" RMSLevel="-20" StereoIndependent="0"
+Allpassphase:Frequency="0.36399999" Intensity="0.133" Mix="1" Q="0.56599998"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0.5" Gain_1="0.45192307" Gain_2="0.36538461" Gain_3="0.40384614" Limiter="1" Out="1" Pregain="0" Ratio_1="0.74038464" Ratio_2="0.64423078" Ratio_3="0.875" SideGain1="0.60000002" SideGain2="0.60000002" SideGain3="0.60000002" Threshold_1="0.69999999" Threshold_2="0.60000002" Threshold_3="0.40000001" Width_limit="1" Xover1="0.21153846" Xover2="0.125"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0" Gain_1="0.1826923" Gain_2="0.36538461" Gain_3="0.59615386" Limiter="1" Out="1" Pregain="0" Ratio_1="0.69999999" Ratio_2="0.66346157" Ratio_3="0.88461536" SideGain1="0.60000002" SideGain2="0.60000002" SideGain3="0" Threshold_1="0.69999999" Threshold_2="0.60000002" Threshold_3="0.40000001" Width_limit="1" Xover1="0.14423077" Xover2="0.067307696"
+Sc4:Attack_time_(ms)="50" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="12" Release_time_(ms)="100" RMS_peak="0" Threshold_level_(dB)="-20"
+BroadcastLimiterIii:hd="2" vl="0.35"
+Low-passFilter:frequency="5000" rolloff="dB48"
+FilterCurve:f0="10000" f1="10500" f2="11000" f3="11000" f4="15000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+FilterCurve:f0="30" f1="49.781672" f2="54.14084" f3="63.06781" f4="78.390003" f5="100" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-50" v1="-11.984323" v2="-6.0268764" v3="-2.4524074" v4="-0.50839877" v5="0"
+Amplify:Ratio="2.818383"
+FilterCurve:f0="50" f1="100" f10="4000" f11="4500" f12="5000" f13="5500" f14="6000" f15="6500" f16="7000" f17="7500" f18="8000" f19="8500" f2="400" f20="9000" f21="9500" f22="10000" f3="700" f4="1000" f5="1500" f6="2000" f7="2500" f8="3000" f9="3500" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="0" v1="0.01" v10="5.75" v11="6.37" v12="6.92" v13="7.41" v14="7.85" v15="8.24" v16="8.58" v17="8.89" v18="9.16" v19="9.41" v2="0.14" v20="9.62" v21="9.82" v22="10" v3="0.42" v4="0.81" v5="1.63" v6="2.54" v7="3.44" v8="4.28" v9="5.05"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+NewMonoTrack:
+Noise:Amplitude="1" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+SelectAll:
+DynamicMirror:inverse="Mirror" mode="Peak" range-max="1" range-min="0" resolution="0.01"
+Select:Mode="Set" Track="1"
+FilterCurve:f0="10000" f1="10500" f2="11000" f3="11000" f4="15000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+Amplify:Ratio="0.17782794"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="2.5" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Even Harmonics"
+NewMonoTrack:
+Noise:Amplitude="0.02" Type="Pink"
+FilterCurve:f0="10000" f1="10500" f2="11000" f3="11000" f4="15000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+FilterCurve:f0="10000" f1="10500" f2="11000" f3="11000" f4="15000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+Amplify:Ratio="0.17782794"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="120" Interpolation="Linear" Waveform="Sawtooth"
+SelectAll:
+MixAndRender:

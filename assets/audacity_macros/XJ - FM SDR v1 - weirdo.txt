@@ -1,0 +1,25 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Allpassphase:Frequency="0.53299999" Intensity="0.213" Mix="1" Q="0.71100003"
+Broadcast:AGC="0" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0.5" Gain_1="0.057692308" Gain_2="0.90384614" Gain_3="0.90384614" Limiter="1" Out="1" Pregain="0" Ratio_1="0.72115386" Ratio_2="0.78846157" Ratio_3="0.88461536" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.5" Threshold_2="0.39423078" Threshold_3="0.44230768" Width_limit="1" Xover1="0.11538462" Xover2="0.048076924"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+FilterCurve:f0="49.592089" f1="90.967523" f10="7902.451" f11="7986.5196" f2="112.20835" f3="148.2488" f4="198.12005" f5="298.01273" f6="7470.098" f7="7626.2255" f8="7758.3333" f9="7878.4314" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-47.763718" v1="-16.7514" v10="-8.5543098" v11="-47.763718" v2="-8.6909294" v3="-3.3628235" v4="-1.0403137" v5="-0.083984375" v6="-0.083984375" v7="-0.63045883" v8="-1.5867882" v9="-4.319149"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="0" Repeats="5" Threshold_dB="-24" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Amplify:Ratio="0.0039810715"
+Select:Mode="Set" Track="0" TrackCount="2"
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="1" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Even Harmonics"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+Amplify:Ratio="0.0039810715"
+SelectAll:
+MixAndRender:
+FilterCurve:f0="14507.843" f1="14639.951" f2="14760.049" f3="14832.108" f4="14880.147" f5="14988.235" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="0.052631378" v1="-0.083984375" v2="-0.49383926" v3="-1.5867882" v4="-3.9092941" v5="-48.036957"

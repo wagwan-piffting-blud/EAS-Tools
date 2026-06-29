@@ -1,0 +1,17 @@
+Message:Text="add this to NWR-KXI47 Prototype"
+High-passFilter:frequency="300" rolloff="dB12"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.33500001" Output="0.49900001" Process_="0.403"
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.77472931"
+FilterCurve:f0="42.792102" f1="66.088468" f10="981.80113" f11="1489.0885" f2="89.104494" f3="108.74657" f4="140.12859" f5="187.22685" f6="250.15519" f7="365.91173" f8="458.87026" f9="580.67888" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-0.21269894" v1="7.4222221" v10="0.022221565" v11="-0.33015919" v2="2.7238092" v3="0.022221565" v4="-0.21269894" v5="7.4222221" v6="-0.095238686" v7="-0.21269894" v8="1.666666" v9="-0.33015919"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.33500001" Output="0.49900001" Process_="0.403"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.33500001" Output="0.49900001" Process_="0.403"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+BassAndTreble:Bass="7" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.9337917"
+High-passFilter:frequency="100" rolloff="dB12"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:

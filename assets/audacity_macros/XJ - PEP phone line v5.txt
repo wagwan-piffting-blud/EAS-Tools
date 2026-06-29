@@ -1,0 +1,80 @@
+SelectAll:
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Compressor:AttackTime="0.1" NoiseFloor="-60" Normalize="1" Ratio="1.2" ReleaseTime="1" Threshold="-5" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-10" type="SoftLimit"
+DblueCrusher:BitDepth="0.46700001" Foldback="0" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+ChebyshevDistortion:Distortion="1"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="500" rolloff="dB6"
+Low-passFilter:frequency="500" rolloff="dB6"
+Low-passFilter:frequency="2000" rolloff="dB48"
+High-passFilter:frequency="500" rolloff="dB6"
+High-passFilter:frequency="500" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB48"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-8" type="SoftLimit"
+Duplicate:
+NewMonoTrack:
+Noise:Amplitude="0.15" Type="White"
+Select:Mode="Set" Track="1" TrackCount="2"
+MixAndRender:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-2" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="75" Parameter_2="100" Repeats="5" Threshold_dB="-2" Type="Expand and Compress"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="90" Parameter_2="100" Repeats="5" Threshold_dB="-2" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-2" Type="Leveller"
+Low-passFilter:frequency="2000" rolloff="dB6"
+High-passFilter:frequency="500" rolloff="dB6"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-10" type="HardLimit"
+Normalize:ApplyGain="1" PeakLevel="-18" RemoveDcOffset="1" StereoIndependent="0"
+RandomAmplitudeModulation:factor="120" maxspeed="0.5"
+NoiseGate:attack="500" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-21"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SelectAll:
+Compressor:AttackTime="0.1" NoiseFloor="-30" Normalize="1" Ratio="2" ReleaseTime="1" Threshold="-20" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-8" type="SoftLimit"
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="-8" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.67" Type="White"
+Low-passFilter:frequency="500" rolloff="dB48"
+Low-passFilter:frequency="500" rolloff="dB48"
+High-passFilter:frequency="500" rolloff="dB48"
+High-passFilter:frequency="500" rolloff="dB48"
+NewMonoTrack:
+Noise:Amplitude="0.2" Type="White"
+Low-passFilter:frequency="500" rolloff="dB6"
+Low-passFilter:frequency="500" rolloff="dB6"
+Low-passFilter:frequency="2000" rolloff="dB48"
+High-passFilter:frequency="250" rolloff="dB6"
+High-passFilter:frequency="500" rolloff="dB6"
+Select:Mode="Set" Track="1" TrackCount="2"
+MixAndRender:
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.025" Type="White"
+SelectAll:
+MixAndRender:
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-10" type="SoftLimit"
+NewMonoTrack:
+Tone:Amplitude="0.002" Frequency="2045" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.002" Frequency="7430" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.002" Frequency="7560" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.08" Frequency="180" Interpolation="Linear" Waveform="Square"
+Tremolo:lfo="120" phase="0" wave="Sine" wet="100"
+Low-passFilter:frequency="540" rolloff="dB12"
+High-passFilter:frequency="60" rolloff="dB6"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="50"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="20000" rolloff="dB48"
+Low-passFilter:frequency="20000" rolloff="dB48"
+Low-passFilter:frequency="20000" rolloff="dB48"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-2" type="SoftLimit"

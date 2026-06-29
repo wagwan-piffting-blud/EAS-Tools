@@ -88,6 +88,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const bitcrushOptions = panel.querySelector('#bitcrushOptions');
     const bitcrushBitsInput = panel.querySelector('#bitcrush-bits');
     const bitcrushDownsampleInput = panel.querySelector('#bitcrush-downsample');
+    const enableVmifyCheckbox = panel.querySelector('#enable-vmify');
+    const vmifyOptions = panel.querySelector('#vmifyOptions');
+    const vmifyIntensityInput = panel.querySelector('#vmify-intensity');
     const shouldBitcrushSpeechifyDiv = panel.querySelector('#shouldBitcrushSpeechifyContainer2');
     const shouldBitcrushSpeechifyCheckbox = panel.querySelector('#shouldBitcrushSpeechify2');
 
@@ -236,7 +239,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const macroId = (typeof getSelectedMacroId === 'function' ? getSelectedMacroId() : 'FLAT') || 'FLAT';
         const staticEnabled = enableStaticNoiseCheckbox?.checked === true;
         const bitcrushEnabled = enableBitcrushCheckbox?.checked === true;
-        return macroId !== 'FLAT' || staticEnabled || bitcrushEnabled;
+        const vmifyEnabled = enableVmifyCheckbox?.checked === true;
+        return macroId !== 'FLAT' || staticEnabled || bitcrushEnabled || vmifyEnabled;
     };
 
     const getMacroWaveformKey = () => {
@@ -245,6 +249,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const staticEnabled = enableStaticNoiseCheckbox?.checked === true;
         const opts = staticEnabled ? getStaticNoiseOptions() : null;
         const bitcrushEnabled = enableBitcrushCheckbox?.checked === true;
+        const vmifyEnabled = enableVmifyCheckbox?.checked === true;
         const parts = [
             macroId,
             staticEnabled ? '1' : '0',
@@ -254,6 +259,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             bitcrushEnabled ? '1' : '0',
             bitcrushEnabled ? (bitcrushBitsInput?.value ?? '') : '',
             bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
+            vmifyEnabled ? '1' : '0',
+            vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
             state.pcm.length,
             state.sampleRate,
         ];
@@ -605,6 +612,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     bitcrushOptions: {
                         bits: bitcrushBitsInput ? bitcrushBitsInput.value : null,
                         downsample: bitcrushDownsampleInput ? bitcrushDownsampleInput.value : null,
+                    },
+                    vmifyEnabled: enableVmifyCheckbox ? enableVmifyCheckbox.checked : false,
+                    vmifyOptions: {
+                        intensity: vmifyIntensityInput ? vmifyIntensityInput.value : null,
                     },
                 };
                 tx.objectStore(STORE).put(payload, CACHE_KEY);
@@ -2743,6 +2754,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             if (bitcrushBitsInput) bitcrushBitsInput.value = payload.bitcrushOptions?.bits || 8;
             if (bitcrushDownsampleInput) bitcrushDownsampleInput.value = payload.bitcrushOptions?.downsample || 1;
         }
+        if (enableVmifyCheckbox) {
+            enableVmifyCheckbox.checked = payload.vmifyEnabled || false;
+            syncVmifyUi();
+            if (vmifyIntensityInput) vmifyIntensityInput.value = payload.vmifyOptions?.intensity || 1;
+        }
         window.splicerEditor.setValue(payload.ttsText || '');
         state.sampleRate = payload.sampleRate || state.sampleRate;
         state.segments = payload.segments.map((s) => ({
@@ -3292,9 +3308,81 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return out;
     }
 
+    function vmifyPcm(pcm, sampleRate, options = {}) {
+        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
+            return pcm;
+        }
+
+        const sr = Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : 44100;
+        const nyquist = sr / 2;
+        if (nyquist < 5000) return pcm;
+
+        let intensity = Number.isFinite(options.intensity) ? options.intensity : 1;
+        if (intensity < 0) intensity = 0;
+        else if (intensity > 3) intensity = 3;
+
+        const drive = 3.16;
+        const driven = new Float32Array(pcm.length);
+        for (let i = 0; i < pcm.length; i++) {
+            driven[i] = Math.tanh(pcm[i] * drive);
+        }
+
+        const freq = Math.min(4000, nyquist * 0.8);
+        const w0 = 2 * Math.PI * freq / sr;
+        const cos0 = Math.cos(w0);
+        const alp = Math.sin(w0) / (2 * 0.707);
+        const norm = 1 / (1 + alp);
+        const b0 = ((1 + cos0) / 2) * norm;
+        const b1 = -(1 + cos0) * norm;
+        const b2 = b0;
+        const a1 = (-2 * cos0) * norm;
+        const a2 = (1 - alp) * norm;
+
+        let s1x1 = 0, s1x2 = 0, s1y1 = 0, s1y2 = 0;
+        let s2x1 = 0, s2x2 = 0, s2y1 = 0, s2y2 = 0;
+
+        const hfGain = 1.41 * intensity;
+        const out = new Float32Array(pcm.length);
+        let peak = 0;
+
+        for (let i = 0; i < pcm.length; i++) {
+            const x0 = driven[i];
+            const y0 = b0 * x0 + b1 * s1x1 + b2 * s1x2 - a1 * s1y1 - a2 * s1y2;
+            s1x2 = s1x1; s1x1 = x0;
+            s1y2 = s1y1; s1y1 = y0;
+
+            const y1 = b0 * y0 + b1 * s2x1 + b2 * s2x2 - a1 * s2y1 - a2 * s2y2;
+            s2x2 = s2x1; s2x1 = y0;
+            s2y2 = s2y1; s2y1 = y1;
+
+            out[i] = pcm[i] + y1 * hfGain;
+            const abs = out[i] < 0 ? -out[i] : out[i];
+            if (abs > peak) peak = abs;
+        }
+
+        if (peak > 0.9441) {
+            const g = 0.9441 / peak;
+            for (let i = 0; i < out.length; i++) out[i] *= g;
+        }
+
+        return out;
+    }
+
     function applyExportFxToPcm(pcm, sampleRate, macroId) {
         const id = (macroId || 'FLAT').toUpperCase();
         let workingPcm = pcm;
+
+        const enableVmifyEl = document.getElementById('enable-vmify');
+        const enableVmify = enableVmifyEl ? enableVmifyEl.checked === true : false;
+
+        if (enableVmify) {
+            const vmifyIntensityEl = document.getElementById('vmify-intensity');
+            const vmifyIntensity = vmifyIntensityEl ? parseFloat(vmifyIntensityEl.value) : 1;
+
+            workingPcm = vmifyPcm(workingPcm, sampleRate, {
+                intensity: Number.isFinite(vmifyIntensity) ? vmifyIntensity : 1
+            });
+        }
 
         const enableBitcrushEl = document.getElementById('enable-bitcrush');
         const enableBitcrush = enableBitcrushEl ? enableBitcrushEl.checked === true : false;
@@ -3492,6 +3580,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const staticEnabled = enableStaticNoiseCheckbox?.checked === true;
         const humEnabled = enable60HzHumCheckbox?.checked === true;
         const bitcrushEnabled = enableBitcrushCheckbox?.checked === true;
+        const vmifyEnabled = enableVmifyCheckbox?.checked === true;
         return [
             (macroId || 'FLAT').toUpperCase(),
             state.sampleRate,
@@ -3505,6 +3594,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             bitcrushEnabled ? '1' : '0',
             bitcrushEnabled ? (bitcrushBitsInput?.value ?? '') : '',
             bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
+            vmifyEnabled ? '1' : '0',
+            vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
         ].join('|');
     };
 
@@ -3512,6 +3603,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const staticEnabled = enableStaticNoiseCheckbox?.checked === true;
         const humEnabled = enable60HzHumCheckbox?.checked === true;
         const bitcrushEnabled = enableBitcrushCheckbox?.checked === true;
+        const vmifyEnabled = enableVmifyCheckbox?.checked === true;
         return [
             (macroId || 'FLAT').toUpperCase(),
             state.sampleRate,
@@ -3525,6 +3617,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             bitcrushEnabled ? '1' : '0',
             bitcrushEnabled ? (bitcrushBitsInput?.value ?? '') : '',
             bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
+            vmifyEnabled ? '1' : '0',
+            vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
         ].join('|');
     };
 
@@ -3771,6 +3865,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return enabled;
     };
 
+    const syncVmifyUi = () => {
+        if (!enableVmifyCheckbox || !vmifyOptions) return false;
+        const enabled = enableVmifyCheckbox.checked === true;
+        vmifyOptions.style.display = enabled ? 'block' : 'none';
+        return enabled;
+    };
+
     if (macroSelect) {
         macroSelect.addEventListener('change', () => {
             const macroValue = document.getElementById('spliceMacros').value;
@@ -3840,6 +3941,30 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             invalidateMacroPreview();
             scheduleMacroWaveformUpdate();
         });
+    }
+
+    if (enableVmifyCheckbox) {
+        syncVmifyUi();
+        enableVmifyCheckbox.addEventListener('change', () => {
+            syncVmifyUi();
+            invalidateMacroPreview();
+            scheduleMacroWaveformUpdate();
+        });
+    }
+
+    if (vmifyIntensityInput) {
+        const handleVmifyParamChange = () => {
+            const intensity = parseFloat(vmifyIntensityInput.value);
+
+            if (Number.isNaN(intensity) || intensity < 0 || intensity > 3) {
+                vmifyIntensityInput.value = '1';
+            }
+
+            invalidateMacroPreview();
+            scheduleMacroWaveformUpdate();
+        };
+
+        vmifyIntensityInput.addEventListener('change', handleVmifyParamChange);
     }
 
     if (bitcrushBitsInput && bitcrushDownsampleInput) {
@@ -3973,6 +4098,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     staticNoiseFadeDepthInput?.dispatchEvent(changeEvent);
     staticNoiseFadeRateInput?.dispatchEvent(changeEvent);
     enableBitcrushCheckbox?.dispatchEvent(changeEvent);
+    enableVmifyCheckbox?.dispatchEvent(changeEvent);
     spliceLoudnessInput?.dispatchEvent(changeEvent);
 
     setupMacroCombo();

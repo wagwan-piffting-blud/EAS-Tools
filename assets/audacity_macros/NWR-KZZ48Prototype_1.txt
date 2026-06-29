@@ -1,0 +1,84 @@
+MdaCombo:Bias="0.5" Drive="0.70200002" Model="0" Output="0.639" Process_="0.40000001"
+DblueCrusher:BitDepth="0.46700001" Foldback="1" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+BassAndTreble:Bass="-10" Gain="0" Link_Sliders="0" Treble="10"
+SetProject:Rate="8000"
+MixAndRender:
+Copy:
+NewMonoTrack:
+Paste:
+DblueCrusher:BitDepth="0.46700001" Foldback="1" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+Invert:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="316.22775"
+Copy:
+Undo:
+Undo:
+Paste:
+PanLeft:
+Select:Mode="Set" Track="0"
+PanRight:
+SelectAll:
+MixAndRender:
+NoiseThing:Use_Preset="<Current Settings>"
+StereoToMono:Use_Preset="<Factory Defaults>"
+Copy:
+Undo:
+Undo:
+Undo:
+Undo:
+Paste:
+Amplify:Ratio="0.17782794"
+BassAndTreble:Bass="-6" Gain="0" Link_Sliders="0" Treble="12"
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="0.25118864"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+Roughrider2:Attack="0.059999999" Make-Up_Gain="0.39199999" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.704"
+High-passFilter:frequency="200" rolloff="dB48"
+BassAndTreble:Bass="-10" Gain="20" Link_Sliders="0" Treble="-10"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Copy:
+NewMonoTrack:
+Paste:
+Tone:Amplitude="0.02" Frequency="60" Interpolation="Linear" Waveform="Sine"
+MdaCombo:Bias="0" Drive="0.72100002" Model="0" Output="0.75300002" Process_="0.40000001"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+NewMonoTrack:
+Paste:
+Noise:Amplitude="0.015" Type="White"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="120" rolloff="dB48"
+Select:End="0.01" Mode="Set" Start="0"
+Delete:
+SelectAll:
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-2" type="HardLimit"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="15"
+Amplify:Ratio="0.66734439"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="1" Threshold_dB="-10" Type="Leveller"
+High-passFilter:frequency="300" rolloff="dB12"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="0"
+FilterCurve:f0="41.269903" f1="47.703927" f2="51.287848" f3="58.74929" f4="101.14751" f5="224.39801" f6="864.90404" f7="10153.591" f8="15261.038" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-23" v1="-23.117462" v2="-18.771427" v3="-11.253969" v4="-7.7301598" v5="-3.9714279" v6="0.022221565" v7="0.25714302" v8="4.6031742"
+FilterCurve:f0="96.969787" f1="101.41773" f2="122.43884" f3="146.4971" f4="184.97448" f5="2046.9321" f6="4011.1165" f7="6059.7941" f8="8074.4618" f9="19978.284" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-111.42857" v1="-54.761909" v2="-22.857143" v3="-9.0476227" v4="0" v5="-0.095239639" v6="-0.66666794" v7="-20" v8="-38.571426" v9="-101.42857"
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="0.86993468"
+Amplify:AllowClipping="0" Ratio="0.31622776"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="-5"
+BassAndTreble:Bass="-25" Gain="0" Link_Sliders="0" Treble="5"
+FilterCurve:f0="41.269903" f1="47.703927" f2="51.287848" f3="58.74929" f4="101.14751" f5="224.39801" f6="864.90404" f7="10153.591" f8="15261.038" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-23" v1="-23.117462" v2="-18.771427" v3="-11.253969" v4="-7.7301598" v5="-3.9714279" v6="0.022221565" v7="0.25714302" v8="4.6031742"
+Roughrider2:Attack="0.23999999" Make-Up_Gain="0.36000001" Mix="1" Ratio="1" Release="0.83999997" Sensitivity="0.461"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-6" type="HardLimit"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="-4"
+Message:Text="edited by tmyk - based off of nwr-kih42"

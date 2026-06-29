@@ -1,0 +1,32 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Narrow Stereo" right-mix-L="0" right-mix-R="0"
+Allpassphase:Frequency="0.53299999" Intensity="0.213" Mix="1" Q="0.57099998"
+Broadcast:AGC="0" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0.5" Gain_1="0.60000002" Gain_2="0.69999999" Gain_3="0.60000002" Limiter="1" Out="1" Pregain="0" Ratio_1="0.89999998" Ratio_2="0.69999999" Ratio_3="0.69999999" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.5" Threshold_2="0.25" Threshold_3="0.25" Width_limit="1" Xover1="0.11538462" Xover2="0.048076924"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="0" Repeats="5" Threshold_dB="-12" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Narrow Stereo" right-mix-L="0" right-mix-R="0"
+Amplify:Ratio="0.0031622776"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="1" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Amplify:Ratio="0.0056234132"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Amplify:Ratio="0.0039810715"
+SelectAll:
+MixAndRender:

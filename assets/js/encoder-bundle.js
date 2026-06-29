@@ -658,6 +658,65 @@ async function fetchAndStore() {
         }
     }
 
+    function vmifyPcm(pcm, options = {}) {
+        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
+            return pcm;
+        }
+
+        const nyquist = SAMPLE_RATE / 2;
+        if (nyquist < 5000) return pcm;
+
+        let intensity = Number.isFinite(options.intensity) ? options.intensity : 1;
+        if (intensity < 0) intensity = 0;
+        else if (intensity > 3) intensity = 3;
+
+        const drive = 3.16;
+        const driven = new Float32Array(pcm.length);
+        for (let i = 0; i < pcm.length; i++) {
+            driven[i] = Math.tanh(pcm[i] * drive);
+        }
+
+        const freq = Math.min(4000, nyquist * 0.8);
+        const w0 = 2 * Math.PI * freq / SAMPLE_RATE;
+        const cos0 = Math.cos(w0);
+        const alp = Math.sin(w0) / (2 * 0.707);
+        const norm = 1 / (1 + alp);
+        const b0 = ((1 + cos0) / 2) * norm;
+        const b1 = -(1 + cos0) * norm;
+        const b2 = b0;
+        const a1 = (-2 * cos0) * norm;
+        const a2 = (1 - alp) * norm;
+
+        let s1x1 = 0, s1x2 = 0, s1y1 = 0, s1y2 = 0;
+        let s2x1 = 0, s2x2 = 0, s2y1 = 0, s2y2 = 0;
+
+        const hfGain = 1.41 * intensity;
+        const out = new Float32Array(pcm.length);
+        let peak = 0;
+
+        for (let i = 0; i < pcm.length; i++) {
+            const x0 = driven[i];
+            const y0 = b0 * x0 + b1 * s1x1 + b2 * s1x2 - a1 * s1y1 - a2 * s1y2;
+            s1x2 = s1x1; s1x1 = x0;
+            s1y2 = s1y1; s1y1 = y0;
+
+            const y1 = b0 * y0 + b1 * s2x1 + b2 * s2x2 - a1 * s2y1 - a2 * s2y2;
+            s2x2 = s2x1; s2x1 = y0;
+            s2y2 = s2y1; s2y1 = y1;
+
+            out[i] = pcm[i] + y1 * hfGain;
+            const abs = out[i] < 0 ? -out[i] : out[i];
+            if (abs > peak) peak = abs;
+        }
+
+        if (peak > 0.9441) {
+            const g = 0.9441 / peak;
+            for (let i = 0; i < out.length; i++) out[i] *= g;
+        }
+
+        return out;
+    }
+
     // END encode/audio.js
     // BEGIN encode/utils.js
     var wav = new wavefile.WaveFile();
@@ -1844,7 +1903,12 @@ async function fetchAndStore() {
                 const bufferCopy = arrayBuffer.slice(0);
                 const buffer = await audioContext.decodeAudioData(bufferCopy);
                 const pcmRaw = buffer.getChannelData(0);
-                const pcm = resamplePcm(pcmRaw, buffer.sampleRate, SAMPLE_RATE);
+                let pcm = resamplePcm(pcmRaw, buffer.sampleRate, SAMPLE_RATE);
+                if (document.getElementById("enable-vmify-custom")?.checked) {
+                    const vmifyIntensityEl = document.getElementById("vmify-custom-intensity");
+                    const vmifyIntensity = vmifyIntensityEl ? parseFloat(vmifyIntensityEl.value) : 1;
+                    pcm = vmifyPcm(pcm, { intensity: Number.isFinite(vmifyIntensity) ? vmifyIntensity : 1 });
+                }
                 generate_silence(Math.floor(SAMPLE_RATE * 0.25));
                 appendPcmToSamples(pcm);
                 generate_silence(Math.floor(SAMPLE_RATE * 0.25));
@@ -2182,7 +2246,9 @@ async function fetchAndStore() {
             'ttsRate': ttsRate?.value || '0',
             'ttsPitch': ttsPitch?.value || '0',
             'cheader': rawInput,
-            'clip': clipSignal
+            'clip': clipSignal,
+            'enable-vmify-custom': document.getElementById('enable-vmify-custom')?.checked || false,
+            'vmify-custom-intensity': document.getElementById('vmify-custom-intensity')?.value || '1'
         }));
 
         samples.length = 0;
@@ -2809,6 +2875,29 @@ async function fetchAndStore() {
         }
     });
 
+    const enableVmifyCustomCheckbox = document.getElementById("enable-vmify-custom");
+    const vmifyCustomOptions = document.getElementById("vmifyCustomOptions");
+    const vmifyCustomIntensityInput = document.getElementById("vmify-custom-intensity");
+
+    const syncVmifyCustomUi = () => {
+        if (!enableVmifyCustomCheckbox || !vmifyCustomOptions) return;
+        vmifyCustomOptions.style.display = enableVmifyCustomCheckbox.checked ? "block" : "none";
+    };
+
+    if (enableVmifyCustomCheckbox) {
+        syncVmifyCustomUi();
+        enableVmifyCustomCheckbox.addEventListener("change", syncVmifyCustomUi);
+    }
+
+    if (vmifyCustomIntensityInput) {
+        vmifyCustomIntensityInput.addEventListener("change", () => {
+            const intensity = parseFloat(vmifyCustomIntensityInput.value);
+            if (Number.isNaN(intensity) || intensity < 0 || intensity > 3) {
+                vmifyCustomIntensityInput.value = "1";
+            }
+        });
+    }
+
     const ttsRate = document.getElementById("ttsRate");
     const ttsRateReset = document.getElementById("ttsRateReset");
     ttsRateReset.addEventListener("click", function () {
@@ -3075,6 +3164,8 @@ async function fetchAndStore() {
                 if (params.ttsRate != null && el('ttsRate')) { el('ttsRate').value = params.ttsRate.toString(); el('ttsRate').dispatchEvent(new Event('input')); }
                 if (params.ttsPitch != null && el('ttsPitch')) { el('ttsPitch').value = params.ttsPitch.toString(); el('ttsPitch').dispatchEvent(new Event('input')); }
                 if (params.bitcrushSpeechify != null && el('shouldBitcrushSpeechify')) el('shouldBitcrushSpeechify').checked = params.bitcrushSpeechify;
+                if (params.vmifyCustom != null && el('enable-vmify-custom')) { el('enable-vmify-custom').checked = params.vmifyCustom; el('enable-vmify-custom').dispatchEvent(new Event('change')); }
+                if (params.vmifyCustomIntensity != null && el('vmify-custom-intensity')) el('vmify-custom-intensity').value = params.vmifyCustomIntensity.toString();
 
                 // Set FIPS mode (us/ca) before setting locations
                 // Note: do NOT dispatch 'change' — the web handler clears locations

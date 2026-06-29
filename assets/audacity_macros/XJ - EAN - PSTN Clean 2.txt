@@ -1,0 +1,46 @@
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="3" gain="3"
+MultibandEq:band="3" bands="3" gain="12"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0" Gain_1="0" Gain_2="0.75961536" Gain_3="1" Limiter="1" Out="1" Pregain="0" Ratio_1="0.79807693" Ratio_2="0.875" Ratio_3="1" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.69999999" Threshold_2="0.60000002" Threshold_3="0.40000001" Width_limit="1" Xover1="0.30000001" Xover2="0.30000001"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="5" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+ChebyshevTypeIFilter:fc="4500" fType="Lowpass" order="16" ripple="1"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+FilterCurve:f0="50.52861" f1="90.527715" f10="4491.0075" f11="5999.6695" f2="110.2337" f3="132.17178" f4="165.99249" f5="215.00823" f6="3152.5054" f7="3361.7099" f8="3673.9552" f9="3999.7271" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-47.900337" v1="-16.88802" v10="-15.521839" v11="-48.036957" v2="-8.4176941" v3="-3.7726784" v4="-0.90369415" v5="0.052631378" v6="0.18925095" v7="-0.083984375" v8="-1.7234077" v9="-5.821949"
+NotchFilter:frequency="250" q="12"
+NotchFilter:frequency="720" q="12"
+NotchFilter:frequency="1150" q="12"
+NotchFilter:frequency="1650" q="12"
+NotchFilter:frequency="2100" q="12"
+NotchFilter:frequency="2600" q="12"
+NotchFilter:frequency="3100" q="12"
+NotchFilter:frequency="3500" q="12"
+NotchFilter:frequency="4000" q="12"
+Amplify:Ratio="1.9952623"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="1030" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.05" factor="1" maxdepth="0.01" maxspeed="4"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="60" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="120" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="180" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="2060" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.05" factor="1" maxdepth="0.01" maxspeed="4"
+NewMonoTrack:
+Noise:Amplitude="0.01" Type="White"
+MultibandEq:band="4" bands="5" gain="9"
+Low-passFilter:frequency="4300" rolloff="dB48"
+Low-passFilter:frequency="4300" rolloff="dB48"
+Low-passFilter:frequency="4300" rolloff="dB48"
+ChebyshevTypeIFilter:fc="4500" fType="Lowpass" order="16" ripple="1"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="0.70794576"

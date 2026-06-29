@@ -1,0 +1,12 @@
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="Pink"
+NewMonoTrack:
+Tone:Amplitude="0.35" Frequency="2670" Interpolation="Linear" Waveform="Sine"
+Select:Mode="Set" Track="1" TrackCount="2"
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="0.15" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="75" Parameter_2="1.25" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Select:Mode="Set" Track="1" TrackCount="2"
+MixAndRender:

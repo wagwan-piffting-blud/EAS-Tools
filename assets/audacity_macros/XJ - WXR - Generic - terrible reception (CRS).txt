@@ -1,0 +1,53 @@
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0" Gain_1="0" Gain_2="0.048076924" Gain_3="0.27884614" Limiter="1" Out="1" Pregain="0" Ratio_1="0.42307693" Ratio_2="0.51923078" Ratio_3="0.86538464" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.69999999" Threshold_2="0.60000002" Threshold_3="0.40000001" Width_limit="1" Xover1="0.11538462" Xover2="0.009615385"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-20"
+BroadcastLimiterIii:hd="2" vl="0.3"
+FilterCurve:f0="198.26027" f1="341.75019" f10="2993.9656" f11="3984.3111" f2="369.19095" f3="403.48246" f4="447.82336" f5="498.96023" f6="2198.2531" f7="2458.7479" f8="2666.4497" f9="2858.3897" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-48.173576" v1="-6.3684196" v10="-6.2318039" v11="-47.900337" v2="-3.0895844" v3="-0.90369415" v4="-0.22060394" v5="0.052631378" v6="0.18925095" v7="-0.22060394" v8="-1.1769333" v9="-2.816349"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="5" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+Ulawencode:Dry_Wet="1" Gain="1"
+Derez:Rate="0.56599998" Rez="0.5"
+Ulawdecode:Dry_Wet="1" Gain="1"
+FilterCurve:f0="198.26027" f1="341.75019" f10="2993.9656" f11="3984.3111" f2="369.19095" f3="403.48246" f4="447.82336" f5="498.96023" f6="2198.2531" f7="2458.7479" f8="2666.4497" f9="2858.3897" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-48.173576" v1="-6.3684196" v10="-6.2318039" v11="-47.900337" v2="-3.0895844" v3="-0.90369415" v4="-0.22060394" v5="0.052631378" v6="0.18925095" v7="-0.22060394" v8="-1.1769333" v9="-2.816349"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-24" Type="Hard Clipping"
+Silhouette:Dry_Wet="1"
+Amplify:Ratio="0.25118864"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.75"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="1" Threshold_dB="-24" Type="Expand and Compress"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="60" Interpolation="Linear" Waveform="Square"
+Low-passFilter:frequency="180" rolloff="dB6"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="540" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="2000" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.01" factor="80" maxdepth="0.25" maxspeed="1"
+NewMonoTrack:
+Tone:Amplitude="0.004" Frequency="3000" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="4000" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-24" Type="Expand and Compress"
+Amplify:Ratio="0.59566212"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-24" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-24" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-24" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-24" Type="Expand and Compress"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="500" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+Compressor:AttackTime="0.1" NoiseFloor="-45" Normalize="1" Ratio="2" ReleaseTime="2.3" Threshold="-40" UsePeak="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="2.5" Parameter_2="0" Repeats="1" Threshold_dB="-10" Type="Hard Clipping"

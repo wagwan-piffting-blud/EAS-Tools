@@ -1,0 +1,20 @@
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="0.001" error-control="Show errors" start-adjust="0.001" t-units="seconds"
+Select:End="0.001" Mode="Set" RelativeTo="ProjectStart" Start="0"
+Tone:Amplitude="1" Frequency="120" Interpolation="Linear" Waveform="Sine"
+Reverse:Use_Preset="<Factory Defaults>"
+Select:End="0.001" Mode="Set" RelativeTo="ProjectEnd" Start="0"
+Tone:Amplitude="0.5" Frequency="120" Interpolation="Linear" Waveform="Sine"
+Reverse:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="0.32" error-control="Show errors" start-adjust="0" t-units="seconds"
+Select:End="0.001" Mode="Set" RelativeTo="ProjectEnd" Start="0"
+Tone:Amplitude="1" Frequency="120" Interpolation="Linear" Waveform="Sine"
+Reverse:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="0.05" error-control="Show errors" start-adjust="0.05" t-units="seconds"
+SelectAll:
+MixAndRender:

@@ -1,0 +1,28 @@
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Duplicate:
+Select:Mode="Set" Track="1"
+MultibandEq:band="4" bands="4" gain="12"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="4" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+High-passFilter:frequency="3000" rolloff="dB48"
+NoiseGate:attack="100" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-6"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-18" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-18" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+MultibandEq:band="3" bands="3" gain="-12"
+Low-passFilter:frequency="3000" rolloff="dB48"
+MultibandEq:band="1" bands="2" gain="18"
+Amplify:Ratio="0.015848933"
+SelectAll:
+MixAndRender:
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="8" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+FilterCurve:f0="29.654842" f1="81.541643" f10="3659.7948" f11="3803.9216" f12="3953.6573" f13="4093.4835" f14="7953.47" f2="90.877981" f3="100.4763" f4="111.08837" f5="124.2679" f6="140.05397" f7="159.27273" f8="198.33119" f9="3494.0682" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-47.763718" v1="-7.1881332" v10="-0.083984375" v11="-0.90369415" v12="-2.1332588" v13="-4.319149" v14="-47.763718" v2="-4.319149" v3="-2.5431137" v4="-1.4501686" v5="-0.63045883" v6="-0.083984375" v7="0.18925095" v8="0.32587051" v9="0.18925095"
+Ulawencode:Dry_Wet="1" Gain="1"
+Derez:Rate="0.56599998" Rez="0.5"
+Ulawdecode:Dry_Wet="1" Gain="1"
+SetProject:Rate="8000"
+SelectAll:
+MixAndRender:

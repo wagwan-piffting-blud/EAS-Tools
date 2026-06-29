@@ -1,0 +1,7 @@
+SelectAll:
+SetProject:Rate="48000"
+MixAndRender:
+Stereo to Mono:
+DblueCrusher:BitDepth="0.46700001" Foldback="0" Mix="1" Reduction="0.048" Smoothing="0" SmoothMode="0"
+Low-passFilter:frequency="4000" rolloff="dB12"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"

@@ -1,0 +1,56 @@
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="3" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+FilterCurve:f0="49.781484" f1="194.46888" f10="3420.4793" f11="3638.3442" f12="4000" f2="249.9554" f3="326.2747" f4="416.14202" f5="539.02413" f6="2003.6735" f7="2526.119" f8="2869.4493" f9="3160.2862" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-60.195969" v1="-15.2486" v10="-18.93729" v11="-33.282196" v12="-60.059349" v2="-8.5543098" v3="-3.3628235" v4="-1.1769333" v5="0.052631378" v6="0.32587051" v7="-0.63045883" v8="-3.3628235" v9="-9.3740196"
+Ulawencode:Dry_Wet="1" Gain="1"
+Derez:Rate="0.56599998" Rez="0.5"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="12.5" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Medium Overdrive"
+Ulawdecode:Dry_Wet="1" Gain="1"
+Low-passFilter:frequency="3300" rolloff="dB48"
+Low-passFilter:frequency="3300" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+FilterCurve:f0="49.781484" f1="190.4781" f10="3420.4793" f11="3638.3442" f12="4000" f2="231.10806" f3="285.30202" f4="375.28988" f5="495.08771" f6="2592.5926" f7="2825.7081" f8="3006.5359" f9="3196.0784" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-60.195969" v1="-14.702129" v10="-18.93729" v11="-33.282196" v12="-60.059349" v2="-8.6909294" v3="-4.4557686" v4="-1.3135529" v5="0.052631378" v6="0.052631378" v7="-0.90369415" v8="-3.0895844" v9="-8.2810745"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Even Harmonics"
+Amplify:Ratio="1.9952623"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="10" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+Amplify:Ratio="0.12589253"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+Amplify:Ratio="0.25118864"
+SelectAll:
+MixAndRender:
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="2" ReleaseTime="4" Threshold="-24" UsePeak="0"
+TrimExtend:end-adjust="0.001" error-control="Show errors" start-adjust="0.001" t-units="seconds"
+SelectAll:
+MixAndRender:
+NewMonoTrack:
+Select:End="0.001" Mode="Set" RelativeTo="ProjectStart" Start="0" Track="1"
+Tone:Amplitude="1" Frequency="128" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Select:End="0.001" Mode="Set" RelativeTo="ProjectEnd" Start="0" Track="2"
+Tone:Amplitude="1" Frequency="128" Interpolation="Linear" Waveform="Sine"
+Reverse:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+TrimExtend:end-adjust="1" error-control="Show errors" start-adjust="1" t-units="seconds"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="100" rolloff="dB6"
+Low-passFilter:frequency="4000" rolloff="dB12"
+Ulawencode:Dry_Wet="1" Gain="1"
+Derez:Rate="0.56599998" Rez="0.5"
+Ulawdecode:Dry_Wet="1" Gain="1"
+Low-passFilter:frequency="4000" rolloff="dB12"

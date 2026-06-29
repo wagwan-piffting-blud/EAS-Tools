@@ -1,0 +1,12 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Allpassphase:Frequency="0.53299999" Intensity="0.30399999" Mix="1" Q="0.708"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0" Gain_1="0.29807693" Gain_2="0.15384616" Gain_3="0.60576922" Limiter="1" Out="1" Pregain="0" Ratio_1="0.52884614" Ratio_2="0.375" Ratio_3="0.875" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.65384614" Threshold_2="0.68269229" Threshold_3="0.48076922" Width_limit="1" Xover1="0.16346154" Xover2="0.086538464"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="5" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="4000" rolloff="dB12"
+FilterCurve:f0="49.592089" f1="56.032321" f10="9812.0098" f11="9980.1471" f2="57.549042" f3="59.559592" f4="62.112567" f5="65.771161" f6="9295.5882" f7="9487.7451" f8="9655.8824" f9="9751.9608" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-47.763718" v1="-9.3740196" v10="-7.324749" v11="-47.900337" v2="-5.138855" v3="-2.2698746" v4="-0.63045883" v5="0.18925095" v6="0.18925095" v7="-0.083984375" v8="-1.3135529" v9="-3.7726784"

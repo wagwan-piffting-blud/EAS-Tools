@@ -1,0 +1,25 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+NewStereoTrack:
+Noise:Amplitude="1" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-14.11" Type="Expand and Compress"
+FilterCurve:f0="15000" f1="15500" f2="16000" f3="16000" f4="20000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+SelectAll:
+DynamicMirror:inverse="Mirror" mode="Peak" range-max="1" range-min="0" resolution="0.01"
+Select:Mode="Set" Track="1"
+Amplify:Ratio="0.25118864"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="1.25" Parameter_2="100" Repeats="5" Threshold_dB="-14.11" Type="Even Harmonics"
+NewStereoTrack:
+Noise:Amplitude="1" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="5" Repeats="5" Threshold_dB="-14.11" Type="Expand and Compress"
+FilterCurve:f0="15000" f1="15500" f2="16000" f3="16000" f4="20000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="120" Interpolation="Linear" Waveform="Sawtooth"
+NewStereoTrack:
+Noise:Amplitude="0.05" Type="Pink"
+FilterCurve:f0="15000" f1="15500" f2="16000" f3="16000" f4="20000" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-15" v1="-30" v2="-30" v3="-40" v4="-50"
+SelectAll:
+MixAndRender:

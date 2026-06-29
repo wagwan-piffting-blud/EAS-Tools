@@ -1,0 +1,36 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Narrow Stereo" right-mix-L="0" right-mix-R="0"
+Allpassphase:Frequency="0.53299999" Intensity="0.30399999" Mix="1" Q="0.708"
+Sc4:Attack_time_(ms)="25" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="5" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-18"
+Broadcast:AGC="1" Ambiance_1="0" Ambiance_2="0" Ambiance_3="0" Bypass="0" Comp_1="1" Comp_2="1" Comp_3="1" Density="0.5" Gain_1="0.32692307" Gain_2="0.31730768" Gain_3="0.5" Limiter="1" Out="1" Pregain="0" Ratio_1="0.77884614" Ratio_2="0.35576922" Ratio_3="1" SideGain1="0" SideGain2="0" SideGain3="0" Threshold_1="0.5" Threshold_2="0.27884614" Threshold_3="0.29807693" Width_limit="1" Xover1="0.30000001" Xover2="0.30000001"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+FilterCurve:f0="39.595455" f1="62.112567" f10="15516.667" f2="65.196889" f3="69.352272" f4="74.596557" f5="15000.245" f6="15120.343" f7="15216.422" f8="15264.461" f9="15300.49" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-48.036957" v1="-3.2262039" v10="-47.763718" v2="-1.0403137" v3="-0.083984375" v4="0.18925095" v5="0.052631378" v6="-0.22060394" v7="-1.0403137" v8="-2.2698746" v9="-4.5923882"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Hard Overdrive"
+NoiseGate:attack="50" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-18"
+Silhouette:Dry_Wet="1"
+Amplify:Ratio="0.47315127"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Amplify:Ratio="0.031622775"
+SelectAll:
+MixAndRender:
+NewStereoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-12" Type="Expand and Compress"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+Amplify:Ratio="0.031622775"
+NewStereoTrack:
+Noise:Amplitude="0.0025" Type="White"
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Narrow Stereo" right-mix-L="0" right-mix-R="0"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+Select:Mode="Set" Track="1" TrackCount="2"
+MixAndRender:
+SelectAll:
+MixAndRender:
