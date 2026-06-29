@@ -1,0 +1,47 @@
+Amplify:Ratio="0.022387212"
+Copy:
+NewMonoTrack:
+Paste:
+DblueCrusher:BitDepth="0.333" Foldback="1" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+Invert:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+NewMonoTrack:
+Paste:
+SelectAll:
+MixAndRender:
+ChangeSpeed:Percentage="495.9"
+ChangeSpeed:Percentage="-83.22"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+Roughrider2:Attack="0.059999999" Make-Up_Gain="0" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.40799999"
+High-passFilter:frequency="200" rolloff="dB48"
+BassAndTreble:Bass="-10" Gain="20" Link_Sliders="0" Treble="-10"
+Roughrider2:Attack="0.056000002" Make-Up_Gain="0.192" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.52899998"
+Low-passFilter:frequency="3000" rolloff="dB48"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-14" type="HardLimit"
+Amplify:Ratio="3.9810717"
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="0"
+Copy:
+NewMonoTrack:
+Paste:
+Tone:Amplitude="0.02" Frequency="60" Interpolation="Linear" Waveform="Sine"
+MdaCombo:Bias="0" Drive="0.72100002" Model="0" Output="0.76099998" Process_="0.40000001"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+NewMonoTrack:
+Paste:
+Noise:Amplitude="0.02" Type="White"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="120" rolloff="dB48"
+ChangeSpeed:Percentage="495.9"
+ChangeSpeed:Percentage="-83.22"
+Select:End="0.01" Mode="Set" Start="0"
+Delete:
+SelectAll:
+Amplify:AllowClipping="0" Ratio="3.0036547"
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="0"
+Roughrider2:Attack="0" Make-Up_Gain="0.18799999" Mix="0.90799999" Ratio="1" Release="0.032000002" Sensitivity="0.245"
+BassAndTreble:Bass="5" Gain="0" Link_Sliders="0" Treble="0"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="14"
+Message:Text="edited by tmyk - based off nwr-ruskin"

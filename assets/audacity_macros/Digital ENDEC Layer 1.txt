@@ -1,0 +1,4 @@
+Amplify:Ratio="0.31622776"
+BassAndTreble:Bass="-10" Gain="0" Link_Sliders="0" Treble="0"
+FilterCurve:f0="20" f1="31" f10="22050" f2="83.698284" f3="192.341" f4="353.41799" f5="2500" f6="4000" f7="5000" f8="8000" f9="20000" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-63.67" v1="-33.219" v10="-110.4316" v2="-3.1492062" v3="0.022221565" v4="-0.095238686" v5="0" v6="-0.614" v7="-8.059" v8="-39.981" v9="-103.651"
+Amplify:AllowClipping="0" Ratio="2.818383"

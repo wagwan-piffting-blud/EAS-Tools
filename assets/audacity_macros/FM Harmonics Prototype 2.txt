@@ -1,0 +1,5 @@
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="0"
+Delay:constrain="No" delay="0.006" delay-type="BouncingBall" dgain="-6.3" number="3" pitch-type="PitchTempo" shift="0"
+Allpassphase:Frequency="0.233" Intensity="1" Mix="0.13600001" Q="0.58399999"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-4" type="HardLimit"
+BassAndTreble:Bass="-15" Gain="0" Link_Sliders="0" Treble="0"

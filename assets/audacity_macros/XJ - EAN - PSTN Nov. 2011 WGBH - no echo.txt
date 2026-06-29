@@ -1,0 +1,75 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="2" gain="12"
+Duplicate:
+Select:Mode="Set" Track="1"
+High-passFilter:frequency="4000" rolloff="dB48"
+NoiseGate:attack="150" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-15"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+MultibandEq:band="2" bands="2" gain="-12"
+MultibandEq:band="1" bands="2" gain="12"
+Amplify:Ratio="0.50118721"
+SelectAll:
+MixAndRender:
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="12" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="500" rolloff="dB6"
+Low-passFilter:frequency="2500" rolloff="dB48"
+Low-passFilter:frequency="2500" rolloff="dB48"
+Low-passFilter:frequency="2500" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+MdaDegrade:Headroom="1" Non-Lin="0.62699997" Output="0.5" PostFilt="1" Quant="1" Rate="0.23899999"
+Low-passFilter:frequency="3000" rolloff="dB24"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Dustbunny:Bunny="1"
+Amplify:Ratio="0.0039810715"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.602"
+Low-passFilter:frequency="2500" rolloff="dB12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Soft Overdrive"
+Compressor:AttackTime="0.1" NoiseFloor="-60" Normalize="1" Ratio="1.5" ReleaseTime="8" Threshold="-40" UsePeak="0"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-12"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="120" rolloff="dB6"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="Yes" thresh="-10" type="HardLimit"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="120" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.02" Frequency="180" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="1900" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="3150" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="4400" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="5680" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.025" Type="White"
+MultibandEq:band="1" bands="2" gain="18"
+Low-passFilter:frequency="2500" rolloff="dB12"
+Low-passFilter:frequency="7000" rolloff="dB48"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+SelectAll:
+MixAndRender:
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-3" type="SoftLimit"
+Low-passFilter:frequency="8000" rolloff="dB48"
+Low-passFilter:frequency="8000" rolloff="dB48"

@@ -1,0 +1,20 @@
+SetProject:Rate="7000"
+MixAndRender:
+Copy:
+NewMonoTrack:
+Paste:
+SelectAll:
+MixAndRender:
+SetProject:Rate="44100"
+MixAndRender:
+Copy:
+NewMonoTrack:
+Paste:
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="800" rolloff="dB12"
+Low-passFilter:frequency="1600" rolloff="dB12"
+Amplify:Ratio="5.3088446"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="38" Parameter_2="18" Repeats="5" Threshold_dB="-10" Type="Soft Overdrive"
+Amplify:Ratio="5.3088446"
+Message:Text="made by themisaiahyouknow"

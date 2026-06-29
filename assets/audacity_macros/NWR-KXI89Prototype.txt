@@ -1,0 +1,57 @@
+Copy:
+NewMonoTrack:
+Paste:
+DblueCrusher:BitDepth="0.333" Foldback="1" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+Invert:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="0.50118721"
+NewMonoTrack:
+Paste:
+SelectAll:
+MixAndRender:
+ChangeSpeed:Percentage="418.8"
+ChangeSpeed:Percentage="-80.725"
+ChangeSpeed:Percentage="8.088"
+DblueCrusher:BitDepth="1" Foldback="1" Mix="1" Reduction="0.041999999" Smoothing="0" SmoothMode="0"
+ChangeSpeed:Percentage="-8.088"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+Roughrider2:Attack="0.059999999" Make-Up_Gain="0" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.396"
+High-passFilter:frequency="180" rolloff="dB48"
+BassAndTreble:Bass="-10" Gain="20" Link_Sliders="0" Treble="-10"
+Roughrider2:Attack="0.056000002" Make-Up_Gain="0.204" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.50099999"
+Low-passFilter:frequency="4000" rolloff="dB6"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-14" type="HardLimit"
+Amplify:Ratio="3.9810717"
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="-10"
+High-passFilter:frequency="120" rolloff="dB48"
+Select:End="0.01" Mode="Set" Start="0"
+Delete:
+SelectAll:
+Copy:
+NewMonoTrack:
+Paste:
+Low-passFilter:frequency="3500" rolloff="dB48"
+Low-passFilter:frequency="3500" rolloff="dB48"
+Low-passFilter:frequency="3500" rolloff="dB48"
+Roughrider2:Attack="0" Make-Up_Gain="0.20299999" Mix="1" Ratio="1" Release="0" Sensitivity="0.193"
+High-passFilter:frequency="5000" rolloff="dB48"
+High-passFilter:frequency="5000" rolloff="dB48"
+High-passFilter:frequency="5000" rolloff="dB48"
+MdaCombo:Bias="0.5" Drive="1" Model="0" Output="0.5" Process_="0.40000001"
+ChangeSpeed:Percentage="418.8"
+ChangeSpeed:Percentage="-80.725"
+SelectAll:
+MixAndRender:
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+High-passFilter:frequency="140" rolloff="dB48"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="11" Parameter_2="20" Repeats="3" Threshold_dB="-10.457575" Type="Leveller"
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="0.31622776"
+Low-passFilter:frequency="5000" rolloff="dB12"
+BassAndTreble:Bass="-6" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="11" Parameter_2="20" Repeats="1" Threshold_dB="-10.457575" Type="Leveller"
+Low-passFilter:frequency="3000" rolloff="dB12"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="11" Parameter_2="20" Repeats="2" Threshold_dB="-10.457575" Type="Leveller"
+Message:Text="edited by tmyk"

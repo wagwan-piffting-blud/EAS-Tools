@@ -1,0 +1,8 @@
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.015873017" Dry="0.62599999" Wet="0.67799997"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+DblueCrusher:BitDepth="0.456" Foldback="0.55800003" Mix="1" Reduction="0.017000001" Smoothing="0.52899998" SmoothMode="0.61500001"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="3"
+MdaDegrade:Headroom="0.63700002" Non-Lin="0.43799999" Output="0.51700002" PostFilt="0.73699999" Quant="0.33700001" Rate="0.52499998"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.015873017" Dry="0.61699998" Wet="0.61400002"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="3"

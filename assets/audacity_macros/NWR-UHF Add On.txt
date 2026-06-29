@@ -1,0 +1,8 @@
+SetProject:Rate="48000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+BassAndTreble:Bass="-25" Gain="0" Link_Sliders="0" Treble="0"
+High-passFilter:frequency="300" rolloff="dB12"
+Amplify:AllowClipping="0" Ratio="1.9952623"
+BassAndTreble:Bass="-5" Gain="0" Link_Sliders="0" Treble="8"

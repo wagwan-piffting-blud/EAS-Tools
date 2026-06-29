@@ -1,0 +1,5 @@
+Macro_NWR-CrunchierPhonelines:
+BassAndTreble:Bass="-15" Gain="0" Link_Sliders="0" Treble="12"
+High-passFilter:frequency="80" rolloff="dB12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="3" Parameter_2="100" Repeats="1" Threshold_dB="-10.457575" Type="Expand and Compress"
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"

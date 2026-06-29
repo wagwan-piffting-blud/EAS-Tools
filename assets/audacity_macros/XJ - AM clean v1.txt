@@ -1,0 +1,29 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="3" bands="2" gain="6"
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="0" Threshold_level_(dB)="-30"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="No" thresh="-10" type="HardLimit"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+Duplicate:
+Select:Mode="Set" Track="1"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+ChebyshevTypeIFilter:fc="3000" fType="Lowpass" order="16" ripple="1"
+High-passFilter:frequency="1000" rolloff="dB48"
+High-passFilter:frequency="1000" rolloff="dB48"
+ChebyshevTypeIFilter:fc="1000" fType="Highpass" order="16" ripple="1"
+CombFilter:decay="0.1" f="200" norm-level="0"
+SelectAll:
+MixAndRender:
+Allpassphase:Frequency="0.50199997" Intensity="0.17299999" Mix="1" Q="0.359"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="No" thresh="-6" type="SoftLimit"

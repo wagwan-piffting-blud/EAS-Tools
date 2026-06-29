@@ -1,0 +1,39 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Sc4:Attack_time_(ms)="400" Knee_radius_(dB)="5" Makeup_gain_(dB)="1" Ratio_(1_n)="2" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-24"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-4" type="HardLimit"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-4" type="HardLimit"
+Low-passFilter:frequency="8000" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="-12" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.01" Type="White"
+Low-passFilter:frequency="6000" rolloff="dB6"
+BassAndTreble:Bass="16" Gain="0" Link_Sliders="0" Treble="0"
+FilterCurve:f0="11996.552" f1="11996.552" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-0.1714325" v1="-120"
+NewMonoTrack:
+Noise:Amplitude="0.01" Type="White"
+Low-passFilter:frequency="4000" rolloff="dB6"
+BassAndTreble:Bass="16" Gain="0" Link_Sliders="0" Treble="0"
+RandomAmplitudeModulation:factor="120" maxspeed="1"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-42"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="20" Parameter_2="100" Repeats="1" Threshold_dB="-11.77" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-8" Type="Hard Clipping"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-16" Type="Leveller"
+Low-passFilter:frequency="6000" rolloff="dB6"
+FilterCurve:f0="13010.345" f1="13010.345" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="0.34285355" v1="-120"
+NewMonoTrack:
+Tone:Amplitude="0.0015" Frequency="2260" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.002" Frequency="3790" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.002" Frequency="6050" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="8" Parameter_2="100" Repeats="1" Threshold_dB="-16" Type="Expand and Compress"
+BassAndTreble:Bass="3" Gain="0" Link_Sliders="0" Treble="0"
+FilterCurve:f0="14925.287" f1="14981.609" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="0.34285355" v1="-120"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

@@ -1,0 +1,5 @@
+BassAndTreble:Bass="13" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="20" Parameter_2="100" Repeats="1" Threshold_dB="-10.457575" Type="Even Harmonics"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="20" Parameter_2="100" Repeats="1" Threshold_dB="-10.457575" Type="Even Harmonics"
+BassAndTreble:Bass="13" Gain="0" Link_Sliders="0" Treble="0"
+Message:Text="steps compiled by luennix - made into a macro by tmyk"

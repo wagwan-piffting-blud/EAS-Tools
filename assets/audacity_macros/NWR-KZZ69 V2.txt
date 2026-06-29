@@ -1,0 +1,4 @@
+Macro_NWR-KEC61Prototype:
+BassAndTreble:Bass="-10" Gain="0" Link_Sliders="0" Treble="20"
+BassAndTreble:Bass="-5" Gain="0" Link_Sliders="0" Treble="10"
+Amplify:AllowClipping="0" Ratio="0.44668359"

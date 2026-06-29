@@ -1,0 +1,43 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="1" bands="2" gain="12"
+MultibandEq:band="3" bands="4" gain="12"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="1.5" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="4000" rolloff="dB12"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"
+Duplicate:
+Select:Mode="Set" Track="1"
+High-passFilter:frequency="4000" rolloff="dB48"
+NoiseGate:attack="75" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-24"
+Dustbunny:Bunny="1"
+MultibandEq:band="3" bands="2" gain="12"
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="8" ReleaseTime="1" Threshold="-24" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="No" thresh="-10" type="SoftLimit"
+SelectAll:
+MixAndRender:
+Flutter:Flutter="0.5"
+Low-passFilter:frequency="7000" rolloff="dB48"
+Low-passFilter:frequency="7000" rolloff="dB48"
+Low-passFilter:frequency="7000" rolloff="dB48"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="60" Interpolation="Linear" Waveform="Sawtooth"
+Low-passFilter:frequency="60" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.005" Type="White"
+Low-passFilter:frequency="7000" rolloff="dB48"
+Low-passFilter:frequency="7000" rolloff="dB48"
+Low-passFilter:frequency="7000" rolloff="dB48"
+NewMonoTrack:
+Noise:Amplitude="0.0025" Type="White"
+ChebyshevTypeIFilter:fc="20000" fType="Lowpass" order="16" ripple="1"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="15734" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:
+Compressor:AttackTime="0.1" NoiseFloor="-60" Normalize="1" Ratio="1.5" ReleaseTime="6" Threshold="-40" UsePeak="0"
+Amplify:Ratio="0.50118721"

@@ -1,0 +1,37 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="2" ReleaseTime="1" Threshold="-36" UsePeak="0"
+MdaDegrade:Headroom="0.454" Non-Lin="0.50400001" Output="0.5" PostFilt="1" Quant="0.35800001" Rate="0.755"
+ChebyshevDistortion:Distortion="0.80000001"
+Low-passFilter:frequency="1600" rolloff="dB6"
+Low-passFilter:frequency="3400" rolloff="dB48"
+Low-passFilter:frequency="3400" rolloff="dB48"
+ChebyshevTypeIFilter:fc="3400" fType="Lowpass" order="16" ripple="1"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="50" Parameter_2="100" Repeats="1" Threshold_dB="-8" Type="Soft Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="5" Parameter_2="100" Repeats="1" Threshold_dB="-8" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="2.5" Parameter_2="100" Repeats="1" Threshold_dB="-8" Type="Expand and Compress"
+High-passFilter:frequency="400" rolloff="dB24"
+High-passFilter:frequency="300" rolloff="dB6"
+Low-passFilter:frequency="4000" rolloff="dB12"
+BassAndTreble:Bass="-6" Gain="0" Link_Sliders="0" Treble="0"
+NewMonoTrack:
+Tone:Amplitude="0.008" Frequency="60" Interpolation="Linear" Waveform="Sine"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="50"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="3056" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="3158" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0002" Frequency="5450" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.02" Type="White"
+Low-passFilter:frequency="2500" rolloff="dB6"
+Low-passFilter:frequency="3400" rolloff="dB6"
+Low-passFilter:frequency="5500" rolloff="dB48"
+SelectAll:
+MixAndRender:
+ChebyshevTypeIFilter:fc="5500" fType="Lowpass" order="16" ripple="1"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

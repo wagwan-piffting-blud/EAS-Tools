@@ -1,0 +1,28 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="2" gain="12"
+Duplicate:
+Select:Mode="Set" Track="1"
+High-passFilter:frequency="4000" rolloff="dB48"
+NoiseGate:attack="150" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-15"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+MultibandEq:band="2" bands="2" gain="-12"
+MultibandEq:band="1" bands="2" gain="12"
+Amplify:Ratio="0.50118721"
+SelectAll:
+MixAndRender:
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="500" rolloff="dB6"
+Low-passFilter:frequency="2500" rolloff="dB48"
+Low-passFilter:frequency="2500" rolloff="dB48"
+Low-passFilter:frequency="2500" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+MdaDegrade:Headroom="1" Non-Lin="0.62699997" Output="0.5" PostFilt="1" Quant="1" Rate="0.23899999"
+Low-passFilter:frequency="3000" rolloff="dB24"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

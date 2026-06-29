@@ -1,0 +1,3 @@
+High-passFilter:frequency="1600" rolloff="dB12"
+Low-passFilter:frequency="800" rolloff="dB12"
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"

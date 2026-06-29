@@ -1,0 +1,62 @@
+SelectAll:
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="2" gain="6"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+Allpassphase:Frequency="0.56199998" Intensity="0.20900001" Mix="1" Q="0.43099999"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-24" Type="Leveller"
+Silhouette:Dry_Wet="1"
+Dustbunny:Bunny="1"
+Amplify:Ratio="0.063095734"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.84500003"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.75" Type="White"
+Low-passFilter:frequency="2000" rolloff="dB24"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="160" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="1" Type="White"
+CombFilter:decay="0.1" f="160" norm-level="1"
+Low-passFilter:frequency="1200" rolloff="dB48"
+Low-passFilter:frequency="1200" rolloff="dB48"
+Low-passFilter:frequency="1200" rolloff="dB48"
+Low-passFilter:frequency="960" rolloff="dB6"
+High-passFilter:frequency="400" rolloff="dB48"
+High-passFilter:frequency="400" rolloff="dB48"
+High-passFilter:frequency="400" rolloff="dB48"
+High-passFilter:frequency="640" rolloff="dB6"
+SlidingStretch:PitchHalfStepsEnd="-0.262" PitchHalfStepsStart="0" PitchPercentChangeEnd="-1.5" PitchPercentChangeStart="0" RatePercentChangeEnd="0" RatePercentChangeStart="-0"
+Amplify:Ratio="2.818383"
+Select:Mode="Set" Track="1" TrackCount="2"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="13.5" Parameter_2="50" Repeats="2" Threshold_dB="-11.44" Type="Expand and Compress"
+MultibandEq:band="3" bands="4" gain="1.5"
+Low-passFilter:frequency="3500" rolloff="dB48"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="1.25" Parameter_2="100" Repeats="2" Threshold_dB="-11.44" Type="Expand and Compress"
+Low-passFilter:frequency="4000" rolloff="dB12"
+NewMonoTrack:
+Tone:Amplitude="0.0001" Frequency="7500" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.00125" Type="White"
+ChebyshevTypeIFilter:fc="16000" fType="Lowpass" order="16" ripple="0"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

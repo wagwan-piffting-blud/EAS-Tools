@@ -1,0 +1,4 @@
+Macro_NWR-CRS-KitLX-Var1:
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="5"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="14" Parameter_2="0" Repeats="2" Threshold_dB="-11.44" Type="Leveller"
+Amplify:Ratio="0.56234133"

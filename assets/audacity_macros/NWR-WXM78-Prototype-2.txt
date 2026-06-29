@@ -1,0 +1,24 @@
+SetProject:Rate="7000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+High-passFilter:frequency="800" rolloff="dB12"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.35933539"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.37799999" Output="0.49900001" Process_="0.46599999"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="2" Threshold_dB="-10" Type="Leveller"
+SetProject:Rate="8000"
+MixAndRender:
+High-passFilter:frequency="250" rolloff="dB12"
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.68469948"
+SetProject:Rate="48000"
+MixAndRender:
+Message:Text="tmyk made this. it sounds a tad better"

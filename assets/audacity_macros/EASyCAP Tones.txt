@@ -1,0 +1,3 @@
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="20" Parameter_2="100" Repeats="5" Threshold_dB="-10.457575" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="20" Parameter_2="100" Repeats="5" Threshold_dB="-10.457575" Type="Leveller"
+Amplify:AllowClipping="0" Ratio="0.17782794"

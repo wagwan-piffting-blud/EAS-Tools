@@ -1,0 +1,45 @@
+Amplify:Ratio="0.25118864"
+ChangeSpeed:Percentage="500"
+ChangeSpeed:Percentage="-83.352"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+Roughrider2:Attack="0.059999999" Make-Up_Gain="0.39199999" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.704"
+High-passFilter:frequency="200" rolloff="dB48"
+BassAndTreble:Bass="-10" Gain="20" Link_Sliders="0" Treble="-10"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Copy:
+NewMonoTrack:
+Paste:
+Tone:Amplitude="0.02" Frequency="60" Interpolation="Linear" Waveform="Sine"
+MdaCombo:Bias="0" Drive="0.72100002" Model="0" Output="0.75300002" Process_="0.40000001"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+NewMonoTrack:
+Noise:Amplitude="0.015" Type="White"
+SelectAll:
+MixAndRender:
+Paste:
+High-passFilter:frequency="120" rolloff="dB48"
+Select:End="0.01" Mode="Set" Start="0"
+Delete:
+SelectAll:
+ChangeSpeed:Percentage="500"
+ChangeSpeed:Percentage="-83.352"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-2" type="HardLimit"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="1" Threshold_dB="-10" Type="Leveller"
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+FilterCurve:f0="22.66875" f1="31.00427" f10="329.00639" f11="372.90817" f12="445.97727" f13="552.79703" f14="736.04271" f15="1034.0787" f16="1465.8505" f17="1969.3029" f18="2552.6614" f19="4861.2971" f2="33.906028" f20="5412.2601" f21="6589.6229" f22="8932.4163" f23="14223.847" f3="42.404841" f4="49.37074" f5="61.195941" f6="116.54176" f7="160.82777" f8="201.14052" f9="268.94896" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="0.13968182" v1="9.0666666" v10="-0.21269894" v11="7.8920631" v12="-0.33015919" v13="-0.21269894" v14="-1.5047617" v15="-1.5047617" v16="2.4888887" v17="-2.7968254" v18="-1.1523809" v19="0.022221565" v2="8.3619041" v20="-1.5047617" v21="-3.0317459" v22="-16.657143" v23="-19.593651" v3="13.530159" v4="6.3650794" v5="4.8380957" v6="2.3714285" v7="8.0095234" v8="0.84444427" v9="-0.095238686"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="1" Threshold_dB="-10" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="1" Threshold_dB="-10" Type="Leveller"
+High-passFilter:frequency="200" rolloff="dB12"
+Amplify:Ratio="0.70974118"
+FilterCurve:f0="42.792102" f1="66.088468" f10="981.80113" f11="1489.0885" f2="89.104494" f3="108.74657" f4="140.12859" f5="187.22685" f6="250.15519" f7="365.91173" f8="458.87026" f9="580.67888" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-0.21269894" v1="7.4222221" v10="0.022221565" v11="-0.33015919" v2="2.7238092" v3="0.022221565" v4="-0.21269894" v5="7.4222221" v6="-0.095238686" v7="-0.21269894" v8="1.666666" v9="-0.33015919"
+BassAndTreble:Bass="5" Gain="0" Link_Sliders="0" Treble="0"
+MdaCombo:Bias="0.5" Drive="0.68099999" Model="0.37799999" Output="0.39899999" Process_="0.46599999"
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="1.5848932"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="3"
+Message:Text="edited by tmyk"

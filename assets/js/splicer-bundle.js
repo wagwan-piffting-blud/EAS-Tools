@@ -118,6 +118,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     let macroWaveformPcm = null;
     let macroWaveformSampleRate = 0;
     let macroWaveformActiveKey = null;
+    let macroWaveformOutputSig = null;
     let macroWaveformPendingKey = null;
     let macroWaveformJobSeq = 0;
     let macroWaveformDebounce = null;
@@ -313,11 +314,17 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             let processed = null;
             try {
                 const fxPcm = applyExportFxToPcm(pcmRef, sr, macroId);
-                const blob = await renderMacroWithSox(fxPcm, sr, macroId, 0);
-                if (blob) {
-                    processed = await decodeWavBlobToFloat32(blob);
-                } else if (fxPcm !== pcmRef) {
-                    processed = { pcm: fxPcm, sampleRate: sr };
+                if (macroId.startsWith('AUD:') && window.AudacityMacroEngine) {
+                    const out = await window.AudacityMacroEngine.applyMacroFile(fxPcm, sr, macroId.slice(4), { onProgress: macroProgressCb });
+                    setMacroProgress(1, 'Macro preview ready!');
+                    processed = { pcm: out.pcm, sampleRate: out.sampleRate };
+                } else {
+                    const blob = await renderMacroWithSox(fxPcm, sr, macroId, 0);
+                    if (blob) {
+                        processed = await decodeWavBlobToFloat32(blob);
+                    } else if (fxPcm !== pcmRef) {
+                        processed = { pcm: fxPcm, sampleRate: sr };
+                    }
                 }
             } catch (err) {
                 console.error('Macro waveform render failed', err);
@@ -337,10 +344,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 macroWaveformPcm = processed.pcm;
                 macroWaveformSampleRate = processed.sampleRate || sr;
                 macroWaveformActiveKey = key;
+                macroWaveformOutputSig = macroId.startsWith('AUD:') ? getMacroOutputSignature(macroId) : null;
             } else {
                 macroWaveformPcm = null;
                 macroWaveformSampleRate = 0;
                 macroWaveformActiveKey = null;
+                macroWaveformOutputSig = null;
             }
             macroWaveformPendingKey = null;
             drawWaveform();
@@ -371,6 +380,30 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         persistLabel.textContent = msg;
         persistLabel.style.color = ok ? '#7ae37a' : '#f48383';
     };
+
+    let macroProgressUI = null;
+    const ensureMacroProgress = () => {
+        if (macroProgressUI || !persistLabel || !persistLabel.parentNode) return macroProgressUI;
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'height:4px;background:#333;border-radius:2px;margin-top:3px;overflow:hidden;display:none';
+        const bar = document.createElement('div');
+        bar.style.cssText = 'height:100%;width:0%;background:#7ae37a;transition:width .08s linear';
+        wrap.appendChild(bar);
+        persistLabel.parentNode.insertBefore(wrap, persistLabel.nextSibling);
+        macroProgressUI = { wrap, bar };
+        return macroProgressUI;
+    };
+    const setMacroProgress = (fraction, label) => {
+        const ui = ensureMacroProgress();
+        if (ui) {
+            const active = fraction >= 0 && fraction < 1;
+            ui.wrap.style.display = active ? 'block' : 'none';
+            ui.bar.style.width = Math.round(Math.max(0, Math.min(1, fraction)) * 100) + '%';
+        }
+        if (label) persistStatus(label, true);
+    };
+    const macroProgressCb = ({ step, total, cmd, fraction }) =>
+        setMacroProgress(fraction, `Macro ${step}/${total}: ${cmd} (${Math.round(fraction * 100)}%)`);
 
     const syncSegmentPlayButtons = (activeId = null) => {
         currentSegmentId = activeId;
@@ -456,12 +489,17 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         } catch (err) {
             reportErrorStatus(`Failed to pause macro preview: ${err}`, err);
         }
+        const pausedAt = macroPreviewPlayback.audio.currentTime;
+        if (Number.isFinite(pausedAt)) {
+            playheadTime = clamp(pausedAt, 0, duration());
+        }
         macroPreviewPlayback.paused = true;
         clearMacroPreviewInterval();
         setPreviewMacroButtonState('Resume Macro Preview', false);
         playingSource = null;
         playingMode = null;
         pausedPlayback = null;
+        drawWaveform();
         return true;
     };
 
@@ -479,6 +517,16 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             } catch (err) {
                 reportErrorStatus(`Failed to resume audio context for macro preview: ${err}`);
             }
+        }
+        const resumeTarget = clamp(playheadTime, 0, Math.max(0, duration()));
+        try {
+            const dur = (Number.isFinite(audio.duration) && audio.duration > 0) ? audio.duration : null;
+            const target = dur !== null ? Math.min(resumeTarget, Math.max(0, dur - 0.01)) : resumeTarget;
+            if (Math.abs((audio.currentTime || 0) - target) > 0.05) {
+                audio.currentTime = target;
+            }
+        } catch (err) {
+            reportErrorStatus(`Failed to seek macro preview to needle position: ${err}`, err);
         }
         playingSource = audio;
         playingMode = 'macro-preview';
@@ -563,10 +611,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 tx.oncomplete = resolve;
                 tx.onerror = () => reject(tx.error);
             });
-            persistStatus(`Saved locally @ ${new Date().toLocaleTimeString()}`);
+            persistStatus(`Saved locally @ ${new Date().toLocaleTimeString()}.`);
         } catch (err) {
-            console.error('Failed to save splicer project', err);
-            persistStatus('Local save failed', false);
+            console.error('Failed to save splicer project!', err);
+            persistStatus('Local save failed.', false);
         }
     };
 
@@ -582,8 +630,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 req.onerror = () => reject(req.error);
             });
         } catch (err) {
-            console.error('Failed to load splicer project', err);
-            persistStatus('Local load failed', false);
+            console.error('Failed to load splicer project!', err);
+            persistStatus('Local load failed.', false);
             return null;
         }
     };
@@ -600,7 +648,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 tx.onerror = () => reject(tx.error);
             });
         } catch (err) {
-            persistStatus(`Failed clearing cache: ${err}`, false);
+            persistStatus(`Failed clearing cache: ${err}.`, false);
         }
     };
 
@@ -745,7 +793,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             try {
                 await ctxAudio.resume();
             } catch (err) {
-                persistStatus('Failed to resume audio context', false);
+                persistStatus('Failed to resume audio context!', false);
             }
         }
 
@@ -890,7 +938,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     try {
                         await pauseSegment(seg);
                     } catch (err) {
-                        persistStatus(`Failed to pause segment: ${err}`, false);
+                        persistStatus(`Failed to pause segment: ${err}.`, false);
                         syncSegmentPlayButtons(seg.id);
                     }
                     return;
@@ -901,7 +949,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                         syncSegmentPlayButtons(seg.id);
                     }
                 } catch (err) {
-                    persistStatus(`Failed to play segment: ${err}`, false);
+                    persistStatus(`Failed to play segment: ${err}.`, false);
                     syncSegmentPlayButtons(null);
                 }
             });
@@ -1697,7 +1745,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             }
 
             if (ttsText.match(/“|”/)) {
-                // We can try and fix the smart quotes
                 ttsText = ttsText.replace(/“|”/g, '"');
                 window.ttsText = ttsText;
                 return true;
@@ -1715,7 +1762,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             }
 
             if (ttsText.match(/“|”/)) {
-                // We can try and fix the smart quotes
                 ttsText = ttsText.replace(/“|”/g, '"');
                 window.ttsText = ttsText;
                 return true;
@@ -2508,7 +2554,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             try {
                 await playSelection();
             } catch (err) {
-                persistStatus(`Failed to play selection: ${err}`, false);
+                persistStatus(`Failed to play selection: ${err}.`, false);
             } finally {
                 syncPlayButtons();
             }
@@ -2524,7 +2570,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             try {
                 await playWholeFile();
             } catch (err) {
-                persistStatus(`Failed to play entire file: ${err}`, false);
+                persistStatus(`Failed to play entire file: ${err}.`, false);
             } finally {
                 syncPlayButtons();
             }
@@ -2680,6 +2726,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         voiceSelect.value = payload.ttsVoiceSelection || PIPER_VOICE;
         ttsInput.value = payload.ttsText || '';
         macroSelect.value = payload.macroSelection || 'FLAT';
+        restoreAudMacroSelection();
         spliceSilenceInput.value = payload.spliceSilenceInput ?? 0.5;
         spliceLoudnessInput.value = payload.spliceLoudnessInput ?? 0;
         enableStaticNoiseCheckbox.checked = payload.staticEnabled || false;
@@ -2713,8 +2760,29 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
     function getSelectedMacroId() {
         const raw = macroSelect && macroSelect.value ? macroSelect.value : 'FLAT';
+        if (raw.startsWith('AUD:')) return raw;
         if (raw === 'ENDEC') return 'DIGITAL_ENDEC';
         return raw.toUpperCase();
+    }
+
+    const LAST_AUD_MACRO_KEY = 'splicer.lastAudMacro';
+    function rememberAudMacro(value) {
+        try {
+            if (typeof value === 'string' && value.startsWith('AUD:')) localStorage.setItem(LAST_AUD_MACRO_KEY, value);
+            else localStorage.removeItem(LAST_AUD_MACRO_KEY);
+        } catch (e) { /* localStorage unavailable */ }
+    }
+    function restoreAudMacroSelection() {
+        if (!macroSelect) return;
+        let want;
+        try { want = localStorage.getItem(LAST_AUD_MACRO_KEY); } catch (e) { return; }
+        if (!want || !want.startsWith('AUD:')) return;
+        let found = false;
+        for (const opt of macroSelect.options) { if (opt.value === want) { found = true; break; } }
+        if (!found) return;
+        if (macroSelect.value === want) return;
+        macroSelect.value = want;
+        macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     function reportErrorStatus(message, err) {
@@ -2742,27 +2810,35 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const preferred = ['FLAT'];
         const added = new Set();
 
-        function addOption(id) {
+        function addOption(id, parent) {
             const def = soxMacroDefs[id] || {};
             const opt = document.createElement('option');
             opt.value = id;
             opt.textContent =
                 def.label ||
                 id.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-            macroSelect.appendChild(opt);
+            (parent || macroSelect).appendChild(opt);
             added.add(id);
         }
 
         preferred.forEach((id) => {
             if (soxMacroDefs[id] && !added.has(id)) {
-                addOption(id);
+                addOption(id, macroSelect);
             }
         });
+
+        const legacyGroup = document.createElement('optgroup');
+        legacyGroup.label = 'Legacy SoX macros';
+        legacyGroup.setAttribute('data-sox', '1');
 
         ids
             .filter((id) => !added.has(id))
             .sort()
-            .forEach((id) => addOption(id));
+            .forEach((id) => addOption(id, legacyGroup));
+
+        if (legacyGroup.children.length) {
+            macroSelect.appendChild(legacyGroup);
+        }
 
         if (previous && soxMacroDefs[previous]) {
             macroSelect.value = previous;
@@ -2771,6 +2847,326 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         } else {
             macroSelect.selectedIndex = 0;
         }
+
+        addAudacityMacrosToSelect();
+        if (previous) macroSelect.value = previous;
+    }
+
+    function addAudacityMacrosToSelect() {
+        if (!macroSelect || !window.AudacityMacroEngine) return;
+        if (macroSelect.querySelector('optgroup[data-aud]')) return;
+        const list = window.AudacityMacroEngine.listMacros();
+        if (!list.length) return;
+        const grp = document.createElement('optgroup');
+        grp.label = 'Audacity VST macros';
+        grp.setAttribute('data-aud', '1');
+        list.forEach(({ id, name }) => {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = name;
+            grp.appendChild(opt);
+        });
+        macroSelect.appendChild(grp);
+        restoreAudMacroSelection();
+    }
+
+    function setupMacroCombo() {
+        if (!macroSelect || macroSelect.dataset.comboReady === '1') return;
+        macroSelect.dataset.comboReady = '1';
+        macroSelect.classList.add('splice-macro-native-hidden');
+        macroSelect.setAttribute('tabindex', '-1');
+        macroSelect.setAttribute('aria-hidden', 'true');
+
+        const listId = 'splice-macro-combo-list';
+        const combo = document.createElement('div');
+        combo.className = 'splice-macro-combo';
+        combo.setAttribute('data-splice-macro-combo', '');
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'splice-macro-combo__btn';
+        btn.setAttribute('aria-haspopup', 'listbox');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Apply macro');
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'splice-macro-combo__label';
+        const arrowSpan = document.createElement('span');
+        arrowSpan.className = 'splice-macro-combo__arrow';
+        arrowSpan.setAttribute('aria-hidden', 'true');
+        arrowSpan.textContent = '▾';
+        btn.appendChild(labelSpan);
+        btn.appendChild(arrowSpan);
+
+        const pop = document.createElement('div');
+        pop.className = 'splice-macro-combo__pop';
+        pop.hidden = true;
+
+        const search = document.createElement('input');
+        search.type = 'text';
+        search.className = 'splice-macro-combo__search';
+        search.setAttribute('placeholder', 'Search macros...');
+        search.setAttribute('aria-label', 'Search macros');
+        search.setAttribute('aria-controls', listId);
+        search.setAttribute('aria-expanded', 'false');
+        search.setAttribute('aria-autocomplete', 'list');
+        search.setAttribute('role', 'combobox');
+        search.setAttribute('autocomplete', 'off');
+        search.setAttribute('spellcheck', 'false');
+
+        const list = document.createElement('ul');
+        list.className = 'splice-macro-combo__list';
+        list.id = listId;
+        list.setAttribute('role', 'listbox');
+
+        pop.appendChild(search);
+        pop.appendChild(list);
+        combo.appendChild(btn);
+        combo.appendChild(pop);
+        macroSelect.parentNode.insertBefore(combo, macroSelect.nextSibling);
+
+        let isOpen = false;
+        let activeId = null;
+        let optionEls = [];
+
+        const selectedText = () => {
+            const opt = macroSelect.options[macroSelect.selectedIndex];
+            return opt ? (opt.textContent || '') : '';
+        };
+
+        const syncLabel = () => {
+            labelSpan.textContent = selectedText() || 'Select macro';
+        };
+
+        const scrollActiveIntoView = (li) => {
+            const lr = list.getBoundingClientRect();
+            const ir = li.getBoundingClientRect();
+            if (ir.top < lr.top) list.scrollTop -= (lr.top - ir.top);
+            else if (ir.bottom > lr.bottom) list.scrollTop += (ir.bottom - lr.bottom);
+        };
+
+        const setActive = (id) => {
+            activeId = id;
+            let activeLi = null;
+            optionEls.forEach((li) => {
+                const on = li.id === id;
+                li.classList.toggle('is-active', on);
+                if (on) activeLi = li;
+            });
+            if (activeLi) {
+                search.setAttribute('aria-activedescendant', id);
+                scrollActiveIntoView(activeLi);
+            } else {
+                search.removeAttribute('aria-activedescendant');
+            }
+        };
+
+        const buildList = () => {
+            list.textContent = '';
+            optionEls = [];
+            const filter = search.value.trim().toLowerCase();
+            let counter = 0;
+            const makeOpt = (optionEl) => {
+                const text = optionEl.textContent || '';
+                if (filter && text.toLowerCase().indexOf(filter) === -1) return null;
+                const li = document.createElement('li');
+                li.className = 'splice-macro-combo__opt';
+                li.setAttribute('role', 'option');
+                li.dataset.value = optionEl.value;
+                li.id = listId + '-opt-' + (counter++);
+                li.textContent = text;
+                const isSel = optionEl.value === macroSelect.value;
+                li.setAttribute('aria-selected', isSel ? 'true' : 'false');
+                if (isSel) li.classList.add('is-selected');
+                return li;
+            };
+            for (const child of macroSelect.children) {
+                if (child.tagName === 'OPTGROUP') {
+                    const groupLis = [];
+                    for (const o of child.children) {
+                        if (o.tagName !== 'OPTION') continue;
+                        const li = makeOpt(o);
+                        if (li) groupLis.push(li);
+                    }
+                    if (groupLis.length) {
+                        const head = document.createElement('li');
+                        head.className = 'splice-macro-combo__group';
+                        head.setAttribute('role', 'presentation');
+                        head.textContent = child.label || '';
+                        list.appendChild(head);
+                        groupLis.forEach((li) => {
+                            list.appendChild(li);
+                            optionEls.push(li);
+                        });
+                    }
+                } else if (child.tagName === 'OPTION') {
+                    const li = makeOpt(child);
+                    if (li) {
+                        list.appendChild(li);
+                        optionEls.push(li);
+                    }
+                }
+            }
+            if (!optionEls.length) {
+                const empty = document.createElement('li');
+                empty.className = 'splice-macro-combo__empty';
+                empty.setAttribute('role', 'presentation');
+                empty.textContent = 'No macros match.';
+                list.appendChild(empty);
+                setActive(null);
+                return;
+            }
+            const selected = optionEls.find((li) => li.getAttribute('aria-selected') === 'true');
+            setActive(selected ? selected.id : optionEls[0].id);
+        };
+
+        const positionPop = () => {
+            const r = btn.getBoundingClientRect();
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const width = Math.min(Math.max(r.width, 280), vw - 16);
+            let left = r.left;
+            if (left + width > vw - 8) left = Math.max(8, vw - 8 - width);
+            pop.style.width = width + 'px';
+            pop.style.left = left + 'px';
+            const spaceBelow = vh - r.bottom;
+            const spaceAbove = r.top;
+            const useBelow = spaceBelow >= spaceAbove || spaceBelow > 300;
+            const maxH = Math.max(160, Math.min(440, (useBelow ? spaceBelow : spaceAbove) - 12));
+            pop.style.maxHeight = maxH + 'px';
+            if (useBelow) {
+                pop.style.top = (r.bottom + 4) + 'px';
+                pop.style.bottom = 'auto';
+            } else {
+                pop.style.top = 'auto';
+                pop.style.bottom = (vh - r.top + 4) + 'px';
+            }
+        };
+
+        const onReposition = () => {
+            if (isOpen) positionPop();
+        };
+
+        const onDocPointer = (e) => {
+            if (!combo.contains(e.target)) close();
+        };
+
+        const open = () => {
+            if (isOpen) return;
+            isOpen = true;
+            search.value = '';
+            buildList();
+            pop.hidden = false;
+            positionPop();
+            btn.setAttribute('aria-expanded', 'true');
+            search.setAttribute('aria-expanded', 'true');
+            document.addEventListener('mousedown', onDocPointer, true);
+            window.addEventListener('resize', onReposition);
+            window.addEventListener('scroll', onReposition, true);
+            search.focus();
+        };
+
+        function close() {
+            if (!isOpen) return;
+            isOpen = false;
+            pop.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+            search.setAttribute('aria-expanded', 'false');
+            search.removeAttribute('aria-activedescendant');
+            document.removeEventListener('mousedown', onDocPointer, true);
+            window.removeEventListener('resize', onReposition);
+            window.removeEventListener('scroll', onReposition, true);
+        }
+
+        const pick = (value) => {
+            if (macroSelect.value !== value) {
+                macroSelect.value = value;
+                macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            syncLabel();
+            close();
+            btn.focus();
+        };
+
+        const moveActive = (dir) => {
+            if (!optionEls.length) return;
+            let idx = optionEls.findIndex((li) => li.id === activeId);
+            if (idx === -1) idx = dir > 0 ? -1 : 0;
+            idx += dir;
+            if (idx < 0) idx = optionEls.length - 1;
+            if (idx >= optionEls.length) idx = 0;
+            setActive(optionEls[idx].id);
+        };
+
+        btn.addEventListener('click', () => {
+            if (isOpen) close();
+            else open();
+        });
+        btn.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                open();
+            }
+        });
+
+        list.addEventListener('click', (e) => {
+            const li = e.target.closest('.splice-macro-combo__opt');
+            if (!li || typeof li.dataset.value === 'undefined') return;
+            e.preventDefault();
+            pick(li.dataset.value);
+        });
+        list.addEventListener('mousemove', (e) => {
+            const li = e.target.closest('.splice-macro-combo__opt');
+            if (li && li.id && li.id !== activeId) setActive(li.id);
+        });
+
+        search.addEventListener('input', () => {
+            buildList();
+        });
+        search.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moveActive(1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moveActive(-1);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                if (optionEls.length) setActive(optionEls[0].id);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                if (optionEls.length) setActive(optionEls[optionEls.length - 1].id);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const li = activeId ? document.getElementById(activeId) : null;
+                if (li && typeof li.dataset.value !== 'undefined') pick(li.dataset.value);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                close();
+                btn.focus();
+            } else if (e.key === 'Tab') {
+                close();
+            }
+        });
+
+        macroSelect.addEventListener('change', () => {
+            syncLabel();
+            if (isOpen) buildList();
+        });
+
+        const mo = new MutationObserver(() => {
+            syncLabel();
+            if (isOpen) buildList();
+        });
+        mo.observe(macroSelect, { childList: true, subtree: true });
+
+        syncLabel();
+    }
+
+    if (window.AudacityMacroEngine) {
+        window.AudacityMacroEngine.ready()
+            .then(() => addAudacityMacrosToSelect())
+            .catch((e) => console.warn('[Splicer] Audacity macro engine unavailable:', e));
     }
 
     async function loadSoxMacroDefs() {
@@ -3064,13 +3460,26 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const exportGain = Math.pow(10, loudnessDbfs / 20);
         const pcmForExport = clonePcmWithGain(fxPcm, exportGain);
 
+        if (id.startsWith('AUD:') && window.AudacityMacroEngine) {
+            try {
+                const processed = await window.AudacityMacroEngine.applyMacroFile(
+                    fxPcm, sampleRate, id.slice(4), { onProgress: macroProgressCb });
+                setMacroProgress(1, 'Macro render complete');
+                return encodeWavFromPcm(clonePcmWithGain(processed.pcm, exportGain), processed.sampleRate);
+            } catch (err) {
+                setMacroProgress(1, '');
+                reportErrorStatus(`Audacity macro '${id.slice(4)}' failed; exporting dry.`, err);
+                return encodeWavFromPcm(pcmForExport, sampleRate);
+            }
+        }
+
         try {
             const soxBlob = await renderMacroWithSox(fxPcm, sampleRate, id, loudnessDbfs);
             if (soxBlob) {
                 return soxBlob;
             }
         } catch (err) {
-            // skip
+            /* skip */
         }
 
         return encodeWavFromPcm(pcmForExport, sampleRate);
@@ -3087,6 +3496,26 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             (macroId || 'FLAT').toUpperCase(),
             state.sampleRate,
             getExportLoudnessDbfs(),
+            staticEnabled ? '1' : '0',
+            staticEnabled ? (staticNoiseLevelInput?.value ?? '') : '',
+            staticEnabled ? (staticNoiseFadeDepthInput?.value ?? '') : '',
+            staticEnabled ? (staticNoiseFadeRateInput?.value ?? '') : '',
+            humEnabled ? '1' : '0',
+            humEnabled ? (humLevelInput?.value ?? '') : '',
+            bitcrushEnabled ? '1' : '0',
+            bitcrushEnabled ? (bitcrushBitsInput?.value ?? '') : '',
+            bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
+        ].join('|');
+    };
+
+    const getMacroOutputSignature = (macroId) => {
+        const staticEnabled = enableStaticNoiseCheckbox?.checked === true;
+        const humEnabled = enable60HzHumCheckbox?.checked === true;
+        const bitcrushEnabled = enableBitcrushCheckbox?.checked === true;
+        return [
+            (macroId || 'FLAT').toUpperCase(),
+            state.sampleRate,
+            state.pcm.length,
             staticEnabled ? '1' : '0',
             staticEnabled ? (staticNoiseLevelInput?.value ?? '') : '',
             staticEnabled ? (staticNoiseFadeDepthInput?.value ?? '') : '',
@@ -3116,6 +3545,15 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             && macroRenderBlobCache.key === key
             && sameSegmentPcmRefs(macroRenderBlobCache.segRefs, segRefs)) {
             return macroRenderBlobCache.blob;
+        }
+        if (macroId.startsWith('AUD:') && macroWaveformPcm && macroWaveformPcm.length
+            && macroWaveformOutputSig && macroWaveformOutputSig === getMacroOutputSignature(macroId)) {
+            const exportGain = Math.pow(10, getExportLoudnessDbfs() / 20);
+            const reusedBlob = encodeWavFromPcm(clonePcmWithGain(macroWaveformPcm, exportGain), macroWaveformSampleRate);
+            if (reusedBlob) {
+                macroRenderBlobCache = { key, blob: reusedBlob, segRefs };
+                return reusedBlob;
+            }
         }
         const blob = await renderMacroToWavFromPcm(state.pcm, state.sampleRate, macroId);
         if (blob) {
@@ -3214,6 +3652,20 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 }
             }
 
+            const startOffset = clamp(playheadTime, 0, Math.max(0, duration()));
+            const seekAudioToStart = () => {
+                if (startOffset <= 0) return;
+                try {
+                    const dur = (Number.isFinite(audio.duration) && audio.duration > 0) ? audio.duration : null;
+                    const target = dur !== null ? Math.min(startOffset, Math.max(0, dur - 0.01)) : startOffset;
+                    if (target > 0 && Math.abs((audio.currentTime || 0) - target) > 0.001) {
+                        audio.currentTime = target;
+                    }
+                } catch (err) {
+                    reportErrorStatus(`Failed to seek macro preview to needle position: ${err}`, err);
+                }
+            };
+
             const ensureSpanFromAudio = () => {
                 if (Number.isFinite(audio.duration) && audio.duration > 0) {
                     playSpan = Math.max(0.001, audio.duration);
@@ -3223,21 +3675,33 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             ensureSpanFromAudio();
             audio.addEventListener('loadedmetadata', ensureSpanFromAudio, { once: true });
 
-            playStartOffset = 0;
+            playStartOffset = startOffset;
             playStartedAt = ctxAudio ? ctxAudio.currentTime : 0;
             syncPlayButtons();
 
-            const playPromise = audio.play();
-            if (playPromise?.catch) {
-                playPromise.catch((err) => {
-                    const interruptedByPause =
-                        err?.name === 'AbortError' ||
-                        (typeof err?.message === 'string' &&
-                            err.message.includes('The play() request was interrupted by a call to pause'));
-                    if (interruptedByPause) return;
-                    finalizePlayback();
-                    reportErrorStatus(`previewCurrentMacro playback failed: ${err}`, err);
-                });
+            const startMacroPlayback = () => {
+                const playPromise = audio.play();
+                if (playPromise?.catch) {
+                    playPromise.catch((err) => {
+                        const interruptedByPause =
+                            err?.name === 'AbortError' ||
+                            (typeof err?.message === 'string' &&
+                                err.message.includes('The play() request was interrupted by a call to pause'));
+                        if (interruptedByPause) return;
+                        finalizePlayback();
+                        reportErrorStatus(`previewCurrentMacro playback failed: ${err}`, err);
+                    });
+                }
+            };
+
+            if (startOffset > 0 && !(Number.isFinite(audio.duration) && audio.duration > 0)) {
+                audio.addEventListener('loadedmetadata', () => {
+                    seekAudioToStart();
+                    startMacroPlayback();
+                }, { once: true });
+            } else {
+                seekAudioToStart();
+                startMacroPlayback();
             }
         } catch (err) {
             clearMacroPreviewInterval();
@@ -3310,6 +3774,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     if (macroSelect) {
         macroSelect.addEventListener('change', () => {
             const macroValue = document.getElementById('spliceMacros').value;
+            rememberAudMacro(macroValue);
             if (macroValue === noisyMacroId) {
                 enableStaticNoiseCheckbox.checked = true;
                 enableStaticNoiseCheckbox.disabled = true;
@@ -3510,6 +3975,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     enableBitcrushCheckbox?.dispatchEvent(changeEvent);
     spliceLoudnessInput?.dispatchEvent(changeEvent);
 
+    setupMacroCombo();
     await loadSoxMacroDefs();
     bindEvents();
     updateSelectionLabels();

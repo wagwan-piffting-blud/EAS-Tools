@@ -1,0 +1,11 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+StereoToMono:Use_Preset="<Factory Defaults>"
+BassAndTreble:Bass="24" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="50" Repeats="5" Threshold_dB="-6" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="1" Threshold_dB="-6" Type="Expand and Compress"
+Low-passFilter:frequency="1500" rolloff="dB48"
+Low-passFilter:frequency="1500" rolloff="dB24"
+High-passFilter:frequency="50" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"

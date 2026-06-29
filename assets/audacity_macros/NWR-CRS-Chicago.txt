@@ -1,0 +1,7 @@
+Macro_NWR-Chicago-Pre:
+Roughrider2:Attack="0" Make-Up_Gain="0.32800001" Mix="0.50800002" Ratio="1" Release="1" Sensitivity="0"
+High-passFilter:frequency="200" rolloff="dB12"
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="0.90266293"
+DblueCrusher:BitDepth="0.49700001" Foldback="0.69700003" Mix="1" Reduction="0.021" Smoothing="0.76200002" SmoothMode="0"
+High-passFilter:frequency="200" rolloff="dB12"

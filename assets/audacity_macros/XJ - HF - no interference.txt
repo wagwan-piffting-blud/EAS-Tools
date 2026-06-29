@@ -1,0 +1,21 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="-4" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB48"
+NewMonoTrack:
+Noise:Amplitude="0.05" Type="White"
+Low-passFilter:frequency="5000" rolloff="dB48"
+Low-passFilter:frequency="5000" rolloff="dB48"
+SelectAll:
+MixAndRender:
+FilterCurve:f0="3717.2414" f1="3717.2414" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-0.47619057" v1="-120"
+MdaDegrade:Headroom="1" Non-Lin="0.56400001" Output="0.523" PostFilt="0.81" Quant="0.34200001" Rate="0.233"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Low-passFilter:frequency="6000" rolloff="dB48"
+High-passFilter:frequency="400" rolloff="dB6"
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="2" ReleaseTime="4" Threshold="-40" UsePeak="0"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

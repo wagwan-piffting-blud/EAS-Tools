@@ -1,0 +1,28 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="2.5" ReleaseTime="1" Threshold="-60" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-8" type="HardLimit"
+Normalize:ApplyGain="1" PeakLevel="-8" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.1" Type="White"
+BassAndTreble:Bass="-30" Gain="-30" Link_Sliders="0" Treble="30"
+BassAndTreble:Bass="-30" Gain="-30" Link_Sliders="0" Treble="30"
+NewMonoTrack:
+Tone:Amplitude="0.5" Frequency="60" Interpolation="Linear" Waveform="Square"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="25"
+Low-passFilter:frequency="640" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB48"
+SelectAll:
+MixAndRender:
+Bitunz:Bit_1="1" Bit_2="1" Bit_3="1" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.047619049" Dry="0" Wet="1"
+ChebyshevDistortion:Distortion="1"
+DblueCrusher:BitDepth="0.46700001" Foldback="0.0020000001" Mix="1" Reduction="0.037999999" Smoothing="0" SmoothMode="0"
+Low-passFilter:frequency="2800" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB24"
+High-passFilter:frequency="180" rolloff="dB48"
+FilterCurve:f0="141.89382" f1="141.89382" f2="3266.6667" f3="3266.6667" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-120" v1="-0.47619057" v2="0" v3="-120"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

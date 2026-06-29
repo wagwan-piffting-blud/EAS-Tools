@@ -1,0 +1,41 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.047619049" Dry="0" Wet="1"
+Distortion:DC_Block="0" Noise_Floor="-60" Parameter_1="100" Parameter_2="10" Repeats="4" Threshold_dB="-9.04" Type="Leveller"
+Low-passFilter:frequency="1700" rolloff="dB24"
+High-passFilter:frequency="300" rolloff="dB12"
+FilterCurve:f0="297.51449" f1="297.51449" f2="3232.4667" f3="3232.4667" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-107.29848" v1="-0.14596939" v2="-0.44444466" v3="-107.29848"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="120" Interpolation="Linear" Waveform="Sine"
+Tremolo:lfo="120" phase="180" wave="Sawtooth" wet="100"
+SelectAll:
+MixAndRender:
+NewMonoTrack:
+Noise:Amplitude="0.1" Type="White"
+Low-passFilter:frequency="5000" rolloff="dB36"
+High-passFilter:frequency="200" rolloff="dB6"
+NewMonoTrack:
+Tone:Amplitude="0.02" Frequency="180" Interpolation="Linear" Waveform="Sine"
+Tremolo:lfo="60" phase="180" wave="Sawtooth" wet="100"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="30" Interpolation="Linear" Waveform="Sawtooth"
+RandomAmplitudeModulation:factor="120" maxspeed="0.25"
+NoiseGate:attack="500" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-23"
+RandomAmplitudeModulation:factor="300" maxspeed="8"
+NoiseGate:attack="10" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-16"
+Distortion:DC_Block="0" Noise_Floor="-60" Parameter_1="55" Parameter_2="100" Repeats="5" Threshold_dB="-9.04" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-60" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-9.04" Type="Leveller"
+Low-passFilter:frequency="3000" rolloff="dB24"
+High-passFilter:frequency="200" rolloff="dB48"
+NoiseGate:attack="10" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-16"
+Amplify:Ratio="0.63095737"
+SelectAll:
+MixAndRender:
+SetProject:Rate="18000"
+SelectAll:
+MixAndRender:
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:

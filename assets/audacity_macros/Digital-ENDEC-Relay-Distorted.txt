@@ -1,0 +1,7 @@
+Macro_Digital-ENDEC-Relay-Full-Prototype:
+Amplify:Ratio="0.56234133"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="14" Repeats="4" Threshold_dB="-10.457575" Type="Leveller"
+Allpassphase:Frequency="0.736" Intensity="1" Mix="0.252" Q="0.155"
+High-passFilter:frequency="200" rolloff="dB12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="14" Repeats="4" Threshold_dB="-10.457575" Type="Leveller"
+Amplify:AllowClipping="0" Ratio="0.44668359"

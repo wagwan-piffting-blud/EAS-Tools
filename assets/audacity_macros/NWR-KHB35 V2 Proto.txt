@@ -1,0 +1,2 @@
+Macro_NWR-KJY93-Version2:
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="14"

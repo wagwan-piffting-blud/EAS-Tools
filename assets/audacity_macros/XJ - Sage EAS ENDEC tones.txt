@@ -1,0 +1,20 @@
+SelectAll:
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Normalize:ApplyGain="1" PeakLevel="-12" RemoveDcOffset="1" StereoIndependent="0"
+Duplicate:
+Select:Mode="Set" Track="0"
+Low-passFilter:frequency="2100" rolloff="dB48"
+High-passFilter:frequency="800" rolloff="dB24"
+Select:Mode="Set" Track="1"
+Silhouette:Dry_Wet="1"
+Dustbunny:Bunny="1"
+Low-passFilter:frequency="300" rolloff="dB6"
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.39810717"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="1" Threshold_dB="-6" Type="Even Harmonics"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"

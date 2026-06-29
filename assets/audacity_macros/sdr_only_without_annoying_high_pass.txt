@@ -1,0 +1,6 @@
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-12" type="HardLimit"
+Sc4:Attack_time_(ms)="10" Knee_radius_(dB)="1" Makeup_gain_(dB)="18" Ratio_(1_n)="20" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-30"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="0" type="HardLimit"
+Amplify:Ratio="0.31622776"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="1.9952623"

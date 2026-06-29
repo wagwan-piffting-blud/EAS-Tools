@@ -1,0 +1,42 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="6" gain="6"
+MultibandEq:band="3" bands="3" gain="12"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="12" Ratio_(1_n)="8" Release_time_(ms)="500" RMS_peak="0" Threshold_level_(dB)="-24"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="Yes" thresh="-6" type="SoftLimit"
+Allpassphase:Frequency="0.491" Intensity="0.164" Mix="1" Q="0.70999998"
+Duplicate:
+Select:Mode="Set" Track="1"
+High-passFilter:frequency="4000" rolloff="dB48"
+NoiseGate:attack="50" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Leveller"
+Dustbunny:Bunny="1"
+Silhouette:Dry_Wet="1"
+Amplify:Ratio="0.12589253"
+SelectAll:
+MixAndRender:
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Leveller"
+Silhouette:Dry_Wet="1"
+Amplify:Ratio="0.031622775"
+SelectAll:
+MixAndRender:
+Silhouette:Dry_Wet="0.65100002"
+Low-passFilter:frequency="4000" rolloff="dB24"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.02" Type="White"
+Low-passFilter:frequency="4000" rolloff="dB6"
+SelectAll:
+MixAndRender:
+Silhouette:Dry_Wet="0.493"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="3" Threshold_dB="-24" Type="Expand and Compress"
+ChebyshevTypeIFilter:fc="16000" fType="Lowpass" order="16" ripple="0"
+Amplify:Ratio="0.50118721"

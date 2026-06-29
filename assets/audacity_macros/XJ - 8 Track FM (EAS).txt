@@ -1,0 +1,41 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Sc4:Attack_time_(ms)="200" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="2" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-30"
+Compressor:AttackTime="0.1" NoiseFloor="-60" Normalize="1" Ratio="8" ReleaseTime="1.2" Threshold="-50" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-8" type="HardLimit"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="-8" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.05" Type="White"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+Low-passFilter:frequency="800" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.05" Type="White"
+BassAndTreble:Bass="24" Gain="0" Link_Sliders="0" Treble="0"
+Low-passFilter:frequency="1000" rolloff="dB6"
+RandomAmplitudeModulation:factor="40" maxspeed="0.2"
+NoiseGate:attack="1000" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-24.5"
+RandomAmplitudeModulation:factor="240" maxspeed="4"
+NoiseGate:attack="10" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-28"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="2" Repeats="5" Threshold_dB="-3.04" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-3.04" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="75" Parameter_2="100" Repeats="5" Threshold_dB="-8" Type="Hard Clipping"
+Low-passFilter:frequency="8000" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="5000" Interpolation="Linear" Waveform="Sine"
+RandomAmplitudeModulation:factor="40" maxspeed="0.5"
+SelectAll:
+MixAndRender:
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="2" ReleaseTime="8" Threshold="-40" UsePeak="0"
+ChangeSpeed:Percentage="2"
+RandomPitchModulation:depth="0.01" factor="40" maxdepth="0.25" maxspeed="0.5"
+Low-passFilter:frequency="4000" rolloff="dB6"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="12"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+TapeSaturationLimiter:hfgain="-5" hfhz="3000" makeup="Off" ratio="2" thres="-3"
+FilterCurve:f0="20" f1="49.814431" f2="15022.475" f3="15555.089" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-120" v1="0.095237732" v2="0.095237732" v3="-120"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

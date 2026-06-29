@@ -1,0 +1,5 @@
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="No" thresh="-10" type="HardLimit"
+Delay:constrain="No" delay="0.006" delay-type="BouncingBall" dgain="-6" number="3" pitch-type="PitchTempo" shift="0"
+Allpassphase:Frequency="0.55000001" Intensity="0.44499999" Mix="0.73900002" Q="0.486"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="54" Parameter_2="51" Repeats="1" Threshold_dB="-10.457575" Type="Soft Overdrive"

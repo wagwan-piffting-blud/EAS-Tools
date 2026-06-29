@@ -1,0 +1,12 @@
+Macro_NWR-WXK49PLNoNoise:
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.015873017" Dry="0.111" Wet="0.51999998"
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="0"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.063492067" Dry="1" Wet="0.699"
+Amplify:Ratio="0.75857759"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+BassAndTreble:Bass="-4" Gain="0" Link_Sliders="0" Treble="0"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.015873017" Dry="0.227" Wet="0.76800001"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="6"

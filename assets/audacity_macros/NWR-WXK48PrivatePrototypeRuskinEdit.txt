@@ -1,0 +1,4 @@
+Macro_NWR-Ruskin(1):
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="0.50118721"
+High-passFilter:frequency="220" rolloff="dB12"

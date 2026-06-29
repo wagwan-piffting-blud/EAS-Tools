@@ -1,0 +1,8 @@
+SetProject:Rate="48000"
+MixAndRender:
+MdaCombo:Bias="0.5" Drive="0.34599999" Model="0" Output="0.51200002" Process_="0.40000001"
+Copy:
+NewMonoTrack:
+Paste:
+SelectAll:
+MixAndRender:

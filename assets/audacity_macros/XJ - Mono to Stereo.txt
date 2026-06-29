@@ -1,0 +1,7 @@
+Duplicate:
+Select:Mode="Set" Track="0"
+SetTrack:Pan="-100"
+Select:Mode="Set" Track="1"
+SetTrack:Pan="100"
+SelectAll:
+MixAndRender:

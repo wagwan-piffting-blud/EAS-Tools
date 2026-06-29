@@ -1,0 +1,23 @@
+Select:End="8" Mode="Set" RelativeTo="ProjectStart" Start="0"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="853" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="960" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="30" Parameter_2="100" Repeats="5" Threshold_dB="-20" Type="Even Harmonics"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="30" Parameter_2="100" Repeats="5" Threshold_dB="-20" Type="Expand and Compress"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="-20"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-20" Type="Expand and Compress"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="50" Repeats="5" Threshold_dB="-20" Type="Expand and Compress"
+Tremolo:lfo="120" phase="0" wave="Sine" wet="50"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-20" Type="Expand and Compress"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="-30"
+DblueCrusher:BitDepth="0.46700001" Foldback="0" Mix="1" Reduction="0.021" Smoothing="1" SmoothMode="1"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="800" rolloff="dB6"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="-12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="15" Parameter_2="100" Repeats="2" Threshold_dB="-20" Type="Soft Clipping"
+Tremolo:lfo="120" phase="-180" wave="Sine" wet="100"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

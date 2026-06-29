@@ -1,0 +1,31 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Compressor:AttackTime="0.1" NoiseFloor="-60" Normalize="1" Ratio="8" ReleaseTime="2" Threshold="-60" UsePeak="0"
+Sc4:Attack_time_(ms)="200" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="400" RMS_peak="0" Threshold_level_(dB)="-24"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="Yes" thresh="-10" type="HardLimit"
+Allpassphase:Frequency="0.79900002" Intensity="1" Mix="0.359" Q="0.35699999"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Low-passFilter:frequency="400" rolloff="dB6"
+Low-passFilter:frequency="4000" rolloff="dB48"
+BassAndTreble:Bass="8" Gain="0" Link_Sliders="0" Treble="0"
+High-passFilter:frequency="80" rolloff="dB12"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="80" rolloff="dB12"
+Allpassphase:Frequency="0.15800001" Intensity="0.50599998" Mix="0.153" Q="0.36000001"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="Yes" thresh="-10" type="HardLimit"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-6" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="12.5" Parameter_2="100" Repeats="5" Threshold_dB="-6" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-6" Type="Expand and Compress"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="80" rolloff="dB12"
+FilterCurve:f0="51.169574" f1="51.169574" f2="3992.733" f3="3992.733" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-120" v1="-0.95238113" v2="0" v3="-120"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

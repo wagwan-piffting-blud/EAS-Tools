@@ -1,0 +1,30 @@
+SelectAll:
+MixAndRenderToNewTrack:
+NewMonoTrack:
+Noise:Amplitude="0.00625" Type="White"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+Select:Mode="Set" Track="1" TrackCount="2"
+MixAndRender:
+Select:Mode="Set" Track="1"
+Silhouette:Dry_Wet="0.38"
+Dustbunny:Bunny="0.60000002"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+High-passFilter:frequency="50" rolloff="dB6"
+Duplicate:
+Select:Mode="Set" Track="2"
+Silhouette:Dry_Wet="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-2" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="37.5" Parameter_2="100" Repeats="1" Threshold_dB="-6.06" Type="Expand and Compress"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="White"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-2" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-2" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-6.06" Type="Expand and Compress"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-10" type="HardLimit"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.602"
+High-passFilter:frequency="50" rolloff="dB6"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="Yes" thresh="-6" type="HardLimit"

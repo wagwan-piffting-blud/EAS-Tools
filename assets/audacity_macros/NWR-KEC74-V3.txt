@@ -1,0 +1,64 @@
+Amplify:Ratio="0.0099999998"
+Copy:
+NewMonoTrack:
+Paste:
+DblueCrusher:BitDepth="0.333" Foldback="1" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+Invert:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="0.50118721"
+NewMonoTrack:
+Paste:
+SelectAll:
+MixAndRender:
+ChangeSpeed:Percentage="418.8"
+ChangeSpeed:Percentage="-80.725"
+ChangeSpeed:Percentage="8.088"
+DblueCrusher:BitDepth="1" Foldback="1" Mix="1" Reduction="0.041999999" Smoothing="0" SmoothMode="0"
+ChangeSpeed:Percentage="-8.088"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+Roughrider2:Attack="0.059999999" Make-Up_Gain="0" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.396"
+High-passFilter:frequency="180" rolloff="dB48"
+BassAndTreble:Bass="-10" Gain="20" Link_Sliders="0" Treble="-10"
+Roughrider2:Attack="0.056000002" Make-Up_Gain="0.204" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.50099999"
+Low-passFilter:frequency="4000" rolloff="dB6"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-14" type="HardLimit"
+Amplify:Ratio="3.9810717"
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="-10"
+High-passFilter:frequency="120" rolloff="dB48"
+Select:End="0.01" Mode="Set" Start="0"
+Delete:
+SelectAll:
+Copy:
+NewMonoTrack:
+Paste:
+Low-passFilter:frequency="3500" rolloff="dB48"
+Low-passFilter:frequency="3500" rolloff="dB48"
+Low-passFilter:frequency="3500" rolloff="dB48"
+Roughrider2:Attack="0" Make-Up_Gain="0.20299999" Mix="1" Ratio="1" Release="0" Sensitivity="0.193"
+High-passFilter:frequency="5000" rolloff="dB48"
+High-passFilter:frequency="5000" rolloff="dB48"
+High-passFilter:frequency="5000" rolloff="dB48"
+MdaCombo:Bias="0.5" Drive="1" Model="0" Output="0.5" Process_="0.40000001"
+ChangeSpeed:Percentage="418.8"
+ChangeSpeed:Percentage="-80.725"
+SelectAll:
+MixAndRender:
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+High-passFilter:frequency="140" rolloff="dB48"
+Amplify:AllowClipping="0" Ratio="6.0631738"
+Amplify:AllowClipping="0" Ratio="0.19952624"
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="0"
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="-6"
+Roughrider2:Attack="1" Make-Up_Gain="0.208" Mix="1" Ratio="1" Release="0" Sensitivity="0.852"
+Amplify:AllowClipping="0" Ratio="1.7782794"
+BassAndTreble:Bass="-3" Gain="0" Link_Sliders="0" Treble="-15"
+Amplify:AllowClipping="0" Ratio="0.39810717"
+Roughrider2:Attack="1" Make-Up_Gain="0.208" Mix="1" Ratio="1" Release="0" Sensitivity="0.96399999"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="15"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-12" type="HardLimit"
+BassAndTreble:Bass="-4" Gain="0" Link_Sliders="0" Treble="6"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-7" type="HardLimit"
+Amplify:AllowClipping="0" Ratio="1.7782794"
+BassAndTreble:Bass="6" Gain="-2" Link_Sliders="0" Treble="0"
+Message:Text="edited by tmyk - this is not perfect but this is way closer than the original KEC74 macro to real KEC74"

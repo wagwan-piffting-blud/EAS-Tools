@@ -1,0 +1,28 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Sc4:Attack_time_(ms)="120" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="4" Release_time_(ms)="240" RMS_peak="0" Threshold_level_(dB)="-30"
+Compressor:AttackTime="0.3" NoiseFloor="-40" Normalize="1" Ratio="8" ReleaseTime="2.2" Threshold="-60" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-4" type="SoftLimit"
+High-passFilter:frequency="120" rolloff="dB12"
+NewMonoTrack:
+Tone:Amplitude="0.5" Frequency="180" Interpolation="Linear" Waveform="Square"
+Tremolo:lfo="120" phase="0" wave="Sine" wet="100"
+Low-passFilter:frequency="180" rolloff="dB12"
+High-passFilter:frequency="180" rolloff="dB6"
+NewMonoTrack:
+Tone:Amplitude="0.05" Frequency="645" Interpolation="Linear" Waveform="Sawtooth"
+RandomPitchModulation:depth="0.02" factor="1" maxdepth="0.01" maxspeed="15"
+Low-passFilter:frequency="1000" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.01" Type="White"
+SelectAll:
+MixAndRender:
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="10" ReleaseTime="1" Threshold="-60" UsePeak="0"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="5" Parameter_2="100" Repeats="5" Threshold_dB="-8" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-8" Type="Leveller"
+High-passFilter:frequency="120" rolloff="dB12"
+FilterCurve:f0="11996.552" f1="11996.552" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="0" v1="-120"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

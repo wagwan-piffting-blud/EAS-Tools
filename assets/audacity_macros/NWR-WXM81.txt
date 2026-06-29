@@ -1,0 +1,3 @@
+Macro_NWR-Rec_at500LV2:
+High-passFilter:frequency="220" rolloff="dB12"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="8"

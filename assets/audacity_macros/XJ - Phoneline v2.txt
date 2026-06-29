@@ -1,0 +1,23 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+High-passFilter:frequency="250" rolloff="dB48"
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="6"
+FilterCurve:f0="3632.7586" f1="3632.7586" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="0" v1="-120"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-8" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="10" Parameter_2="100" Repeats="2" Threshold_dB="-8" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="12.5" Parameter_2="100" Repeats="2" Threshold_dB="-8" Type="Hard Overdrive"
+MdaDegrade:Headroom="0.72299999" Non-Lin="0.29800001" Output="0.523" PostFilt="1" Quant="0.34099999" Rate="0.28"
+ChebyshevDistortion:Distortion="1.5"
+Low-passFilter:frequency="3000" rolloff="dB12"
+High-passFilter:frequency="250" rolloff="dB12"
+NewMonoTrack:
+Noise:Amplitude="0.005" Type="White"
+BassAndTreble:Bass="18" Gain="0" Link_Sliders="0" Treble="0"
+High-passFilter:frequency="100" rolloff="dB12"
+SelectAll:
+MixAndRender:
+FilterCurve:f0="15037.931" f1="15037.931" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-0.95238113" v1="-120"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

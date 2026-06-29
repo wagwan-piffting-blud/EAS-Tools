@@ -1,0 +1,26 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+StereoToMono:Use_Preset="<Factory Defaults>"
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Sc4:Attack_time_(ms)="120" Knee_radius_(dB)="5" Makeup_gain_(dB)="1" Ratio_(1_n)="2" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-30"
+Compressor:AttackTime="0.2" NoiseFloor="-50" Normalize="1" Ratio="3" ReleaseTime="4" Threshold="-36" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-4" type="HardLimit"
+Reverb:Delay="0" DryGain="-2" HfDamping="80" Reverberance="90" RoomSize="100" StereoWidth="0" ToneHigh="100" ToneLow="0" WetGain="-14" WetOnly="0"
+RandomAmplitudeModulation:factor="10" maxspeed="2"
+RandomPitchModulation:depth="0.0125" factor="20" maxdepth="0.125" maxspeed="2"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="500" rolloff="dB6"
+High-passFilter:frequency="150" rolloff="dB48"
+BassAndTreble:Bass="-6" Gain="0" Link_Sliders="0" Treble="12"
+Low-passFilter:frequency="3000" rolloff="dB48"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+ChangeSpeed:Percentage="1.333"
+NewMonoTrack:
+Noise:Amplitude="0.001" Type="White"
+High-passFilter:frequency="200" rolloff="dB6"
+High-passFilter:frequency="150" rolloff="dB48"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="3000" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

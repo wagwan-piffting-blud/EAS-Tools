@@ -1,0 +1,6 @@
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+High-passFilter:frequency="130" rolloff="dB12"
+Amplify:AllowClipping="0" Ratio="0.70794576"

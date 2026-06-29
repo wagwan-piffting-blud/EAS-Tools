@@ -1,0 +1,18 @@
+SetProject:Rate="44100"
+Select:End="2.3" Mode="Set" RelativeTo="SelectionStart" Start="0"
+NewMonoTrack:
+Tone:Amplitude="0.5" Frequency="1015" Interpolation="Linear" Waveform="Square"
+Select:End="2.3" Mode="Set" RelativeTo="SelectionStart" Start="0"
+NewMonoTrack:
+Tone:Amplitude="0.25" Frequency="625" Interpolation="Linear" Waveform="Square"
+Select:End="2.3" Mode="Set" RelativeTo="SelectionStart" Start="0"
+NewMonoTrack:
+Tone:Amplitude="0.25" Frequency="1400" Interpolation="Linear" Waveform="Square"
+Select:End="2.66" Mode="Set" RelativeTo="ProjectStart" Start="2.3"
+NewMonoTrack:
+Tone:Amplitude="0.25" Frequency="625" Interpolation="Linear" Waveform="Square"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="4000" rolloff="dB48"
+High-passFilter:frequency="800" rolloff="dB6"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

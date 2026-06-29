@@ -1,0 +1,50 @@
+Copy:
+NewMonoTrack:
+Paste:
+DblueCrusher:BitDepth="0.333" Foldback="1" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+Invert:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+NewMonoTrack:
+Paste:
+SelectAll:
+MixAndRender:
+ChangeSpeed:Percentage="495.9"
+ChangeSpeed:Percentage="-83.22"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+Roughrider2:Attack="0.059999999" Make-Up_Gain="0" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.40799999"
+High-passFilter:frequency="200" rolloff="dB48"
+BassAndTreble:Bass="-10" Gain="20" Link_Sliders="0" Treble="-10"
+Roughrider2:Attack="0.056000002" Make-Up_Gain="0.192" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.52899998"
+Low-passFilter:frequency="3000" rolloff="dB48"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-14" type="HardLimit"
+Amplify:Ratio="3.9810717"
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="0"
+Copy:
+NewMonoTrack:
+Paste:
+Tone:Amplitude="0.02" Frequency="60" Interpolation="Linear" Waveform="Sine"
+MdaCombo:Bias="0" Drive="0.72100002" Model="0" Output="0.76099998" Process_="0.40000001"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+NewMonoTrack:
+Paste:
+Noise:Amplitude="0.02" Type="White"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="120" rolloff="dB48"
+ChangeSpeed:Percentage="495.9"
+ChangeSpeed:Percentage="-83.22"
+Select:End="0.01" Mode="Set" Start="0"
+Delete:
+SelectAll:
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="0"
+FilterCurve:f0="42.792102" f1="66.088468" f10="981.80113" f11="1489.0885" f2="89.104494" f3="108.74657" f4="140.12859" f5="187.22685" f6="250.15519" f7="365.91173" f8="458.87026" f9="580.67888" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-0.21269894" v1="7.4222221" v10="0.022221565" v11="-0.33015919" v2="2.7238092" v3="0.022221565" v4="-0.21269894" v5="7.4222221" v6="-0.095238686" v7="-0.21269894" v8="1.666666" v9="-0.33015919"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="20" Parameter_2="100" Repeats="2" Threshold_dB="-10.457575" Type="Leveller"
+Low-passFilter:frequency="6000" rolloff="dB12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="24" Parameter_2="100" Repeats="3" Threshold_dB="-10.457575" Type="Even Harmonics"
+High-passFilter:frequency="50" rolloff="dB12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="3" Threshold_dB="-10.457575" Type="Expand and Compress"
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="0.67124683"
+Message:Text="edited by tmyk // this is so bad but wxk35 needs to go wireless soon its phoneline is not doing the best"

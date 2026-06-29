@@ -1,0 +1,8 @@
+High-passFilter:frequency="1015" rolloff="dB12"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-8" type="HardLimit"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-8" type="HardLimit"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-8" type="HardLimit"
+Amplify:Ratio="0.50118721"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="38" Parameter_2="18" Repeats="5" Threshold_dB="-10" Type="Soft Overdrive"
+Amplify:AllowClipping="0" Ratio="1.5813563"
+Message:Text="Macro created by themisaiahyouknow. Please apply the plug-in "tremelo-nwr" made by Ora Media and then ur done. i'll edit this macro more soon"

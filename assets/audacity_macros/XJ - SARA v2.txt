@@ -1,0 +1,9 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Low-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.047619049" Dry="0" Wet="1"
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="0"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

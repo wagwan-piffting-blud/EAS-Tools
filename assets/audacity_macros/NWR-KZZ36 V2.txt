@@ -1,0 +1,5 @@
+Macro_NWR-Louisville-TMYKVersion4:
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.079365082" Dry="0.85399997" Wet="0"
+BassAndTreble:Bass="-6" Gain="0" Link_Sliders="0" Treble="5"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.079365082" Dry="0.85399997" Wet="0"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="9"

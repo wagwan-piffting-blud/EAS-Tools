@@ -1,0 +1,4 @@
+Macro_NWR-162.400:
+Macro_NWR-SIMPLE:
+BassAndTreble:Bass="5" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.56234133"

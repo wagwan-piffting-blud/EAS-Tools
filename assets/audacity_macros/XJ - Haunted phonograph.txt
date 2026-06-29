@@ -1,0 +1,28 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Low-passFilter:frequency="2000" rolloff="dB48"
+High-passFilter:frequency="500" rolloff="dB12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="15" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Expand and Compress"
+NewMonoTrack:
+Noise:Amplitude="0.1" Type="White"
+BassAndTreble:Bass="24" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="75" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Expand and Compress"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="20" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Leveller"
+NewMonoTrack:
+BassAndTreble:Bass="24" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="12.5" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Expand and Compress"
+Normalize:ApplyGain="1" PeakLevel="-18" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.0025" Type="White"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.56"
+RandomPitchModulation:depth="0.025" factor="35" maxdepth="0.01" maxspeed="0.75"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="No" thresh="-6" type="SoftLimit"

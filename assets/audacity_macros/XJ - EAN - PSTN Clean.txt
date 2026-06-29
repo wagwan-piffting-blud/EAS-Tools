@@ -1,0 +1,46 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+MultibandEq:band="2" bands="2" gain="6"
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="12" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="0" Threshold_level_(dB)="-24"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="4300" rolloff="dB48"
+Low-passFilter:frequency="4300" rolloff="dB48"
+Low-passFilter:frequency="4300" rolloff="dB48"
+ChebyshevTypeIFilter:fc="4500" fType="Lowpass" order="16" ripple="1"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="100" rolloff="dB6"
+NotchFilter:frequency="250" q="4"
+NotchFilter:frequency="720" q="4"
+NotchFilter:frequency="1150" q="4"
+NotchFilter:frequency="1650" q="4"
+NotchFilter:frequency="2100" q="4"
+NotchFilter:frequency="2600" q="4"
+NotchFilter:frequency="3100" q="4"
+NotchFilter:frequency="3500" q="4"
+NotchFilter:frequency="4000" q="4"
+MultibandEq:band="5" bands="6" gain="3"
+MultibandEq:band="2" bands="2" gain="8"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="0" type="SoftLimit"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="1030" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.05" factor="1" maxdepth="0.01" maxspeed="4"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="60" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="120" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="180" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="2060" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.05" factor="1" maxdepth="0.01" maxspeed="4"
+NewMonoTrack:
+Noise:Amplitude="0.01" Type="White"
+MultibandEq:band="4" bands="5" gain="9"
+Low-passFilter:frequency="4300" rolloff="dB48"
+Low-passFilter:frequency="4300" rolloff="dB48"
+Low-passFilter:frequency="4300" rolloff="dB48"
+ChebyshevTypeIFilter:fc="4500" fType="Lowpass" order="8" ripple="1"
+SelectAll:
+MixAndRender:

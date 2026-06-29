@@ -1,0 +1,35 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="2" gain="6"
+Sc4:Attack_time_(ms)="125" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="12" Ratio_(1_n)="8" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-24"
+Limiter:gain-L="0" gain-R="0" hold="5" makeup="No" thresh="-6" type="SoftLimit"
+High-passFilter:frequency="150" rolloff="dB6"
+High-passFilter:frequency="150" rolloff="dB6"
+Echo:Decay="0.375" Delay="0.0099999998"
+Tremolo:lfo="8" phase="0" wave="Sine" wet="50"
+RandomAmplitudeModulation:factor="25" maxspeed="0.5"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-11.44" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-11.44" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Tremolo:lfo="8" phase="0" wave="Sine" wet="25"
+Amplify:Ratio="0.031622775"
+Select:Mode="Set" Track="0" TrackCount="2"
+MixAndRender:
+Silhouette:Dry_Wet="0.75"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="360" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.05" Type="White"
+NewMonoTrack:
+Tone:Amplitude="0.125" Frequency="3.625" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+SetProject:Rate="10000"
+MixAndRender:
+SetProject:Rate="44100"
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

@@ -1,0 +1,53 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="10" ReleaseTime="1" Threshold="-60" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-4" type="SoftLimit"
+MdaDegrade:Headroom="0.72500002" Non-Lin="0.50400001" Output="0.5" PostFilt="1" Quant="0.40799999" Rate="0.29800001"
+ChebyshevDistortion:Distortion="0.5"
+Low-passFilter:frequency="3500" rolloff="dB48"
+Low-passFilter:frequency="3500" rolloff="dB48"
+Low-passFilter:frequency="3500" rolloff="dB48"
+High-passFilter:frequency="200" rolloff="dB12"
+High-passFilter:frequency="150" rolloff="dB48"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="10" Parameter_2="100" Repeats="1" Threshold_dB="-8" Type="Hard Overdrive"
+Normalize:ApplyGain="1" PeakLevel="-4" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Tone:Amplitude="0.05" Frequency="60" Interpolation="Linear" Waveform="Square"
+Tremolo:lfo="120" phase="0" wave="Sine" wet="100"
+High-passFilter:frequency="60" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="60" Interpolation="Linear" Waveform="Square"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="25"
+Low-passFilter:frequency="480" rolloff="dB6"
+High-passFilter:frequency="120" rolloff="dB48"
+RandomAmplitudeModulation:factor="20" maxspeed="1"
+NoiseGate:attack="240" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-28"
+Low-passFilter:frequency="6000" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.2" Frequency="2" Interpolation="Linear" Waveform="Square"
+RandomAmplitudeModulation:factor="20" maxspeed="2"
+NoiseGate:attack="10" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-12"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+Low-passFilter:frequency="8000" rolloff="dB48"
+High-passFilter:frequency="120" rolloff="dB24"
+Normalize:ApplyGain="1" PeakLevel="-4" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="2155" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="3575" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="4995" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="6435" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.025" Type="White"
+Low-passFilter:frequency="7000" rolloff="dB48"
+ChebyshevTypeIFilter:fc="7000" fType="Lowpass" order="16" ripple="1"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="8000" rolloff="dB24"
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="3.2" ReleaseTime="3" Threshold="-60" UsePeak="0"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

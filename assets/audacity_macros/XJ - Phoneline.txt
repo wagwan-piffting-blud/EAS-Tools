@@ -1,0 +1,15 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-8" type="SoftLimit"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="1" Threshold_dB="-6" Type="Leveller"
+MdaDegrade:Headroom="0.58899999" Non-Lin="0.53399998" Output="0.523" PostFilt="0.80199999" Quant="0.34099999" Rate="0.30500001"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="200" rolloff="dB48"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="12.5" Parameter_2="100" Repeats="5" Threshold_dB="-6" Type="Rectifier Distortion"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="200" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

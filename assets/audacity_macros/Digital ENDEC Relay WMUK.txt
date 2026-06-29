@@ -1,0 +1,5 @@
+BassAndTreble:Bass="4" Gain="0" Link_Sliders="0" Treble="-20"
+Sc4:Attack_time_(ms)="100" Knee_radius_(dB)="1" Makeup_gain_(dB)="18" Ratio_(1_n)="20" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-30"
+Amplify:AllowClipping="0" Ratio="0.25118864"
+MdaCombo:Bias="0.50300002" Drive="0.69" Model="0" Output="0.63200003" Process_="0.40000001"
+DblueCrusher:BitDepth="0.77999997" Foldback="0.76599997" Mix="0.052000001" Reduction="1" Smoothing="0.017999999" SmoothMode="0.071000002"

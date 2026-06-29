@@ -1,0 +1,34 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Low-passFilter:frequency="2500" rolloff="dB48"
+Low-passFilter:frequency="4500" rolloff="dB48"
+Low-passFilter:frequency="4500" rolloff="dB48"
+High-passFilter:frequency="400" rolloff="dB6"
+Amplify:Ratio="0.63095737"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="1000" Interpolation="Linear" Waveform="Sawtooth"
+Low-passFilter:frequency="5000" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="215" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="430" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="645" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="990" Interpolation="Linear" Waveform="Sine"
+Tremolo:lfo="3" phase="0" wave="Square" wet="100"
+Select:Mode="Set" Track="1" TrackCount="5"
+MixAndRender:
+Low-passFilter:frequency="100" rolloff="dB6"
+Amplify:Ratio="2.5118864"
+NewMonoTrack:
+Noise:Amplitude="0.02" Type="White"
+Low-passFilter:frequency="300" rolloff="dB6"
+Low-passFilter:frequency="5000" rolloff="dB48"
+Amplify:Ratio="0.63095737"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

@@ -1,0 +1,4 @@
+Message:Text="First, Apply NWR-Wirelss (the Elijah EAS Version), and then import the KZZ57 Noise File (make sure you resample KZZ57 Noise to 48000 Hz), and then mix and render them, and then apply this add on | made by TMYK"
+Roughrider2:Attack="0.28799999" Make-Up_Gain="1" Mix="0.52399999" Ratio="0.71600002" Release="0" Sensitivity="1"
+Compressor:AttackTime="1.16" NoiseFloor="-60" Normalize="0" Ratio="3.9" ReleaseTime="2.9" Threshold="-33" UsePeak="0"
+BassAndTreble:Bass="0" Gain="15" Link_Sliders="0" Treble="0"

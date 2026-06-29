@@ -1,0 +1,4 @@
+Macro_NWR-SoftUHFBase:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="10" Parameter_2="100" Repeats="4" Threshold_dB="-3.2" Type="Expand and Compress"
+Roughrider2:Attack="0.23199999" Make-Up_Gain="0.39199999" Mix="1" Ratio="1" Release="0.212" Sensitivity="0.433"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="4" Parameter_2="46" Repeats="4" Threshold_dB="-3.2" Type="Expand and Compress"

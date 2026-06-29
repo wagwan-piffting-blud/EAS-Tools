@@ -1,0 +1,21 @@
+SelectAll:
+SetProject:Rate="44100"
+MixAndRender:
+Compressor:AttackTime="0.1" NoiseFloor="-20" Normalize="1" Ratio="2" ReleaseTime="1" Threshold="-18" UsePeak="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="0" Threshold_dB="-6" Type="Expand and Compress"
+Low-passFilter:frequency="4500" rolloff="dB24"
+Low-passFilter:frequency="10000" rolloff="dB48"
+NewStereoTrack:
+Noise:Amplitude="0.002" Type="White"
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="0"
+Low-passFilter:frequency="16000" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="180" Interpolation="Linear" Waveform="Square"
+Tremolo:lfo="120" phase="0" wave="Sine" wet="100"
+Low-passFilter:frequency="60" rolloff="dB12"
+SelectAll:
+MixAndRender:
+ChangeSpeed:Percentage="1.333"
+Compressor:AttackTime="0.1" NoiseFloor="-20" Normalize="1" Ratio="1.5" ReleaseTime="1" Threshold="-18" UsePeak="0"
+ChebyshevTypeIFilter:fc="16000" fType="Lowpass" order="16" ripple="1"
+Normalize:ApplyGain="1" PeakLevel="-12" RemoveDcOffset="1" StereoIndependent="0"

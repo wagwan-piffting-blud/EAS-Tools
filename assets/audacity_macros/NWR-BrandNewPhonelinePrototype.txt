@@ -1,0 +1,22 @@
+BassAndTreble:Bass="-10" Gain="0" Link_Sliders="0" Treble="10"
+SetProject:Rate="8000"
+MixAndRender:
+BassAndTreble:Bass="-6" Gain="0" Link_Sliders="0" Treble="12"
+SetProject:Rate="48000"
+MixAndRender:
+High-passFilter:frequency="220" rolloff="dB48"
+BassAndTreble:Bass="-30" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="1.7782794"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.34900001" Output="0.5" Process_="0.40000001"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+BassAndTreble:Bass="10" Gain="15" Link_Sliders="0" Treble="-20"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="-20"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+Message:Text="edited by tmyk"

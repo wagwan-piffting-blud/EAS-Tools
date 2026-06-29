@@ -1,0 +1,25 @@
+ChangeSpeed:Percentage="495.9"
+ChangeSpeed:Percentage="-83.22"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.34900001" Output="0.5" Process_="0.40000001"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+Roughrider2:Attack="0.059999999" Make-Up_Gain="0.67500001" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.80500001"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-12" type="HardLimit"
+High-passFilter:frequency="200" rolloff="dB48"
+BassAndTreble:Bass="10" Gain="15" Link_Sliders="0" Treble="-20"
+DblueCrusher:BitDepth="0.26699999" Foldback="1" Mix="1" Reduction="0.048" Smoothing="0" SmoothMode="0"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="-20"
+Copy:
+SelTrackStartToEnd:
+Paste:
+Amplify:Ratio="0.31622776"
+SelectAll:
+Amplify:Ratio="0.50118721"
+High-passFilter:frequency="200" rolloff="dB48"
+MixAndRender:
+ChangeSpeed:Percentage="495.9"
+ChangeSpeed:Percentage="-83.22"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="0" StereoIndependent="0"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-12" type="HardLimit"
+Amplify:Ratio="1.7782794"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-12" type="HardLimit"
+Amplify:Ratio="3.9810717"

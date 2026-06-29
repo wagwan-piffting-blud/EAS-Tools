@@ -1,0 +1,10 @@
+SetProject:Rate="22050"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+BassAndTreble:Bass="-5" Gain="0" Link_Sliders="0" Treble="-8"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-31.7" type="HardLimit"
+Amplify:AllowClipping="0" Ratio="7.0794578"
+BassAndTreble:Bass="-2" Gain="0" Link_Sliders="0" Treble="0"
+High-passFilter:frequency="60" rolloff="dB12"
+Message:Text="private prototype made by tmyk - deamplify same headers by -4.6 dB"

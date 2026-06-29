@@ -1,0 +1,18 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+BassAndTreble:Bass="-12" Gain="0" Link_Sliders="0" Treble="0"
+MultibandEq:band="2" bands="3" gain="6"
+NewMonoTrack:
+Noise:Amplitude="0.0022" Type="White"
+SelectAll:
+MixAndRender:
+DblueCrusher:BitDepth="0.465" Foldback="0" Mix="1" Reduction="0.035999998" Smoothing="0" SmoothMode="0"
+SetProject:Rate="22050"
+SelectAll:
+MixAndRender:
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"

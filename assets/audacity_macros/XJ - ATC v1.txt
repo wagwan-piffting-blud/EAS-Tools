@@ -1,0 +1,35 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+NewMonoTrack:
+Noise:Amplitude="0.015" Type="White"
+SelectAll:
+MixAndRender:
+SelectNone:
+SelectAll:
+Select:End="0.16" Mode="Set" RelativeTo="SelectionStart" Start="0"
+Silence:Use_Preset="<Current Settings>"
+Select:End="0.16" Mode="Set" RelativeTo="SelectionStart" Start="0.08"
+Noise:Amplitude="1" Type="White"
+SelectAll:
+Select:End="0" Mode="Set" RelativeTo="SelectionEnd" Start="0.16"
+Silence:Use_Preset="<Current Settings>"
+Select:End="0.08" Mode="Set" RelativeTo="SelectionEnd" Start="0.16"
+Noise:Amplitude="1" Type="White"
+SelectAll:
+Compressor:AttackTime="0.1" NoiseFloor="-20" Normalize="1" Ratio="2" ReleaseTime="1" Threshold="-24" UsePeak="0"
+Compressor:AttackTime="0.1" NoiseFloor="-20" Normalize="1" Ratio="2" ReleaseTime="1" Threshold="-24" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-6" type="SoftLimit"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="2500" rolloff="dB48"
+Low-passFilter:frequency="2500" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB48"
+ChebyshevDistortion:Distortion="1"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.047619049" Dry="0" Wet="1"
+MdaDegrade:Headroom="0.57300001" Non-Lin="0.75" Output="0.5" PostFilt="1" Quant="0.35800001" Rate="0.86199999"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB36"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

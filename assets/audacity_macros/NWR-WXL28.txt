@@ -1,0 +1,2 @@
+Macro_NWR-UHFWireless-Proto:
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="-16"

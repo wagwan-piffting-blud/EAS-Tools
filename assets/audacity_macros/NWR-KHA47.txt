@@ -1,0 +1,3 @@
+Macro_NWR-Chicago-Pre:
+BassAndTreble:Bass="-5" Gain="0" Link_Sliders="0" Treble="-10"
+Amplify:AllowClipping="0" Ratio="0.63095737"

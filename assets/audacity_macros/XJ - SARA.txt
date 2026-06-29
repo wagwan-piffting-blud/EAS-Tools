@@ -1,0 +1,15 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+NewMonoTrack:
+Noise:Amplitude="0.005" Type="White"
+Low-passFilter:frequency="4000" rolloff="dB48"
+SelectAll:
+MixAndRender:
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.11111111" Dry="0" Wet="1"
+Low-passFilter:frequency="2000" rolloff="dB12"
+High-passFilter:frequency="120" rolloff="dB12"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Message:Text="Due to weirdness with downsampling, .wav attention tones get crushed down to a single frequency. If this occurs, try again with an .mp3 at a lower bitrate. I don't know why this happens."

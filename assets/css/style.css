@@ -561,6 +561,140 @@ button[disabled] {
     width: 15vw;
 }
 
+.splice-macro-native-hidden {
+    display: none !important;
+}
+
+.splice-macro-combo {
+    position: relative;
+    display: inline-block;
+    width: 15vw;
+    min-width: 160px;
+    max-width: 100%;
+    vertical-align: middle;
+}
+
+.splice-macro-combo__btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    background-color: #161616;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: "Hack", monospace;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.splice-macro-combo__btn:hover,
+.splice-macro-combo__btn:focus-visible {
+    border-color: var(--color-orange);
+    outline: none;
+}
+
+.splice-macro-combo__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.splice-macro-combo__arrow {
+    flex: 0 0 auto;
+    color: var(--color-orange);
+    font-size: 0.8em;
+}
+
+.splice-macro-combo__pop {
+    position: fixed;
+    z-index: 4000;
+    display: flex;
+    flex-direction: column;
+    background-color: #111111;
+    border: 1px solid var(--color-orange);
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+}
+
+.splice-macro-combo__pop[hidden] {
+    display: none;
+}
+
+.splice-macro-combo__search {
+    flex: 0 0 auto;
+    margin: 6px;
+    padding: 6px 8px;
+    background-color: #1c1c1c;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    font-family: "Hack", monospace;
+    font-size: 0.9rem;
+}
+
+.splice-macro-combo__search:focus {
+    outline: none;
+    border-color: var(--color-orange);
+}
+
+.splice-macro-combo__list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 4px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+
+.splice-macro-combo__group {
+    padding: 8px 12px 2px;
+    font-family: "Hack", monospace;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--color-border-light);
+}
+
+.splice-macro-combo__opt {
+    position: relative;
+    padding: 6px 28px 6px 12px;
+    font-family: "Hack", monospace;
+    font-size: 0.9rem;
+    color: var(--color-text);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.splice-macro-combo__opt.is-active {
+    background-color: var(--color-orange);
+    color: var(--color-bg);
+}
+
+.splice-macro-combo__opt.is-selected {
+    font-weight: bold;
+}
+
+.splice-macro-combo__opt.is-selected::after {
+    content: "\2713";
+    position: absolute;
+    right: 10px;
+    color: var(--color-orange);
+}
+
+.splice-macro-combo__opt.is-selected.is-active::after {
+    color: var(--color-bg);
+}
+
+.splice-macro-combo__empty {
+    padding: 10px 12px;
+    font-family: "Hack", monospace;
+    font-size: 0.9rem;
+    color: var(--color-border-light);
+}
+
 #eas-tools-logo {
     background: url('../eas-tools-logo.png?v=2') no-repeat center; /* cache-busting query param */
     background-size: 115%;
@@ -1246,6 +1380,10 @@ button[disabled] {
     }
 
     #spliceMacros {
+        width: 40vw;
+    }
+
+    .splice-macro-combo {
         width: 40vw;
     }
 

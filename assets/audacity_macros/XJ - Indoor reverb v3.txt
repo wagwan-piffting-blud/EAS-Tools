@@ -1,0 +1,23 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+BassAndTreble:Bass="24" Gain="0" Link_Sliders="0" Treble="0"
+Compressor:AttackTime="0.1" NoiseFloor="-35" Normalize="1" Ratio="5" ReleaseTime="1" Threshold="-24" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="No" thresh="-6" type="SoftLimit"
+High-passFilter:frequency="500" rolloff="dB6"
+High-passFilter:frequency="500" rolloff="dB6"
+High-passFilter:frequency="500" rolloff="dB6"
+Low-passFilter:frequency="3000" rolloff="dB6"
+Low-passFilter:frequency="3000" rolloff="dB6"
+Low-passFilter:frequency="3000" rolloff="dB6"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-2" Type="Leveller"
+Compressor:AttackTime="0.1" NoiseFloor="-35" Normalize="1" Ratio="6" ReleaseTime="1" Threshold="-24" UsePeak="0"
+Reverb:Delay="10" DryGain="0" HfDamping="50" Reverberance="10" RoomSize="15" StereoWidth="100" ToneHigh="100" ToneLow="100" WetGain="0" WetOnly="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="No" thresh="-6" type="SoftLimit"
+NewMonoTrack:
+Noise:Amplitude="0.005" Type="White"
+Low-passFilter:frequency="200" rolloff="dB6"
+High-passFilter:frequency="500" rolloff="dB6"
+SelectAll:
+MixAndRender:

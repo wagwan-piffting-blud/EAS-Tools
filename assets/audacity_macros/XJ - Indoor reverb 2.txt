@@ -1,0 +1,8 @@
+SelectAll:
+SetProject:Rate="44100"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="15" Parameter_2="100" Repeats="1" Threshold_dB="-8" Type="Hard Overdrive"
+Low-passFilter:frequency="1600" rolloff="dB12"
+High-passFilter:frequency="1200" rolloff="dB24"
+Reverb:Delay="10" DryGain="-1" HfDamping="50" Reverberance="25" RoomSize="15" StereoWidth="100" ToneHigh="100" ToneLow="50" WetGain="-1" WetOnly="0"

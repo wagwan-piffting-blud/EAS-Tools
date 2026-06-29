@@ -1,0 +1,4 @@
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="5" Threshold_dB="-10" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="3" Threshold_dB="-10" Type="Leveller"
+Amplify:Ratio="0.50118721"

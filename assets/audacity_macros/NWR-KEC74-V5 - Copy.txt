@@ -1,0 +1,11 @@
+Macro_NWR-KEC80-NoNoise:
+Amplify:AllowClipping="0" Ratio="0.56234133"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="-15"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="3" Parameter_2="0" Repeats="4" Threshold_dB="-8.5" Type="Hard Clipping"
+BassAndTreble:Bass="10" Gain="-2" Link_Sliders="0" Treble="1"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.031746034" Dry="0.79799998" Wet="0.012"
+BassAndTreble:Bass="-4" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="1.4125376"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="-3"
+BassAndTreble:Bass="-3" Gain="0" Link_Sliders="0" Treble="0"
+Message:Text="edited by tmyk - this finally sounds realistic"

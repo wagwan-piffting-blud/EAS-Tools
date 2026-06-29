@@ -1,0 +1,15 @@
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="-12"
+Sc4:Attack_time_(ms)="100" Knee_radius_(dB)="1" Makeup_gain_(dB)="18" Ratio_(1_n)="20" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-30"
+MdaCombo:Bias="0.50300002" Drive="0.69" Model="0" Output="0.63200003" Process_="0.40000001"
+SetProject:Rate="48000"
+MixAndRender:
+BassAndTreble:Bass="-6" Gain="0" Link_Sliders="0" Treble="0"
+SetProject:Rate="48000"
+MixAndRender:
+MdaCombo:Bias="0.5" Drive="0.34599999" Model="0" Output="0.51200002" Process_="0.40000001"
+Copy:
+NewMonoTrack:
+Paste:
+SelectAll:
+MixAndRender:
+Amplify:Ratio="0.56234133"

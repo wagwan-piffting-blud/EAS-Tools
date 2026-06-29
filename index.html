@@ -867,6 +867,9 @@
                 }
             })();
         </script>
+        <!-- x86 VST emulator (WASM) + Audacity macro engine, loaded before the splicer module -->
+        <script src="assets/js/vstemu.js"></script>
+        <script src="assets/js/audacity-macro-engine.js"></script>
         <script type="module" src="assets/js/decoder-bundle.js"></script>
         <script type="module" src="assets/js/encoder-bundle.js"></script>
         <script type="module" src="assets/js/crawl-bundle.js"></script>
@@ -1082,7 +1085,6 @@
                     }
                 });
 
-                // Native bridge: muxer activation
                 if (window.EASBridge) {
                     window.EASBridge.on('muxer:activate', () => {
                         activate('muxer');

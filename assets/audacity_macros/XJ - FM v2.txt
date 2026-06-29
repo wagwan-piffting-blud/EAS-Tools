@@ -1,0 +1,22 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Extra Narrow" right-mix-L="0" right-mix-R="0"
+MultibandEq:band="6" bands="3" gain="3"
+MultibandEq:band="4" bands="3" gain="6"
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="1" Threshold_level_(dB)="-30"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="No" thresh="-10" type="SoftLimit"
+Allpassphase:Frequency="0.56" Intensity="0.17200001" Mix="1" Q="0.56699997"
+Low-passFilter:frequency="10000" rolloff="dB48"
+Low-passFilter:frequency="10000" rolloff="dB48"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"
+NewStereoTrack:
+Noise:Amplitude="0.0025" Type="White"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"

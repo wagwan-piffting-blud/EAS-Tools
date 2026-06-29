@@ -1,0 +1,3 @@
+Macro_NWR-WXJ21V2:
+BassAndTreble:Bass="-30" Gain="0" Link_Sliders="0" Treble="10"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-8" type="HardLimit"

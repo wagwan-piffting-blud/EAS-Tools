@@ -1,0 +1,5 @@
+PopMute:floor="-24" help="No" look="23.7" rel="112" thresh="0"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.015873017" Dry="0.75999999" Wet="0.93800002"
+Amplify:AllowClipping="0" Ratio="0.63095737"
+DblueCrusher:BitDepth="0.022" Foldback="0.76599997" Mix="0.052000001" Reduction="0.88800001" Smoothing="1" SmoothMode="0.071000002"
+High-passFilter:frequency="100" rolloff="dB12"

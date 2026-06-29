@@ -1,0 +1,6 @@
+Macro_NWR-ClevelandV2:
+Roughrider2:Attack="0.45199999" Make-Up_Gain="0.58399999" Mix="1" Ratio="1" Release="0.035999998" Sensitivity="0.81699997"
+Amplify:AllowClipping="0" Ratio="0.31622776"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="0"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-8" type="HardLimit"
+Amplify:AllowClipping="0" Ratio="2.5118864"

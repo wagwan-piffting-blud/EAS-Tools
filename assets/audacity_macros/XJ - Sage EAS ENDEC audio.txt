@@ -1,0 +1,20 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Low-passFilter:frequency="7000" rolloff="dB48"
+Low-passFilter:frequency="7000" rolloff="dB48"
+Low-passFilter:frequency="7000" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.0001" Frequency="2180" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0001" Frequency="3650" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0001" Frequency="5100" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0001" Frequency="6570" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.0005" Type="White"
+BassAndTreble:Bass="18" Gain="0" Link_Sliders="0" Treble="0"
+SelectAll:
+MixAndRender:

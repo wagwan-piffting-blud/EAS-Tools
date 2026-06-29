@@ -1,0 +1,7 @@
+Macro_Digital-ENDEC-Relay-Distorted:
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+Roughrider2:Attack="0.27200001" Make-Up_Gain="0.36399999" Mix="0.90799999" Ratio="1" Release="0.1" Sensitivity="0.15700001"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-8" type="HardLimit"
+High-passFilter:frequency="250" rolloff="dB12"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="0.56234133"

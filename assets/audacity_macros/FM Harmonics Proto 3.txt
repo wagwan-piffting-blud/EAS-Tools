@@ -1,0 +1,4 @@
+Allpassphase:Frequency="0.55000001" Intensity="0.44499999" Mix="0.73900002" Q="0.486"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.079432823"
+Allpassphase:Frequency="0.55000001" Intensity="0.44499999" Mix="0.73900002" Q="0.486"

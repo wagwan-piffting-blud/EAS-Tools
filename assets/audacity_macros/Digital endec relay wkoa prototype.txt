@@ -1,0 +1,4 @@
+BassAndTreble:Bass="7" Gain="0" Link_Sliders="0" Treble="0"
+FilterCurve:f0="51.287848" f1="74.344483" f10="24000" f11="24000" f2="127.99745" f3="188.9299" f4="232.67471" f5="500" f6="2500" f7="3150" f8="4413.9324" f9="6398.2315" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-120" v1="-76.400002" v10="-95.599998" v11="-64.174868" v2="-39.200001" v3="-16.800001" v4="-3.6000004" v5="0" v6="0" v7="-0.874" v8="-15.200001" v9="-34.400002"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.031746034" Dry="0.92900002" Wet="0.074000001"
+Message:Text="made by mel"

@@ -1,0 +1,26 @@
+SelectAll:
+SetProject:Rate="44100"
+MixAndRender:
+NewMonoTrack:
+Tone:Amplitude="0.000125" Frequency="820" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="2000" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="3145" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0005" Frequency="3620" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="7150" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="7235" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.000125" Frequency="10870" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.000125" Frequency="12300" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.002" Type="White"
+NewMonoTrack:
+Tone:Amplitude="0.00125" Frequency="60" Interpolation="Linear" Waveform="Square"
+Low-passFilter:frequency="480" rolloff="dB6"
+SelectAll:
+MixAndRender:

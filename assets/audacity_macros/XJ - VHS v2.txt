@@ -1,0 +1,33 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+NewStereoTrack:
+SelectAll:
+MixAndRender:
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Narrow Stereo" right-mix-L="0" right-mix-R="0"
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Low-passFilter:frequency="3000" rolloff="dB6"
+Low-passFilter:frequency="10000" rolloff="dB12"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+TapeSaturationLimiter:hfgain="-8" hfhz="4500" makeup="Off" ratio="1" thres="-1"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="60" Interpolation="Linear" Waveform="Sawtooth"
+Low-passFilter:frequency="800" rolloff="dB6"
+High-passFilter:frequency="60" rolloff="dB24"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="60" Interpolation="Linear" Waveform="Sawtooth"
+RandomAmplitudeModulation:factor="40" maxspeed="0.4"
+NoiseGate:attack="100" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-21.5"
+Low-passFilter:frequency="10000" rolloff="dB12"
+Amplify:Ratio="0.39810717"
+NewMonoTrack:
+Noise:Amplitude="0.01" Type="White"
+Low-passFilter:frequency="1800" rolloff="dB6"
+Low-passFilter:frequency="10000" rolloff="dB6"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="15734" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="16000" rolloff="dB48"
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="2.5" ReleaseTime="4" Threshold="-60" UsePeak="0"

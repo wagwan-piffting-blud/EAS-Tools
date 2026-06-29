@@ -1,0 +1,8 @@
+Macro_NWR-KIH42Prototype:
+Macro_NWR-UHFAddOn:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="3" Parameter_2="100" Repeats="4" Threshold_dB="-3.2" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="3" Parameter_2="100" Repeats="4" Threshold_dB="-3.2" Type="Leveller"
+High-passFilter:frequency="400" rolloff="dB12"
+Amplify:AllowClipping="0" Ratio="0.50118721"
+BassAndTreble:Bass="14" Gain="0" Link_Sliders="0" Treble="-24"
+Amplify:AllowClipping="0" Ratio="1.5848932"

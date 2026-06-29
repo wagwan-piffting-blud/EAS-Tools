@@ -1,0 +1,14 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Low-passFilter:frequency="200" rolloff="dB6"
+Low-passFilter:frequency="2000" rolloff="dB12"
+High-passFilter:frequency="400" rolloff="dB12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="2" Threshold_dB="-6" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-6" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="5" Parameter_2="100" Repeats="2" Threshold_dB="-6" Type="Expand and Compress"
+Allpassphase:Frequency="0.63300002" Intensity="0.50599998" Mix="0.255" Q="0.64099997"
+Normalize:ApplyGain="1" PeakLevel="-12" RemoveDcOffset="1" StereoIndependent="0"
+Reverb:Delay="10" DryGain="0" HfDamping="12" Reverberance="25" RoomSize="12" StereoWidth="100" ToneHigh="100" ToneLow="100" WetGain="6" WetOnly="0"

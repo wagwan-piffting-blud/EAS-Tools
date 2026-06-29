@@ -1,0 +1,51 @@
+SelectAll:
+SetProject:Rate="48000"
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="2" gain="12"
+Sc4:Attack_time_(ms)="400" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="8" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-24"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="No" thresh="-6" type="SoftLimit"
+High-passFilter:frequency="150" rolloff="dB6"
+High-passFilter:frequency="150" rolloff="dB6"
+MdaDegrade:Headroom="1" Non-Lin="0.75" Output="0.65700001" PostFilt="1" Quant="0.72000003" Rate="0.80199999"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="48" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Leveller"
+Silhouette:Dry_Wet="1"
+Dustbunny:Bunny="1"
+Amplify:Ratio="0.25118864"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="75" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+Amplify:Ratio="251.18864"
+NoiseGate:attack="10" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-12"
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="75" Parameter_2="100" Repeats="2" Threshold_dB="-24" Type="Leveller"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="No" thresh="-10" type="HardLimit"
+NewMonoTrack:
+Noise:Amplitude="0.5" Type="Pink"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="80" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="90" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-10" type="HardLimit"
+Select:Mode="Set" Track="0"
+Duplicate:
+Select:Mode="Set" Track="3"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Amplify:Ratio="0.031622775"
+NewMonoTrack:
+Tone:Amplitude="0.0025" Frequency="60" Interpolation="Linear" Waveform="Sine"
+Tremolo:lfo="120" phase="0" wave="Square" wet="100"
+High-passFilter:frequency="400" rolloff="dB6"
+MultibandEq:band="2" bands="2" gain="15"
+NewMonoTrack:
+Noise:Amplitude="0.0025" Type="White"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="6"
+MultibandEq:band="1" bands="2" gain="-12"
+SelectAll:
+MixAndRender:
+ChebyshevTypeIFilter:fc="15000" fType="Lowpass" order="16" ripple="1"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

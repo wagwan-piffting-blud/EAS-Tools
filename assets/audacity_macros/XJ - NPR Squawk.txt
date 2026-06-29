@@ -1,0 +1,29 @@
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+FirstTrack:
+CursTrackEnd:
+Select:End="0.125" Mode="Set" RelativeTo="SelectionEnd"
+Noise:Amplitude="1" Type="White"
+CursTrackEnd:
+Select:End="0.15" Mode="Set" RelativeTo="SelectionStart"
+Silence:Use_Preset="<Current Settings>"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3300" rolloff="dB48"
+High-passFilter:frequency="250" rolloff="dB6"
+High-passFilter:frequency="250" rolloff="dB6"
+High-passFilter:frequency="250" rolloff="dB48"
+Dustbunny:Bunny="0.65100002"
+High-passFilter:frequency="250" rolloff="dB6"
+Compressor:AttackTime="0.1" NoiseFloor="-25" Normalize="1" Ratio="3" ReleaseTime="1" Threshold="-30" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="No" thresh="-6" type="SoftLimit"
+MdaDegrade:Headroom="1" Non-Lin="0.50199997" Output="0.5" PostFilt="1" Quant="0.40000001" Rate="0.741"
+SetProject:Rate="8000"
+SelectAll:
+MixAndRender:
+SetProject:Rate="44100"
+MixAndRender:

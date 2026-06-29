@@ -1,0 +1,85 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="2" gain="12"
+Duplicate:
+Select:Mode="Set" Track="1"
+High-passFilter:frequency="4000" rolloff="dB48"
+NoiseGate:attack="150" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-15"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Silhouette:Dry_Wet="1"
+MultibandEq:band="2" bands="2" gain="-3"
+MultibandEq:band="1" bands="2" gain="3"
+Amplify:Ratio="0.25118864"
+SelectAll:
+MixAndRender:
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="0" Threshold_level_(dB)="-18"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="600" rolloff="dB6"
+Low-passFilter:frequency="2500" rolloff="dB48"
+Low-passFilter:frequency="2500" rolloff="dB48"
+Low-passFilter:frequency="2500" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB48"
+MdaDegrade:Headroom="1" Non-Lin="0.62699997" Output="0.5" PostFilt="1" Quant="1" Rate="0.23899999"
+Low-passFilter:frequency="3000" rolloff="dB24"
+Low-passFilter:frequency="800" rolloff="dB6"
+MultibandEq:band="2" bands="2" gain="-6"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.025" Type="White"
+MultibandEq:band="1" bands="2" gain="12"
+MultibandEq:band="2" bands="3" gain="12"
+ParametricEq:freq="500" gain="15" width="0.25"
+ParametricEq:freq="660" gain="6" width="0.33"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="60" Interpolation="Linear" Waveform="Square"
+NewMonoTrack:
+Tone:Amplitude="0.05" Frequency="60" Interpolation="Linear" Waveform="Sawtooth"
+Select:Mode="Set" Track="2" TrackCount="2"
+MixAndRender:
+MultibandEq:band="2" bands="2" gain="12"
+Low-passFilter:frequency="540" rolloff="dB12"
+High-passFilter:frequency="120" rolloff="dB12"
+Amplify:Ratio="0.50118721"
+NewMonoTrack:
+Tone:Amplitude="0.025" Frequency="60" Interpolation="Linear" Waveform="Square"
+MultibandEq:band="2" bands="2" gain="12"
+RandomAmplitudeModulation:factor="25" maxspeed="1"
+NoiseGate:attack="250" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-20"
+Low-passFilter:frequency="640" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB48"
+Amplify:Ratio="3.9810717"
+NewMonoTrack:
+Tone:Amplitude="0.0035" Frequency="2050" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0015" Frequency="7450" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.0015" Frequency="7550" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="1" Type="White"
+Low-passFilter:frequency="480" rolloff="dB48"
+High-passFilter:frequency="480" rolloff="dB48"
+SlidingStretch:PitchHalfStepsEnd="5" PitchHalfStepsStart="0" PitchPercentChangeEnd="33.484" PitchPercentChangeStart="0" RatePercentChangeEnd="0" RatePercentChangeStart="-0"
+Reverse:Use_Preset="<Factory Defaults>"
+StudioFadeOut:Use_Preset="<Factory Defaults>"
+Reverse:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+Duplicate:
+Select:Mode="Set" Track="1"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="No" thresh="-6" type="HardLimit"
+RandomAmplitudeModulation:factor="150" maxspeed="0.5"
+NoiseGate:attack="125" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-12.5"
+MultibandEq:band="2" bands="2" gain="6"
+Dustbunny:Bunny="1"
+Dustbunny:Bunny="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="12.5" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Leveller"
+Amplify:Ratio="0.50118721"
+SelectAll:
+MixAndRender:
+Compressor:AttackTime="0.1" NoiseFloor="-60" Normalize="1" Ratio="3" ReleaseTime="8" Threshold="-40" UsePeak="0"

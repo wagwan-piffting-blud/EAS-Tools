@@ -1,0 +1,44 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+MultibandEq:band="2" bands="2" gain="6"
+Allpassphase:Frequency="0.565" Intensity="0.241" Mix="1" Q="0.71100003"
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="1" Threshold_level_(dB)="-18"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="No" thresh="-10" type="HardLimit"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Duplicate:
+Select:Mode="Set" Track="1"
+High-passFilter:frequency="4000" rolloff="dB48"
+NoiseGate:attack="125" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-12"
+Dustbunny:Bunny="1"
+Silhouette:Dry_Wet="0.60299999"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="5000" rolloff="dB48"
+ChebyshevTypeIFilter:fc="5000" fType="Lowpass" order="16" ripple="1"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB48"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="No" thresh="-6" type="HardLimit"
+Duplicate:
+NewMonoTrack:
+Noise:Amplitude="0.05" Type="White"
+Select:Mode="Set" Track="1" TrackCount="2"
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-100" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-100" Type="Leveller"
+Silhouette:Dry_Wet="1"
+Dustbunny:Bunny="0.85000002"
+Normalize:ApplyGain="1" PeakLevel="-24" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="2300" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.1" factor="2" maxdepth="0.025" maxspeed="5"
+NewMonoTrack:
+Noise:Amplitude="0.025" Type="White"
+SelectAll:
+MixAndRender:
+Silhouette:Dry_Wet="0.551"
+ChebyshevTypeIFilter:fc="5000" fType="Lowpass" order="4" ripple="1"

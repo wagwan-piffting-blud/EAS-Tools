@@ -1,0 +1,7 @@
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="1" Makeup_gain_(dB)="6" Ratio_(1_n)="20" Release_time_(ms)="2" RMS_peak="0" Threshold_level_(dB)="-24"
+Low-passFilter:frequency="6000" rolloff="dB48"
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Clipper:amt="0" rectify="Rectify" side="Positive Only" tube="Yes"
+Low-passFilter:frequency="2500" rolloff="dB6"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Message:Text="edited by tmyk, based off elijahs original 1999 eas macro"

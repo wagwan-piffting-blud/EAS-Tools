@@ -1,0 +1,25 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-4" type="SoftClip"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="15" Parameter_2="100" Repeats="5" Threshold_dB="-8" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="10" Parameter_2="100" Repeats="5" Threshold_dB="-8" Type="Expand and Compress"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.047619049" Dry="0" Wet="1"
+DblueCrusher:BitDepth="0.46700001" Foldback="0.54100001" Mix="1" Reduction="0.034000002" Smoothing="1" SmoothMode="0"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="800" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB48"
+NewMonoTrack:
+Noise:Amplitude="0.02" Type="White"
+Low-passFilter:frequency="2500" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB48"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB48"
+NotchFilter:frequency="1100" q="4"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

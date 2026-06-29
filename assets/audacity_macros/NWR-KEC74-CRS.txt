@@ -1,0 +1,7 @@
+Macro_NWR-CRS-KitLX-Var2:
+BassAndTreble:Bass="2" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="14" Parameter_2="0" Repeats="2" Threshold_dB="-11.44" Type="Leveller"
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-8" type="HardLimit"
+High-passFilter:frequency="200" rolloff="dB12"
+BassAndTreble:Bass="4" Gain="0" Link_Sliders="0" Treble="0"

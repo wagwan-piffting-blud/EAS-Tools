@@ -1,0 +1,3 @@
+Macro_NWR-JacksonPrototype:
+BassAndTreble:Bass="-10" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:AllowClipping="0" Ratio="0.50118721"

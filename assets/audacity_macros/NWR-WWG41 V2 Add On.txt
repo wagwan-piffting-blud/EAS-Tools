@@ -1,0 +1,4 @@
+Message:Text="hai guys its rei // make sure to first apply NWR-WWG41 V2, and then import the file \"WWG41 Noise\", and then resample the noise to 44100 Hz and make the noise track mono. After that, gain paul +2 dB, and then the noise -10 dB. Once you do that, you can then apply this macro // macro made by tmyk, WWG41 provided by kitlx"
+Roughrider2:Attack="0.104" Make-Up_Gain="1" Mix="1" Ratio="1" Release="0.80000001" Sensitivity="0.72899997"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-11" type="HardLimit"
+Amplify:AllowClipping="0" Ratio="1.7782794"

@@ -1,0 +1,44 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-4" type="HardLimit"
+MdaDegrade:Headroom="1" Non-Lin="0.54299998" Output="0.523" PostFilt="1" Quant="0.34200001" Rate="0.36199999"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+ChebyshevTypeIFilter:fc="3300" fType="Lowpass" order="16" ripple="1"
+High-passFilter:frequency="250" rolloff="dB48"
+High-passFilter:frequency="250" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.0002" Frequency="2755" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.025" Type="White"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+ChebyshevTypeIFilter:fc="3300" fType="Lowpass" order="16" ripple="1"
+High-passFilter:frequency="250" rolloff="dB12"
+SelectAll:
+MixAndRender:
+FilterCurve:f0="3379.3103" f1="3379.3103" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="0" v1="-120"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="4" Interpolation="Linear" Waveform="Square"
+RandomAmplitudeModulation:factor="30" maxspeed="20"
+NoiseGate:attack="10" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-13"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="25" Parameter_2="100" Repeats="2" Threshold_dB="-8" Type="Hard Overdrive"
+Low-passFilter:frequency="5000" rolloff="dB48"
+Low-passFilter:frequency="5000" rolloff="dB48"
+High-passFilter:frequency="1200" rolloff="dB12"
+Normalize:ApplyGain="1" PeakLevel="-12" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="4995" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="5880" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.0015" Type="White"
+Low-passFilter:frequency="4000" rolloff="dB48"
+SelectAll:
+MixAndRender:
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="2.5" Parameter_2="100" Repeats="2" Threshold_dB="-8" Type="Hard Overdrive"
+Low-passFilter:frequency="6000" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

@@ -1,0 +1,45 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+StereoToMono:Use_Preset="<Factory Defaults>"
+Distortion:DC_Block="0" Noise_Floor="-60" Parameter_1="100" Parameter_2="1" Repeats="2" Threshold_dB="-16" Type="Leveller"
+Low-passFilter:frequency="3000" rolloff="dB24"
+BassAndTreble:Bass="8" Gain="0" Link_Sliders="0" Treble="0"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.01" Type="White"
+Low-passFilter:frequency="12000" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="180" Interpolation="Linear" Waveform="Sawtooth"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="100"
+Low-passFilter:frequency="400" rolloff="dB12"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="180" Interpolation="Linear" Waveform="Sawtooth"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="100"
+Low-passFilter:frequency="400" rolloff="dB12"
+RandomAmplitudeModulation:factor="30" maxspeed="2"
+NoiseGate:attack="100" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-44.8"
+Amplify:Ratio="0.70794576"
+NewMonoTrack:
+Tone:Amplitude="0.02" Frequency="20" Interpolation="Linear" Waveform="Sawtooth"
+RandomAmplitudeModulation:factor="120" maxspeed="1"
+NoiseGate:attack="10" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-41.9"
+RandomAmplitudeModulation:factor="120" maxspeed="8"
+NoiseGate:attack="10" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-24"
+Distortion:DC_Block="0" Noise_Floor="-80" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-25" Type="Hard Clipping"
+Low-passFilter:frequency="4000" rolloff="dB48"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+High-passFilter:frequency="200" rolloff="dB12"
+Amplify:Ratio="0.015848933"
+NewMonoTrack:
+Tone:Amplitude="0.01" Frequency="15734.27" Interpolation="Linear" Waveform="Sine"
+RandomAmplitudeModulation:factor="30" maxspeed="0.6"
+Amplify:AllowClipping="0" Ratio="0.12589253"
+SelectAll:
+MixAndRender:
+RandomPitchModulation:depth="0.125" factor="1" maxdepth="0.01" maxspeed="1"
+Sc4:Attack_time_(ms)="400" Knee_radius_(dB)="5" Makeup_gain_(dB)="1" Ratio_(1_n)="2" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-30"
+Compressor:AttackTime="0.1" NoiseFloor="-35" Normalize="1" Ratio="3" ReleaseTime="8" Threshold="-30" UsePeak="0"
+TapeSaturationLimiter:hfgain="-5" hfhz="4500" makeup="On" ratio="2" thres="-3"
+High-passFilter:frequency="50" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="-0" RemoveDcOffset="1" StereoIndependent="0"

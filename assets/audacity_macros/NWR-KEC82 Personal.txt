@@ -1,0 +1,4 @@
+Amplify:Ratio="0.39810717"
+Macro_NWR-UHFWireless-Proto:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="9" Parameter_2="92" Repeats="5" Threshold_dB="-20.18" Type="Even Harmonics"
+Amplify:AllowClipping="0" Ratio="0.63095737"

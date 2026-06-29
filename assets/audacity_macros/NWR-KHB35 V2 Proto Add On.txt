@@ -1,0 +1,3 @@
+Roughrider2:Attack="0.456" Make-Up_Gain="0.60000002" Mix="0.90799999" Ratio="1" Release="0.884" Sensitivity="0.55699998"
+BassAndTreble:Bass="20" Gain="0" Link_Sliders="0" Treble="0"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-8" type="HardLimit"

@@ -1,0 +1,6 @@
+BassAndTreble:Bass="-4" Gain="0" Link_Sliders="0" Treble="14"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-11" type="HardLimit"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.031746034" Dry="1" Wet="0.23199999"
+Amplify:AllowClipping="0" Ratio="0.56234133"
+BassAndTreble:Bass="-2" Gain="0" Link_Sliders="0" Treble="-6"
+Message:Text="edited by rei - based of WXJ37 macro"

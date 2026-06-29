@@ -1,0 +1,3 @@
+Macro_NWR-BASSY:
+FilterCurve:f0="50.825532" f1="422.95778" f2="1018.0139" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-0.095238686" v1="-12.076191" v2="0.022221565"
+Roughrider2:Attack="0.31600001" Make-Up_Gain="1" Mix="0.50800002" Ratio="1" Release="1" Sensitivity="0.81599998"

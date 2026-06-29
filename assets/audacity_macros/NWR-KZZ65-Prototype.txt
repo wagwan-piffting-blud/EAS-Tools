@@ -1,0 +1,86 @@
+MdaCombo:Bias="0.5" Drive="0.70200002" Model="0" Output="0.639" Process_="0.40000001"
+DblueCrusher:BitDepth="0.46700001" Foldback="1" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+BassAndTreble:Bass="-10" Gain="0" Link_Sliders="0" Treble="10"
+SetProject:Rate="8000"
+MixAndRender:
+Copy:
+NewMonoTrack:
+Paste:
+DblueCrusher:BitDepth="0.46700001" Foldback="1" Mix="1" Reduction="0" Smoothing="0" SmoothMode="0"
+Invert:Use_Preset="<Factory Defaults>"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="316.22775"
+Copy:
+Undo:
+Undo:
+Paste:
+PanLeft:
+Select:Mode="Set" Track="0"
+PanRight:
+SelectAll:
+MixAndRender:
+NoiseThing:Use_Preset="<Current Settings>"
+StereoToMono:Use_Preset="<Factory Defaults>"
+Copy:
+Undo:
+Undo:
+Undo:
+Undo:
+Paste:
+Amplify:Ratio="0.17782794"
+BassAndTreble:Bass="-6" Gain="0" Link_Sliders="0" Treble="12"
+SetProject:Rate="48000"
+SelectAll:
+MixAndRender:
+Amplify:Ratio="0.25118864"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+BassAndTreble:Bass="12" Gain="0" Link_Sliders="0" Treble="0"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.36899999" Output="0.5" Process_="0.40000001"
+Roughrider2:Attack="0.059999999" Make-Up_Gain="0.39199999" Mix="1" Ratio="1" Release="0.056000002" Sensitivity="0.704"
+High-passFilter:frequency="200" rolloff="dB48"
+BassAndTreble:Bass="-10" Gain="20" Link_Sliders="0" Treble="-10"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Copy:
+NewMonoTrack:
+Paste:
+Tone:Amplitude="0.02" Frequency="60" Interpolation="Linear" Waveform="Sine"
+MdaCombo:Bias="0" Drive="0.72100002" Model="0" Output="0.75300002" Process_="0.40000001"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="30"
+NewMonoTrack:
+Paste:
+Noise:Amplitude="0.015" Type="White"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="120" rolloff="dB48"
+Select:End="0.01" Mode="Set" Start="0"
+Delete:
+SelectAll:
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-2" type="HardLimit"
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="3" Threshold_dB="-10" Type="Leveller"
+High-passFilter:frequency="300" rolloff="dB12"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.33500001" Output="0.49900001" Process_="0.403"
+BassAndTreble:Bass="10" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.77472931"
+FilterCurve:f0="42.792102" f1="66.088468" f10="981.80113" f11="1489.0885" f2="89.104494" f3="108.74657" f4="140.12859" f5="187.22685" f6="250.15519" f7="365.91173" f8="458.87026" f9="580.67888" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-0.21269894" v1="7.4222221" v10="0.022221565" v11="-0.33015919" v2="2.7238092" v3="0.022221565" v4="-0.21269894" v5="7.4222221" v6="-0.095238686" v7="-0.21269894" v8="1.666666" v9="-0.33015919"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.33500001" Output="0.49900001" Process_="0.403"
+MdaCombo:Bias="0.5" Drive="0.5" Model="0.33500001" Output="0.49900001" Process_="0.403"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+BassAndTreble:Bass="30" Gain="0" Link_Sliders="0" Treble="0"
+BassAndTreble:Bass="7" Gain="0" Link_Sliders="0" Treble="0"
+Amplify:Ratio="0.9337917"
+High-passFilter:frequency="100" rolloff="dB12"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+Message:Text="tmyk made this, based off NWR-Distorted"

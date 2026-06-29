@@ -1,0 +1,46 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="60" Parameter_2="100" Repeats="5" Threshold_dB="-8" Type="Hard Overdrive"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.047619049" Dry="0" Wet="1"
+DblueCrusher:BitDepth="0.46700001" Foldback="0.001" Mix="1" Reduction="0.034000002" Smoothing="0" SmoothMode="0"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.05" Type="White"
+NewMonoTrack:
+Tone:Amplitude="0.1" Frequency="60" Interpolation="Linear" Waveform="Sine"
+Tremolo:lfo="120" phase="0" wave="Sine" wet="100"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-8" Type="Even Harmonics"
+High-passFilter:frequency="120" rolloff="dB48"
+NewMonoTrack:
+Tone:Amplitude="0.02" Frequency="2500" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.02" factor="40" maxdepth="0.5" maxspeed="1"
+NewMonoTrack:
+Tone:Amplitude="0.006" Frequency="1250" Interpolation="Linear" Waveform="Sine"
+RandomPitchModulation:depth="0.02" factor="40" maxdepth="0.5" maxspeed="1"
+NewMonoTrack:
+Tone:Amplitude="0.2" Frequency="8" Interpolation="Linear" Waveform="Square"
+RandomAmplitudeModulation:factor="80" maxspeed="0.3"
+NoiseGate:attack="120" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-14"
+RandomAmplitudeModulation:factor="80" maxspeed="4"
+NoiseGate:attack="10" freq="0" funct="Gate" hpf="No" level-red="-100" stlink="Link Stereo Tracks" thresh="-12"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="50" Repeats="5" Threshold_dB="-8" Type="Hard Overdrive"
+Low-passFilter:frequency="1200" rolloff="dB12"
+High-passFilter:frequency="1600" rolloff="dB12"
+SelectAll:
+MixAndRender:
+High-passFilter:frequency="200" rolloff="dB48"
+FilterCurve:f0="199.34899" f1="199.34899" f2="3013.2184" f3="3013.2184" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-120" v1="0" v2="0" v3="-120"
+Copy:
+NewMonoTrack:
+Paste:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="50" Parameter_2="75" Repeats="5" Threshold_dB="-8" Type="Hard Overdrive"
+High-passFilter:frequency="2000" rolloff="dB48"
+Low-passFilter:frequency="4000" rolloff="dB12"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="8000" rolloff="dB48"
+High-passFilter:frequency="200" rolloff="dB48"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-8" type="HardLimit"

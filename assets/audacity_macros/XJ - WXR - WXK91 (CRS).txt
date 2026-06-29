@@ -1,0 +1,24 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="25" Parameter_2="100" Repeats="5" Threshold_dB="-8" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="20" Parameter_2="100" Repeats="5" Threshold_dB="-8" Type="Expand and Compress"
+Bitunz:Bit_1="0" Bit_2="0" Bit_3="0" Bit_4="0" Bit_5="0" Bit_6="0" Bit_7="0" Bit_8="0" Downsample="0.047619049" Dry="0" Wet="1"
+DblueCrusher:BitDepth="0.46700001" Foldback="0.60000002" Mix="1" Reduction="0.034000002" Smoothing="1" SmoothMode="0"
+Low-passFilter:frequency="3000" rolloff="dB48"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB48"
+FilterCurve:f0="202.94816" f1="202.94816" f2="3192.5061" f3="3192.5061" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-120" v1="-0.47619057" v2="-0.47619057" v3="-120"
+NewMonoTrack:
+Tone:Amplitude="0.005" Frequency="60" Interpolation="Linear" Waveform="Sine"
+Tremolo:lfo="60" phase="0" wave="Sine" wet="100"
+NewMonoTrack:
+Noise:Amplitude="0.03" Type="White"
+Low-passFilter:frequency="1000" rolloff="dB6"
+Low-passFilter:frequency="3000" rolloff="dB48"
+High-passFilter:frequency="400" rolloff="dB12"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

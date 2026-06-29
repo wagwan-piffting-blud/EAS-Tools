@@ -1,0 +1,9 @@
+MdaCombo:Bias="0.5" Drive="0.32499999" Model="0" Output="0.56800002" Process_="0.40000001"
+High-passFilter:frequency="800" rolloff="dB12"
+SetProject:Rate="8000"
+MixAndRender:
+SetProject:Rate="48000"
+MixAndRender:
+BassAndTreble:Bass="15" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="1" Threshold_dB="-10" Type="Leveller"
+Amplify:AllowClipping="0" Ratio="0.63095737"

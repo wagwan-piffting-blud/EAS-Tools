@@ -1,0 +1,26 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="0"
+Sc4:Attack_time_(ms)="200" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="3" Release_time_(ms)="800" RMS_peak="0" Threshold_level_(dB)="-18"
+Compressor:AttackTime="0.2" NoiseFloor="-60" Normalize="1" Ratio="3.5" ReleaseTime="4" Threshold="-30" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-8" type="HardLimit"
+Compressor:AttackTime="0.2" NoiseFloor="-60" Normalize="1" Ratio="2.5" ReleaseTime="8" Threshold="-30" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-8" type="SoftLimit"
+Distortion:DC_Block="0" Noise_Floor="-50" Parameter_1="8" Parameter_2="100" Repeats="2" Threshold_dB="-20" Type="Expand and Compress"
+Distortion:DC_Block="0" Noise_Floor="-50" Parameter_1="5" Parameter_2="100" Repeats="2" Threshold_dB="-20" Type="Expand and Compress"
+Low-passFilter:frequency="12000" rolloff="dB48"
+High-passFilter:frequency="100" rolloff="dB48"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-2" type="HardLimit"
+NewStereoTrack:
+Noise:Amplitude="0.01" Type="White"
+Low-passFilter:frequency="12000" rolloff="dB48"
+High-passFilter:frequency="120" rolloff="dB12"
+SelectAll:
+MixAndRender:
+FilterCurve:f0="102.82151" f1="102.82151" f2="14981.609" f3="14981.609" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline" v0="-120" v1="0" v2="0" v3="-120"
+TapeSaturationLimiter:hfgain="-5" hfhz="4500" makeup="Off" ratio="2" thres="-5"
+Low-passFilter:frequency="12000" rolloff="dB36"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

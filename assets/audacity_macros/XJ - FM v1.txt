@@ -1,0 +1,50 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+ChannelMixer:left-mix-L="0" left-mix-R="0" preset="Narrow Stereo" right-mix-L="0" right-mix-R="0"
+MultibandEq:band="3" bands="2" gain="6"
+MultibandEq:band="4" bands="3" gain="3"
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="0" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="1" Threshold_level_(dB)="-30"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-10" type="SoftLimit"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB6"
+High-passFilter:frequency="50" rolloff="dB48"
+ChebyshevTypeIFilter:fc="15000" fType="Lowpass" order="16" ripple="1"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="No" thresh="-6" type="SoftLimit"
+Duplicate:
+Select:Mode="Set" Track="1"
+Low-passFilter:frequency="2900" rolloff="dB48"
+Low-passFilter:frequency="2900" rolloff="dB48"
+ChebyshevTypeIFilter:fc="2900" fType="Lowpass" order="16" ripple="1"
+High-passFilter:frequency="1000" rolloff="dB48"
+High-passFilter:frequency="1000" rolloff="dB48"
+ChebyshevTypeIFilter:fc="1000" fType="Highpass" order="16" ripple="1"
+CombFilter:decay="0.1" f="200" norm-level="0.005"
+SelectAll:
+MixAndRender:
+Allpassphase:Frequency="0.565" Intensity="0.30500001" Mix="1" Q="0.708"
+Duplicate:
+Select:Mode="Set" Track="1"
+High-passFilter:frequency="4000" rolloff="dB48"
+Low-passFilter:frequency="8000" rolloff="dB48"
+NoiseGate:attack="125" gate-freq="0" level-reduction="-100" low-cut="No" mode="Gate" stereo-link="LinkStereo" threshold="-12"
+Dustbunny:Bunny="0.62300003"
+Low-passFilter:frequency="8000" rolloff="dB6"
+NewStereoTrack:
+Noise:Amplitude="0.005" Type="White"
+Select:Mode="Set" Track="0"
+Duplicate:
+TrackMoveBottom:
+Select:Mode="Set" Track="2"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-6.06" Type="Leveller"
+Silhouette:Dry_Wet="1"
+Dustbunny:Bunny="1"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="No" thresh="-10" type="SoftLimit"
+Normalize:ApplyGain="1" PeakLevel="-36" RemoveDcOffset="1" StereoIndependent="0"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.054000001"
+Normalize:ApplyGain="1" PeakLevel="-6" RemoveDcOffset="1" StereoIndependent="0"

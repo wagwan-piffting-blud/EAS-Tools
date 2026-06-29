@@ -1,0 +1,40 @@
+SetProject:Rate="24000"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Tone:Amplitude="0.05" Frequency="180" Interpolation="Linear" Waveform="Square"
+Tremolo:lfo="120" phase="0" wave="Sine" wet="100"
+Low-passFilter:frequency="150" rolloff="dB12"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="1200" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="4800" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="6000" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="8000" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="10800" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.001" Frequency="15734.27" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="3600" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="7200" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="12000" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="15250" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.00025" Frequency="16200" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Noise:Amplitude="0.002" Type="White"
+SelectAll:
+MixAndRender:
+ChebyshevTypeIFilter:fc="18000" fType="Lowpass" order="16" ripple="1"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

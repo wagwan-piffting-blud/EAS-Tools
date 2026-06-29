@@ -12,8 +12,6 @@
             '<a href="https://github.com/wagwan-piffting-blud/eas-tools/blob/main/CHANGES.md" target="_blank" rel="noopener">GitHub</a>.</p>';
     }
 
-    // Promote bare "YYYY-MM-DD:" date lines into proper H2 headings so marked
-    // renders them as section headers instead of plain paragraphs.
     function normalizeDateHeadings(markdown) {
         return markdown.replace(/^(\d{4}-\d{2}-\d{2}):\s*$/gm, '## $1');
     }

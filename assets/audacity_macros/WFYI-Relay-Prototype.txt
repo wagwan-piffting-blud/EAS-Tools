@@ -1,0 +1,6 @@
+Macro_digitalendecprototype:
+Macro_digitalendecversion2:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="84" Parameter_2="18" Repeats="5" Threshold_dB="-10" Type="Leveller"
+Macro_digitalendecversion2:
+Macro_digitalendecversion2:
+Amplify:Ratio="0.2818383"

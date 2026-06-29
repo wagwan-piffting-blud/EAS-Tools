@@ -1,0 +1,9 @@
+Macro_NWR-WNG608EarlyPrototype:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="0" Parameter_2="0" Repeats="4" Threshold_dB="-12.73" Type="Soft Clipping"
+BassAndTreble:Bass="7" Gain="0" Link_Sliders="0" Treble="0"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="0" Parameter_2="0" Repeats="4" Threshold_dB="-12.73" Type="Soft Clipping"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="0" Parameter_2="0" Repeats="4" Threshold_dB="-12.73" Type="Soft Clipping"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="0" Parameter_2="0" Repeats="3" Threshold_dB="-12.73" Type="Leveller"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="0" Parameter_2="0" Repeats="2" Threshold_dB="-12.73" Type="Leveller"
+Amplify:Ratio="0.31622776"
+BassAndTreble:Bass="-4" Gain="0" Link_Sliders="0" Treble="0"

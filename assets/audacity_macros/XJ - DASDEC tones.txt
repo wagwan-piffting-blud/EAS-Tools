@@ -1,0 +1,4 @@
+SelectAll:
+StereoToMono:Use_Preset="<Factory Defaults>"
+Low-passFilter:frequency="4000" rolloff="dB48"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

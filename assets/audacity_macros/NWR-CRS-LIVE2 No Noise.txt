@@ -1,0 +1,30 @@
+Compressor:AttackTime="0.1" NoiseFloor="-80" Normalize="0" Ratio="10" ReleaseTime="1" Threshold="-12" UsePeak="0"
+Amplify:Ratio="0.12589253"
+ChangeSpeed:Percentage="480.2"
+ChangeSpeed:Percentage="-82.765"
+High-passFilter:frequency="240" rolloff="dB48"
+Sc4:Attack_time_(ms)="5" Knee_radius_(dB)="1" Makeup_gain_(dB)="12" Ratio_(1_n)="20" Release_time_(ms)="150" RMS_peak="0" Threshold_level_(dB)="-30"
+BassAndTreble:Bass="-30" Gain="6" Link_Sliders="0" Treble="0"
+BassAndTreble:Bass="-15" Gain="6" Link_Sliders="0" Treble="0"
+HardLimiter:gain-L="0" gain-R="0" hold="10" makeup="Yes" thresh="-8" type="HardLimit"
+Roughrider2:Attack="0" Make-Up_Gain="0.384" Mix="1" Ratio="1" Release="0" Sensitivity="0.405"
+High-passFilter:frequency="120" rolloff="dB48"
+Copy:
+NewMonoTrack:
+Paste:
+MdaCombo:Bias="0" Drive="0.72500002" Model="0" Output="0.5" Process_="0.40000001"
+SelectAll:
+MixAndRender:
+NewMonoTrack:
+Paste:
+Noise:Amplitude="0.00" Type="White"
+Low-passFilter:frequency="3000" rolloff="dB12"
+NewMonoTrack:
+Paste:
+Tone:Amplitude="0.000" Frequency="4800" Interpolation="Linear" Waveform="Sine"
+Tremolo:lfo="15" phase="0" wave="Sine" wet="80"
+NewMonoTrack:
+Paste:
+Tone:Amplitude="0.000" Frequency="1100" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:

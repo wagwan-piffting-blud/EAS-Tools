@@ -1,0 +1,26 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Compressor:AttackTime="0.4" NoiseFloor="-60" Normalize="1" Ratio="8" ReleaseTime="2" Threshold="-60" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="Yes" thresh="-10" type="HardLimit"
+High-passFilter:frequency="50" rolloff="dB48"
+High-passFilter:frequency="120" rolloff="dB12"
+Low-passFilter:frequency="2000" rolloff="dB6"
+FilterCurve:f0="4449.4253" f1="4449.4253" FilterLength="8191" InterpolateLin="1" InterpolationMethod="B-spline" v0="-0.47619057" v1="-120"
+Normalize:ApplyGain="1" PeakLevel="-8" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="0.1" Type="White"
+NewMonoTrack:
+Tone:Amplitude="0.015" Frequency="800" Interpolation="Linear" Waveform="Sawtooth"
+BassAndTreble:Bass="0" Gain="0" Link_Sliders="0" Treble="12"
+SelectAll:
+MixAndRender:
+Low-passFilter:frequency="6000" rolloff="dB24"
+Compressor:AttackTime="0.1" NoiseFloor="-40" Normalize="1" Ratio="3" ReleaseTime="1.2" Threshold="-12" UsePeak="0"
+Limiter:gain-L="0" gain-R="0" hold="50" makeup="Yes" thresh="-8" type="SoftLimit"
+Low-passFilter:frequency="6000" rolloff="dB48"
+MdaDegrade:Headroom="0.70999998" Non-Lin="0.498" Output="0.523" PostFilt="0.801" Quant="0.68300003" Rate="0.36899999"
+Low-passFilter:frequency="8000" rolloff="dB12"
+Normalize:ApplyGain="1" PeakLevel="0" RemoveDcOffset="1" StereoIndependent="0"

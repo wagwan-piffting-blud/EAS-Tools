@@ -1,0 +1,3 @@
+Macro_NWR-OMAHA:
+Amplify:AllowClipping="0" Ratio="0.70794576"
+BassAndTreble:Bass="6" Gain="0" Link_Sliders="0" Treble="3"

@@ -1,0 +1,46 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+TrimExtend:end-adjust="0.565" error-control="Show errors" start-adjust="0.565" t-units="seconds"
+SelectAll:
+MixAndRender:
+MultibandEq:band="2" bands="2" gain="6"
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="0" Threshold_level_(dB)="-24"
+Limiter:gain-L="0" gain-R="0" hold="25" makeup="Yes" thresh="-6" type="SoftLimit"
+Low-passFilter:frequency="2000" rolloff="dB48"
+Low-passFilter:frequency="2500" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+High-passFilter:frequency="300" rolloff="dB6"
+Duplicate:
+Select:Mode="Set" Track="1"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="5" Threshold_dB="-24" Type="Hard Overdrive"
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="100" Parameter_2="100" Repeats="2" Threshold_dB="-24" Type="Leveller"
+Silhouette:Dry_Wet="1"
+Amplify:Ratio="0.015848933"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.65499997"
+Silhouette:Dry_Wet="0.75"
+Low-passFilter:frequency="2500" rolloff="dB48"
+High-passFilter:frequency="300" rolloff="dB6"
+NewMonoTrack:
+Noise:Amplitude="0.075" Type="White"
+ParametricEq:freq="1000" gain="10" width="4"
+ParametricEq:freq="1000" gain="15" width="0.25"
+RandomPitchModulation:depth="0.125" factor="80" maxdepth="1" maxspeed="0.5"
+ParametricEq:freq="1800" gain="10" width="0.1"
+ParametricEq:freq="3000" gain="10" width="0.1"
+Low-passFilter:frequency="2000" rolloff="dB12"
+High-passFilter:frequency="300" rolloff="dB12"
+SelectAll:
+MixAndRender:
+Dustbunny:Bunny="0.80000001"
+Silhouette:Dry_Wet="0.68099999"
+TrimExtend:end-adjust="-0.565" error-control="Show errors" start-adjust="-0.565" t-units="seconds"
+Sc4:Attack_time_(ms)="1.5" Knee_radius_(dB)="3.25" Makeup_gain_(dB)="6" Ratio_(1_n)="8" Release_time_(ms)="25" RMS_peak="0" Threshold_level_(dB)="-24"
+Limiter:gain-L="0" gain-R="0" hold="1" makeup="No" thresh="-6" type="HardLimit"
+Low-passFilter:frequency="2500" rolloff="dB12"
+Amplify:Ratio="1.9952623"
