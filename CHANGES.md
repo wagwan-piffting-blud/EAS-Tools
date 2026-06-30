@@ -1,4 +1,10 @@
-# 2026-06-29
+# 2026-06-30
+
+- Significantly improve macro rendering times and performance in-browser. If you are still having issues with render times being extremely slow, there is not much I can do about it at this point, everything has been optimized as much as possible. If you **are** still having issues, please let me know what browser, device, and macro you are using, so I can attempt to investigate further. Thanks!
+
+---
+
+2026-06-29:
 
 - MAJOR, MAJOR UPDATE: Audacity 2.4.2 macros and plugins (**pretty much** all plugins, macros) are now present and FULLY functional in the audio splicer tool! This means that you can now use regular Audacity macros and plugins to process audio in the splicer tool, just like you would in Audacity 2.4.2 on a Windows desktop, which opens up a whole new world of possibilities for audio editing and manipulation via EAS Tools. The macros and plugins have been THOROUGHLY tested and verified to work correctly in nearly every single test case, but if you encounter _any_ issues or bugs (things like silent audio output, weird macro behavior that is not normally encountered in Audacity itself), please report them, **_being sure to include the name of the macro you used!!!_**, so they can be addressed ASAP with the next EAS Tools update. This means no more Audacity 2.4.2 installation or portable version is needed to use the macros and plugins that are well known in the EAS community, as they are now _nearly fully_ integrated into the audio splicer tool. This is a huge step forward in terms of functionality and usability for the audio splicer tool, and it should make it much easier for users to process audio files without needing to rely on external software or having a computer. Enjoy!
 - Added more macros and valid effects. Updated macro list to try and web fetch the full list of macros when possible. This allows me to add macros without having to "bake them in" twice every single time, so to say.

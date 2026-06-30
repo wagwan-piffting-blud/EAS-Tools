@@ -9,6 +9,10 @@
         githubBranch: 'main',
         discoverTimeoutMs: 6000,
         block: 512,
+        workerJit: true,
+        workerModuleBudget: 512,
+        workerModuleCacheMax: 768,
+        workerRegionMax: 0,
         log: (...a) => console.log('[AME]', ...a),
     };
 
@@ -81,6 +85,16 @@
                 locateFile: (p) => (p.endsWith('.wasm') ? cfg.pluginDir.replace(/audacity_plugins\/$/, 'js/') + p : p),
             }).then(async (mod) => {
                 M = mod;
+                try {
+                    if (!global.EAS_JIT_DISABLE && global.EmuJitCompiler && global.EmuJitWasm && typeof M._jit_set_enabled === 'function') {
+                        global.EmuJitCompiler.installJitCompiler(M, global.EmuJitWasm);
+                        M._jit_set_enabled(1);
+                        cfg.log('JIT enabled (x86->WASM)');
+                    }
+                } catch (e) {
+                    try { if (M._jit_set_enabled) M._jit_set_enabled(0); } catch (_) { }
+                    cfg.log('JIT disabled (install failed): ' + (e && e.message));
+                }
                 const [pm, mm] = await Promise.all([
                     fetch(cfg.pluginDir + 'manifest.json').then(r => r.json()).catch(() => []),
                     fetch(cfg.macroDir + 'manifest.json').then(r => r.json()).catch(() => []),
@@ -245,6 +259,84 @@
         }
         M._free(inP); M._free(outP);
         return out;
+    }
+
+    const PB_WARMUP = { mdacombo: 131072, roughrider2: 131072, dbluecrusher: 131072, sc4: 262144 };
+    let pbPool = null;
+    function pbIsNode() { return typeof process !== 'undefined' && process.versions && process.versions.node && typeof window === 'undefined'; }
+    function getPbPool() {
+        if (pbPool !== null) return pbPool || null;
+        pbPool = false;
+        try {
+            if (cfg.disableParallel || cfg.disablePluginParallel) return null;
+            const isNode = pbIsNode();
+            if (!isNode && typeof Worker === 'undefined') return null;
+            const jsdir = cfg.pluginDir.replace(/audacity_plugins\/$/, 'js/');
+            let initCfg, mkWorker;
+            if (isNode) {
+                const p = require('path'), WT = require('worker_threads');
+                initCfg = { vstemu: p.resolve(jsdir, 'vstemu.js'), encoder: p.resolve(jsdir, 'jit-wasm-encoder.js'), compiler: p.resolve(jsdir, 'jit-compiler.js'), noJit: cfg.workerJit !== true, moduleBudget: (cfg.workerModuleBudget || 512), regionMax: (cfg.workerRegionMax || 0), moduleCacheMax: (cfg.workerModuleCacheMax || 768) };
+                mkWorker = () => new WT.Worker(p.resolve(jsdir, 'plugin-worker.js'));
+            } else {
+                const base = (typeof document !== 'undefined' && document.baseURI) || (typeof location !== 'undefined' ? location.href : '');
+                const abs = (rel) => { try { return new URL(rel, base).href; } catch (e) { return rel; } };
+                const jsAbs = abs(jsdir);
+                initCfg = { vstemu: jsAbs + 'vstemu.js', encoder: jsAbs + 'jit-wasm-encoder.js', compiler: jsAbs + 'jit-compiler.js', wasmDir: jsAbs, noJit: cfg.workerJit !== true, moduleBudget: (cfg.workerModuleBudget || 512), regionMax: (cfg.workerRegionMax || 0), moduleCacheMax: (cfg.workerModuleCacheMax || 768) };
+                mkWorker = () => new Worker(jsAbs + 'plugin-worker.js');
+            }
+            const n = Math.max(2, Math.min(((global.EmuWorkers ? global.EmuWorkers.cpuCount() : 4)) - 1, 8));
+            const workers = [];
+            for (let i = 0; i < n; i++) {
+                const w = mkWorker();
+                const onMsg = (fn) => { if (isNode) w.on('message', fn); else { fn.__w = (e) => fn(e.data); w.addEventListener('message', fn.__w); } };
+                const offMsg = (fn) => { if (isNode) w.off('message', fn); else if (fn.__w) w.removeEventListener('message', fn.__w); };
+                const ready = new Promise((res) => { const h = (m) => { if (m && m.type === 'ready') { offMsg(h); res(); } }; onMsg(h); });
+                w.postMessage({ type: 'init', cfg: initCfg });
+                workers.push({ w, ready, onMsg, offMsg, isNode });
+            }
+            pbPool = { workers, size: n };
+        } catch (e) { cfg.log('plugin pool init failed: ' + (e && e.message)); pbPool = false; }
+        return pbPool || null;
+    }
+    function resetPluginPool() {
+        if (pbPool && pbPool.workers) { for (const x of pbPool.workers) { try { x.w.terminate(); } catch (e) { } } }
+        pbPool = null;
+        try { if (global.EmuJitCompiler && global.EmuJitCompiler.clearModuleCache) global.EmuJitCompiler.clearModuleCache(); } catch (e) { }
+        cfg.log('plugin pool reset (next run rebuilds with current workerJit/budget)');
+    }
+    function pbJob(x, msg, transfer) {
+        return new Promise((res) => {
+            const h = (m) => { if (m && m.type === 'done' && m.id === msg.id) { x.offMsg(h); res(m); } };
+            x.onMsg(h);
+            x.w.postMessage(msg, transfer);
+        });
+    }
+    async function runPluginChunked(dllBytes, paramStr, pcm, sr, cmd, ladspa) {
+        if (cfg.disableParallel || cfg.disablePluginParallel) return null;
+        const W = PB_WARMUP[norm(cmd)];
+        if (W === undefined) return null;
+        const pool = getPbPool();
+        if (!pool) return null;
+        const minChunk = Math.max(W * 4, 200000);
+        const nChunks = Math.max(1, Math.min(pool.size, Math.floor(pcm.length / minChunk)));
+        if (nChunks < 2) return null;
+        try {
+            await Promise.all(pool.workers.map(x => x.ready));
+            const jobs = [];
+            for (let k = 0; k < nChunks; k++) {
+                const start = Math.floor(pcm.length * k / nChunks), end = Math.floor(pcm.length * (k + 1) / nChunks);
+                let inStart = Math.max(0, start - W);
+                inStart -= inStart % cfg.block;
+                const input = pcm.slice(inStart, end).buffer;
+                const dll = dllBytes.slice().buffer;
+                jobs.push(pbJob(pool.workers[k], { type: 'process', id: k, dll, input, paramStr, sr, bs: cfg.block, start, end, inStart, ladspa }, [dll, input]));
+            }
+            const dones = await Promise.all(jobs);
+            const recon = new Float32Array(pcm.length);
+            for (const d of dones) { const v = new Float32Array(d.valid); for (let i = 0; i < v.length; i++) recon[d.start + i] = v[i]; }
+            cfg.log(`  [parallel] ${cmd} split ${nChunks} chunks x${pool.size}w (warmup ${W})`);
+            return recon;
+        } catch (e) { cfg.log('plugin parallel failed, serial fallback: ' + (e && e.message)); return null; }
     }
 
     function biquadRun(c, x) {
@@ -1111,19 +1203,49 @@
         const { lut, lutN } = rsTable();
         const fc = RS_KF * Math.min(1, ratio);
         const invStep = fromSr / toSr, half = Math.ceil(RS_A / fc);
+        const xlen = x.length;
         for (let i = 0; i < outLen; i++) {
             const center = i * invStep, i0 = Math.floor(center);
+            const jlo = (i0 - half + 1) > 0 ? (i0 - half + 1) : 0;
+            const jhi = (i0 + half) < xlen ? (i0 + half) : (xlen - 1);
             let sum = 0;
-            for (let j = i0 - half + 1; j <= i0 + half; j++) {
+            for (let j = jlo; j <= jhi; j++) {
                 const d = Math.abs(center - j) * fc * RS_OVER, m = d | 0;
                 if (m >= lutN) continue;
                 const w = (lut[m] + (lut[m + 1] - lut[m]) * (d - m)) * fc;
-                const xj = (j >= 0 && j < x.length) ? x[j] : 0;
-                sum += xj * w;
+                sum += x[j] * w;
             }
             out[i] = sum;
         }
         return out;
+    }
+
+    let rsPool = null;
+    const RS_PARALLEL_MIN = 200000;
+    function getRsPool() {
+        if (rsPool !== null) return rsPool || null;
+        rsPool = false;
+        try {
+            if (cfg.disableParallel || typeof SharedArrayBuffer === 'undefined' || !global.EmuWorkerPool) return null;
+            rsPool = new global.EmuWorkerPool(cfg.pluginDir.replace(/audacity_plugins\/$/, 'js/') + 'resample-worker.js');
+        } catch (e) { rsPool = false; }
+        return rsPool || null;
+    }
+    async function resampleAudioParallel(x, fromSr, toSr) {
+        if (fromSr === toSr || !x || x.length === 0) return x;
+        if (cfg.disableParallel || x.length < RS_PARALLEL_MIN) return resampleAudio(x, fromSr, toSr);
+        const pool = getRsPool();
+        if (!pool) return resampleAudio(x, fromSr, toSr);
+        try {
+            const ratio = toSr / fromSr, outLen = Math.max(1, Math.round(x.length * ratio));
+            const xBuf = new SharedArrayBuffer(x.length * 4); new Float32Array(xBuf).set(x);
+            const outBuf = new SharedArrayBuffer(outLen * 4);
+            await pool.resample(xBuf, x.length, outBuf, outLen, fromSr, toSr);
+            return new Float32Array(outBuf).slice();
+        } catch (e) {
+            cfg.log('resample parallel failed, serial fallback: ' + (e && e.message));
+            return resampleAudio(x, fromSr, toSr);
+        }
     }
 
     function genTone(params, length, sr) {
@@ -1202,11 +1324,16 @@
         const sel = [...proj.selected].sort((a, b) => a - b);
         if (sel.length === 0) { cfg.log(`  [skip] '${cmd}' (no selection)`); return; }
         const entry = resolvePluginEntry(cmd);
-        const runOne = async (chan, subReport) => entry
-            ? (entry.kind === 'ladspa'
-                ? await runLadspaPlugin(await fetchPlugin(entry.file), params, chan, proj.sr, subReport)
-                : await runPlugin(await fetchPlugin(entry.file), params, chan, proj.sr, subReport))
-            : applyBuiltin(cmd, params, chan, proj.sr);
+        const runOne = async (chan, subReport) => {
+            if (!entry) return applyBuiltin(cmd, params, chan, proj.sr);
+            const dllBytes = await fetchPlugin(entry.file);
+            const ladspa = entry.kind === 'ladspa';
+            const par = await runPluginChunked(dllBytes, params, chan, proj.sr, cmd, ladspa);
+            if (par) return par;
+            return ladspa
+                ? await runLadspaPlugin(dllBytes, params, chan, proj.sr, subReport)
+                : await runPlugin(dllBytes, params, chan, proj.sr, subReport);
+        };
         for (let s = 0; s < sel.length; s++) {
             const idx = sel[s];
             const track = proj.tracks[idx];
@@ -1234,9 +1361,13 @@
             if (rate && rate > 0 && Math.abs(rate - proj.sr) > 0.5) {
                 for (let i = 0; i < proj.tracks.length; i++) {
                     const t = proj.tracks[i];
-                    proj.tracks[i] = isStereo(t)
-                        ? { L: resampleAudio(t.L, proj.sr, rate), R: resampleAudio(t.R, proj.sr, rate) }
-                        : resampleAudio(t, proj.sr, rate);
+                    if (isStereo(t)) {
+                        const L = await resampleAudioParallel(t.L, proj.sr, rate);
+                        const R = await resampleAudioParallel(t.R, proj.sr, rate);
+                        proj.tracks[i] = { L, R };
+                    } else {
+                        proj.tracks[i] = await resampleAudioParallel(t, proj.sr, rate);
+                    }
                 }
                 proj.length = Math.round(proj.length * rate / proj.sr);
                 cfg.log(`  [project] SetProject ${proj.sr} -> ${rate} Hz (resampled ${proj.tracks.length} track[s])`);
@@ -1592,7 +1723,7 @@
     }
 
     global.AudacityMacroEngine = {
-        config: cfg, ready, listMacros, resolvePlugin, resolvePluginEntry,
+        config: cfg, ready, listMacros, resolvePlugin, resolvePluginEntry, resetPluginPool,
         applyMacroText, applyMacroFile, fetchMacroText,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
