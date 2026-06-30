@@ -112,7 +112,10 @@
         'removetracks','removeaudiotracks','tone','chirp','noise','silence','import2','delete',
         'reverb','echo','vibrato','chorus','phaser','wahwah','eq','equalization','paulstretch',
         'changepitch','changetempo','clickremoval','noisereduction','repeat','truncatesilence',
-        'fadein','fadeout','autoduck','flutter',
+        'fadein','fadeout','autoduck','flutter','loudnessnormalization','dtmftones',
+        'parametriceq','notchfilter','chebyshevtypeifilter','combfilter','clipper',
+        'tapesaturationlimiter','popmute','randomamplitudemodulation','randompitchmodulation',
+        'studiofadeout','delay','flangerlinear',
     ]);
     function resolvePluginEntry(cmd) {
         if (!pluginManifest) return null;
@@ -280,11 +283,39 @@
         for (let k=1;k<=order/2;k++) qs.push(1/(2*Math.cos(Math.PI*(2*k-1)/(2*order))));
         return qs;
     }
+    function ebuHSF(fs) {
+        const db=3.999843853973347, f0=1681.974450955533, Q=0.7071752369554196, K=Math.tan(Math.PI*f0/fs);
+        const Vh=Math.pow(10,db/20), Vb=Math.pow(Vh,0.4996667741545416), a0=1+K/Q+K*K;
+        return { b0:(Vh+Vb*K/Q+K*K)/a0, b1:2*(K*K-Vh)/a0, b2:(Vh-Vb*K/Q+K*K)/a0, a1:2*(K*K-1)/a0, a2:(1-K/Q+K*K)/a0 };
+    }
+    function ebuHPF(fs) {
+        const f0=38.13547087602444, Q=0.5003270373238773, K=Math.tan(Math.PI*f0/fs), d=1+K/Q+K*K;
+        return { b0:1, b1:-2, b2:1, a1:2*(K*K-1)/d, a2:(1-K/Q+K*K)/d };
+    }
+    function dtmfFreqs(ch) {
+        let f1=0, f2=0;
+        if ('123Aabcdef'.includes(ch)) f1=697;
+        else if ('456Bghijklmno'.includes(ch)) f1=770;
+        else if ('789Cpqrstuvwxyz'.includes(ch)) f1=852;
+        else if ('*0#D'.includes(ch)) f1=941;
+        if ('147*ghipqrs'.includes(ch)) f2=1209;
+        else if ('2580abcjkltuv'.includes(ch)) f2=1336;
+        else if ('369#defmnowxyz'.includes(ch)) f2=1477;
+        else if ('ABCD'.includes(ch)) f2=1633;
+        return [f1, f2];
+    }
     function onePoleRun(hp, f, sr, x) {
         const K = Math.tan(Math.PI*f/sr), norm = 1/(K+1);
         const b0 = hp ? norm : K*norm, b1 = hp ? -norm : K*norm, a1 = (K-1)*norm;
         const out = new Float32Array(x.length); let x1=0, y1=0;
         for (let i=0;i<x.length;i++){ const xi=x[i], y=b0*xi + b1*x1 - a1*y1; x1=xi; y1=y; out[i]=y; }
+        return out;
+    }
+    function nyqLP(x, cutoff, sr) {
+        const w = 2*Math.PI*cutoff/sr, c = 2.0 - Math.cos(w);
+        const pole = c - Math.sqrt(c*c - 1.0), gain = 1.0 - pole;
+        const out = new Float64Array(x.length); let y = 0;
+        for (let i=0;i<x.length;i++){ y = gain*x[i] + pole*y; out[i] = y; }
         return out;
     }
     function eqBandCoef(f, gainDb, widthOct, sr) {
@@ -307,6 +338,47 @@
             a0 = (A+1) + (A-1)*cs + tsa;     a1 = -2*((A-1) + (A+1)*cs);  a2 = (A+1) + (A-1)*cs - tsa;
         }
         return { b0:b0/a0, b1:b1/a0, b2:b2/a0, a1:a1/a0, a2:a2/a0 };
+    }
+    function chebyPoles(n, r, p, warp) {
+        let ReP = -Math.cos(Math.PI/(n*2.0) + (p-1.0)*(Math.PI/n));
+        let ImP =  Math.sin(Math.PI/(n*2.0) + (p-1.0)*(Math.PI/n));
+        if (warp) {
+            const es = Math.sqrt(Math.pow(1.0/(1.0-r),2.0) - 1.0);
+            const vx = Math.log(1.0/es + Math.sqrt(Math.pow(1.0/es,2.0)+1.0))/n;
+            let kx = Math.log(1.0/es + Math.sqrt(Math.pow(1.0/es,2.0)-1.0))/n;
+            kx = (Math.exp(kx)+Math.exp(-kx))/2.0;
+            ReP = ReP*(Math.exp(vx)-Math.exp(-vx))/(2.0*kx);
+            ImP = ImP*(Math.exp(vx)+Math.exp(-vx))/(2.0*kx);
+        }
+        return [ReP, ImP];
+    }
+    function cheby1Coeffs(fType, n, ffc, rippleDb, p) {
+        const r = 1.0 - Math.pow(10.0, -rippleDb/20.0);
+        const [ReP, ImP] = chebyPoles(n, r, p, rippleDb > 0.0);
+        const t = 2.0*Math.tan(0.5), t2 = t*t, wfc = 2.0*Math.PI*ffc;
+        const m2 = ReP*ReP + ImP*ImP;
+        let d = 4.0 - 4.0*ReP*t + m2*t2;
+        const x0 = t2/d, x1 = 2.0*t2/d, x2 = t2/d;
+        const y1 = (8.0 - 2.0*m2*t2)/d, y2 = (-4.0 - 4.0*ReP*t - m2*t2)/d;
+        const k = (fType===1)
+            ? (-Math.cos(0.5 + wfc/2.0))/Math.cos(wfc/2.0 - 0.5)
+            : (Math.sin(0.5 - wfc/2.0))/Math.sin(wfc/2.0 + 0.5);
+        const k2 = k*k;
+        d = 1.0 + y1*k - y2*k2;
+        let a1 = (2.0*k + y1 + y1*k2 - 2.0*y2*k)/d;
+        let a2 = (-k2 - y1*k + y2)/d;
+        let b0 = (x0 - x1*k + x2*k2)/d;
+        let b1 = (-2.0*x0*k + x1 + x1*k2 - 2.0*x2*k)/d;
+        let b2 = (x0*k2 - x1*k + x2)/d;
+        const g = (1.0 - a1 - a2)/(b0 + b1 + b2);
+        if (fType===1) { a1 = -a1; b1 = -b1; }
+        return { b0: b0*g, b1: b1*g, b2: b2*g, a1: -a1, a2: -a2 };
+    }
+    function cheby1Filter(x, n, fType, fc, rippleDb, sr) {
+        const ffc = fc/sr;
+        let s = x;
+        for (let p = 1; p <= n/2; p++) s = biquadRun(cheby1Coeffs(fType, n, ffc, rippleDb, p), s);
+        return s;
     }
     function gateEnvelope(control, sr, lookSec, riseSec, fallSec, floor, threshold) {
         const n = control.length, look = Math.max(1, Math.round(lookSec*sr));
@@ -594,6 +666,175 @@
             if (g) { const lg = DB2LIN(g); for (let i=0;i<pcm.length;i++) pcm[i]*=lg; }
             cfg.log(`  [builtin] bass${b>=0?'+':''}${b}dB treble${t>=0?'+':''}${t}dB`); return pcm;
         }
+        case 'ParametricEq': {
+            let freq = mget(params,'freq') ?? 1000;
+            let width = (mget(params,'width') ?? 5) * 0.5;
+            let gain = mget(params,'gain') ?? 0;
+            freq = Math.max(10, Math.min(freq, Math.min(10000, sr/4)));
+            width = Math.max(0.1, Math.min(width, 10));
+            gain = Math.max(-15, Math.min(gain, 15));
+            if (gain !== 0) pcm = biquadRun(eqBandCoef(freq, gain, width, sr), pcm);
+            cfg.log(`  [nyquist] ParametricEq ${freq}Hz ${gain>=0?'+':''}${gain}dB w=${width}oct`); return pcm;
+        }
+        case 'NotchFilter': {
+            const f = mget(params,'frequency') ?? 60, q = mget(params,'q') ?? 1;
+            if (f >= 0.1 && f < sr/2) {
+                const w0 = 2*Math.PI*f/sr, cs = Math.cos(w0), al = Math.sin(w0)/(2*q), a0 = 1+al;
+                pcm = biquadRun({ b0:1/a0, b1:-2*cs/a0, b2:1/a0, a1:-2*cs/a0, a2:(1-al)/a0 }, pcm);
+            }
+            cfg.log(`  [nyquist] NotchFilter ${f}Hz q=${q}`); return pcm;
+        }
+        case 'ChebyshevTypeIFilter': {
+            const fType = (mgetStr(params,'fType')||'Lowpass').toLowerCase().includes('high') ? 1 : 0;
+            const n = Math.round(mget(params,'order') ?? 2);
+            let fc = mget(params,'fc') ?? 1000, ripple = mget(params,'ripple') ?? 0.05;
+            fc = Math.min(Math.max(fc, 0.01), sr/2);
+            ripple = Math.min(Math.max(ripple, 0), 3.0);
+            pcm = cheby1Filter(pcm, n, fType, fc, ripple, sr);
+            cfg.log(`  [nyquist] ChebyI ${fType?'HP':'LP'} order=${n} fc=${fc}Hz ripple=${ripple}dB`); return pcm;
+        }
+        case 'CombFilter': {
+            const f = mget(params,'f') ?? 440, decay = mget(params,'decay') ?? 0.025;
+            const normLevel = mget(params,'norm-level') ?? 0.95;
+            const D = Math.round(sr/f), g = decay > 0 ? Math.pow(10.0, -3.0*D/(sr*decay)) : 0;
+            const out = new Float32Array(pcm.length);
+            for (let i=0;i<pcm.length;i++) out[i] = i>=D ? pcm[i-D] + g*out[i-D] : 0;
+            let pk=0; for (let i=0;i<out.length;i++) pk=Math.max(pk,Math.abs(out[i]));
+            const sc = pk>1e-12 ? normLevel/pk : 1;
+            for (let i=0;i<out.length;i++) out[i]*=sc;
+            cfg.log(`  [nyquist] CombFilter f=${f}Hz decay=${decay} D=${D} g=${g.toFixed(4)} norm=${normLevel}`); return out;
+        }
+        case 'Clipper': {
+            const tubeStr = mgetStr(params,'tube') || 'Yes';
+            if (/^y/i.test(tubeStr) || tubeStr === '0') {
+                const drive = 0.2;
+                const tmp = new Float32Array(pcm.length);
+                for (let i=0;i<pcm.length;i++){ const x=pcm[i]; tmp[i] = (1-drive)*((1-drive)*Math.min(x,0) + (1+drive)*Math.max(x,0)); }
+                pcm = onePoleRun(true, 10, sr, tmp);
+            }
+            cfg.log(`  [nyquist] Clipper (tube=${tubeStr})`); return pcm;
+        }
+        case 'TapeSaturationLimiter': {
+            const thresDb = mget(params,'thres') ?? -3, hfgain = mget(params,'hfgain') ?? -5;
+            let ratio = mget(params,'ratio') ?? 2, hfhz = mget(params,'hfhz') ?? 4500;
+            const mk = /on/i.test(mgetStr(params,'makeup')||'Off') ? 1 : 0;
+            const thresh = DB2LIN(thresDb);
+            hfhz = Math.max(Math.min(hfhz, sr/2), 1000);
+            ratio = Math.max(1.01, ratio);
+            ratio = ratio > 2.0 ? 3.09*ratio : 6.18*(ratio-1);
+            const nratio=-ratio, nthresh=-thresh, iratio=1/ratio, inratio=1/nratio;
+            let clip = iratio*(1 - Math.exp(ratio*(thresh-1.0)));
+            const amp = 1.023*(thresh+clip), gain = mk===1 ? 1/amp : 1.0;
+            let sig = onePoleRun(true, 5.5, sr, pcm);
+            sig = biquadRun(eqShelfCoef(1, hfhz, -hfgain, 0.7, sr), sig);
+            const out = new Float32Array(sig.length);
+            for (let i=0;i<sig.length;i++){
+                const x = sig[i];
+                const top = nratio*(Math.max(x,thresh)+nthresh), bottom = ratio*(Math.min(x,nthresh)+thresh);
+                out[i] = gain*(Math.min(thresh, Math.max(x, nthresh)) + inratio*(Math.exp(top)-1) + iratio*(Math.exp(bottom)-1));
+            }
+            let sig2 = biquadRun(eqShelfCoef(1, hfhz, hfgain, 0.7, sr), out);
+            sig2 = onePoleRun(true, 2.0, sr, sig2);
+            cfg.log(`  [nyquist] TapeSat thres=${thresDb}dB ratio=${ratio.toFixed(2)} hf=${hfhz}Hz/${hfgain}dB mk=${mk}`); return sig2;
+        }
+        case 'PopMute': {
+            const threshDb = mget(params,'thresh') ?? -6, floorDb = mget(params,'floor') ?? -24;
+            const lookMs = mget(params,'look') ?? 10, relMs = mget(params,'rel') ?? 10;
+            if (threshDb > 0 || floorDb > 0 || lookMs < 0 || relMs < 0) return pcm;
+            const floor = DB2LIN(floorDb), thresh = DB2LIN(threshDb);
+            const look = lookMs/1000, rel = relMs/1000;
+            const env = gateEnvelope(pcm, sr, look, look, rel, floor, thresh);
+            const out = new Float32Array(pcm.length);
+            for (let i=0;i<pcm.length;i++){
+                let e = env[i] - (1+floor);
+                e = Math.min(-floor, e);
+                e = Math.max(-1, Math.min(1, e));
+                out[i] = pcm[i]*(-e);
+            }
+            cfg.log(`  [nyquist] PopMute thresh=${threshDb}dB floor=${floorDb}dB look=${lookMs}ms rel=${relMs}ms`); return out;
+        }
+        case 'RandomAmplitudeModulation': {
+            const maxspeed = mget(params,'maxspeed') ?? 0.5, factor = mget(params,'factor') ?? 80;
+            const noise = new Float64Array(pcm.length);
+            for (let i=0;i<noise.length;i++) noise[i] = Math.random()*2-1;
+            let m = nyqLP(noise, maxspeed, sr);
+            for (let i=0;i<m.length;i++) m[i] *= factor;
+            m = nyqLP(m, 0.5*maxspeed, sr);
+            const out = new Float32Array(pcm.length);
+            for (let i=0;i<pcm.length;i++) out[i] = pcm[i]*(0.5 + m[i]);
+            cfg.log(`  [nyquist] RandomAmpMod maxspeed=${maxspeed}Hz factor=${factor} (non-deterministic)`); return out;
+        }
+        case 'RandomPitchModulation': {
+            const depth = mget(params,'depth') ?? 0.1, maxspeed = mget(params,'maxspeed') ?? 0.5;
+            const factor = mget(params,'factor') ?? 80, maxdepth = mget(params,'maxdepth') ?? 0.5;
+            const offset = 0.5*maxdepth;
+            const noise = new Float64Array(pcm.length);
+            for (let i=0;i<noise.length;i++) noise[i] = Math.random()*2-1;
+            let r = nyqLP(noise, maxspeed, sr);
+            for (let i=0;i<r.length;i++) r[i] *= factor;
+            r = nyqLP(r, 0.5*maxspeed, sr);
+            for (let i=0;i<r.length;i++) r[i] += offset;
+            const out = new Float32Array(pcm.length), maxd = maxdepth*sr;
+            for (let i=0;i<pcm.length;i++){
+                let d = (offset + depth*r[i])*sr;
+                if (d < 0) d = 0; else if (d > maxd) d = maxd;
+                const pos = i - d;
+                if (pos <= 0) { out[i] = 0; continue; }
+                const i0 = Math.floor(pos), frac = pos - i0;
+                const a = pcm[i0], b = i0+1 < pcm.length ? pcm[i0+1] : 0;
+                out[i] = a + frac*(b - a);
+            }
+            cfg.log(`  [nyquist] RandomPitchMod depth=${depth} maxspeed=${maxspeed}Hz factor=${factor} maxdepth=${maxdepth} (non-deterministic)`); return out;
+        }
+        case 'StudioFadeOut': {
+            const n = pcm.length, dur = n/sr;
+            if (n < 3) return pcm;
+            const out = new Float32Array(n);
+            const rcosAt = (i, d) => { const t = i/sr; return t >= d ? 0 : 0.5*(1+Math.cos(Math.PI*t/d)); };
+            if (dur < 0.2) { for (let i=0;i<n;i++) out[i] = pcm[i]*rcosAt(i, dur); cfg.log(`  [nyquist] StudioFadeOut short ${dur.toFixed(3)}s`); return out; }
+            const cf = Math.min(dur/2, 0.5), nyqHz = sr/2;
+            const lpOut = new Float64Array(n); let y = 0;
+            for (let i=0;i<n;i++){
+                const cutoff = nyqHz + (100 - nyqHz)*(i/sr/dur);
+                const w = 2*Math.PI*cutoff/sr, c = 2 - Math.cos(w), pole = c - Math.sqrt(c*c - 1);
+                y = (1 - pole)*pcm[i] + pole*y; lpOut[i] = y;
+            }
+            for (let i=0;i<n;i++){ const fo = rcosAt(i, cf); out[i] = (fo*pcm[i] + (1-fo)*lpOut[i]) * rcosAt(i, dur); }
+            cfg.log(`  [nyquist] StudioFadeOut ${dur.toFixed(2)}s (sweep lp + raised-cos)`); return out;
+        }
+        case 'Delay': {
+            const dt = /reverse/i.test(mgetStr(params,'delay-type')||'') ? 2 : /bounc/i.test(mgetStr(params,'delay-type')||'') ? 1 : 0;
+            const dgain = mget(params,'dgain') ?? -6, shift = mget(params,'shift') ?? 0;
+            const delay = mget(params,'delay') ?? 0.3, number = Math.max(1, Math.round(mget(params,'number') ?? 5));
+            const delayEff = dt===0 ? delay : delay/number;
+            const out = new Float32Array(pcm.length);
+            for (let i=0;i<pcm.length;i++) out[i] = pcm[i];
+            let dly = 0;
+            for (let count=1; count<=number; count++){
+                dly += dt===0 ? delay : dt===1 ? delayEff*(number+1-count) : delayEff*count;
+                const g = DB2LIN(count*dgain), off = Math.round(dly*sr);
+                for (let i=off;i<pcm.length;i++) out[i] += g*pcm[i-off];
+            }
+            cfg.log(`  [nyquist] Delay type=${dt} n=${number} delay=${delay}s dgain=${dgain}dB${shift?` shift=${shift}(no-pitch approx)`:''}`); return out;
+        }
+        case 'Flanger(linear)': {
+            const pos = (mget(params,'pos') ?? 0)*0.01, decrease = (mget(params,'decrease') ?? 5)*0.001;
+            const wet = (mget(params,'wet') ?? 50)*0.01, sign = (mget(params,'sign') ?? 1)===0 ? -1.0 : 1.0;
+            const dry = 1.0 - wet;
+            if (decrease === 0) return pcm;
+            const N = pcm.length, dur = N/sr, shrink = (dur-decrease)/dur;
+            const normTo = (arr, target) => { let pk=0; for(let i=0;i<arr.length;i++) pk=Math.max(pk,Math.abs(arr[i])); const s=pk>1e-12?target/pk:1; const o=new Float64Array(arr.length); for(let i=0;i<arr.length;i++) o[i]=arr[i]*s; return o; };
+            const s1 = normTo(pcm, 0.95);
+            const s2len = Math.round(shrink*N);
+            const dryOff = pos<0 ? Math.round(-pos*decrease*sr) : 0, wetOff = pos>=0 ? Math.round(pos*decrease*sr) : 0;
+            const outLen = Math.max(dryOff+N, wetOff+s2len);
+            const acc = new Float64Array(outLen);
+            for (let i=0;i<N;i++) acc[dryOff+i] += dry*s1[i];
+            for (let j=0;j<s2len;j++){ const p=j/shrink, i0=Math.floor(p); if(i0+1<N){ const f=p-i0; acc[wetOff+j] += sign*wet*(s1[i0]+f*(s1[i0+1]-s1[i0])); } }
+            const fin = normTo(acc, 0.95), res = new Float32Array(outLen);
+            for (let i=0;i<outLen;i++) res[i]=fin[i];
+            cfg.log(`  [nyquist] Flanger(linear) pos=${pos*100}% decrease=${decrease*1000}ms wet=${wet} sign=${sign}`); return res;
+        }
         case 'HarmonicEnhancer': {
             const freq = Math.max(20, Math.min(mget(params,'freq') ?? 3200, sr/4));
             const drive = mget(params,'drive') ?? 0;
@@ -662,6 +903,64 @@
             if (mult<=0 || mult===1) return pcm;
             const out = resampleAudio(pcm, mult, 1);
             cfg.log(`  [builtin] changeSpeed x${mult.toFixed(3)} (${pcm.length}->${out.length}, sinc)`); return out;
+        }
+        case 'Echo': {
+            const delay = mget(params,'Delay') ?? 1.0, decay = mget(params,'Decay') ?? 0.5;
+            const histLen = Math.trunc(sr * delay);
+            if (delay <= 0 || histLen <= 0) { cfg.log(`  [builtin] echo (delay 0, passthrough)`); return pcm; }
+            const history = new Float32Array(histLen), out = new Float32Array(pcm.length);
+            let histPos = 0;
+            for (let i = 0; i < pcm.length; i++) {
+                if (histPos === histLen) histPos = 0;
+                const o = pcm[i] + history[histPos] * decay;
+                history[histPos] = o; out[i] = o; histPos++;
+            }
+            cfg.log(`  [builtin] echo delay=${delay}s decay=${decay}`); return out;
+        }
+        case 'Phaser': {
+            const stages = Math.max(2, Math.round(mget(params,'Stages') ?? 2));
+            const dryWet = mget(params,'DryWet') ?? 128, depth = mget(params,'Depth') ?? 100;
+            const freq = mget(params,'Freq') ?? 0.4, phase0 = (mget(params,'Phase') ?? 0) * Math.PI / 180;
+            const feedback = mget(params,'Feedback') ?? 0, outgain = DB2LIN(mget(params,'Gain') ?? -6);
+            const lfoskip = freq * 2 * Math.PI / sr, LFOSHAPE = 4.0, LFOSKIP = 20;
+            const old = new Float64Array(stages), out = new Float32Array(pcm.length);
+            let skipcount = 0, gain = 0, fbout = 0;
+            for (let i = 0; i < pcm.length; i++) {
+                const inp = pcm[i];
+                let m = inp + fbout * feedback / 101;
+                if ((skipcount++ % LFOSKIP) === 0) {
+                    gain = (1.0 + Math.cos(skipcount * lfoskip + phase0)) / 2.0;
+                    gain = Math.expm1(gain * LFOSHAPE) / Math.expm1(LFOSHAPE);
+                    gain = 1.0 - gain / 255.0 * depth;
+                }
+                for (let j = 0; j < stages; j++) { const tmp = old[j]; old[j] = gain * tmp + m; m = tmp - gain * old[j]; }
+                fbout = m;
+                out[i] = outgain * (m * dryWet + inp * (255 - dryWet)) / 255;
+            }
+            cfg.log(`  [builtin] phaser stages=${stages} freq=${freq}Hz dw=${dryWet}`); return out;
+        }
+        case 'LoudnessNormalization': {
+            const normTo = Math.round(mget(params,'NormalizeTo') ?? 0), dualMono = (mget(params,'DualMono') ?? 1) > 0.5;
+            if (normTo !== 0) {
+                const target = DB2LIN(mget(params,'RMSLevel') ?? -20);
+                let s=0; for (let i=0;i<pcm.length;i++) s+=pcm[i]*pcm[i];
+                const rms=Math.sqrt(s/pcm.length); if (rms<1e-12) return pcm;
+                const mult=target/rms, out=new Float32Array(pcm.length); for (let i=0;i<pcm.length;i++) out[i]=pcm[i]*mult;
+                cfg.log(`  [builtin] LoudnessNormalization RMS ${mget(params,'RMSLevel')}dB x${mult.toFixed(3)}`); return out;
+            }
+            const lufs = mget(params,'LUFSLevel') ?? -23, ratio = DB2LIN(lufs*2);
+            let w = biquadRun(ebuHSF(sr), pcm); w = biquadRun(ebuHPF(sr), w);
+            const blockSize = Math.ceil(0.4*sr), step = Math.ceil(0.1*sr), blocks = [];
+            for (let s0=0; s0+blockSize<=w.length; s0+=step) { let ms=0; for (let j=s0;j<s0+blockSize;j++) ms+=w[j]*w[j]; blocks.push(ms/blockSize); }
+            if (!blocks.length) return pcm;
+            const absZ = Math.pow(10,(-70+0.691)/10), g1 = blocks.filter(z=>z>=absZ);
+            if (!g1.length) return pcm;
+            const meanG1 = g1.reduce((a,b)=>a+b,0)/g1.length, relZ = meanG1*0.1, g2 = g1.filter(z=>z>=relZ);
+            const meanG2 = g2.length ? g2.reduce((a,b)=>a+b,0)/g2.length : meanG1, extent = 0.8529037031*meanG2;
+            if (extent<=0) return pcm;
+            let mult = ratio/extent; if (dualMono) mult/=2.0; mult = Math.sqrt(mult);
+            const out=new Float32Array(pcm.length); for (let i=0;i<pcm.length;i++) out[i]=pcm[i]*mult;
+            cfg.log(`  [builtin] LoudnessNormalization LUFS ${lufs} x${mult.toFixed(3)}`); return out;
         }
         case 'Limiter': case 'HardLimiter': {
             const gL = DB2LIN(mget(params,'gain-L') ?? mget(params,'Input_gain') ?? mget(params,'gain') ?? 0);
@@ -1112,6 +1411,113 @@
             }
             proj.selRange = null;
             cfg.log(`  [generator] Silence`); return;
+        }
+        case 'FadeIn': case 'FadeOut': {
+            const fadeIn = cmd === 'FadeIn';
+            for (const i of proj.selected) {
+                const t = proj.tracks[i];
+                for (const c of (isStereo(t) ? [t.L, t.R] : [t])) {
+                    const a = proj.selRange ? Math.max(0, Math.min(c.length, proj.selRange[0])) : 0;
+                    const b = proj.selRange ? Math.max(a, Math.min(c.length, proj.selRange[1])) : c.length;
+                    const n = b - a;
+                    if (n <= 0) continue;
+                    if (fadeIn) for (let j = a; j < b; j++) c[j] = c[j] * (j - a) / n;
+                    else for (let j = a; j < b; j++) c[j] = c[j] * (n - 1 - (j - a)) / n;
+                }
+            }
+            proj.selRange = null;
+            cfg.log(`  [builtin] ${cmd}`); return;
+        }
+        case 'Repeat': {
+            const count = Math.max(1, Math.round(mget(params,'Count') ?? 1));
+            const tile = (c) => {
+                const a = proj.selRange ? Math.max(0, Math.min(c.length, proj.selRange[0])) : 0;
+                const b = proj.selRange ? Math.max(a, Math.min(c.length, proj.selRange[1])) : c.length;
+                const seg = c.subarray(a, b), segLen = b - a, out = new Float32Array(c.length + segLen * count);
+                out.set(c.subarray(0, b), 0);
+                for (let k = 0; k < count; k++) out.set(seg, b + k * segLen);
+                out.set(c.subarray(b), b + segLen * count);
+                return out;
+            };
+            for (const i of proj.selected) {
+                const t = proj.tracks[i];
+                proj.tracks[i] = isStereo(t) ? { L: tile(t.L), R: tile(t.R) } : tile(t);
+            }
+            proj.length = proj.tracks.reduce((m, t) => Math.max(m, trackLen(t)), 0);
+            proj.selRange = null;
+            cfg.log(`  [builtin] Repeat x${count}`); return;
+        }
+        case 'AutoDuck': {
+            const sr = proj.sr;
+            const duckDb = mget(params,'DuckAmountDb') ?? -12;
+            const innerDown = mget(params,'InnerFadeDownLen') ?? 0, innerUp = mget(params,'InnerFadeUpLen') ?? 0;
+            const outerDown = mget(params,'OuterFadeDownLen') ?? 0.5, outerUp = mget(params,'OuterFadeUpLen') ?? 0.5;
+            const thrDb = mget(params,'ThresholdDb') ?? -30;
+            let maxPause = mget(params,'MaximumPause') ?? 1.0;
+            const sel = [...proj.selected].sort((a,b)=>a-b);
+            const ctrlIdx = sel.length ? sel[sel.length-1] + 1 : -1;
+            if (ctrlIdx < 0 || ctrlIdx >= proj.tracks.length) { cfg.log(`  [builtin] AutoDuck (no control track, skip)`); return; }
+            const ctrl = downmix(proj.tracks[ctrlIdx]);
+            const RMSW = 100, thr = DB2LIN(thrDb)*DB2LIN(thrDb)*RMSW;
+            if (maxPause < outerDown + outerUp) maxPause = outerDown + outerUp;
+            const minPause = Math.round(sr * maxPause);
+            const dStart = Math.round(sr * outerDown), dEnd = ctrl.length - Math.round(sr * outerUp);
+            const regions = [], rmsWin = new Float64Array(RMSW);
+            let rmsSum = 0, rmsPos = 0, inDuck = false, duckStart = 0, pause = 0;
+            for (let i = dStart; i < dEnd; i++) {
+                rmsSum -= rmsWin[rmsPos]; rmsWin[rmsPos] = ctrl[i]*ctrl[i]; rmsSum += rmsWin[rmsPos]; rmsPos = (rmsPos+1)%RMSW;
+                const ex = rmsSum > thr;
+                if (ex) { pause = 0; if (!inDuck) { inDuck = true; duckStart = i/sr; } }
+                else if (inDuck) { pause++; if (pause >= minPause) { regions.push([duckStart - outerDown, (i - pause)/sr + outerUp]); inDuck = false; } }
+            }
+            if (inDuck) regions.push([duckStart - outerDown, (dEnd - pause)/sr + outerUp]);
+            const fDown = Math.max(1, Math.round(sr*(outerDown+innerDown))), fUp = Math.max(1, Math.round(sr*(outerUp+innerUp)));
+            const stepDown = duckDb/fDown, stepUp = duckDb/fUp;
+            for (const ti of sel) {
+                const t = proj.tracks[ti];
+                for (const c of (isStereo(t) ? [t.L, t.R] : [t])) {
+                    for (const [t0, t1] of regions) {
+                        const rs = Math.round(t0*sr), re = Math.round(t1*sr);
+                        for (let i = Math.max(0, rs); i < Math.min(c.length, re); i++) {
+                            let g = Math.max(stepDown*(i-rs), stepUp*(re-i));
+                            if (g < duckDb) g = duckDb;
+                            c[i] *= DB2LIN(g);
+                        }
+                    }
+                }
+            }
+            proj.selRange = null;
+            cfg.log(`  [builtin] AutoDuck ${regions.length} region(s) ${duckDb}dB (ctrl=T${ctrlIdx})`); return;
+        }
+        case 'DtmfTones': {
+            const sr = proj.sr;
+            const amp = mget(params,'Amplitude') ?? 0.8;
+            const duty = (mget(params,'Duty_Cycle') ?? mget(params,'DutyCycle') ?? 55) / 100;
+            const seq = mgetStr(params,'Sequence') || '';
+            const n = seq.length, len = proj.length, out = new Float32Array(len);
+            if (n > 0) {
+                const denom = n*duty + (n-1)*(1-duty), slot = len / denom;
+                let nTone = Math.floor(slot*duty), nSil = n>1 ? Math.floor(slot*(1-duty)) : 0;
+                let diff = len - (n*nTone) - (n-1)*nSil;
+                while (n>1 && diff > 2*n-1) { nTone += Math.floor(diff/n); nSil += Math.floor(diff/(n-1)); diff = len - (n*nTone) - (n-1)*nSil; }
+                const fadeA = sr / 250;
+                let pos = 0;
+                for (let s=0; s<n && pos<len; s++) {
+                    let tlen = nTone + (diff-- > 0 ? 1 : 0);
+                    tlen = Math.min(tlen, len-pos);
+                    const [f1,f2] = dtmfFreqs(seq[s]), A = 2*Math.PI*f1/sr, B = 2*Math.PI*f2/sr;
+                    for (let k=0;k<tlen;k++) out[pos+k] = amp * 0.5 * ((f1?Math.sin(A*k):0) + (f2?Math.sin(B*k):0));
+                    const fl = Math.min(tlen, fadeA);
+                    for (let k=0;k<fl;k++) out[pos+k] *= k/fl;
+                    const off = Math.trunc(tlen - fl);
+                    for (let k=0;k<fl;k++) out[pos+off+k] *= 1 - k/fl;
+                    pos += tlen;
+                    if (s < n-1) { let slen = nSil + (diff-- > 0 ? 1 : 0); pos += Math.min(slen, len-pos); }
+                }
+            }
+            for (const i of proj.selected) proj.tracks[i] = out.slice();
+            proj.selRange = null;
+            cfg.log(`  [generator] DtmfTones "${seq}" duty=${(duty*100)|0}%`); return;
         }
         }
         if (cmd === 'Import2') {

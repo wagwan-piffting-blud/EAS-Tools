@@ -389,10 +389,17 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     };
 
     let macroProgressUI = null;
+    let macroProgressPct = -1;
     const ensureMacroProgress = () => {
         if (macroProgressUI || !persistLabel || !persistLabel.parentNode) return macroProgressUI;
         const wrap = document.createElement('div');
         wrap.style.cssText = 'height:4px;background:#333;border-radius:2px;margin-top:3px;overflow:hidden;display:none';
+        wrap.setAttribute('role', 'progressbar');
+        wrap.setAttribute('aria-label', 'Macro processing progress');
+        wrap.setAttribute('aria-valuemin', '0');
+        wrap.setAttribute('aria-valuemax', '100');
+        wrap.setAttribute('aria-valuenow', '0');
+        wrap.setAttribute('aria-valuetext', '0%');
         const bar = document.createElement('div');
         bar.style.cssText = 'height:100%;width:0%;background:#7ae37a;transition:width .08s linear';
         wrap.appendChild(bar);
@@ -404,8 +411,18 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const ui = ensureMacroProgress();
         if (ui) {
             const active = fraction >= 0 && fraction < 1;
+            const pct = Math.round(Math.max(0, Math.min(1, fraction)) * 100);
             ui.wrap.style.display = active ? 'block' : 'none';
-            ui.bar.style.width = Math.round(Math.max(0, Math.min(1, fraction)) * 100) + '%';
+            ui.bar.style.width = pct + '%';
+            if (active) {
+                if (pct !== macroProgressPct) {
+                    macroProgressPct = pct;
+                    ui.wrap.setAttribute('aria-valuenow', String(pct));
+                    ui.wrap.setAttribute('aria-valuetext', pct + '%');
+                }
+            } else {
+                macroProgressPct = -1;
+            }
         }
         if (label) persistStatus(label, true);
     };

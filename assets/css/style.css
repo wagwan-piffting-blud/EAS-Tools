@@ -1563,6 +1563,29 @@ button[disabled] {
         color: var(--color-text);
         background-color: var(--color-bg);
     }
+
+    .splice-macro-combo__btn {
+        background-color: var(--color-bg);
+        border-color: var(--color-border-light);
+    }
+
+    .splice-macro-combo__pop {
+        background-color: #f0f0f0;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .splice-macro-combo__search {
+        background-color: var(--color-bg);
+        border-color: var(--color-border-light);
+    }
+
+    .splice-macro-combo__opt.is-active {
+        color: var(--color-text);
+    }
+
+    .splice-macro-combo__opt.is-selected.is-active::after {
+        color: var(--color-text);
+    }
 }
 
 /* Additional mobile adjustments for the announcement toast */
