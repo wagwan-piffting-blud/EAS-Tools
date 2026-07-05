@@ -1397,7 +1397,6 @@
                 mixed = mixBuffers(sel.map(i => proj.tracks[i]), proj.length);
             }
             if (cmd === 'MixAndRenderToNewTrack') {
-                // Audacity: keep the source tracks, APPEND the mix as a new track, select the new track.
                 proj.tracks.push(mixed);
                 if (proj.pans) proj.pans.push(0);
                 proj.selected = new Set([proj.tracks.length - 1]);

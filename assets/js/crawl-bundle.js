@@ -133,7 +133,6 @@ async function initCrawlEditor() {
             { family: 'Impact', file: 'impact.ttf', description: 'a default Windows font' },
             { family: 'Comic Sans MS', file: 'comic.ttf', description: 'a default Windows font' },
             { family: 'STV5730A', file: 'stv5730a.ttf', description: 'mod of "VCR EAS"/EASyPLUS font' },
-            //  { family: 'VCREAS', file: 'VCREAS.ttf' }, // Disabled due to being a duplicate of VCREAS_4.5
             { family: 'Geneva Blue', file: 'GenevaBlueBold.ttf', description: 'alternative small-caps Texscan font' },
             { family: 'Akzidenz', file: 'Akzidenz.ttf', description: 'sans-serif font used on Verizon crawls' },
             { family: 'Helvetica Narrow', file: 'helvn.ttf', description: 'narrower version of Helvetica' },
@@ -189,9 +188,7 @@ async function initCrawlEditor() {
     async function ensureFontsReady() {
         try {
             await fontLoaderPromise;
-        } catch (err) {
-            // font load failures are logged when the loader runs
-        }
+        } catch (err) { /* ignore */ }
     }
 
     const USER_UPLOAD_FONT_FAMILY = 'User-Upload';
@@ -1434,9 +1431,7 @@ async function initCrawlEditor() {
                     resolved.alpha = 'keep';
                     return resolved;
                 }
-            } catch (error) {
-                // fall through to return null
-            }
+            } catch (error) { /* ignore */ }
             return null;
         };
 
@@ -1737,9 +1732,7 @@ async function initCrawlEditor() {
                     if (encoder && encoder.state !== 'closed') {
                         encoder.close();
                     }
-                } catch (cleanupError) {
-                    // ignore
-                }
+                } catch (cleanupError) { /* ignore */ }
                 tearDownCaptureCanvas();
             }
         };
@@ -1755,9 +1748,7 @@ async function initCrawlEditor() {
                 if (recorder && recorder.state === 'recording') {
                     try {
                         recorder.stop();
-                    } catch (stopError) {
-                        // ignore stop errors
-                    }
+                    } catch (stopError) { /* ignore */ }
                 }
             });
 
@@ -1765,14 +1756,12 @@ async function initCrawlEditor() {
                 let supportedTypes = (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function')
                     ? getSupportedMimeTypes('video', ['webm'], ['vp9', 'vp8'])
                     : [];
-                // Fallback to MP4 (Safari/WKWebView support)
                 if (!supportedTypes.length && typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
                     supportedTypes = getSupportedMimeTypes('video', ['mp4'], ['avc1', 'h264']);
                 }
 
                 stream = captureCanvas.captureStream(captureFps);
 
-                // Try creating recorder with detected type, then explicit mp4, then defaults
                 const mimeTypesToTry = supportedTypes.length
                     ? [supportedTypes[0]]
                     : ['video/mp4', undefined];
@@ -1785,9 +1774,7 @@ async function initCrawlEditor() {
                         recorder = new MediaRecorder(stream, opts);
                         recorderCreated = true;
                         break;
-                    } catch (e) {
-                        // try next option
-                    }
+                    } catch (e) { /* ignore */ }
                 }
                 if (!recorderCreated) {
                     throw new Error('Could not create MediaRecorder with any supported format');
@@ -1866,7 +1853,6 @@ async function initCrawlEditor() {
                     return true;
                 }
 
-                // Detect actual format: check recorder, then blob type, then platform
                 let mimeType = recorder.mimeType || (supportedTypes[0] || '');
                 if (!mimeType) {
                     const isApple = /Apple|Safari/i.test(navigator.userAgent) && !/Chrome|CriOS/i.test(navigator.userAgent);
@@ -1912,9 +1898,7 @@ async function initCrawlEditor() {
                 if (!stopped && recorder && recorder.state === 'recording') {
                     try {
                         recorder.stop();
-                    } catch (stopError) {
-                        // ignore
-                    }
+                    } catch (stopError) { /* ignore */ }
                 }
                 if (stream && typeof stream.getTracks === 'function') {
                     stream.getTracks().forEach((track) => track.stop());
@@ -1939,7 +1923,6 @@ async function initCrawlEditor() {
             return;
         }
 
-        // Try MediaRecorder first (works on Safari/WKWebView with MP4, Chrome with WebM)
         if (typeof MediaRecorder === 'function' && typeof captureCanvas.captureStream === 'function') {
             const handled = await exportWithMediaRecorder();
             if (handled) {
@@ -4557,7 +4540,6 @@ async function initCrawlEditor() {
         applySettingsToControls(JSON.parse(savedSettings));
     }
 
-    // --- Live crawl preview ---
     const _crawlPreviewCanvas = document.getElementById('crawlPreview');
     const _crawlPreviewCtx = _crawlPreviewCanvas ? _crawlPreviewCanvas.getContext('2d') : null;
     let _crawlPreviewScheduled = false;
@@ -4582,7 +4564,6 @@ async function initCrawlEditor() {
         const outlineJoin = document.getElementById('crawlOutlineJoin').value || 'round';
         const kerning = Number(document.getElementById('crawlKerning').value) || 0;
 
-        // Resolve font family — load custom font if needed
         let fontFamily = fontFamilyRaw;
         if (fontFamilyRaw === USER_UPLOAD_FONT_FAMILY) {
             try {
@@ -4594,7 +4575,6 @@ async function initCrawlEditor() {
 
         await document.fonts.load(`${fontStyle} ${fontSize}px "${fontFamily}"`);
 
-        // Background
         if (bgMode === 'transparent') {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         } else {
@@ -4602,18 +4582,15 @@ async function initCrawlEditor() {
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Font setup
         ctx.font = `${fontStyle} ${fontSize}px "${fontFamily}"`;
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         ctx.fillStyle = textColor;
         ctx.lineJoin = outlineJoin;
 
-        // Kerning (convert percentage to px)
         const kerningPx = (kerning / 100) * fontSize;
         ctx.letterSpacing = `${kerningPx}px`;
 
-        // Text rendering
         const renderText = createTextRenderer(ctx, outlineColor, outlineWidth);
         const lines = (text || '').split('\n');
         const lineHeight = fontSize + 10;
@@ -4625,7 +4602,6 @@ async function initCrawlEditor() {
             renderText(line, canvas.width / 2, y);
         });
 
-        // Reset letterSpacing so it doesn't leak
         ctx.letterSpacing = '0px';
     }
 
@@ -4638,7 +4614,6 @@ async function initCrawlEditor() {
         });
     }
 
-    // Attach listeners to all relevant crawl settings inputs
     const _previewInputIds = [
         'crawlText', 'crawlTextColor', 'crawlFontSize', 'crawlFontFamily',
         'crawlFontStyle', 'crawlOutlineColor', 'crawlOutlineWidth',
@@ -4653,7 +4628,6 @@ async function initCrawlEditor() {
         el.addEventListener('change', scheduleCrawlPreview);
     });
 
-    // Draw the initial preview after fonts are ready
     ensureFontsReady().then(scheduleCrawlPreview);
 
     function parseEASHeaderAndUpdateEasyPlusSettings(rawHeader) {
@@ -4799,9 +4773,7 @@ async function initCrawlEditor() {
         }
     });
 
-    // === Native Bridge ===
     if (window.EASBridge) {
-        // Send E2T endec emulation modes to native (wait for resources like DOM code does)
         function sendEndecModesToNative() {
             const modes = allEndecModes().filter((mode) => mode.toLowerCase() !== 'json');
             const modeList = [{ value: '', label: 'None (Default)' }];
@@ -4818,13 +4790,10 @@ async function initCrawlEditor() {
                 const text = await header_to_readable(rawHeader, false, '', endecMode);
                 window.EASBridge.send('crawl:headerConverted', { text: text || '' });
 
-                // Also send DASDEC-formatted version if available
                 try {
                     const dasdecPages = await formatDasdec(rawHeader, true);
                     if (dasdecPages && dasdecPages.length) {
-                        // Send the raw formatted text so native can page it identically
                         const flatText = dasdecPages.map(page => {
-                            // Drop the page indicator (last line) from each page
                             return page.slice(0, -1).filter(l => l !== '').join('\n');
                         }).join('\n');
                         window.EASBridge.send('crawl:dasdecFormatted', { text: flatText });
@@ -4835,12 +4804,11 @@ async function initCrawlEditor() {
                 window.EASBridge.send('crawl:headerConverted', { text: '' });
             }
         });
-        // Export: set all DOM values, start crawl, then export
+
         window.EASBridge.on('crawl:export', async (params) => {
             try {
                 const format = params?.format || 'gif';
 
-                // Set DOM values from native payload
                 const el = (id) => document.getElementById(id);
                 const setVal = (id, val) => { if (el(id) && val != null) el(id).value = val; };
                 const setChk = (id, val) => { if (el(id) && val != null) el(id).checked = val; };
@@ -4864,11 +4832,9 @@ async function initCrawlEditor() {
                 setVal('crawlMode', 'custom');
                 setVal('crawlRepetitions', params.repetitions);
 
-                // Trigger Start Crawl
                 const startBtn = el('startCrawl');
                 if (startBtn) {
                     startBtn.click();
-                    // Wait for generator to be created and fonts to load
                     await new Promise(r => setTimeout(r, 1500));
                 }
 
@@ -4877,7 +4843,6 @@ async function initCrawlEditor() {
                     return;
                 }
 
-                // Load custom background image from file URL or base64
                 const bgSrc = params.bgImageURL || (params.bgImageData ? 'data:image/jpeg;base64,' + params.bgImageData : null);
                 if (bgSrc && params.bgMode === 'image') {
                     const bgImg = new Image();
@@ -4889,10 +4854,8 @@ async function initCrawlEditor() {
                     window.crawlGenerator.setBgImage(bgImg);
                 }
 
-                // Force 60fps frame timing for export quality
                 window.crawlGenerator.msPerFrame = 1000 / 60;
 
-                // Monitor progress bar for updates → send to native
                 const progressBar = document.getElementById('crawlExportProgress');
                 const progressLabel = document.getElementById('crawlExportProgressLabel');
                 let progressObserver = null;
@@ -4905,7 +4868,6 @@ async function initCrawlEditor() {
                     progressObserver.observe(progressBar, { attributes: true });
                 }
 
-                // Monitor for export completion (progress div hides when done)
                 const progressDiv = document.getElementById('crawlExportProgressDiv');
                 let doneObserver = null;
                 if (progressDiv) {
@@ -4931,8 +4893,6 @@ async function initCrawlEditor() {
         });
 
         window.EASBridge.on('crawl:cancelExport', () => {
-            // Click the DOM cancel button — it calls crawlExportController's
-            // activeToken.cancel() which is private inside the IIFE
             const btn = document.getElementById('cancelCrawlExport');
             if (btn && !btn.disabled) btn.click();
         });

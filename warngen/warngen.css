@@ -617,17 +617,7 @@ header h1 .credits-link:hover {
     border-color: #fe8019;
 }
 
-/* ------------------------------------------------------------------ */
-/* Mobile: collapse the desktop two-column split (map | output-pane)   */
-/* into a single full-width vertical stack:                            */
-/*   map -> impacted -> bullet picker -> fill-ins -> output            */
-/* The page scrolls instead of each pane fighting for a slice of a     */
-/* fixed-height row.                                                   */
-/* ------------------------------------------------------------------ */
 @media (max-width: 768px) {
-    /* Lock the page to vertical scrolling only — no sideways page swipe.
-       The #output pane keeps its own internal horizontal scroll for
-       unwrapped (fixed-width) AWIPS bulletins. */
     html, body {
         overflow-x: hidden;
         width: 100%;
@@ -641,7 +631,6 @@ header h1 .credits-link:hover {
         overflow-x: hidden;
     }
 
-    /* Keep stacked panes from ever exceeding the viewport width. */
     #map,
     .output-pane,
     .impacted-bar,
@@ -666,8 +655,6 @@ header h1 .credits-link:hover {
         border-top: 1px solid #2a2e35;
     }
 
-    /* Let the stacked panels grow to their content rather than capping at
-       a percentage of the (now non-fixed) column height. */
     .bullet-panel-container,
     .fillin-panel-container {
         flex: 0 0 auto;

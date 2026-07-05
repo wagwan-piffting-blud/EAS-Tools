@@ -1,12 +1,3 @@
-// Cross-checks our partOfParentRegion → "in <part of state>" phrasing against
-// real bulletins from the IEM AFOS archive. Walks weekly sample dates across
-// Mar 1 – Aug 31 2024 for every CWA, pulls up to 3 SVR/TOR/FFW products each,
-// extracts county lines, and diffs against what our engine would emit.
-//
-// Usage:
-//   node warngen/tools/verify_phrasing.mjs                  # all CWAs
-//   node warngen/tools/verify_phrasing.mjs MRX OHX MEG      # filter
-
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +13,7 @@ const API_BASE        = 'https://mesonet.agron.iastate.edu/api/1';
 const RATE_LIMIT_MS   = 400;
 const SAMPLE_DATES    = (() => {
     const out = [];
-    const d = new Date(Date.UTC(2024, 2, 1));  // Mar 1 2024
+    const d = new Date(Date.UTC(2024, 2, 1));
     const end = new Date(Date.UTC(2024, 7, 31));
     while (d <= end) {
         out.push(d.toISOString().slice(0, 10));
@@ -33,7 +24,6 @@ const SAMPLE_DATES    = (() => {
 const TARGET_EVENTS = 3;
 const WARN_PILS = new Set(['SVR', 'TOR', 'FFW']);
 
-// Keep in sync with warngen/src/engine/context.js — same table.
 const CWA_STATE_REGION_OVERRIDES = {
     MEG: { TN: { FFW: 'Tennessee' } }
 };
@@ -70,8 +60,6 @@ async function fetchText(url) {
     return res.text();
 }
 
-// Mirror of #areaFormat string-array branch with useCentral=true, useExtreme=false
-// (state-level call). Returns lowercase phrase, "" for empty input.
 function formatPartOfStatePhrase(arr) {
     const set = new Set((arr || []).map(s => String(s).toUpperCase()));
     let phrase = '';
@@ -88,8 +76,6 @@ function formatPartOfStatePhrase(arr) {
     return phrase;
 }
 
-// Mirror of the 2-char branch in #areaFormat (state-level usage). Returns
-// lowercase phrase, "" if the code is unrecognised.
 const FE_CODE_TO_PHRASE = {
     PA: 'the Panhandle of',
     BB: 'Big Bend',
@@ -129,7 +115,6 @@ function expectedPhrase(countyProps, siteId, pilPrefix) {
     }
     const stateName = STATE_NAMES[stateAbbr] || stateAbbr;
     const arr = countyProps.partOfParentRegion || [];
-    // Single 2-char regional code path
     if (arr.length === 1 && /^[A-Z]{2}$/.test(arr[0]) && FE_CODE_TO_PHRASE[arr[0]]) {
         const phrase = formatRegionalCode(arr[0]);
         if (phrase.endsWith(' of')) return `${phrase} ${stateName}`;
@@ -156,8 +141,6 @@ function parseCountyLines(text) {
 }
 
 function buildCountyIndex(geo) {
-    // Map<cwa, Array<feature.properties>>, sorted by name length DESC for
-    // longest-match matching against bulletin "{prefix} {countyName}" strings.
     const byCwa = new Map();
     for (const feat of geo.features) {
         const p = feat.properties;
@@ -171,9 +154,6 @@ function buildCountyIndex(geo) {
     return byCwa;
 }
 
-// Pull the state abbr out of a "[part-of] StateName" phrase by matching the
-// trailing state name against STATE_NAMES. Sorted by name length DESC so
-// "West Virginia" wins over "Virginia" (both end with " virginia").
 const STATE_NAME_PAIRS = Object.entries(STATE_NAMES)
     .map(([abbr, name]) => [name.toLowerCase(), abbr])
     .sort((a, b) => b[0].length - a[0].length);
@@ -190,7 +170,6 @@ function findCounty(index, cwa, leftSide, actualPhrase) {
     const candidates = index.get(cwa) || [];
     const lc = leftSide.toLowerCase();
     const wantState = actualPhrase ? stateFromPhrase(actualPhrase) : null;
-    // First pass: require state match if we could extract one.
     if (wantState) {
         for (const c of candidates) {
             if (c.state !== wantState) continue;
@@ -198,7 +177,6 @@ function findCounty(index, cwa, leftSide, actualPhrase) {
             if (lc === nameLc || lc.endsWith(' ' + nameLc)) return c;
         }
     }
-    // Fallback: name-only match.
     for (const c of candidates) {
         const nameLc = c.name.toLowerCase();
         if (lc === nameLc || lc.endsWith(' ' + nameLc)) return c;
@@ -350,7 +328,7 @@ async function main() {
     log(`indexed ${geo.features.length} counties across ${countyIndex.size} CWAs`);
 
     const wfo = JSON.parse(await fs.readFile(WFO_PATH, 'utf8'));
-    const offices = wfo.offices || wfo;  // {SITE: [lon,lat], ...}
+    const offices = wfo.offices || wfo;
     const argFilter = process.argv.slice(2).map(s => s.toUpperCase());
     const allCwas = Object.keys(offices).filter(k => /^[A-Z]{3}$/.test(k)).sort();
     const cwas = argFilter.length ? allCwas.filter(c => argFilter.includes(c)) : allCwas;
@@ -375,7 +353,6 @@ async function main() {
             log(`[${idx}/${cwas.length}] ${cwa} FAILED — ${err.message}`);
             report.cwas.push({ cwa, error: err.message });
         }
-        // Checkpoint after each CWA so a crash never loses everything.
         await fs.writeFile(path.join(OUT_DIR, 'verify_report.json'), JSON.stringify(report, null, 2));
     }
 

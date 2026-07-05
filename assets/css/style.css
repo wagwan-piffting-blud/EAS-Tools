@@ -696,7 +696,7 @@ button[disabled] {
 }
 
 #eas-tools-logo {
-    background: url('../eas-tools-logo.png?v=2') no-repeat center; /* cache-busting query param */
+    background: url('../eas-tools-logo.png?v=2') no-repeat center;
     background-size: 115%;
     width: 3vw;
     height: 6vh;

@@ -176,7 +176,6 @@ async function fetchAndStore() {
 
 (async function () {
     'use strict';
-    // Decoder bundle
     await fetchAndStore().catch((error) => {
         console.error('Error fetching and storing data:', error);
     });
@@ -208,7 +207,6 @@ async function fetchAndStore() {
     window.modalShown = false;
     window.isRecording = false;
 
-    // BEGIN decode/audio.js
     let sampleRate = 44100;
 
     const decodeContext = new AudioContext();
@@ -365,9 +363,6 @@ async function fetchAndStore() {
     let iosLoopbackNode = null;
     let iosLoopbackRing = null;
 
-    // Pull-based ring buffer for loopback audio.
-    // ScriptProcessorNode pulls samples at a constant rate — no scheduling
-    // gaps or overlaps, and the ring buffer absorbs FFmpeg decode jitter.
     class LoopbackRing {
         constructor(capacity) {
             this.buf = new Float32Array(capacity);
@@ -409,11 +404,8 @@ async function fetchAndStore() {
         if (!Ctx) return;
 
         iosLoopbackCtx = new Ctx({ sampleRate: IOS_STREAM_DECODE_SR });
-        // 2 seconds of ring buffer — absorbs any FFmpeg decode jitter
         iosLoopbackRing = new LoopbackRing(IOS_STREAM_DECODE_SR * 2);
 
-        // ScriptProcessorNode: audio system pulls samples at constant rate.
-        // Buffer size 4096 = ~93ms at 44100Hz — smooth, low-latency playback.
         iosLoopbackNode = iosLoopbackCtx.createScriptProcessor(4096, 0, 1);
         iosLoopbackNode.onaudioprocess = (e) => {
             iosLoopbackRing.pull(e.outputBuffer.getChannelData(0));
@@ -663,8 +655,6 @@ async function fetchAndStore() {
         return split;
     }
 
-    // Flatten a list of Uint8Array chunks into a single buffer.
-    // Called once per decode cycle — avoids O(n²) concat-per-read.
     function flattenChunks(list) {
         if (list.length === 1) return list[0];
         let total = 0;
@@ -725,14 +715,12 @@ async function fetchAndStore() {
 
         if (isLoopbackEnabled()) startIOSLoopback();
 
-        // Process decoded PCM: loopback → bandpass filter → SAME decoder
         const processPCM = (pcm) => {
             if (!pcm || pcm.length === 0) return;
             if (isLoopbackEnabled()) queueIOSLoopbackPCM(pcm);
             feedDecoderFrames(bandpass.process(pcm));
         };
 
-        // Main streaming loop — runs in background
         (async () => {
             const reader = response.body.getReader();
             const accumChunks = [];
@@ -742,7 +730,6 @@ async function fetchAndStore() {
             let headerExtracted = false;
             let pendingDecode = null;
 
-            // Await previous FFmpeg decode; recover from memory faults
             const awaitPending = async () => {
                 if (!pendingDecode) return null;
                 try {
@@ -769,12 +756,10 @@ async function fetchAndStore() {
 
                     if (accumBytes < IOS_STREAM_CHUNK_BYTES) continue;
 
-                    // Flatten once per decode cycle
                     let accum = flattenChunks(accumChunks);
                     accumChunks.length = 0;
                     accumBytes = 0;
 
-                    // Extract OGG headers on first decode-ready chunk
                     if (!headerExtracted) {
                         if (isOggStream(accum)) {
                             isOgg = true;
@@ -788,7 +773,6 @@ async function fetchAndStore() {
                         headerExtracted = true;
                     }
 
-                    // For OGG: split at page boundary to avoid mid-packet cuts
                     let raw;
                     if (isOgg) {
                         const splitEnd = getLastSafeOggSplit(accum, IOS_STREAM_CHUNK_BYTES);
@@ -809,18 +793,15 @@ async function fetchAndStore() {
                         raw = accum;
                     }
 
-                    // Prepend OGG headers so FFmpeg can decode each chunk independently
                     if (isOgg && oggHeaders && oggHeaders.length > 0 && !isOggBosPage(raw)) {
                         raw = concatUint8(oggHeaders, raw);
                     }
 
-                    // Pipeline: await previous, start new, process previous
                     const prevPCM = await awaitPending();
                     pendingDecode = ffmpegDecodeChunk(ff, raw);
                     processPCM(prevPCM);
                 }
 
-                // Drain final pending decode
                 const finalPCM = await awaitPending();
                 processPCM(finalPCM);
 
@@ -831,10 +812,8 @@ async function fetchAndStore() {
                     addStatus("STREAM ERROR!", "red");
                 }
             } finally {
-                // Drain any in-flight decode
                 try { processPCM(await awaitPending()); } catch {}
 
-                // Process leftover accumulated bytes
                 if (accumChunks.length > 0) {
                     try {
                         let tail = flattenChunks(accumChunks);
@@ -857,7 +836,6 @@ async function fetchAndStore() {
                     }
                 }
 
-                // Flush remainder frames
                 if (iosDecoderFrameRemainder.length > 0) {
                     const padded = new Float32Array(IOS_STREAM_FRAME_SIZE);
                     padded.set(iosDecoderFrameRemainder);
@@ -1078,7 +1056,7 @@ async function fetchAndStore() {
         workletModulePromise.catch(() => { });
     }
 
-    const MOBILE_MIC_GAIN = 7; // works well on native webview on android, unsure about iOS
+    const MOBILE_MIC_GAIN = 7;
     const shouldApplyMobileInputGain = typeof navigator !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent || "");
 
     function createInputNode(sourceNode, applyMobileGain) {
@@ -2029,7 +2007,6 @@ async function fetchAndStore() {
             return;
         }
         if (streamElement && !micSource) {
-            // In this WebView path, lowering stream volume can starve decode input.
             targetElement.muted = false;
             targetElement.volume = 1;
             if (targetElement.paused && streamToggleActive && typeof targetElement.play === "function") {
@@ -2208,8 +2185,6 @@ async function fetchAndStore() {
         }
     });
 
-    // END decode/audio.js
-    // BEGIN decode/afsk.js
     const ENDEC_DEBUG_HEAD_BYTES = 96;
     const ENDEC_DEBUG_TAIL_BYTES = 96;
 
@@ -2247,7 +2222,7 @@ async function fetchAndStore() {
     let activeSameProduct = null;
     const sameProductResults = new Map();
     if (typeof window !== "undefined" && typeof window.endecDebug !== "boolean") {
-        window.endecDebug = false; // set to true in the console to enable detailed same product logging, which will also be exported to window.lastEndecDebug and window.endecDebugHistory for further analysis. This is intentionally opt-in due to the potential volume of logs generated.
+        window.endecDebug = false;
     }
 
     function snapshotEndecCounters() {
@@ -3071,8 +3046,6 @@ async function fetchAndStore() {
 
     updateSampleRate(sampleRate);
 
-    // END decode/afsk.js
-    // BEGIN decode/clock.js
     let bitclock = 0;
     let prevbit = 0;
     let shift = 0;
@@ -3300,7 +3273,6 @@ async function fetchAndStore() {
                                 document.querySelector("#output").appendChild(container);
                             }
                             const currentChar = String.fromCharCode(currentByte);
-                            // If the character is not valid, just skip printing it and continue to the next valid character
                             if (currentByte >= 32 && currentByte <= 126 && /^[A-Za-z0-9\-\+\/\(\)\\ ]$/.test(currentChar) === false) { }
                             else {
                                 container.innerText += currentChar;
@@ -3571,8 +3543,7 @@ async function fetchAndStore() {
     function updateSync(sync) {
         addStatus(sync ? "SYNC" : "NO SYNC", sync ? "green" : "red");
     }
-    // END decode/clock.js
-    // BEGIN decode/header.js
+
     function parseHeader(input, productId = null) {
         if (input.startsWith("NNNN")) {
             eomCount++;
@@ -3738,8 +3709,7 @@ async function fetchAndStore() {
         container.appendChild(document.createElement("span")).innerHTML = "&emsp;&emsp;";
         container.appendChild(view);
     }
-    // END decode/header.js
-    // BEGIN decode/alertinfo.js
+
     const modalClose = document.querySelector("#close");
     const modalContainer = document.querySelector(".modalContainer");
     const infoContainer = document.querySelector(".modalInfo");
@@ -4339,7 +4309,6 @@ async function fetchAndStore() {
         return false;
     }
 
-    // END decode/alertinfo.js
     const decoderToggle = document.querySelector('[data-decoder-toggle]');
     if (decoderToggle) {
         decoderToggle.addEventListener('click', function () {
@@ -4432,7 +4401,7 @@ async function fetchAndStore() {
                 }
                 if (peak > 0 && channelData.length > 0) {
                     const rms = Math.sqrt(sumSquares / channelData.length);
-                    const minRms = 0.08912509381337455; // -21 dBFS
+                    const minRms = 0.08912509381337455;
                     if (rms > 0 && rms <= minRms) {
                         const gain = 0.99 / peak;
                         if (gain > 1) {
@@ -4657,7 +4626,6 @@ async function fetchAndStore() {
             const loopbackToggle = document.getElementById("decoder-loopback");
             if (loopbackToggle) {
                 loopbackToggle.checked = !!params?.enabled;
-                // Mirror the DOM change handler's iOS-specific loopback path
                 if (isCapacitorIOS() && iosStreamAbort) {
                     if (params?.enabled) {
                         startIOSLoopback();
@@ -4670,7 +4638,6 @@ async function fetchAndStore() {
             }
         });
 
-        // Native stream PCM handlers (iOS native OGG/Vorbis decoder)
         window.EASBridge.on('decoder:nativeStreamStart', (params) => {
             const sr = params?.sampleRate || 44100;
             nativeStreamActive = true;

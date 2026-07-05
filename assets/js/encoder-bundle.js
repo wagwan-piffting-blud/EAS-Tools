@@ -139,7 +139,6 @@ async function fetchAndStore() {
     const data = await response.json();
     processSameCodes(data);
 
-    // Load Canadian FIPS codes
     window.canadaCounty = {};
     try {
         const caResponse = await fetch('assets/E2T/include/same-ca.json');
@@ -156,7 +155,6 @@ async function fetchAndStore() {
 
 (async function () {
     'use strict';
-    // Encoder bundle
 
     await fetchAndStore().catch((error) => {
         console.error('Error fetching and storing data:', error);
@@ -167,7 +165,6 @@ async function fetchAndStore() {
     const county = window.county || {};
     const canadaCounty = window.canadaCounty || {};
 
-    // Build Canadian province and location structures from canadaCounty
     const caProvinces = {};
     const caLocationsByProvince = {};
     for (const [code, name] of Object.entries(canadaCounty)) {
@@ -180,7 +177,6 @@ async function fetchAndStore() {
         caLocationsByProvince[provDigit][suffix] = name;
     }
 
-    // BEGIN encode/audio.js
     var context = new AudioContext();
     var gain = context.createGain();
     gain.gain.value = 0.25;
@@ -431,8 +427,6 @@ async function fetchAndStore() {
         }
     }
 
-    // END encode/audio.js
-    // BEGIN encode/utils.js
     var wav = new wavefile.WaveFile();
 
     function zero_pad_int(num, totalLength) {
@@ -523,9 +517,6 @@ async function fetchAndStore() {
         await saveFile('eas.wav', wavBuffer, 'audio/wav');
         addStatus("Download started...");
     }
-
-    // END encode/utils.js
-    // BEGIN encode/alert.js
 
     function getOverallEndecMode() {
         const el = document.getElementById("overallEndecMode");
@@ -1397,13 +1388,11 @@ async function fetchAndStore() {
 
         else if (allowCustomAudio && window.announcementType === "custom") {
             let customAudioFile = document.getElementById("customAudioFile")?.files?.[0];
-            // Use native-provided buffer if DOM file input is empty
             let arrayBuffer = customAudioFile
                 ? await customAudioFile.arrayBuffer()
                 : window._nativeCustomAudioBuffer;
             if (arrayBuffer) {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                // decodeAudioData detaches the buffer, so copy it to allow re-generation
                 const bufferCopy = arrayBuffer.slice(0);
                 const buffer = await audioContext.decodeAudioData(bufferCopy);
                 const pcmRaw = buffer.getChannelData(0);
@@ -1446,8 +1435,6 @@ async function fetchAndStore() {
         document.getElementById("save").disabled = false;
     }
 
-    // END encode/alert.js
-    // BEGIN encode/main.js
     var events = document.getElementById("events");
     var originators = document.getElementById("originators");
     var hrselect = document.getElementById("hr");
@@ -2307,8 +2294,6 @@ async function fetchAndStore() {
         }
     }
 
-    // END encode/main.js
-
     const nowButton = document.querySelector('[data-encoder-now]');
     if (nowButton) {
         nowButton.addEventListener('click', () => stime());
@@ -2569,7 +2554,6 @@ async function fetchAndStore() {
 
     updateHeaderPreview();
 
-    // currently not used in main iife, but exported for console use and potential future use
     const noaaProductToFips = function (noaaProduct) {
         const regex = /([A-Z]{3}\d{3}-)(\d{3}-)*/g;
         const matches = noaaProduct.matchAll(regex);
@@ -2609,7 +2593,6 @@ async function fetchAndStore() {
 
     if (window.EASBridge) {
         function sendEncoderData() {
-            // Events — read from populated #events select with optgroups
             const eventsArr = [];
             const eventsEl = document.getElementById('events');
             if (eventsEl) {
@@ -2622,7 +2605,6 @@ async function fetchAndStore() {
             }
             window.EASBridge.send('encoder:eventsData', { events: eventsArr });
 
-            // States
             const statesArr = [];
             if (window.state) {
                 for (const [code, abbr] of Object.entries(window.state)) {
@@ -2632,7 +2614,6 @@ async function fetchAndStore() {
             }
             window.EASBridge.send('encoder:statesData', { states: statesArr });
 
-            // Canadian FIPS
             const canadaArr = [];
             if (window.canadaCounty) {
                 for (const [code, name] of Object.entries(window.canadaCounty)) {
@@ -2642,7 +2623,6 @@ async function fetchAndStore() {
             }
             window.EASBridge.send('encoder:canadaFipsData', { entries: canadaArr });
 
-            // Voices — read from populated #ttsVoice select
             const voicesArr = [];
             const voiceEl = document.getElementById('ttsVoice');
             if (voiceEl) {
@@ -2652,7 +2632,6 @@ async function fetchAndStore() {
             }
             window.EASBridge.send('encoder:voicesData', { voices: voicesArr });
 
-            // Endec modes — read from populated #overallEndecMode select
             const modesArr = [];
             const modeEl = document.getElementById('overallEndecMode');
             if (modeEl) {
@@ -2663,12 +2642,10 @@ async function fetchAndStore() {
             window.EASBridge.send('encoder:endecModesData', { modes: modesArr });
         }
 
-        // Respond to data requests from native
         window.EASBridge.on('encoder:requestData', () => {
             sendEncoderData();
         });
 
-        // Respond to county requests for a specific state
         window.EASBridge.on('encoder:requestCounties', (params) => {
             const stateCode = params?.state;
             if (!stateCode || !window.county || !window.county[stateCode]) {
@@ -2683,12 +2660,9 @@ async function fetchAndStore() {
             window.EASBridge.send('encoder:countiesData', { counties: countiesArr });
         });
 
-        // Generate — set DOM values from native payload, then call generateEas()
         window.EASBridge.on('encoder:generate', async (params) => {
             try {
                 window.EASBridge.send('encoder:generateState', { active: true });
-
-                // Set form values from native payload
                 const el = (id) => document.getElementById(id);
                 if (params.originator && el('originators')) el('originators').value = params.originator;
                 if (params.event && el('events')) el('events').value = params.event;
@@ -2704,16 +2678,12 @@ async function fetchAndStore() {
                 if (params.ttsVoice) {
                     if (el('ttsVoice')) {
                         el('ttsVoice').value = params.ttsVoice;
-                        // Only dispatch change if the option exists in the DOM select;
-                        // native-only voices (ios-native:) won't be in the DOM dropdown
                         if (el('ttsVoice').value === params.ttsVoice) {
                             el('ttsVoice').dispatchEvent(new Event('change'));
                         }
                     }
-                    // Set window.ttsVoice AFTER any change handler to avoid overwrite
                     window.ttsVoice = params.ttsVoice;
                 }
-                // Store native TTS rate/pitch for ios-native voices
                 if (params.nativeTtsRate != null) window._nativeTtsRate = params.nativeTtsRate;
                 if (params.nativeTtsPitch != null) window._nativeTtsPitch = params.nativeTtsPitch;
                 if (params.ttsRate != null && el('ttsRate')) { el('ttsRate').value = params.ttsRate.toString(); el('ttsRate').dispatchEvent(new Event('input')); }
@@ -2722,23 +2692,18 @@ async function fetchAndStore() {
                 if (params.vmifyCustom != null && el('enable-vmify-custom')) { el('enable-vmify-custom').checked = params.vmifyCustom; el('enable-vmify-custom').dispatchEvent(new Event('change')); }
                 if (params.vmifyCustomIntensity != null && el('vmify-custom-intensity')) el('vmify-custom-intensity').value = params.vmifyCustomIntensity.toString();
 
-                // Set FIPS mode (us/ca) before setting locations
-                // Note: do NOT dispatch 'change' — the web handler clears locations
                 if (params.fipsMode && el('fipsMode')) {
                     el('fipsMode').value = params.fipsMode;
                 }
 
-                // Set locations
                 if (Array.isArray(params.locations)) {
                     window.locations.length = 0;
                     params.locations.forEach(loc => window.locations.push(loc));
                     updateTable();
                 }
 
-                // Set encoder mode to builder
                 if (el('encoderMode')) { el('encoderMode').value = 'builder'; el('encoderMode').dispatchEvent(new Event('change')); }
 
-                // Set time to now
                 stime();
 
                 await generateEas();
@@ -2750,7 +2715,6 @@ async function fetchAndStore() {
             }
         });
 
-        // Custom audio from native file picker (base64-encoded)
         window._nativeCustomAudioBuffer = null;
         window.EASBridge.on('encoder:loadCustomAudio', async (params) => {
             try {
@@ -2769,7 +2733,6 @@ async function fetchAndStore() {
             }
         });
 
-        // Playback controls
         window.EASBridge.on('encoder:togglePlayback', () => {
             const el = document.getElementById('audioPlayback');
             if (!el || !el.src) return;
@@ -2793,7 +2756,6 @@ async function fetchAndStore() {
             el.currentTime = (params?.fraction || 0) * el.duration;
         });
 
-        // Report playback state updates
         const _setupPlaybackReporting = () => {
             const el = document.getElementById('audioPlayback');
             if (!el) return;
@@ -2810,11 +2772,9 @@ async function fetchAndStore() {
             el.addEventListener('timeupdate', send);
         };
         _setupPlaybackReporting();
-        // Re-attach if audio element is recreated
         new MutationObserver(() => _setupPlaybackReporting())
             .observe(document.querySelector('.control-panel') || document.body, { childList: true, subtree: true });
 
-        // Save generated audio
         window.EASBridge.on('encoder:save', async () => {
             try {
                 await saveToWav();
@@ -2823,12 +2783,10 @@ async function fetchAndStore() {
             }
         });
 
-        // Set time to now
         window.EASBridge.on('encoder:setTimeToNow', () => {
             stime();
         });
 
-        // Status hook — forward addStatus calls to native
         const _origAddStatus = addStatus;
         addStatus = function(stat, type) {
             _origAddStatus(stat, type);
@@ -2838,12 +2796,10 @@ async function fetchAndStore() {
             }
         };
 
-        // Resolve FIPS codes to human-readable names using same-us.json data
         window.EASBridge.on('encoder:resolveFips', (params) => {
             const codes = params?.codes;
             if (!Array.isArray(codes)) return;
             const results = codes.map((fips) => {
-                // FIPS format: PSSCCC (P=region, SS=state, CCC=county)
                 const stateCode = fips.slice(1, 3);
                 const countyCode = fips.slice(3, 6);
                 const countyName = window.county?.[stateCode]?.[countyCode] || '';
@@ -2851,7 +2807,6 @@ async function fetchAndStore() {
                 if (countyName || stateAbbr) {
                     return { code: fips, county: countyName, state: stateAbbr };
                 }
-                // Try Canadian lookup: strip region digit, look up 5-digit code
                 const caCode = fips.slice(1);
                 const caName = window.canadaCounty?.[caCode] || '';
                 return { code: fips, county: caName, state: caName ? 'CA' : '' };
@@ -2859,7 +2814,6 @@ async function fetchAndStore() {
             window.EASBridge.send('encoder:fipsResolved', { results: results });
         });
 
-        // Normalizer
         window.EASBridge.on('normalizer:run', (params) => {
             const text = params?.text || '';
             const repeat = params?.repeat || false;
@@ -2869,7 +2823,6 @@ async function fetchAndStore() {
             window.EASBridge.send('normalizer:result', { result });
         });
 
-        // Send data proactively on load (native listeners may already be waiting)
         sendEncoderData();
 
         console.log('[EASBridge] Encoder bridge handlers registered');

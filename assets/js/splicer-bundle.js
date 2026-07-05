@@ -2441,7 +2441,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         try {
             if (typeof value === 'string' && value.startsWith('AUD:')) localStorage.setItem(LAST_AUD_MACRO_KEY, value);
             else localStorage.removeItem(LAST_AUD_MACRO_KEY);
-        } catch (e) { /* localStorage unavailable */ }
+        } catch (e) { /* ignore */ }
     }
     function restoreAudMacroSelection() {
         if (!macroSelect) return;
@@ -3161,9 +3161,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             if (soxBlob) {
                 return soxBlob;
             }
-        } catch (err) {
-            /* skip */
-        }
+        } catch (err) { /* ignore */ }
 
         return encodeWavFromPcm(pcmForExport, sampleRate);
     }

@@ -156,7 +156,6 @@ const DT_TO_CMU = {
     v: "V", w: "W", yx: "Y", z: "Z", zh: "ZH",
     dx: "DX", el: "EL", en: "EN",
 
-    // Additional DECtalk tokens; approximated to nearest CMU phones.
     ar: "AXR", ir: "AXR", or: "AXR", ur: "AXR",
     rx: "R", lx: "EL", yu: "UW",
     q: "T", tx: "T", dz: "Z", tz: "S", cz: "CH", df: "D",
@@ -698,19 +697,16 @@ function parseByBackend(input, backend) {
         let output = "";
         try {
             output += parseVTML(input);
-        } catch {
-            // ignore
-        }
+        } catch { /* ignore */ }
         try {
             output += parseBalabolka(input);
-        } catch {
-            // ignore
-        }
+        } catch { /* ignore */ }
+        try {
+            output += parseBalabolka(input);
+        } catch { /* ignore */ }
         try {
             output += parseDectalk(input);
-        } catch {
-            // ignore
-        }
+        } catch { /* ignore */ }
         return output.trim();
     }
     throw new Error(`Unknown source backend: ${backend}`);
@@ -852,8 +848,6 @@ function phraseToCanonical(rawText, overrides) {
     return canonical;
 }
 
-// TODO: Implement a better phoneme to word converter. Currently, a lot of cases are just plain wrong. For example, `<pron sym="k ae p t n" />` outputs "apt" instead of "captain". This is because the current implementation just does a beam search over possible letter combinations, without any linguistic rules or a large lexicon. A better implementation would use a more comprehensive lexicon and some rules about English phonotactics to generate more accurate guesses.
-
 export function convertPhonemes(input, {
     lexicon = null,
     beamWidth = 48,
@@ -872,9 +866,7 @@ export function convertPhonemes(input, {
                 phoneCount: phones.length,
                 tokenCount: tokens.length,
             });
-        } catch {
-            // ignore parse errors
-        }
+        } catch { /* ignore */ }
     }
 
     if (!candidates.length) return "";

@@ -594,5 +594,3 @@ import { CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEM
         }
     });
 })();
-
-// test product: https://mesonet.agron.iastate.edu/p.php?pid=202404262041-KOAX-WFUS53-TOROAX

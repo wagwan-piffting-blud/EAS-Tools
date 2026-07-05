@@ -218,7 +218,7 @@
 
             try {
                 if (data.voices) {
-                    document.getElementById('voice-count').textContent = Object.keys(data.voices).length + 2; // +2 for WASM/NanoTTS voice
+                    document.getElementById('voice-count').textContent = Object.keys(data.voices).length + 2;
                     const wasmListItem = document.createElement('li');
                     const wasmPlayButton = document.createElement('button');
                     wasmPlayButton.textContent = 'Play Demo';

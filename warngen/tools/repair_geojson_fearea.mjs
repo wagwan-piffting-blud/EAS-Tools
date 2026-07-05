@@ -1,11 +1,3 @@
-// Rewrites partOfParentRegion in us_counties.geojson from the canonical
-// AWIPS County shapefile FE_AREA column. Counties are joined by 5-char FIPS.
-//
-// Run: node warngen/tools/repair_geojson_fearea.mjs
-//
-// Writes:  warngen/data/us_counties.geojson    (in place, backup made)
-// Report:  warngen/tools/output/repair_report.md
-
 import fs from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -18,14 +10,6 @@ const GEOJSON   = path.join(ROOT, 'data', 'us_counties.geojson');
 const BACKUP    = path.join(ROOT, 'data', 'us_counties.geojson.pre-fearea.bak');
 const OUT_DIR   = path.join(__dirname, 'output');
 
-// FE_AREA → partOfParentRegion array.
-// String-array codes use the template's "uppercase list" branch (renders the
-// same way our existing data does today). Non-array regional/no-suffix codes
-// are kept as the 2-char code so the template's first branch picks them up:
-//   pa → "the Panhandle of", mi → "Middle", up → "Upstate", bb → "Big Bend",
-//   pd → "the Piedmont of", ds → "Deep South",
-//   ea/we/so → "east"/"west"/"south" (no -ern),
-//   sr/wu/nr/eu/er → "south central Upper"/"western Upper"/... (Michigan UP).
 const FE_AREA_TO_ARRAY = {
     '':   [],
     'cc': ['CENTRAL'],
@@ -41,8 +25,6 @@ const FE_AREA_TO_ARRAY = {
     'nw': ['NORTH', 'WEST'],
     'se': ['SOUTH', 'EAST'],
     'sw': ['SOUTH', 'WEST']
-    // regional + bare-direction codes (pa, mi, up, bb, pd, ds, ea, we, so,
-    // sr, wu, nr, eu, er) fall through to passthrough below
 };
 const PASSTHROUGH_CODES = new Set([
     'pa', 'mi', 'up', 'bb', 'pd', 'ds',
@@ -53,7 +35,7 @@ const PASSTHROUGH_CODES = new Set([
 function codeToArray(fe) {
     if (fe in FE_AREA_TO_ARRAY) return FE_AREA_TO_ARRAY[fe];
     if (PASSTHROUGH_CODES.has(fe)) return [fe.toUpperCase()];
-    return null; // unknown code — caller logs
+    return null;
 }
 
 function readDbf(buf) {
@@ -72,7 +54,7 @@ function readDbf(buf) {
     const records = [];
     for (let r = 0; r < numRecords; r++) {
         const recOff = headerLen + r * recordLen;
-        if (buf[recOff] === 0x2A) continue; // deleted
+        if (buf[recOff] === 0x2A) continue;
         let pos = recOff + 1;
         const row = {};
         for (const f of fields) {
@@ -123,9 +105,9 @@ async function main() {
     let unchanged = 0;
     let notFound  = 0;
     let unknownCode = 0;
-    const changes = []; // {fips, name, state, before, after}
-    const missing = []; // {fips, name, state}
-    const unknown = []; // {fips, name, state, code}
+    const changes = [];
+    const missing = [];
+    const unknown = [];
 
     for (const feat of geo.features) {
         const p = feat.properties;
@@ -165,7 +147,6 @@ async function main() {
     await fs.writeFile(GEOJSON, JSON.stringify(geo));
     console.log('  done.');
 
-    // Report
     const lines = [];
     lines.push(`# Geojson partOfParentRegion repair from AWIPS FE_AREA`);
     lines.push('');
@@ -193,7 +174,6 @@ async function main() {
         lines.push('');
     }
 
-    // Group changes by (state, before→after) to show patterns
     const groups = new Map();
     for (const c of changes) {
         const key = `${c.state} :: [${c.before.join(',') || '∅'}] → [${c.after.join(',') || '∅'}]`;

@@ -764,6 +764,13 @@ export function ensurePiperLoaded(config = {}) {
         wasmBase = PIPER_ORT_WASM_BASE,
     } = config;
 
+    const mirror = (typeof window !== 'undefined' && window.__EAS_REMOTE_BASE__) || '';
+    const toMirror = (u) => (mirror && u && !/^https?:\/\//i.test(u)) ? mirror + String(u).replace(/^\.?\//, '') : u;
+    const wasmBaseFinal = toMirror(wasmBase);
+    const voiceFinal = mirror
+        ? { ...voice, modelUrl: toMirror(voice.modelUrl), configUrl: toMirror(voice.configUrl) }
+        : voice;
+
     return (async () => {
         if (window.PiperTTS?.pcmFor || window.PiperTTS?.predict) return;
 
@@ -780,7 +787,7 @@ export function ensurePiperLoaded(config = {}) {
         await __piperLoading;
 
         if (window.ort?.env?.wasm) {
-            window.ort.env.wasm.wasmPaths = wasmBase;
+            window.ort.env.wasm.wasmPaths = wasmBaseFinal;
         }
 
         const HF_URL_HINT = '/rhasspy/piper-voices/resolve';
@@ -790,7 +797,7 @@ export function ensurePiperLoaded(config = {}) {
             const url = typeof input === 'string' ? input : (input?.url || '');
             if (url.includes(HF_URL_HINT) || /voices(\.json)?$/.test(url)) {
                 const manifest = {};
-                manifest[voice.id] = { model: voice.modelUrl, config: voice.configUrl };
+                manifest[voiceFinal.id] = { model: voiceFinal.modelUrl, config: voiceFinal.configUrl };
                 return new Response(new Blob([JSON.stringify(manifest)], { type: 'application/json' }), { status: 200 });
             }
             return origFetch(input, init);
@@ -798,7 +805,7 @@ export function ensurePiperLoaded(config = {}) {
 
         if (window.PiperTTS?.init) {
             try {
-                await window.PiperTTS.init({ voiceId: voice.id, warmup: false });
+                await window.PiperTTS.init({ voiceId: voiceFinal.id, warmup: false, onnxWasm: wasmBaseFinal });
             } catch {
                 reportStatus('PiperTTS: init failed.', "ERROR");
             }

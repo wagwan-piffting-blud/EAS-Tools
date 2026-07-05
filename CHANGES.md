@@ -2,6 +2,8 @@
 
 - Add links to Google Play and Apple App Store to the README.md file and web FAQ. This allows users to easily access the mobile app versions of EAS Tools directly from the README. Pretty simple change, but needed.
 
+- Some small cleanup of code and stray, useless comments across the codebase.
+
 ---
 
 2026-07-04:

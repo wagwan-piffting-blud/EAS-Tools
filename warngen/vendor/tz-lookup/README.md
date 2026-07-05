@@ -21,7 +21,7 @@ The following updates have been made to this fork:
 
 - GitHub Actions now runs the test suite
 
-- Releases are now performed via OIDC, which provides [build provenance](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds). Scroll to the "Provenance" section at the bottom of https://www.npmjs.com/package/@photostructure/tz-lookup to validate. 
+- Releases are now performed via OIDC, which provides [build provenance](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds). Scroll to the "Provenance" section at the bottom of https://www.npmjs.com/package/@photostructure/tz-lookup to validate.
 
 ## Caution! This package trades speed and size for accuracy.
 
@@ -51,7 +51,7 @@ This drops to roughly 10% if you only pick points that are likely [inhabited](ht
 
 This error rate drops to roughly 5% if you consider time zones (like `Europe/Vienna` and `Europe/Berlin`) that result in equivalent time zone offset values throughout the year.
 
-Here's a sample of some errors from this page for some random locations from running the test suite. The first mentioned IANA timezone is from this package, and the second (probably more correct) IANA timezone is from `geo-tz`. 
+Here's a sample of some errors from this page for some random locations from running the test suite. The first mentioned IANA timezone is from this package, and the second (probably more correct) IANA timezone is from `geo-tz`.
 
 ```json
 [
@@ -109,7 +109,7 @@ Node.JS usage:
 
 ```javascript
 var tzlookup = require("@photostructure/tz-lookup");
-console.log(tzlookup(42.7235, -73.6931)); // prints "America/New_York"
+console.log(tzlookup(42.7235, -73.6931));
 ```
 
 Browser usage:
@@ -117,7 +117,7 @@ Browser usage:
 ```html
 <script src="tz.js"></script>
 <script>
-  alert(tzlookup(42.7235, -73.6931)); // alerts "America/New_York"
+  alert(tzlookup(42.7235, -73.6931));
 </script>
 ```
 

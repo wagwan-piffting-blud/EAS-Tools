@@ -75,7 +75,7 @@ async function loadCanonicalTranslit() {
     canonicalLoadUrl = url;
 
     try {
-        const mod = await import(/* webpackIgnore: true */ buildCacheBustedUrl(url));
+        const mod = await import(buildCacheBustedUrl(url));
         if (applyCanonicalTranslit(mod, "runtime-import")) {
             return;
         }

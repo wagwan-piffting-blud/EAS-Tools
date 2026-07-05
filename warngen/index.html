@@ -1545,8 +1545,6 @@
                     var action = document.getElementById("action-select").value;
                     var bbbid = etnRaw + String(issuedDate.getUTCHours()).padStart(2, "0") + String(issuedDate.getUTCMinutes()).padStart(2, "0");
 
-                    // if officeMeta.siteID is in the variable NORMALIZED_OFFICE_LABELS_ONLY, use that instead of the "true" office label, as some offices customize this in AWIPS.
-
                     if (NORMALIZED_OFFICE_LABELS_ONLY[officeMeta.siteId]) {
                         officeMeta = Object.assign({}, officeMeta, {
                             loc: NORMALIZED_OFFICE_LABELS_ONLY[officeMeta.siteId]

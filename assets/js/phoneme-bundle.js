@@ -219,7 +219,6 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
         }
     };
 
-    // === Native Bridge ===
     if (window.EASBridge) {
         window.EASBridge.on('phoneme:convert', (params) => {
             const text = params?.text;

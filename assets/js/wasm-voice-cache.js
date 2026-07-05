@@ -69,18 +69,37 @@
         });
     }
 
+    var _remoteBasePromise = null;
+    function remoteBase() {
+        if (_remoteBasePromise) return _remoteBasePromise;
+        _remoteBasePromise = (scope.fetch ? scope.fetch('/remote-manifest.json') : Promise.reject())
+            .then(function (r) { return (r && r.ok) ? r.json() : null; })
+            .then(function (m) { return (m && m.platform === 'ios' && m.remoteBase) ? m.remoteBase : ''; })
+            .catch(function () { return ''; });
+        return _remoteBasePromise;
+    }
+
     function fetchCachedBlob(url, opts) {
         opts = opts || {};
         var key = CACHE_VERSION + ':' + (opts.cacheKey || url);
         var onProgress = opts.onProgress;
 
-        return idbGet(key).catch(function () { return null; }).then(function (hit) {
-            if (hit instanceof Blob && hit.size > 0) {
-                if (onProgress) onProgress({ phase: 'cache', loaded: hit.size, total: hit.size });
-                return hit;
+        return remoteBase().then(function (base) {
+            var fetchUrl = url;
+            if (base) {
+                try {
+                    var abs = new URL(url, (scope.location && scope.location.href) || undefined);
+                    fetchUrl = base + abs.pathname.replace(/^\//, '') + abs.search;
+                } catch (e) { }
             }
-            return fetchBlobWithProgress(url, onProgress).then(function (blob) {
-                return idbPut(key, blob).catch(function () { }).then(function () { return blob; });
+            return idbGet(key).catch(function () { return null; }).then(function (hit) {
+                if (hit instanceof Blob && hit.size > 0) {
+                    if (onProgress) onProgress({ phase: 'cache', loaded: hit.size, total: hit.size });
+                    return hit;
+                }
+                return fetchBlobWithProgress(fetchUrl, onProgress).then(function (blob) {
+                    return idbPut(key, blob).catch(function () { }).then(function () { return blob; });
+                });
             });
         });
     }
