@@ -1,4 +1,10 @@
-# 2026-07-04
+# 2026-07-05
+
+- Add links to Google Play and Apple App Store to the README.md file and web FAQ. This allows users to easily access the mobile app versions of EAS Tools directly from the README. Pretty simple change, but needed.
+
+---
+
+2026-07-04:
 
 - Firstly, 🇺🇸 Happy Independence Day! 🇺🇸 This is a **massive** change update for today, so buckle in. To start us off, I have added Speechify Tom AND AcuVoice Roger - WASM Editions - to the encoder and splicer. They should be bit-accurate to the web TTS voices, but if you notice any discrepancies between the WASM and web versions, please let me know! The WASM editions of these voices are designed to run in the browser without requiring any external web calls, making them perfect for local-only work or cloning the voices for use in other applications. You are free to use the code and voice banks (I certainly did.) for anything you wish.
 
