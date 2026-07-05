@@ -4,6 +4,8 @@
 
 - Some small cleanup of code and stray, useless comments across the codebase.
 
+- Ignore this sentence. It will be removed.
+
 ---
 
 2026-07-04:
