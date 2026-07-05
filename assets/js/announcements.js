@@ -1,6 +1,3 @@
-// ignore me... again...
-console.log('announcements.js loaded');
-
 document.addEventListener('DOMContentLoaded', () => {
     fetch('https://wagspuzzle.space/tools/eas-tools/barker.php')
         .then(response => response.json())

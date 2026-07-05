@@ -4,8 +4,6 @@
 
 - Some small cleanup of code and stray, useless comments across the codebase.
 
-- Another useless changelog line to make the pre-commit hook happy.
-
 ---
 
 2026-07-04:
