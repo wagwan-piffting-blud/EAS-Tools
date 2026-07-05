@@ -189,7 +189,7 @@ For a demonstration of each individual TTS voice, see the [voice demo page](http
 * WAV writer: **wavefile.js** (bundled in `assets/js/wavefile.js`)
 * Resampling: **wave‑resampler.js** (bundled in `assets/js/wave‑resampler.js`)
 * gif.js: **gif.js** (bundled in `assets/js/gif.js`)
-* WebAssembly TTS voice: **piper.tts.js** (bundled in `assets/piper-tts/piper-tts-bundle.js` and `assets/piper-tts/`) and **nanotts.js** (bundled in `assets/js/nanotts.js` and `assets/nanotts/`)
+* WebAssembly TTS voices: **piper.tts.js** (bundled in `assets/piper-tts/piper-tts-bundle.js` and `assets/piper-tts/`), **nanotts.js** (`assets/js/nanotts.js`, wasm in `assets/wasm_tts_voices/nano/`, language data in `assets/nanotts/ttslang/`), **spfy_wasm.js** and **acu.js** (glue in `assets/js/`, wasm/data in `assets/wasm_tts_voices/spfy/` and `assets/wasm_tts_voices/acuvoice/`)
 * CodeMirror: **CodeMirror** (bundled in `assets/js/codemirror.js` and related CSS files in `assets/css/`)
 * E2T-NG: **E2T-NG** JS by wagwan-piffting-blud (originally by Newton Communications)
 * SoX-EMScripten: **sox-emscripten** (bundled in `assets/js/sox.js` and `assets/js/sox.wasm`)

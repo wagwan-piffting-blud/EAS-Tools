@@ -7,7 +7,7 @@ footer.innerHTML = `
     <li><p id="terms-of-service-link"><a href="terms.html">Terms of Service</a></p></li>
     <li><p id="privacy-policy-link"><a href="privacy.html">Privacy Policy</a></p></li>
     <li><p>Developed by <a href="https://github.com/wagwan-piffting-blud/">wagwan-piffting-blud</a></p></li>
-    <li><p>Hosted on <a href="https://github.com/wagwan-piffting-blud/eas-tools">GitHub Pages</a></p></li>
+    <li><p>Hosted with <a href="https://www.hetzner.com/">Hetzner</a></p></li>
     <li><p>Last updated: <span id="last-updated"><time datetime=""></time></span> (commit <span id="last-commit-hash"></span>)</p></li>
     <li><p><span id="tts-requests-counter">0/0</span> successful TTS requests served (resets in <span id="tts-requests-reset-time"></span>)</p></li>
     <li><p><a href="tts-docs.html">TTS Documentation</a></p></li>

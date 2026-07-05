@@ -1396,6 +1396,14 @@
             } else {
                 mixed = mixBuffers(sel.map(i => proj.tracks[i]), proj.length);
             }
+            if (cmd === 'MixAndRenderToNewTrack') {
+                // Audacity: keep the source tracks, APPEND the mix as a new track, select the new track.
+                proj.tracks.push(mixed);
+                if (proj.pans) proj.pans.push(0);
+                proj.selected = new Set([proj.tracks.length - 1]);
+                cfg.log(`  [project] MixAndRenderToNewTrack (${sel.length} track[s] -> new track ${proj.tracks.length - 1}${needStereo ? ' stereo' : ''})`);
+                return;
+            }
             const newTracks = [], newPans = []; let inserted = false;
             for (let i = 0; i < proj.tracks.length; i++) {
                 if (proj.selected.has(i)) { if (!inserted) { newTracks.push(mixed); newPans.push(0); inserted = true; } }
@@ -1690,6 +1698,9 @@
         }
         const total = steps.length;
         proj.undoEnabled = steps.some(st => st.cmd === 'Undo' || st.cmd === 'Redo');
+        let maxUndoRun = 0; for (let i = 0, run = 0; i < total; i++) { if (steps[i].cmd === 'Undo') { run++; if (run > maxUndoRun) maxUndoRun = run; } else run = 0; }
+        const undoCap = cfg.undoDepth || Math.max(maxUndoRun + 1, 2);
+        if (proj.undoEnabled) cfg.log(`  [project] undo history capped at ${undoCap} (macro's deepest undo run = ${maxUndoRun})`);
 
         for (let s = 0; s < total; s++) {
             const { cmd, params } = steps[s];
@@ -1698,7 +1709,7 @@
             const report = (frac) => { if (onProgress) onProgress({ step: s + 1, total, cmd, fraction: (s + frac) / total }); };
             if (proj.undoEnabled && !NON_UNDOABLE.has(cmd)) {
                 proj.undoStack.push(snapshotProj(proj));
-                if (proj.undoStack.length > 32) proj.undoStack.shift();
+                while (proj.undoStack.length > undoCap) proj.undoStack.shift();
                 proj.redoStack.length = 0;
             }
             report(0);

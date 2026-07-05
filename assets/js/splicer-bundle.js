@@ -1,4 +1,4 @@
-import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
+import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME, PIPER_DEFAULT_VOICE_ID as PIPER_VOICE, resamplePcm, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, getSpfyEngine, getAcuEngine } from './common-functions.js';
 
 (async function () {
     let splicerTextEditor = null;
@@ -6,26 +6,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     function initSplicerTextEditor() {
         if (splicerTextEditor || !window.CodeMirror) return splicerTextEditor;
 
-        const splicerTextArea = document.getElementById('ttsText2');
-        if (!splicerTextArea) return null;
-
-        const splicerEditor = CodeMirror.fromTextArea(splicerTextArea, {
-            lineNumbers: true,
-            mode: 'text/xml',
-            matchBrackets: true,
+        const splicerEditor = createTtsTextEditor({
+            textareaId: 'ttsText2',
+            ariaLabel: 'Text to convert to speech',
             theme: USES_DARK_THEME ? CODEMIRROR_DARK_THEME_NAME : CODEMIRROR_LIGHT_THEME_NAME,
-            lineWrapping: true,
         });
-
-        splicerEditor.getInputField().setAttribute('aria-label', 'Text to convert to speech');
-        splicerEditor.setSize('27vw', '15rem');
-
-        const splicerWrapper = splicerEditor.getWrapperElement();
-        splicerWrapper.classList.add('ttsText', 'ttsText--editor');
-
-        splicerEditor.on('change', () => {
-            splicerEditor.save();
-        });
+        if (!splicerEditor) return null;
 
         splicerTextEditor = splicerEditor;
         return splicerEditor;
@@ -99,18 +85,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const DB_NAME = 'eas-splicer';
     const STORE = 'projects';
     const CACHE_KEY = 'current';
-    const PIPER_BUNDLE_URL = 'assets/piper-tts/piper.tts.bundle.js';
-    const PIPER_VOICE = 'en_US-joe-medium';
-    const NANO_TTS_LANGUAGE = 'en-US';
-    const NANO_TTS_VOLUME = 0.5;
-    const NANO_TTS_WORKER_URL = new URL('./text2wav-worker.js', import.meta.url);
     const voiceBackendMap = {};
-    const nanoTtsState = {
-        worker: null,
-        ready: false,
-        queue: [],
-        currentJob: null,
-    };
     let enable60HzHum = enable60HzHumCheckbox?.checked === true;
     let currentSegmentId = null;
     const segmentPlayButtons = new Map();
@@ -150,7 +125,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     let touchPan = null;
     let touchPlayhead = null;
     let cacheDbPromise = null;
-    let ttsLoader = null;
     let voiceListLoaded = false;
 
     const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
@@ -747,23 +721,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         state.viewStart = start;
         state.viewEnd = end;
         drawWaveform();
-    };
-
-    const resamplePcm = (pcm, fromRate, toRate) => {
-        if (!pcm) return new Float32Array(0);
-        if (fromRate === toRate) return new Float32Array(pcm);
-        const ratio = fromRate / toRate;
-        const newLen = Math.max(1, Math.round(pcm.length / ratio));
-        const out = new Float32Array(newLen);
-        for (let i = 0; i < newLen; i++) {
-            const pos = i * ratio;
-            const idx = Math.floor(pos);
-            const frac = pos - idx;
-            const a = pcm[idx] ?? 0;
-            const b = pcm[idx + 1] ?? a;
-            out[i] = a + (b - a) * frac;
-        }
-        return out;
     };
 
     const rebuildTimeline = () => {
@@ -1538,213 +1495,82 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         drawWaveform();
     };
 
-    const ensureTtsReady = async () => {
-        if (window.PiperTTS) return;
-        if (!ttsLoader) {
-            ttsLoader = new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = PIPER_BUNDLE_URL;
-                s.async = true;
-                s.onload = resolve;
-                s.onerror = () => reject(new Error('Failed to load TTS bundle'));
-                document.head.appendChild(s);
-            });
-        }
-        await ttsLoader;
-        if (window.ort?.env?.wasm) {
-            window.ort.env.wasm.wasmPaths = 'assets/piper-tts/onnxruntime-web/';
-        }
+    const piperReportStatus = (message) => {
+        if (ttsStatus) ttsStatus.textContent = message;
     };
+    const ensurePiper = () => ensurePiperLoaded({ reportStatus: piperReportStatus });
 
-    const reportNanoTtsStatus = (message) => {
-        if (!ttsStatus || !message) return;
-        ttsStatus.textContent = message;
-    };
-
-    const flushNanoTtsQueue = (error) => {
-        while (nanoTtsState.queue.length) {
-            const job = nanoTtsState.queue.shift();
-            job.reject(error);
-        }
-    };
-
-    const startNextNanoTtsJob = () => {
-        if (!nanoTtsState.worker || !nanoTtsState.ready) return;
-        if (nanoTtsState.currentJob || !nanoTtsState.queue.length) return;
-        const job = nanoTtsState.queue.shift();
-        nanoTtsState.currentJob = job;
-        nanoTtsState.worker.postMessage({
-            lang: job.lang || NANO_TTS_LANGUAGE,
-            volume: `${job.volume ?? NANO_TTS_VOLUME}`,
-            text: job.text,
-        });
-    };
-
-    const processNanoTtsBlob = async (blob) => {
-        const job = nanoTtsState.currentJob;
-        if (!job) return;
-        try {
+    const nanoTts = createNanoTtsEngine({
+        reportStatus: (message, level = "LOG") => {
+            if (!ttsStatus || !message) return;
+            ttsStatus.textContent = level === "ERROR" ? `NanoTTS error: ${message}` : message;
+        },
+        decodeBlob: async (blob) => {
             const ctxAudio = getAudioCtx();
             const buffer = await blob.arrayBuffer();
             const decoded = await ctxAudio.decodeAudioData(buffer);
             const channel = decoded.getChannelData(0);
             const pcm = new Float32Array(channel.length);
             pcm.set(channel);
-            job.resolve({ pcm, sampleRate: decoded.sampleRate });
-        } catch (err) {
-            job.reject(err);
-        } finally {
-            nanoTtsState.currentJob = null;
-            startNextNanoTtsJob();
-        }
-    };
+            return { pcm, sampleRate: decoded.sampleRate };
+        },
+    });
 
-    const handleNanoTtsWorkerError = (message, fatal = false) => {
-        const error = message instanceof Error ? message : new Error(message || 'NanoTTS error');
-        reportNanoTtsStatus(`NanoTTS error: ${error.message}`);
-        if (nanoTtsState.currentJob) {
-            nanoTtsState.currentJob.reject(error);
-            nanoTtsState.currentJob = null;
-        }
-        if (fatal) {
-            if (nanoTtsState.worker) {
-                nanoTtsState.worker.terminate();
-            }
-            nanoTtsState.worker = null;
-            nanoTtsState.ready = false;
-            flushNanoTtsQueue(error);
-        } else {
-            startNextNanoTtsJob();
-        }
-    };
-
-    const handleNanoTtsWorkerMessage = (event) => {
-        const data = event?.data || {};
-        if (data.type === 'ready') {
-            nanoTtsState.ready = true;
-            startNextNanoTtsJob();
+    const wasmVoiceProgress = (progress) => {
+        if (!progress) {
+            setMacroProgress(1);
             return;
         }
-        if (data.type === 'progress') {
-            if (data.error) {
-                handleNanoTtsWorkerError(data.error);
-            } else if (data.data) {
-                reportNanoTtsStatus(data.data);
-            }
-            return;
-        }
-        if (data.error) {
-            handleNanoTtsWorkerError(data.error);
-            return;
-        }
-        if (data.blob) {
-            processNanoTtsBlob(data.blob);
-        }
-    };
-
-    const ensureNanoTtsWorker = () => {
-        if (!window.Worker) {
-            throw new Error('NanoTTS requires Web Worker support in this browser.');
-        }
-        if (nanoTtsState.worker) return nanoTtsState.worker;
-        let worker;
-        try {
-            worker = new Worker(NANO_TTS_WORKER_URL, { type: 'classic' });
-        } catch (err) {
-            worker = new Worker(NANO_TTS_WORKER_URL);
-        }
-        worker.addEventListener('message', handleNanoTtsWorkerMessage);
-        worker.addEventListener('error', (event) => handleNanoTtsWorkerError(event?.message || 'NanoTTS worker error', true));
-        worker.addEventListener('messageerror', () => handleNanoTtsWorkerError('NanoTTS worker message error', true));
-        nanoTtsState.worker = worker;
-        nanoTtsState.ready = false;
-        return worker;
-    };
-
-    const synthNanoTts = (text) => {
-        ensureNanoTtsWorker();
-        return new Promise((resolve, reject) => {
-            nanoTtsState.queue.push({
-                text,
-                resolve,
-                reject,
-                lang: NANO_TTS_LANGUAGE,
-                volume: NANO_TTS_VOLUME,
-            });
-            startNextNanoTtsJob();
-        });
+        const mb = (n) => (n / 1048576).toFixed(1);
+        const frac = progress.total ? Math.min(0.999, progress.loaded / progress.total) : 0;
+        setMacroProgress(frac, progress.total
+            ? `Downloading ${progress.label} (${mb(progress.loaded)} / ${mb(progress.total)} MB)`
+            : `Downloading ${progress.label}...`);
     };
 
     const synthTts = async (text, voice) => {
         const mode = (voice || 'wasm').toLowerCase();
         if (mode === 'nanotts') {
-            return synthNanoTts(text);
+            return nanoTts.synth(text);
         }
-        await ensureTtsReady();
+        if (mode === 'spfy') {
+            return getSpfyEngine().synth(text, { reportStatus: piperReportStatus, onProgress: wasmVoiceProgress });
+        }
+        if (mode === 'acuvoice') {
+            return getAcuEngine().synth(text, { reportStatus: piperReportStatus, onProgress: wasmVoiceProgress });
+        }
         const target = state.sampleRate || 44100;
-        if (window.PiperTTS?.pcmFor) {
-            const pcm = await window.PiperTTS.pcmFor(text, PIPER_VOICE, target);
-            return { pcm: new Float32Array(pcm), sampleRate: target };
-        }
-        if (window.PiperTTS?.synthToWavBlob) {
-            const wav = await window.PiperTTS.synthToWavBlob(text);
-            const ctxAudio = getAudioCtx();
-            const decoded = await ctxAudio.decodeAudioData(await wav.arrayBuffer());
-            return { pcm: new Float32Array(decoded.getChannelData(0)), sampleRate: decoded.sampleRate };
-        }
-        throw new Error('TTS service unavailable');
+        const pcm = await getPiperPcm(text, target, { ensureLoaded: ensurePiper, reportStatus: piperReportStatus });
+        if (!pcm) throw new Error('TTS service unavailable');
+        return { pcm, sampleRate: target };
     };
 
     const getVoiceList = async () => {
         if (!voiceSelect || voiceListLoaded) return;
-        const url = "https://wagspuzzle.space/tools/eas-tts/index.php?handler=toolkit&voicelist=true";
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
 
-            for (const [voiceId, voiceName] of Object.entries(data.voices)) {
-                if (voiceName.toLowerCase().includes("emnet")) {
+        const ok = await populateRemoteVoiceList({
+            selectElement: voiceSelect,
+            voiceBackendMap,
+            reportError: () => {
+                if (ttsStatus) ttsStatus.textContent = "Failed to load external voices; WASM only.";
+            },
+        });
+        if (!ok) return;
+
+        voiceListLoaded = true;
+
+        if (window.EASBridge) {
+            window.EASBridge.on('splicer:nativeVoicesData', (data) => {
+                const voices = data?.voices;
+                if (!Array.isArray(voices) || !voiceSelect) return;
+                for (const v of voices) {
                     const option = document.createElement("option");
-                    option.value = voiceId;
-                    option.textContent = "[EMNet] EMNet (uses generated headers as input)";
-                    voiceSelect.appendChild(option);
-                } else {
-                    const backendMatch = voiceName.match(/\[(.*?)\]/);
-                    let backend = backendMatch ? backendMatch[1] : "Unknown";
-
-                    if (voiceName.toLowerCase().includes("bal/spfy")) {
-                        backend = "BAL";
-                    }
-
-                    if (!voiceBackendMap[backend]) {
-                        voiceBackendMap[backend] = [];
-                    }
-
-                    voiceBackendMap[backend].push(voiceId);
-                    const option = document.createElement("option");
-                    option.value = voiceId;
-                    option.textContent = voiceName;
+                    option.value = v.id;
+                    option.textContent = v.label;
                     voiceSelect.appendChild(option);
                 }
-            }
-            voiceListLoaded = true;
-
-            if (window.EASBridge) {
-                window.EASBridge.on('splicer:nativeVoicesData', (data) => {
-                    const voices = data?.voices;
-                    if (!Array.isArray(voices) || !voiceSelect) return;
-                    for (const v of voices) {
-                        const option = document.createElement("option");
-                        option.value = v.id;
-                        option.textContent = v.label;
-                        voiceSelect.appendChild(option);
-                    }
-                });
-                window.EASBridge.send('splicer:requestNativeVoices', {});
-            }
-        } catch (error) {
-            console.error("Error fetching voice list:", error);
-            if (ttsStatus) ttsStatus.textContent = "Failed to load external voices; WASM only.";
+            });
+            window.EASBridge.send('splicer:requestNativeVoices', {});
         }
     };
 
@@ -1752,194 +1578,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const zczcPattern = window.EASREGEX;
         return zczcPattern.test(header.trim());
     };
-
-    async function validateTtsText(voice, text) {
-        const requiredBackend = Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(voice));
-        const normalizedBackend = requiredBackend ? requiredBackend.toLowerCase() : "";
-        let ttsText = text;
-        const usesBalPhonemes = /<\s*\/?\s*(silence|pron|phoneme)/i.test(ttsText);
-        const usesVtmlTags = /<\s*\/?\s*vtml/i.test(ttsText);
-        const usesDtPhonemes = /\[:phoneme/i.test(ttsText);
-
-        if (normalizedBackend.includes("bal")) {
-            if (usesVtmlTags || usesDtPhonemes) {
-                alert("BAL backend cannot include VT or DT phoneme markup.");
-                return false;
-            }
-
-            if (usesBalPhonemes && !/<(silence|pron|phoneme).*/i.test(ttsText)) {
-                alert("TTS Text contains invalid BAL phonemes or formatting.");
-                return false;
-            }
-
-            if (ttsText.match(/“|”/)) {
-                ttsText = ttsText.replace(/“|”/g, '"');
-                window.ttsText = ttsText;
-                return true;
-            }
-        }
-        else if (normalizedBackend.includes("vt")) {
-            if (usesBalPhonemes || usesDtPhonemes) {
-                alert("VT backend cannot include BAL or DT phoneme markup.");
-                return false;
-            }
-
-            if (usesVtmlTags && !/<vtml.*/i.test(ttsText)) {
-                alert("TTS Text contains invalid VT phonemes or formatting.");
-                return false;
-            }
-
-            if (ttsText.match(/“|”/)) {
-                ttsText = ttsText.replace(/“|”/g, '"');
-                window.ttsText = ttsText;
-                return true;
-            }
-        }
-        else if (normalizedBackend.includes("dt")) {
-            if (usesBalPhonemes || usesVtmlTags) {
-                alert("DT backend cannot include BAL or VT phoneme markup.");
-                return false;
-            }
-
-            if (usesDtPhonemes && !/\[:phoneme on].*/i.test(ttsText)) {
-                alert("TTS Text contains invalid DT phonemes or formatting.");
-                return false;
-            }
-        }
-        else if (!normalizedBackend.includes("bal") && !normalizedBackend.includes("vt") && !normalizedBackend.includes("dt")) {
-            if (usesBalPhonemes || usesVtmlTags || usesDtPhonemes) {
-                alert("Selected TTS voice backend does not support BAL, VT, or DT phoneme markup.");
-                return false;
-            }
-        }
-        return true;
-    }
-
-    function indexToLineCol(s, idx) {
-        let line = 1, col = 1;
-        for (let i = 0; i < idx; i++) {
-            if (s[i] === "\n") { line++; col = 1; }
-            else col++;
-        }
-        return { line, col };
-    }
-
-    function findLikelyXmlMismatch(xml) {
-        const stack = [];
-        const len = xml.length;
-
-        let i = 0;
-        while (i < len) {
-            const lt = xml.indexOf("<", i);
-            if (lt === -1) break;
-
-            i = lt;
-
-            if (i + 1 >= len) break;
-
-            const gt = xml.indexOf(">", i + 1);
-            if (gt === -1) {
-                return { type: "unterminated-tag", index: i, ...indexToLineCol(xml, i) };
-            }
-
-            const raw = xml.slice(i + 1, gt).trim();
-
-            if (raw.startsWith("?") || raw.startsWith("!")) {
-                i = gt + 1;
-                continue;
-            }
-
-            const isClose = raw.startsWith("/");
-            const isSelfClose = raw.endsWith("/");
-
-            if (isClose) {
-                const name = raw.slice(1).trim().split(/\s+/)[0];
-                const top = stack[stack.length - 1];
-
-                if (!top) {
-                    return { type: "unexpected-close", name, index: i, ...indexToLineCol(xml, i) };
-                }
-                if (top.name !== name) {
-                    return {
-                        type: "mismatched-close",
-                        got: name,
-                        expected: top.name,
-                        closeIndex: i,
-                        closeLineCol: indexToLineCol(xml, i),
-                        openIndex: top.index,
-                        ...indexToLineCol(xml, top.index),
-                    };
-                }
-                stack.pop();
-            } else if (!isSelfClose) {
-                const name = raw.split(/\s+/)[0];
-                stack.push({ name, index: i });
-            }
-
-            i = gt + 1;
-        }
-
-        if (stack.length) {
-            const top = stack[stack.length - 1];
-            return {
-                type: "unexpected-eof",
-                expectedClose: top.name,
-                openIndex: top.index,
-                ...indexToLineCol(xml, top.index),
-            };
-        }
-
-        return null;
-    }
-
-    function customAlertDiv(message) {
-        const alertDiv = document.createElement("div");
-        alertDiv.style.position = "fixed";
-        alertDiv.style.top = "50%";
-        alertDiv.style.left = "50%";
-        alertDiv.style.transform = "translate(-50%, -50%)";
-        alertDiv.style.backgroundColor = "#050505";
-        alertDiv.style.border = "2px solid #f5f5f5";
-        alertDiv.style.padding = "20px";
-        alertDiv.style.zIndex = "10000";
-        alertDiv.style.maxWidth = "80%";
-        alertDiv.style.maxHeight = "80%";
-        alertDiv.style.overflowY = "auto";
-        alertDiv.style.fontFamily = "Hack, monospace";
-        alertDiv.style.color = "#f5f5f5";
-        alertDiv.innerText = message;
-
-        const closeButton = document.createElement("button");
-        closeButton.innerText = "Close";
-        closeButton.style.marginTop = "10px";
-        closeButton.onclick = () => {
-            document.body.removeChild(alertDiv);
-        };
-        alertDiv.appendChild(closeButton);
-
-        document.body.appendChild(alertDiv);
-    }
-
-    async function validateMarkupAndText(voice, text) {
-        const isValidTextForBackend = await validateTtsText(voice, text);
-        if (!isValidTextForBackend) {
-            return false;
-        }
-        else {
-            let ttsText = text;
-            const err = findLikelyXmlMismatch(ttsText);
-            const context = 50;
-            if (err) {
-                console.log(err);
-                let substring = "";
-                substring = ttsText.slice(err.col - context, err.col + context).replace(/\n/g, " ");
-                let message = `Announcement text contains malformed XML/markup at line ${err.line}, column ${err.col}.\n\n${substring}\n${"-".repeat(context)}^${"-".repeat(context - 1)}\n\nMake sure all XML tags are properly opened and closed or are self-closing.\n`;
-                customAlertDiv(message);
-                return false;
-            }
-            return true;
-        }
-    }
 
     const getAudioFromPage = async (response) => {
         const decoder = new TextDecoder("utf-8");
@@ -2659,8 +2297,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             ttsButton.disabled = true;
             if (ttsStatus) ttsStatus.textContent = 'Generating...';
             try {
-                if (normalizedVoice === 'wasm' || normalizedVoice === 'nanotts') {
-                    const valid = await validateMarkupAndText(selectedVoiceValue, text);
+                if (normalizedVoice === 'wasm' || normalizedVoice === 'nanotts' || normalizedVoice === 'spfy' || normalizedVoice === 'acuvoice') {
+                    const valid = await validateMarkupAndText(voiceBackendMap, selectedVoiceValue, text);
                     if (!valid) {
                         if (ttsStatus) ttsStatus.textContent = 'Text contains invalid phonemes or markup for this backend.';
                         return;
@@ -2702,7 +2340,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                         throw new Error('No audio returned from native TTS');
                     }
                 } else {
-                    const valid = await validateMarkupAndText(selectedVoiceValue, text);
+                    const valid = await validateMarkupAndText(voiceBackendMap, selectedVoiceValue, text);
                     if (!valid) {
                         if (ttsStatus) ttsStatus.textContent = 'Text contains invalid phonemes or markup for this backend.';
                         return;
@@ -3320,66 +2958,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             else if (v < -1) v = -1;
 
             out[i] = v;
-        }
-
-        return out;
-    }
-
-    function vmifyPcm(pcm, sampleRate, options = {}) {
-        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
-            return pcm;
-        }
-
-        const sr = Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : 44100;
-        const nyquist = sr / 2;
-        if (nyquist < 5000) return pcm;
-
-        let intensity = Number.isFinite(options.intensity) ? options.intensity : 1;
-        if (intensity < 0) intensity = 0;
-        else if (intensity > 3) intensity = 3;
-
-        const drive = 3.16;
-        const driven = new Float32Array(pcm.length);
-        for (let i = 0; i < pcm.length; i++) {
-            driven[i] = Math.tanh(pcm[i] * drive);
-        }
-
-        const freq = Math.min(4000, nyquist * 0.8);
-        const w0 = 2 * Math.PI * freq / sr;
-        const cos0 = Math.cos(w0);
-        const alp = Math.sin(w0) / (2 * 0.707);
-        const norm = 1 / (1 + alp);
-        const b0 = ((1 + cos0) / 2) * norm;
-        const b1 = -(1 + cos0) * norm;
-        const b2 = b0;
-        const a1 = (-2 * cos0) * norm;
-        const a2 = (1 - alp) * norm;
-
-        let s1x1 = 0, s1x2 = 0, s1y1 = 0, s1y2 = 0;
-        let s2x1 = 0, s2x2 = 0, s2y1 = 0, s2y2 = 0;
-
-        const hfGain = 1.41 * intensity;
-        const out = new Float32Array(pcm.length);
-        let peak = 0;
-
-        for (let i = 0; i < pcm.length; i++) {
-            const x0 = driven[i];
-            const y0 = b0 * x0 + b1 * s1x1 + b2 * s1x2 - a1 * s1y1 - a2 * s1y2;
-            s1x2 = s1x1; s1x1 = x0;
-            s1y2 = s1y1; s1y1 = y0;
-
-            const y1 = b0 * y0 + b1 * s2x1 + b2 * s2x2 - a1 * s2y1 - a2 * s2y2;
-            s2x2 = s2x1; s2x1 = y0;
-            s2y2 = s2y1; s2y1 = y1;
-
-            out[i] = pcm[i] + y1 * hfGain;
-            const abs = out[i] < 0 ? -out[i] : out[i];
-            if (abs > peak) peak = abs;
-        }
-
-        if (peak > 0.9441) {
-            const g = 0.9441 / peak;
-            for (let i = 0; i < out.length; i++) out[i] *= g;
         }
 
         return out;

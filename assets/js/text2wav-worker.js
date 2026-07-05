@@ -25,8 +25,8 @@ function number_format(number, decimals, dec_point, thousands_sep) {
 }
 
 var func_name='nanotts';
-var wasmBasePath='../nanotts/';
-var langBasePath=wasmBasePath+'ttslang/';
+var wasmBasePath='../wasm_tts_voices/nano/';
+var langBasePath='../nanotts/ttslang/';
 var ttslangs={"de-DE":["de-DE_gl0_sg.bin","de-DE_ta.bin",634996,440732],"en-GB":["en-GB_kh0_sg.bin","en-GB_ta.bin",584436,412248],"en-US":["en-US_lh0_sg.bin","en-US_ta.bin",777396,650668],"es-ES":["es-ES_ta.bin","es-ES_zl0_sg.bin",256744,605280],"fr-FR":["fr-FR_nk0_sg.bin","fr-FR_ta.bin",833236,381936],"it-IT":["it-IT_cm0_sg.bin","it-IT_ta.bin",628268,252044]};	
 
 var self2=self;

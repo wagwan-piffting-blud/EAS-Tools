@@ -1,4 +1,4 @@
-import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME } from './common-functions.js';
+import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, getSpfyEngine, getAcuEngine } from './common-functions.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -16,27 +16,15 @@ if (typeof window !== 'undefined') {
     function initEncoderTextEditor() {
         if (encoderTextEditor || !window.CodeMirror) return encoderTextEditor;
 
-        const encoderTextArea = document.getElementById('ttsText');
-        if (!encoderTextArea) return null;
-
-        const encoderEditor = CodeMirror.fromTextArea(encoderTextArea, {
-            lineNumbers: true,
-            mode: 'text/xml',
-            matchBrackets: true,
+        const encoderEditor = createTtsTextEditor({
+            textareaId: 'ttsText',
+            ariaLabel: 'Text to speak in the alert announcement',
             theme: window.matchMedia('(prefers-color-scheme: light)').matches ? CODEMIRROR_LIGHT_THEME_NAME : CODEMIRROR_DARK_THEME_NAME,
-            lineWrapping: true,
+            onChange: (editor) => {
+                window.ttsText = editor.getValue().trim();
+            },
         });
-
-        encoderEditor.getInputField().setAttribute('aria-label', 'Text to speak in the alert announcement');
-        encoderEditor.setSize('27vw', '15rem');
-
-        const encoderWrapper = encoderEditor.getWrapperElement();
-        encoderWrapper.classList.add('ttsText', 'ttsText--editor');
-
-        encoderEditor.on('change', () => {
-            encoderEditor.save();
-            window.ttsText = encoderEditor.getValue().trim();
-        });
+        if (!encoderEditor) return null;
 
         encoderTextEditor = encoderEditor;
         return encoderEditor;
@@ -364,190 +352,30 @@ async function fetchAndStore() {
         await __loadRelayPopFile(cfg.fileEnd);
     }
 
-    const PIPER_BUNDLE_URL = 'assets/piper-tts/piper.tts.bundle.js';
-    const ORT_WASM_BASE = 'assets/piper-tts/onnxruntime-web/';
+    const piperReportStatus = (message, level = "LOG") => addStatus(message, level);
+    const ensurePiper = () => ensurePiperLoaded({ reportStatus: piperReportStatus });
 
-    const PIPER_VOICE_ID = 'en_US-joe-medium';
-
-    const PIPER_VOICE = {
-        modelUrl: 'assets/piper-tts/voices/en_US-joe-medium.onnx',
-        configUrl: 'assets/piper-tts/voices/en_US-joe-medium.onnx.json',
-    };
-
-    let __piperLoading = null;
-
-    async function ensurePiperLoaded() {
-        if (window.PiperTTS?.pcmFor || window.PiperTTS?.predict) return;
-
-        if (!__piperLoading) {
-            __piperLoading = new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = PIPER_BUNDLE_URL;
-                s.async = true;
-                s.onload = resolve;
-                s.onerror = reject;
-                document.head.appendChild(s);
-            });
-        }
-        await __piperLoading;
-
-        if (window.ort?.env?.wasm) {
-            window.ort.env.wasm.wasmPaths = ORT_WASM_BASE;
-        }
-
-        const HF_URL_HINT = '/rhasspy/piper-voices/resolve';
-        const origFetch = window.fetch.bind(window);
-
-        window.fetch = async (input, init) => {
-            const url = typeof input === 'string' ? input : (input?.url || '');
-            if (url.includes(HF_URL_HINT) || /voices(\.json)?$/.test(url)) {
-                const manifest = {};
-                manifest[PIPER_VOICE_ID] = { model: PIPER_VOICE.modelUrl, config: PIPER_VOICE.configUrl };
-                return new Response(new Blob([JSON.stringify(manifest)], { type: 'application/json' }), { status: 200 });
-            }
-            return origFetch(input, init);
-        };
-
-        if (window.PiperTTS?.init) {
+    const nanoTts = createNanoTtsEngine({
+        reportStatus: (message, level = "LOG") => {
+            if (!message) return;
+            addStatus(`NanoTTS: ${message}`, level);
+        },
+        readyStatus: "Local voice ready.",
+        decodeBlob: async (blob) => {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             try {
-                await window.PiperTTS.init({ voiceId: PIPER_VOICE_ID, warmup: false });
-            } catch {
-                addStatus('PiperTTS: init failed.', "ERROR");
+                const buffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
+                const pcm = buffer.getChannelData(0);
+                const copy = new Float32Array(pcm.length);
+                copy.set(pcm);
+                return { pcm: copy, sampleRate: buffer.sampleRate };
+            } finally {
+                if (typeof audioContext.close === "function") {
+                    audioContext.close().catch(() => { });
+                }
             }
-        }
-    }
-
-    const NANO_TTS_LANGUAGE = 'en-US';
-    const NANO_TTS_VOLUME = 0.5;
-    const NANO_TTS_WORKER_URL = new URL('./text2wav-worker.js', import.meta.url);
-    const nanoTtsState = {
-        worker: null,
-        ready: false,
-        queue: [],
-        currentJob: null,
-    };
-
-    const reportNanoTtsStatus = (message, level = "LOG") => {
-        if (!message) return;
-        addStatus(`NanoTTS: ${message}`, level);
-    };
-
-    const flushNanoTtsQueue = (error) => {
-        while (nanoTtsState.queue.length) {
-            const job = nanoTtsState.queue.shift();
-            job.reject(error);
-        }
-    };
-
-    const startNextNanoTtsJob = () => {
-        if (!nanoTtsState.worker || !nanoTtsState.ready) return;
-        if (nanoTtsState.currentJob || !nanoTtsState.queue.length) return;
-        const job = nanoTtsState.queue.shift();
-        nanoTtsState.currentJob = job;
-        nanoTtsState.worker.postMessage({
-            lang: job.lang || NANO_TTS_LANGUAGE,
-            volume: `${job.volume ?? NANO_TTS_VOLUME}`,
-            text: job.text,
-        });
-    };
-
-    const processNanoTtsBlob = async (blob) => {
-        const job = nanoTtsState.currentJob;
-        if (!job) return;
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        try {
-            const buffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
-            const pcm = buffer.getChannelData(0);
-            const copy = new Float32Array(pcm.length);
-            copy.set(pcm);
-            job.resolve({ pcm: copy, sampleRate: buffer.sampleRate });
-        } catch (error) {
-            job.reject(error);
-        } finally {
-            if (typeof audioContext.close === "function") {
-                audioContext.close().catch(() => { });
-            }
-            nanoTtsState.currentJob = null;
-            startNextNanoTtsJob();
-        }
-    };
-
-    const handleNanoTtsWorkerError = (message, fatal = false) => {
-        const error = message instanceof Error ? message : new Error(message || 'NanoTTS error');
-        reportNanoTtsStatus(error.message, "ERROR");
-        if (nanoTtsState.currentJob) {
-            nanoTtsState.currentJob.reject(error);
-            nanoTtsState.currentJob = null;
-        }
-        if (fatal) {
-            if (nanoTtsState.worker) {
-                nanoTtsState.worker.terminate();
-            }
-            nanoTtsState.worker = null;
-            nanoTtsState.ready = false;
-            flushNanoTtsQueue(error);
-        } else {
-            startNextNanoTtsJob();
-        }
-    };
-
-    const handleNanoTtsWorkerMessage = (event) => {
-        const data = event?.data || {};
-        if (data.type === "ready") {
-            nanoTtsState.ready = true;
-            reportNanoTtsStatus("Local voice ready.");
-            startNextNanoTtsJob();
-            return;
-        }
-        if (data.type === "progress") {
-            if (data.error) {
-                handleNanoTtsWorkerError(data.error);
-            } else if (data.data) {
-                reportNanoTtsStatus(data.data);
-            }
-            return;
-        }
-        if (data.error) {
-            handleNanoTtsWorkerError(data.error);
-            return;
-        }
-        if (data.blob) {
-            processNanoTtsBlob(data.blob);
-        }
-    };
-
-    const ensureNanoTtsWorker = () => {
-        if (!window.Worker) {
-            throw new Error('NanoTTS requires Web Worker support in this browser.');
-        }
-        if (nanoTtsState.worker) return nanoTtsState.worker;
-        let worker;
-        try {
-            worker = new Worker(NANO_TTS_WORKER_URL, { type: 'classic' });
-        } catch (err) {
-            worker = new Worker(NANO_TTS_WORKER_URL);
-        }
-        worker.addEventListener('message', handleNanoTtsWorkerMessage);
-        worker.addEventListener('error', (event) => handleNanoTtsWorkerError(event?.message || 'NanoTTS worker error', true));
-        worker.addEventListener('messageerror', () => handleNanoTtsWorkerError('NanoTTS worker message error', true));
-        nanoTtsState.worker = worker;
-        nanoTtsState.ready = false;
-        return worker;
-    };
-
-    function synthNanoTts(text) {
-        ensureNanoTtsWorker();
-        return new Promise((resolve, reject) => {
-            nanoTtsState.queue.push({
-                text,
-                resolve,
-                reject,
-                lang: NANO_TTS_LANGUAGE,
-                volume: NANO_TTS_VOLUME,
-            });
-            startNextNanoTtsJob();
-        });
-    }
+        },
+    });
 
     function dbToLin(db) { return Math.pow(10, db / 20); }
 
@@ -592,61 +420,6 @@ async function fetchAndStore() {
     }
 
 
-    async function getPiperPcm(text, targetRate) {
-        if (!text || !text.trim()) return null;
-
-        await ensurePiperLoaded();
-
-        addStatus("Generating local TTS audio... this may take a while, especially if your text is longer than a few sentences.");
-
-        if (window.PiperTTS?.pcmFor) {
-            return await window.PiperTTS.pcmFor(text, PIPER_VOICE_ID, targetRate);
-        }
-
-        let wavBlob = null;
-
-        if (window.PiperTTS?.synthToWavBlob) {
-            wavBlob = await window.PiperTTS.synthToWavBlob(text);
-        }
-
-        else {
-            addStatus('PiperTTS: no synthToWavBlob/pcmFor found.', "WARN");
-            return null;
-        }
-
-        if (window.wavefile?.WaveFile) {
-            const WaveFile = window.wavefile.WaveFile;
-            const ab = await wavBlob.arrayBuffer();
-            let w = new WaveFile(new Uint8Array(ab));
-
-            if (w.fmt.sampleRate !== targetRate) {
-                w.toSampleRate(targetRate, { algorithm: 'sinc' });
-            }
-
-            w.toBitDepth('32f');
-            const f64 = w.getSamples();
-            return new Float32Array(f64);
-        }
-
-        if (window.PiperTTS?.wavBlobToPcm) {
-            const { pcm, sampleRate } = await window.PiperTTS.wavBlobToPcm(wavBlob);
-
-            if (sampleRate === targetRate) return pcm;
-
-            const ratio = sampleRate / targetRate, out = new Float32Array(Math.round(pcm.length / ratio));
-
-            for (let i = 0; i < out.length; i++) {
-                const x = i * ratio, xi = Math.floor(x), xf = x - xi;
-                const a = pcm[xi] ?? 0, b = pcm[xi + 1] ?? a;
-                out[i] = a + (b - a) * xf;
-            }
-
-            return out;
-        }
-
-        addStatus('No decoder for WAV to PCM.', "WARN");
-        return null;
-    }
 
     function appendPcmToSamples(pcm) {
         if (!pcm) return;
@@ -656,65 +429,6 @@ async function fetchAndStore() {
             else if (s < -0.99) s = -0.99;
             samples.push(s);
         }
-    }
-
-    function vmifyPcm(pcm, options = {}) {
-        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
-            return pcm;
-        }
-
-        const nyquist = SAMPLE_RATE / 2;
-        if (nyquist < 5000) return pcm;
-
-        let intensity = Number.isFinite(options.intensity) ? options.intensity : 1;
-        if (intensity < 0) intensity = 0;
-        else if (intensity > 3) intensity = 3;
-
-        const drive = 3.16;
-        const driven = new Float32Array(pcm.length);
-        for (let i = 0; i < pcm.length; i++) {
-            driven[i] = Math.tanh(pcm[i] * drive);
-        }
-
-        const freq = Math.min(4000, nyquist * 0.8);
-        const w0 = 2 * Math.PI * freq / SAMPLE_RATE;
-        const cos0 = Math.cos(w0);
-        const alp = Math.sin(w0) / (2 * 0.707);
-        const norm = 1 / (1 + alp);
-        const b0 = ((1 + cos0) / 2) * norm;
-        const b1 = -(1 + cos0) * norm;
-        const b2 = b0;
-        const a1 = (-2 * cos0) * norm;
-        const a2 = (1 - alp) * norm;
-
-        let s1x1 = 0, s1x2 = 0, s1y1 = 0, s1y2 = 0;
-        let s2x1 = 0, s2x2 = 0, s2y1 = 0, s2y2 = 0;
-
-        const hfGain = 1.41 * intensity;
-        const out = new Float32Array(pcm.length);
-        let peak = 0;
-
-        for (let i = 0; i < pcm.length; i++) {
-            const x0 = driven[i];
-            const y0 = b0 * x0 + b1 * s1x1 + b2 * s1x2 - a1 * s1y1 - a2 * s1y2;
-            s1x2 = s1x1; s1x1 = x0;
-            s1y2 = s1y1; s1y1 = y0;
-
-            const y1 = b0 * y0 + b1 * s2x1 + b2 * s2x2 - a1 * s2y1 - a2 * s2y2;
-            s2x2 = s2x1; s2x1 = y0;
-            s2y2 = s2y1; s2y1 = y1;
-
-            out[i] = pcm[i] + y1 * hfGain;
-            const abs = out[i] < 0 ? -out[i] : out[i];
-            if (abs > peak) peak = abs;
-        }
-
-        if (peak > 0.9441) {
-            const g = 0.9441 / peak;
-            for (let i = 0; i < out.length; i++) out[i] *= g;
-        }
-
-        return out;
     }
 
     // END encode/audio.js
@@ -1064,46 +778,13 @@ async function fetchAndStore() {
     const voiceBackendMap = {};
 
     async function getVoiceList() {
-        const url = "https://wagspuzzle.space/tools/eas-tts/index.php?handler=toolkit&voicelist=true";
         const voiceListElement = document.getElementById("ttsVoice");
 
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-
-            for (const [voiceId, voiceName] of Object.entries(data.voices)) {
-                if (voiceName.toLowerCase().includes("emnet")) {
-                    const option = document.createElement("option");
-                    option.value = voiceId;
-                    option.textContent = "[EMNet] EMNet (uses generated headers as input)";
-                    voiceListElement.appendChild(option);
-                }
-
-                else {
-                    const backendMatch = voiceName.match(/\[(.*?)\]/);
-                    let backend = backendMatch ? backendMatch[1] : "Unknown";
-
-                    if (voiceName.toLowerCase().includes("bal/spfy")) {
-                        backend = "BAL";
-                    }
-
-                    if (!voiceBackendMap[backend]) {
-                        voiceBackendMap[backend] = [];
-                    }
-
-                    voiceBackendMap[backend].push(voiceId);
-                    const option = document.createElement("option");
-                    option.value = voiceId;
-                    option.textContent = voiceName;
-                    voiceListElement.appendChild(option);
-                }
-            }
-        }
-
-        catch (error) {
-            console.error("Error fetching voice list:", error);
-            addStatus("Error fetching voice list: " + error.message + ". There will not be any voices available from the TTS service, only the in-browser WebAssembly voice.", "ERROR");
-        }
+        await populateRemoteVoiceList({
+            selectElement: voiceListElement,
+            voiceBackendMap,
+            reportError: (error) => addStatus("Error fetching voice list: " + error.message + ". There will not be any voices available from the TTS service, only the in-browser WebAssembly voice.", "ERROR"),
+        });
 
         voiceListElement.dispatchEvent(new Event('change'));
     }
@@ -1141,215 +822,6 @@ async function fetchAndStore() {
         const zczcPattern = /^ZCZC-([A-Z]{3})-([A-Z]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{0,8})-?$/;
         return zczcPattern.test(header);
     }
-
-    async function validateTtsText() {
-        const requiredBackend = Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(window.ttsVoice));
-        const normalizedBackend = requiredBackend ? requiredBackend.toLowerCase() : "";
-        let ttsText = window.ttsText || "";
-        const usesBalPhonemes = /<\s*\/?\s*(silence|pron|phoneme)/i.test(ttsText);
-        const usesVtmlTags = /<\s*\/?\s*vtml/i.test(ttsText);
-        const usesDtPhonemes = /\[:phoneme/i.test(ttsText);
-
-        if (normalizedBackend.includes("bal")) {
-            if (usesVtmlTags || usesDtPhonemes) {
-                alert("BAL backend cannot include VT or DT phoneme markup.");
-                return false;
-            }
-
-            if (usesBalPhonemes && !/<(silence|pron|phoneme).*/i.test(ttsText)) {
-                alert("TTS Text contains invalid BAL phonemes or formatting.");
-                return false;
-            }
-
-            if (ttsText.match(/“|”/)) {
-                // We can try and fix the smart quotes
-                ttsText = ttsText.replace(/“|”/g, '"');
-                window.ttsText = ttsText;
-                return true;
-            }
-        }
-        else if (normalizedBackend.includes("vt")) {
-            if (usesBalPhonemes || usesDtPhonemes) {
-                alert("VT backend cannot include BAL or DT phoneme markup.");
-                return false;
-            }
-
-            if (usesVtmlTags && !/<vtml.*/i.test(ttsText)) {
-                alert("TTS Text contains invalid VT phonemes or formatting.");
-                return false;
-            }
-
-            if (ttsText.match(/“|”/)) {
-                // We can try and fix the smart quotes
-                ttsText = ttsText.replace(/“|”/g, '"');
-                window.ttsText = ttsText;
-                return true;
-            }
-        }
-        else if (normalizedBackend.includes("dt")) {
-            if (usesBalPhonemes || usesVtmlTags) {
-                alert("DT backend cannot include BAL or VT phoneme markup.");
-                return false;
-            }
-
-            if (usesDtPhonemes && !/\[:phoneme on].*/i.test(ttsText)) {
-                alert("TTS Text contains invalid DT phonemes or formatting.");
-                return false;
-            }
-        }
-        else if (!normalizedBackend.includes("bal") && !normalizedBackend.includes("vt") && !normalizedBackend.includes("dt")) {
-            if (usesBalPhonemes || usesVtmlTags || usesDtPhonemes) {
-                alert("Selected TTS voice backend does not support BAL, VT, or DT phoneme markup.");
-                return false;
-            }
-        }
-        return true;
-    }
-
-    function indexToLineCol(s, idx) {
-        let line = 1, col = 1;
-        for (let i = 0; i < idx; i++) {
-            if (s[i] === "\n") { line++; col = 1; }
-            else col++;
-        }
-        return { line, col };
-    }
-
-    function findLikelyXmlMismatch(xml) {
-        const stack = [];
-        const len = xml.length;
-
-        let i = 0;
-        while (i < len) {
-            const lt = xml.indexOf("<", i);
-            if (lt === -1) break;
-
-            i = lt;
-
-            if (i + 1 >= len) break;
-
-            const gt = xml.indexOf(">", i + 1);
-            if (gt === -1) {
-                return { type: "unterminated-tag", index: i, ...indexToLineCol(xml, i) };
-            }
-
-            const raw = xml.slice(i + 1, gt).trim();
-
-            if (raw.startsWith("?") || raw.startsWith("!")) {
-                i = gt + 1;
-                continue;
-            }
-
-            const isClose = raw.startsWith("/");
-            const isSelfClose = raw.endsWith("/");
-
-            if (isClose) {
-                const name = raw.slice(1).trim().split(/\s+/)[0];
-                const top = stack[stack.length - 1];
-
-                if (!top) {
-                    return { type: "unexpected-close", name, index: i, ...indexToLineCol(xml, i) };
-                }
-                if (top.name !== name) {
-                    return {
-                        type: "mismatched-close",
-                        got: name,
-                        expected: top.name,
-                        closeIndex: i,
-                        closeLineCol: indexToLineCol(xml, i),
-                        openIndex: top.index,
-                        ...indexToLineCol(xml, top.index),
-                    };
-                }
-                stack.pop();
-            } else if (!isSelfClose) {
-                const name = raw.split(/\s+/)[0];
-                stack.push({ name, index: i });
-            }
-
-            i = gt + 1;
-        }
-
-        if (stack.length) {
-            const top = stack[stack.length - 1];
-            return {
-                type: "unexpected-eof",
-                expectedClose: top.name,
-                openIndex: top.index,
-                ...indexToLineCol(xml, top.index),
-            };
-        }
-
-        return null;
-    }
-
-    function customAlertDiv(message) {
-        const alertDiv = document.createElement("div");
-        alertDiv.style.position = "fixed";
-        alertDiv.style.top = "50%";
-        alertDiv.style.left = "50%";
-        alertDiv.style.transform = "translate(-50%, -50%)";
-        alertDiv.style.backgroundColor = "#050505";
-        alertDiv.style.border = "2px solid #f5f5f5";
-        alertDiv.style.padding = "20px";
-        alertDiv.style.zIndex = "10000";
-        alertDiv.style.maxWidth = "80%";
-        alertDiv.style.maxHeight = "80%";
-        alertDiv.style.overflowY = "auto";
-        alertDiv.style.fontFamily = "Hack, monospace";
-        alertDiv.style.color = "#f5f5f5";
-        alertDiv.innerText = message;
-
-        const closeButton = document.createElement("button");
-        closeButton.innerText = "Close";
-        closeButton.style.marginTop = "10px";
-        closeButton.onclick = () => {
-            document.body.removeChild(alertDiv);
-        };
-        alertDiv.appendChild(closeButton);
-
-        document.body.appendChild(alertDiv);
-    }
-
-    async function validateMarkupAndText() {
-        const isValidTextForBackend = await validateTtsText();
-        if (!isValidTextForBackend) {
-            return false;
-        }
-        else {
-            let ttsText = window.ttsText || "";
-            const err = findLikelyXmlMismatch(ttsText);
-            const context = 50;
-            if (err) {
-                console.log(err);
-                let substring = "";
-                substring = ttsText.slice(err.col - context, err.col + context).replace(/\n/g, " ");
-                let message = `Announcement text contains malformed XML/markup at line ${err.line}, column ${err.col}.\n\n${substring}\n${"-".repeat(context)}^${"-".repeat(context - 1)}\n\nMake sure all XML tags are properly opened and closed or are self-closing.\n`;
-                customAlertDiv(message);
-                return false;
-            }
-            return true;
-        }
-    }
-
-    const resamplePcm = (pcm, sourceRate, targetRate) => {
-        if (sourceRate === targetRate) {
-            return pcm;
-        }
-
-        const ratio = sourceRate / targetRate;
-        const newLength = Math.max(1, Math.round(pcm.length / ratio));
-        const resampled = new Float32Array(newLength);
-        for (let i = 0; i < newLength; i++) {
-            const position = i * ratio;
-            const index = Math.floor(position);
-            const nextIndex = Math.min(index + 1, pcm.length - 1);
-            const frac = position - index;
-            resampled[i] = pcm[index] + (pcm[nextIndex] - pcm[index]) * frac;
-        }
-
-        return resampled;
-    };
 
     async function webTTSGenerate(useOverrideTZ, header) {
         addStatus("Generating TTS audio using web request, this may take a while...");
@@ -1783,14 +1255,14 @@ async function fetchAndStore() {
 
         if (window.announcementType === "tts") {
             if (normalizedVoice === "wasm") {
-                if (await validateMarkupAndText() !== true) {
+                if (await validateMarkupAndText(voiceBackendMap, window.ttsVoice, window.ttsText || "") !== true) {
                     addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This text will not be processed by the voice correctly. There will instead be silence. Try getting rid of ANY phoneme markups, if you're trying to use the WebAssembly voices.", "ERROR");
                     document.getElementById("generate").disabled = false;
                     document.getElementById("save").disabled = false;
                     generate_silence(Math.floor(SAMPLE_RATE * 1));
                     return;
                 }
-                const pcmRaw = await getPiperPcm(window.ttsText, SAMPLE_RATE);
+                const pcmRaw = await getPiperPcm(window.ttsText, SAMPLE_RATE, { ensureLoaded: ensurePiper, reportStatus: piperReportStatus });
                 if (pcmRaw) {
                     appendAnnouncement(pcmRaw);
                 } else {
@@ -1805,14 +1277,14 @@ async function fetchAndStore() {
                     generate_silence(Math.floor(SAMPLE_RATE * 1));
                 } else {
                     try {
-                        if (await validateMarkupAndText() !== true) {
+                        if (await validateMarkupAndText(voiceBackendMap, window.ttsVoice, window.ttsText || "") !== true) {
                             addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This text will not be processed by the voice correctly. There will instead be silence. Try getting rid of ANY phoneme markups, if you're trying to use the WebAssembly voices.", "ERROR");
                             document.getElementById("generate").disabled = false;
                             document.getElementById("save").disabled = false;
                             generate_silence(Math.floor(SAMPLE_RATE * 1));
                             return;
                         }
-                        const result = await synthNanoTts(announcementText);
+                        const result = await nanoTts.synth(announcementText);
                         if (result?.pcm?.length) {
                             const resampled = resamplePcm(result.pcm, result.sampleRate, SAMPLE_RATE);
                             appendAnnouncement(resampled);
@@ -1823,6 +1295,38 @@ async function fetchAndStore() {
                     } catch (error) {
                         console.error(error);
                         addStatus("NanoTTS generation failed. There will instead be silence.", "ERROR");
+                        generate_silence(Math.floor(SAMPLE_RATE * 1));
+                    }
+                }
+            }
+
+            else if (normalizedVoice === "spfy" || normalizedVoice === "acuvoice") {
+                const announcementText = (window.ttsText || '').trim();
+                const engine = normalizedVoice === "spfy" ? getSpfyEngine() : getAcuEngine();
+                const engineLabel = normalizedVoice === "spfy" ? "Speechify" : "AcuVoice";
+                if (!announcementText) {
+                    addStatus(`${engineLabel} requires announcement text. There will instead be silence.`, "ERROR");
+                    generate_silence(Math.floor(SAMPLE_RATE * 1));
+                } else {
+                    try {
+                        if (await validateMarkupAndText(voiceBackendMap, window.ttsVoice, window.ttsText || "") !== true) {
+                            addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This text will not be processed by the voice correctly. There will instead be silence. Try getting rid of ANY phoneme markups, if you're trying to use the WebAssembly voices.", "ERROR");
+                            document.getElementById("generate").disabled = false;
+                            document.getElementById("save").disabled = false;
+                            generate_silence(Math.floor(SAMPLE_RATE * 1));
+                            return;
+                        }
+                        const result = await engine.synth(announcementText, { reportStatus: piperReportStatus, onProgress: setVoiceDownloadProgress });
+                        if (result?.pcm?.length) {
+                            const resampled = resamplePcm(result.pcm, result.sampleRate, SAMPLE_RATE);
+                            appendAnnouncement(resampled);
+                        } else {
+                            addStatus(`${engineLabel} did not return audio. There will instead be silence.`, "ERROR");
+                            generate_silence(Math.floor(SAMPLE_RATE * 1));
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        addStatus(`${engineLabel} generation failed. There will instead be silence.`, "ERROR");
                         generate_silence(Math.floor(SAMPLE_RATE * 1));
                     }
                 }
@@ -1875,7 +1379,7 @@ async function fetchAndStore() {
             }
 
             else if (selectedVoiceRaw) {
-                if (await validateMarkupAndText() !== true) {
+                if (await validateMarkupAndText(voiceBackendMap, window.ttsVoice, window.ttsText || "") !== true) {
                     addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This will not be processed by the voice correctly. There will instead be silence.", "ERROR");
                     document.getElementById("generate").disabled = false;
                     document.getElementById("save").disabled = false;
@@ -1907,7 +1411,7 @@ async function fetchAndStore() {
                 if (document.getElementById("enable-vmify-custom")?.checked) {
                     const vmifyIntensityEl = document.getElementById("vmify-custom-intensity");
                     const vmifyIntensity = vmifyIntensityEl ? parseFloat(vmifyIntensityEl.value) : 1;
-                    pcm = vmifyPcm(pcm, { intensity: Number.isFinite(vmifyIntensity) ? vmifyIntensity : 1 });
+                    pcm = vmifyPcm(pcm, SAMPLE_RATE, { intensity: Number.isFinite(vmifyIntensity) ? vmifyIntensity : 1 });
                 }
                 generate_silence(Math.floor(SAMPLE_RATE * 0.25));
                 appendPcmToSamples(pcm);
@@ -2347,6 +1851,57 @@ async function fetchAndStore() {
     function resetStatus() {
         statuselem.innerHTML = "";
         clr.disabled = true;
+    }
+
+    let __voiceDownloadUI = null;
+    let __voiceDownloadPct = -1;
+    function ensureVoiceDownloadUI() {
+        if (__voiceDownloadUI || !statuselem) return __voiceDownloadUI;
+        const wrap = document.createElement("div");
+        wrap.style.cssText = "display:none;margin:4px 0";
+        const label = document.createElement("div");
+        label.style.cssText = "font-size:0.9em;opacity:0.85;margin-bottom:2px";
+        const track = document.createElement("div");
+        track.style.cssText = "height:6px;background:#333;border-radius:3px;overflow:hidden";
+        track.setAttribute("role", "progressbar");
+        track.setAttribute("aria-label", "Voice download progress");
+        track.setAttribute("aria-valuemin", "0");
+        track.setAttribute("aria-valuemax", "100");
+        track.setAttribute("aria-valuenow", "0");
+        track.setAttribute("aria-valuetext", "0%");
+        const bar = document.createElement("div");
+        bar.style.cssText = "height:100%;width:0%;background:#7ae37a;transition:width .1s linear";
+        track.appendChild(bar);
+        wrap.appendChild(label);
+        wrap.appendChild(track);
+        statuselem.appendChild(wrap);
+        __voiceDownloadUI = { wrap, label, track, bar };
+        return __voiceDownloadUI;
+    }
+
+    function setVoiceDownloadProgress(progress) {
+        const ui = ensureVoiceDownloadUI();
+        if (!ui) return;
+        if (!progress) {
+            ui.wrap.style.display = "none";
+            __voiceDownloadPct = -1;
+            return;
+        }
+        if (statuselem.lastChild !== ui.wrap) statuselem.appendChild(ui.wrap);
+        const mb = (n) => (n / 1048576).toFixed(1);
+        const frac = progress.total ? Math.min(1, progress.loaded / progress.total) : 0;
+        const pct = Math.round(frac * 100);
+        ui.wrap.style.display = "block";
+        ui.bar.style.width = pct + "%";
+        ui.label.textContent = progress.total
+            ? `Downloading ${progress.label} (${mb(progress.loaded)} / ${mb(progress.total)} MB)`
+            : `Downloading ${progress.label}...`;
+        if (pct !== __voiceDownloadPct) {
+            __voiceDownloadPct = pct;
+            ui.track.setAttribute("aria-valuenow", String(pct));
+            ui.track.setAttribute("aria-valuetext", pct + "%");
+        }
+        clr.style.display = "inline-block";
     }
 
     function normalizeFipsCode(code, fallbackSubdiv) {
