@@ -1,6 +1,3 @@
-// ignore this, it will be removed the very next commit, testing some stuff. -wags
-throw new Error("OTA smoke test v1");
-
 document.addEventListener('DOMContentLoaded', () => {
     fetch('https://wagspuzzle.space/tools/eas-tools/barker.php')
         .then(response => response.json())
