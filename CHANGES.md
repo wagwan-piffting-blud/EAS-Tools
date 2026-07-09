@@ -1,4 +1,12 @@
-# 2026-07-05
+# 2026-07-09
+
+- Update tool loading to lazy-load when possible, and reduce the number of times the tools are loaded in the browser. This should improve performance and reduce memory usage, especially on lower-end devices or when using multiple tools at once. If you notice any issues with tool loading or performance after this change, please let me know so I can investigate and address them as soon as possible.
+
+- Add Text Crawl tool JSON export/import to presets. This allows users to save and load their Text Crawl tool settings as JSON files, making it easier to share and reuse configurations across different projects or devices. If you have any important presets in your Text Crawl tool, be sure to export them and save a copy elsewhere in case of any issues with the presets in the future. If you encounter any problems with the JSON export/import feature, please report them so they can be addressed in future updates.
+
+---
+
+2026-07-05:
 
 - Add links to Google Play and Apple App Store to the README.md file and web FAQ. This allows users to easily access the mobile app versions of EAS Tools directly from the README. Pretty simple change, but needed.
 

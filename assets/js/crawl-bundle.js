@@ -4767,6 +4767,72 @@ async function initCrawlEditor() {
         }
     });
 
+    const CRAWL_PRESET_FILE_TYPE = 'eas-tools-crawl-preset';
+
+    function extractPresetSettings(parsed) {
+        if (!parsed || typeof parsed !== 'object') {
+            return null;
+        }
+        if (parsed.settings && typeof parsed.settings === 'object') {
+            return parsed.settings;
+        }
+        return parsed;
+    }
+
+    const exportUserPresetButton = document.getElementById('exportUserPreset');
+    if (exportUserPresetButton) {
+        exportUserPresetButton.addEventListener('click', async () => {
+            const presetNumber = document.getElementById('crawlUserPreset').value;
+            const payload = JSON.stringify({
+                type: CRAWL_PRESET_FILE_TYPE,
+                version: 1,
+                preset: presetNumber,
+                settings: getCurrentSettings()
+            }, null, 2);
+            try {
+                await saveFile(`eas-crawl-preset-${presetNumber}.json`, payload, 'application/json');
+                addStatus(`Exported Preset #${presetNumber} to file.`);
+            } catch (err) {
+                console.error('[crawl] preset export failed:', err);
+                alert('Could not export the preset to a file. Please try again.');
+            }
+        });
+    }
+
+    const importUserPresetButton = document.getElementById('importUserPreset');
+    const importUserPresetInput = document.getElementById('importUserPresetFile');
+    if (importUserPresetButton && importUserPresetInput) {
+        importUserPresetButton.addEventListener('click', () => {
+            importUserPresetInput.value = '';
+            importUserPresetInput.click();
+        });
+        importUserPresetInput.addEventListener('change', () => {
+            const file = importUserPresetInput.files && importUserPresetInput.files[0];
+            if (!file) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                let settings = null;
+                try {
+                    settings = extractPresetSettings(JSON.parse(reader.result));
+                } catch (err) {
+                    settings = null;
+                }
+                if (!settings) {
+                    alert('That file is not a valid EAS Tools crawl preset.');
+                    return;
+                }
+                applySettingsToControls(settings, { showStatus: false });
+                alert('Preset imported! Please click "Start Crawl" to apply the preset.');
+            };
+            reader.onerror = () => {
+                alert('Could not read that file. Please try again.');
+            };
+            reader.readAsText(file);
+        });
+    }
+
     document.getElementById('crawlMode').addEventListener('change', async (event) => {
         if (event.target.value == 'custom' && !window.crawlEditor) {
             await initCrawlEditor();

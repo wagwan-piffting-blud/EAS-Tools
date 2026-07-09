@@ -1701,6 +1701,8 @@
         const undoCap = cfg.undoDepth || Math.max(maxUndoRun + 1, 2);
         if (proj.undoEnabled) cfg.log(`  [project] undo history capped at ${undoCap} (macro's deepest undo run = ${maxUndoRun})`);
 
+        const startTime = Date.now();
+
         for (let s = 0; s < total; s++) {
             const { cmd, params } = steps[s];
             cfg.log(`[${s + 1}/${total}] ${cmd}`);
@@ -1724,7 +1726,7 @@
             }
         }
         if (onProgress) onProgress({ step: total, total, cmd: 'done', fraction: 1 });
-        cfg.log(`done: ${total} steps -> ${proj.tracks.length} track[s] @ ${proj.sr} Hz`);
+        cfg.log(`done: ${total} steps -> ${proj.tracks.length} track[s] @ ${proj.sr} Hz (took ${((Date.now() - startTime)/1000).toFixed(2)} seconds wall-clock time)`);
         return { pcm: mixBuffers(proj.tracks, proj.length), sampleRate: proj.sr };
     }
 

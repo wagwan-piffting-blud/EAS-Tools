@@ -29,9 +29,35 @@
         <link rel="stylesheet" href="assets/css/dracula.css">
         <link rel="stylesheet" href="assets/css/elegant.css">
         <link rel="stylesheet" href="assets/css/style.css">
-        <script language="javascript" type="text/javascript" src="assets/js/codemirror.js"></script>
-        <script language="javascript" type="text/javascript" src="assets/js/matchbrackets.js"></script>
-        <script language="javascript" type="text/javascript" src="assets/js/xml.js"></script>
+        <style>
+            .tool-loading {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 120px;
+                padding: 24px;
+                font-family: Hack, monospace;
+                opacity: 0.85;
+            }
+            .tool-loading::before {
+                content: "";
+                width: 18px;
+                height: 18px;
+                margin-right: 12px;
+                border: 2px solid currentColor;
+                border-top-color: transparent;
+                border-radius: 50%;
+                animation: tool-loading-spin 0.8s linear infinite;
+            }
+            .tool-loading--error::before {
+                display: none;
+            }
+            @keyframes tool-loading-spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+        </style>
         <!-- Cloudflare Web Analytics -->
         <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "de7f295c3b7d43e1a9a771246a7fdc65"}'></script>
         <!-- End Cloudflare Web Analytics -->
@@ -525,6 +551,9 @@
                     <button type="button" id="destroyCrawl" disabled>Destroy Crawl Instance</button>
                     <button type="button" id="saveUserPreset">Save Currently Selected Preset</button>
                     <button type="button" id="loadUserPreset">Load Currently Selected Preset</button>
+                    <button type="button" id="exportUserPreset">Export Preset to File (.json)</button>
+                    <button type="button" id="importUserPreset">Import Preset from File (.json)</button>
+                    <input type="file" id="importUserPresetFile" accept=".json,application/json" style="display:none;">
                     <button type="button" data-crawl-clear id="clr-crawl" style="display:none;">Clear Logs</button>
                     <div id="crawlExportProgressDiv" class="crawl-export-progress" style="display: none; background-color: rgba(0, 0, 0, 0.75);">
                         <label for="crawlExportProgress">Export Progress: <span id="crawlExportProgressLabel">0%</span></label>
@@ -812,13 +841,7 @@
         </main>
         <footer></footer>
         <script src="coi-serviceworker.js"></script>
-        <script src="assets/js/phoneme-webpack.js"></script>
-        <script src="assets/js/wavefile.js"></script>
-        <script src="assets/js/wave-resampler.js"></script>
-        <script src="assets/js/gif.js"></script>
         <script src="assets/js/footer.js"></script>
-        <script src="assets/js/sox.js"></script>
-        <script src="assets/js/canvas-capture.js"></script>
         <script type="module" src="assets/E2T/EAS2Text-NG.js"></script>
         <script>
             window.EASREGEX = /^ZCZC-([A-Z]{3})-([A-Z]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{1,8}?)-$/m;
@@ -889,17 +912,7 @@
                 }
             })();
         </script>
-        <script src="assets/js/vstemu.js"></script>
-        <script src="assets/js/jit-wasm-encoder.js"></script>
-        <script src="assets/js/jit-compiler.js"></script>
-        <script src="assets/js/worker-pool.js"></script>
-        <script src="assets/js/audacity-macro-engine.js"></script>
         <script type="module" src="assets/js/decoder-bundle.js"></script>
-        <script type="module" src="assets/js/encoder-bundle.js"></script>
-        <script type="module" src="assets/js/crawl-bundle.js"></script>
-        <script type="module" src="assets/js/splicer-bundle.js"></script>
-        <script type="module" src="assets/js/phoneme-bundle.js"></script>
-        <script type="module" src="assets/js/normalizer-bundle.js"></script>
         <script>
             (function () {
                 const panels = {
@@ -1006,11 +1019,148 @@
                     requestAnimationFrame(() => window.__ensureTextEditorsRefreshed(target));
                 };
 
+                const CODEMIRROR_SCRIPTS = [
+                    'assets/js/codemirror.js',
+                    'assets/js/matchbrackets.js',
+                    'assets/js/xml.js',
+                ];
+
+                const TOOL_ASSETS = {
+                    encoder: {
+                        scripts: [...CODEMIRROR_SCRIPTS, 'assets/js/wavefile.js'],
+                        module: 'assets/js/encoder-bundle.js',
+                    },
+                    crawl: {
+                        scripts: [...CODEMIRROR_SCRIPTS, 'assets/js/gif.js', 'assets/js/canvas-capture.js'],
+                        module: 'assets/js/crawl-bundle.js',
+                    },
+                    splicer: {
+                        scripts: [
+                            ...CODEMIRROR_SCRIPTS,
+                            'assets/js/wavefile.js',
+                            'assets/js/sox.js',
+                            'assets/js/vstemu.js',
+                            'assets/js/jit-wasm-encoder.js',
+                            'assets/js/jit-compiler.js',
+                            'assets/js/worker-pool.js',
+                            'assets/js/audacity-macro-engine.js',
+                        ],
+                        module: 'assets/js/splicer-bundle.js',
+                    },
+                    phoneme: {
+                        scripts: [...CODEMIRROR_SCRIPTS, 'assets/js/phoneme-webpack.js'],
+                        module: 'assets/js/phoneme-bundle.js',
+                    },
+                    normalizer: {
+                        scripts: [...CODEMIRROR_SCRIPTS],
+                        module: 'assets/js/normalizer-bundle.js',
+                    },
+                };
+
+                const scriptPromises = new Map();
+                const loadScript = (url) => {
+                    if (scriptPromises.has(url)) return scriptPromises.get(url);
+                    const promise = new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = url;
+                        script.async = false;
+                        script.onload = () => resolve();
+                        script.onerror = () => reject(new Error('Failed to load ' + url));
+                        document.head.appendChild(script);
+                    });
+                    scriptPromises.set(url, promise);
+                    return promise;
+                };
+
+                const modulePromises = new Map();
+                const loadModule = (url) => {
+                    if (modulePromises.has(url)) return modulePromises.get(url);
+                    const promise = import(new URL(url, document.baseURI).href);
+                    modulePromises.set(url, promise);
+                    return promise;
+                };
+
+                const toolLoadPromises = {};
+                const loadTool = (tool) => {
+                    if (toolLoadPromises[tool]) return toolLoadPromises[tool];
+                    const spec = TOOL_ASSETS[tool];
+                    const promise = (async () => {
+                        if (!spec) return;
+                        for (const url of (spec.scripts || [])) {
+                            await loadScript(url);
+                        }
+                        if (spec.module) {
+                            await loadModule(spec.module);
+                        }
+                    })();
+                    toolLoadPromises[tool] = promise;
+                    return promise;
+                };
+
+                const toolReady = { decoder: true };
+                const setPanelLoading = (tool, isLoading, failed) => {
+                    const panel = panels[tool] && panels[tool].element;
+                    if (!panel) return;
+                    const label = (panels[tool] && panels[tool].name) || tool;
+                    let overlay = panel.querySelector(':scope > .tool-loading');
+                    if (isLoading) {
+                        if (!overlay) {
+                            overlay = document.createElement('div');
+                            overlay.className = 'tool-loading';
+                            overlay.setAttribute('role', 'status');
+                            panel.insertBefore(overlay, panel.firstChild);
+                        }
+                        overlay.classList.remove('tool-loading--error');
+                        overlay.textContent = 'Loading ' + label + '…';
+                        panel.setAttribute('aria-busy', 'true');
+                        return;
+                    }
+                    panel.removeAttribute('aria-busy');
+                    if (!overlay) return;
+                    if (failed) {
+                        overlay.classList.add('tool-loading--error');
+                        overlay.textContent = 'Failed to load ' + label + '. Check your connection, then switch tools to try again.';
+                    } else {
+                        overlay.remove();
+                    }
+                };
+
+                const ensureToolLoaded = (tool) => {
+                    if (!TOOL_ASSETS[tool] || toolReady[tool]) return;
+                    if (toolLoadPromises[tool]) return;
+                    setPanelLoading(tool, true);
+                    loadTool(tool).then(() => {
+                        toolReady[tool] = true;
+                        setPanelLoading(tool, false);
+                        requestEditorRefresh(tool);
+                    }).catch((error) => {
+                        delete toolLoadPromises[tool];
+                        setPanelLoading(tool, false, true);
+                        console.error('Failed to load tool', tool, error);
+                    });
+                };
+
+                const deactivateTool = (tool) => {
+                    if (!tool || tool === 'decoder') return;
+                    const panel = panels[tool] && panels[tool].element;
+                    if (panel) {
+                        panel.querySelectorAll('audio, video').forEach((media) => {
+                            try { media.pause(); } catch {}
+                        });
+                    }
+                    window.dispatchEvent(new CustomEvent('eas:tool-deactivate', { detail: { tool } }));
+                };
+
+                let currentTool = null;
                 const activate = (target, { focusTab = false } = {}) => {
+                    if (currentTool && currentTool !== target) {
+                        deactivateTool(currentTool);
+                    }
                     Object.keys(iframeInstances).forEach((tool) => {
                         if (tool !== target) unloadIframe(tool);
                     });
                     if (panels[target]?.iframe) ensureIframe(target);
+                    ensureToolLoaded(target);
                     buttons.forEach((btn) => {
                         const isActive = btn.dataset.tool === target;
                         btn.classList.toggle('active', isActive);
@@ -1024,7 +1174,9 @@
                     const newParams = new URLSearchParams(window.location.search);
                     newParams.set('tool', target);
                     window.history.replaceState({}, '', `${window.location.pathname}?${newParams}`);
+                    currentTool = target;
                     requestEditorRefresh(target);
+                    window.dispatchEvent(new CustomEvent('eas:tool-activate', { detail: { tool: target } }));
                     if (focusTab) {
                         const activeBtn = Array.from(buttons).find((b) => b.dataset.tool === target);
                         activeBtn?.focus();

@@ -100,6 +100,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     let macroWaveformPendingKey = null;
     let macroWaveformJobSeq = 0;
     let macroWaveformDebounce = null;
+    let macroComboBtn = null;
+    let macroRenderActiveCount = 0;
 
     const state = {
         sampleRate: 44100,
@@ -258,6 +260,18 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (!skipDraw) drawWaveform();
     };
 
+    const setMacroControlsRendering = (rendering) => {
+        if (rendering) {
+            macroRenderActiveCount++;
+        } else {
+            macroRenderActiveCount = Math.max(0, macroRenderActiveCount - 1);
+        }
+        const busy = macroRenderActiveCount > 0;
+        if (macroSelect) macroSelect.disabled = busy;
+        if (macroComboBtn) macroComboBtn.disabled = busy;
+        if (previewMacroBtn) previewMacroBtn.disabled = busy || !state.pcm.length;
+    };
+
     const scheduleMacroWaveformUpdate = (immediate = false) => {
         if (!state.pcm.length) {
             invalidateMacroWaveformCache();
@@ -290,50 +304,55 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const sr = state.sampleRate || 44100;
         const macroId = (typeof getSelectedMacroId === 'function' ? getSelectedMacroId() : 'FLAT') || 'FLAT';
         const jobId = ++macroWaveformJobSeq;
+        setMacroControlsRendering(true);
 
         (async () => {
-            let processed = null;
             try {
-                const fxPcm = applyExportFxToPcm(pcmRef, sr, macroId);
-                if (macroId.startsWith('AUD:') && window.AudacityMacroEngine) {
-                    const out = await window.AudacityMacroEngine.applyMacroFile(fxPcm, sr, macroId.slice(4), { onProgress: macroProgressCb });
-                    setMacroProgress(1, 'Macro preview ready!');
-                    processed = { pcm: out.pcm, sampleRate: out.sampleRate };
-                } else {
-                    const blob = await renderMacroWithSox(fxPcm, sr, macroId, 0);
-                    if (blob) {
-                        processed = await decodeWavBlobToFloat32(blob);
-                    } else if (fxPcm !== pcmRef) {
-                        processed = { pcm: fxPcm, sampleRate: sr };
+                let processed = null;
+                try {
+                    const fxPcm = applyExportFxToPcm(pcmRef, sr, macroId);
+                    if (macroId.startsWith('AUD:') && window.AudacityMacroEngine) {
+                        const out = await window.AudacityMacroEngine.applyMacroFile(fxPcm, sr, macroId.slice(4), { onProgress: macroProgressCb });
+                        setMacroProgress(1, 'Macro preview ready!');
+                        processed = { pcm: out.pcm, sampleRate: out.sampleRate };
+                    } else {
+                        const blob = await renderMacroWithSox(fxPcm, sr, macroId, 0);
+                        if (blob) {
+                            processed = await decodeWavBlobToFloat32(blob);
+                        } else if (fxPcm !== pcmRef) {
+                            processed = { pcm: fxPcm, sampleRate: sr };
+                        }
                     }
+                } catch (err) {
+                    console.error('Macro waveform render failed', err);
                 }
-            } catch (err) {
-                console.error('Macro waveform render failed', err);
-            }
 
-            if (jobId !== macroWaveformJobSeq) return;
-            if (!shouldUseMacroWaveform() || key !== getMacroWaveformKey()) {
-                macroWaveformPendingKey = null;
-                return;
-            }
-            if (state.pcm !== pcmRef) {
-                macroWaveformPendingKey = null;
-                return;
-            }
+                if (jobId !== macroWaveformJobSeq) return;
+                if (!shouldUseMacroWaveform() || key !== getMacroWaveformKey()) {
+                    macroWaveformPendingKey = null;
+                    return;
+                }
+                if (state.pcm !== pcmRef) {
+                    macroWaveformPendingKey = null;
+                    return;
+                }
 
-            if (processed?.pcm?.length) {
-                macroWaveformPcm = processed.pcm;
-                macroWaveformSampleRate = processed.sampleRate || sr;
-                macroWaveformActiveKey = key;
-                macroWaveformOutputSig = macroId.startsWith('AUD:') ? getMacroOutputSignature(macroId) : null;
-            } else {
-                macroWaveformPcm = null;
-                macroWaveformSampleRate = 0;
-                macroWaveformActiveKey = null;
-                macroWaveformOutputSig = null;
+                if (processed?.pcm?.length) {
+                    macroWaveformPcm = processed.pcm;
+                    macroWaveformSampleRate = processed.sampleRate || sr;
+                    macroWaveformActiveKey = key;
+                    macroWaveformOutputSig = macroId.startsWith('AUD:') ? getMacroOutputSignature(macroId) : null;
+                } else {
+                    macroWaveformPcm = null;
+                    macroWaveformSampleRate = 0;
+                    macroWaveformActiveKey = null;
+                    macroWaveformOutputSig = null;
+                }
+                macroWaveformPendingKey = null;
+                drawWaveform();
+            } finally {
+                setMacroControlsRendering(false);
             }
-            macroWaveformPendingKey = null;
-            drawWaveform();
         })().catch((err) => {
             if (jobId === macroWaveformJobSeq) {
                 macroWaveformPendingKey = null;
@@ -723,8 +742,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         drawWaveform();
     };
 
-    const rebuildTimeline = () => {
-        invalidateMacroWaveformCache(true);
+    const rebuildTimeline = ({ preserveMacroWaveform = false } = {}) => {
+        const keepMacroWaveform = preserveMacroWaveform
+            && macroWaveformActiveKey
+            && macroWaveformActiveKey === getMacroWaveformKey();
+        if (!keepMacroWaveform) {
+            invalidateMacroWaveformCache(true);
+        }
         const total = state.segments.reduce((sum, seg) => sum + seg.pcm.length, 0);
         state.pcm = new Float32Array(total);
         let offset = 0;
@@ -741,7 +765,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         updateSegmentsList();
         drawWaveform();
         saveProject();
-        if (shouldUseMacroWaveform()) {
+        if (!keepMacroWaveform && shouldUseMacroWaveform()) {
             scheduleMacroWaveformUpdate();
         }
     };
@@ -1271,7 +1295,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         playSpan = 0;
         syncSegmentPlayButtons(null);
         syncPlayButtons();
-        rebuildTimeline();
+        rebuildTimeline({ preserveMacroWaveform: true });
         drawWaveform();
         if (shouldHandleMacroPreview) {
             if (!playingSource && macroAudio) {
@@ -1596,8 +1620,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             const audioResponse = await fetch("https://wagspuzzle.space/tools/eas-tts/" + audioSrc);
             const audioArrayBuffer = await audioResponse.arrayBuffer();
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const buffer = await audioContext.decodeAudioData(audioArrayBuffer);
-            return buffer;
+            try {
+                return await audioContext.decodeAudioData(audioArrayBuffer);
+            } finally {
+                audioContext.close().catch(() => { });
+            }
         }
 
         return null;
@@ -2568,6 +2595,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         arrowSpan.textContent = '▾';
         btn.appendChild(labelSpan);
         btn.appendChild(arrowSpan);
+        macroComboBtn = btn;
 
         const pop = document.createElement('div');
         pop.className = 'splice-macro-combo__pop';

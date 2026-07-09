@@ -37,7 +37,11 @@ const timeFormatOptions = {
 };
 const zonedFormatter = new Intl.DateTimeFormat('en-US', Object.assign({ timeZone: TIME_ZONE }, timeFormatOptions));
 const utcFormatter = new Intl.DateTimeFormat('en-US', Object.assign({ timeZone: 'UTC' }, timeFormatOptions));
-const resetTime = getNextMidnightInTimeZone(new Date());
+let resetTime = getNextMidnightInTimeZone(new Date());
+
+const TTS_COUNTER_REFRESH_MS = 5 * 60 * 1000;
+let uiTickTimer = null;
+let counterRefreshTimer = null;
 
 function getNextMidnightInTimeZone(baseDate) {
     const zonedParts = getDateParts(zonedFormatter, baseDate);
@@ -93,20 +97,16 @@ function formatOffset(minutes) {
 }
 
 function updateTTSRequestsResetTime() {
-    const now = new Date();
-    let nextReset = new Date(resetTime);
-    if (now >= nextReset) {
-        nextReset.setDate(nextReset.getDate() + 1);
+    if (!ttsRequestsResetTime) {
+        return;
     }
-    const diffMs = nextReset - now;
+    const now = new Date();
+    const diffMs = Math.max(0, resetTime - now);
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     const diffSeconds = Math.floor((diffMs % (1000 * 60)) / 1000);
     ttsRequestsResetTime.textContent = `${diffHours}h ${diffMinutes}m ${diffSeconds}s`;
 }
-
-updateTTSRequestsResetTime();
-setInterval(updateTTSRequestsResetTime, 1000);
 
 window.updateTTSRequestsCounter = function () {
     fetch('https://wagspuzzle.space/tools/eas-tts/index.php?get_current_request_count=true')
@@ -126,14 +126,45 @@ window.updateTTSRequestsCounter = function () {
         });
 }
 
-window.updateTTSRequestsCounter();
-setInterval(window.updateTTSRequestsCounter, 5 * 60 * 1000);
-setInterval(() => {
+function uiTick() {
     const now = new Date();
     if (now >= resetTime) {
+        resetTime = getNextMidnightInTimeZone(now);
         window.updateTTSRequestsCounter();
     }
-}, 1000);
+    updateTTSRequestsResetTime();
+    formatTimestamps(window.commitDate);
+}
+
+function startTimers() {
+    if (uiTickTimer === null) {
+        uiTickTimer = setInterval(uiTick, 1000);
+    }
+    if (counterRefreshTimer === null) {
+        counterRefreshTimer = setInterval(window.updateTTSRequestsCounter, TTS_COUNTER_REFRESH_MS);
+    }
+}
+
+function stopTimers() {
+    if (uiTickTimer !== null) {
+        clearInterval(uiTickTimer);
+        uiTickTimer = null;
+    }
+    if (counterRefreshTimer !== null) {
+        clearInterval(counterRefreshTimer);
+        counterRefreshTimer = null;
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopTimers();
+    } else {
+        uiTick();
+        window.updateTTSRequestsCounter();
+        startTimers();
+    }
+});
 
 function formatTimestamps(commitDate) {
     const timeElements = document.querySelectorAll('time[datetime]');
@@ -233,6 +264,7 @@ if (cachedData) {
     });
 }
 
+updateTTSRequestsResetTime();
+window.updateTTSRequestsCounter();
 formatTimestamps(window.commitDate);
-
-setInterval(() => formatTimestamps(window.commitDate), 1000);
+startTimers();

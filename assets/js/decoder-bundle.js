@@ -957,12 +957,25 @@ async function fetchAndStore() {
         stopMeter();
     }
 
-    function renderMeter() {
+    const METER_FRAME_INTERVAL = 1000 / 30;
+    let meterLastFrameTime = 0;
+    let meterLastInset = "";
+
+    function renderMeter(now) {
         if (!meterRunning || !meterFill || !levelAnalyser || !levelBuffer) {
             meterRunning = false;
             meterAnimation = 0;
             return;
         }
+        meterAnimation = requestAnimationFrame(renderMeter);
+        if (typeof document !== "undefined" && document.hidden) {
+            return;
+        }
+        const ts = typeof now === "number" ? now : 0;
+        if (ts && meterLastFrameTime && (ts - meterLastFrameTime) < METER_FRAME_INTERVAL) {
+            return;
+        }
+        meterLastFrameTime = ts;
         let target = 0;
         if (levelAnalyser && levelBuffer) {
             levelAnalyser.getByteTimeDomainData(levelBuffer);
@@ -986,21 +999,23 @@ async function fetchAndStore() {
         if (meterLevel < 0.001) {
             meterLevel = 0;
         }
-        meterFill.style.width = "100%";
         const meterRightInset = (100 - (meterLevel * 100)).toFixed(2) + "%";
-        meterFill.style.clipPath = "inset(0 " + meterRightInset + " 0 0)";
-        meterFill.style.webkitClipPath = "inset(0 " + meterRightInset + " 0 0)";
-        if (meterElement) {
-            meterElement.setAttribute("aria-valuenow", meterLevel.toFixed(3));
-            let levelLabel;
-            if (meterLevel < SIGNAL_THRESHOLD) levelLabel = "No signal";
-            else if (meterLevel < 0.25) levelLabel = "Signal: low";
-            else if (meterLevel < 0.7) levelLabel = "Signal: medium";
-            else levelLabel = "Signal: high";
-            meterElement.setAttribute("aria-valuetext", levelLabel);
+        if (meterRightInset !== meterLastInset) {
+            meterLastInset = meterRightInset;
+            meterFill.style.width = "100%";
+            meterFill.style.clipPath = "inset(0 " + meterRightInset + " 0 0)";
+            meterFill.style.webkitClipPath = "inset(0 " + meterRightInset + " 0 0)";
+            if (meterElement) {
+                meterElement.setAttribute("aria-valuenow", meterLevel.toFixed(3));
+                let levelLabel;
+                if (meterLevel < SIGNAL_THRESHOLD) levelLabel = "No signal";
+                else if (meterLevel < 0.25) levelLabel = "Signal: low";
+                else if (meterLevel < 0.7) levelLabel = "Signal: medium";
+                else levelLabel = "Signal: high";
+                meterElement.setAttribute("aria-valuetext", levelLabel);
+            }
         }
         announceSignalTransition(meterLevel);
-        meterAnimation = requestAnimationFrame(renderMeter);
     }
 
     function startMeter() {
@@ -1008,11 +1023,14 @@ async function fetchAndStore() {
             return;
         }
         meterRunning = true;
+        meterLastFrameTime = 0;
+        meterLastInset = "";
         meterAnimation = requestAnimationFrame(renderMeter);
     }
 
     function stopMeter() {
         meterRunning = false;
+        meterLastInset = "";
         if (meterAnimation) {
             cancelAnimationFrame(meterAnimation);
             meterAnimation = 0;
@@ -1037,11 +1055,18 @@ async function fetchAndStore() {
             const decodeNode = new AudioWorkletNode(decodeContext, "eas-processor");
             decodeNode.port.onmessage = function (event) {
                 if (nativeStreamActive) return;
-                const channels = event.data;
-                if (!channels || !channels[0]) {
+                const chunk = event.data;
+                if (!chunk || !chunk.length) {
                     return;
                 }
-                runDecoder(channels[0]);
+                const frame = 128;
+                if (chunk.length === frame) {
+                    runDecoder(chunk);
+                    return;
+                }
+                for (let offset = 0; offset + frame <= chunk.length; offset += frame) {
+                    runDecoder(chunk.subarray(offset, offset + frame));
+                }
             };
             filter.connect(decodeNode);
             return true;

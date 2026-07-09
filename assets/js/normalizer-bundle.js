@@ -573,6 +573,19 @@ import { CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEM
     window.normalizeNwsBulletin = normalizeNwsBulletin;
     window.runNwsNormalizer = run;
 
+    if (window.EASBridge) {
+        window.EASBridge.on("normalizer:run", (params) => {
+            try {
+                const text = (params && params.text) || "";
+                const result = normalizeNwsBulletin(text, { repeat: !!(params && params.repeat) });
+                window.EASBridge.send("normalizer:result", { result: result || "" });
+            } catch (err) {
+                window.EASBridge.send("normalizer:result", { result: "[ERROR] " + ((err && err.message) || String(err)) });
+            }
+        });
+        console.log("[EASBridge] Normalizer bridge handler registered");
+    }
+
     document.getElementById("normalizeButton").addEventListener("click", run);
     document.getElementById("normalizeCopyToClipboard").addEventListener("click", () => {
         const output = document.getElementById("normalizedProduct");
