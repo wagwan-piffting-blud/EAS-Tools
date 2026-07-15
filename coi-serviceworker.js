@@ -50,10 +50,9 @@ if (typeof window === 'undefined') {
 
         let request = r;
         try {
-            request = (coepCredentialless && r.mode === "no-cors")
-                ? new Request(r, {
-                    credentials: "omit",
-                })
+            const isCrossOrigin = requestUrl && requestUrl.origin !== self.location.origin;
+            request = (coepCredentialless && r.mode === "no-cors" && isCrossOrigin)
+                ? new Request(r, { credentials: "omit" })
                 : r;
         } catch {
             request = r;

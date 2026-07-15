@@ -183,7 +183,7 @@ async function fetchAndStore() {
     gain.connect(context.destination);
     var AFSK_TIME = 0.00192;
     var SPACE_FREQ = 1562.5;
-    var MARK_FREQ = 2083.3;
+    var MARK_FREQ = 2083.3333333;
     var SAMPLE_RATE = 44100;
     var NRW_WAT_FREQ = 1050;
     var WAT_FREQ_1 = 853;
@@ -192,35 +192,33 @@ async function fetchAndStore() {
     var HEADER = "ZCZC";
     var PREAMBLE = 0xD5; //0xab read from lsb to msb
     var samples = [];
-    var afsklen = SAMPLE_RATE * 0.00192;
-
-    let markArray = []; //these have the samples for each afsk freq
-    let spaceArray = [];
-
-    function calcAFSKArray() {
-        for (let i = 0; i < afsklen; i++) {
-            let m = Math.sin((i / SAMPLE_RATE) * 2 * Math.PI * MARK_FREQ);
-            let s = Math.sin((i / SAMPLE_RATE) * 2 * Math.PI * SPACE_FREQ);
-            if (cl) {
-                if (s > 0.79) {
-                    s = 0.79;
-                } else if (s < -0.79) {
-                    s = -0.79;
-                }
-                if (m > 0.79) {
-                    m = 0.79;
-                } else if (m < -0.79) {
-                    m = -0.79;
-                }
-            }
-            markArray[i] = m;
-            spaceArray[i] = s;
-        }
-    }
+    var TWO_PI = 2 * Math.PI;
+    var SAME_SAMPLES_PER_BIT = SAMPLE_RATE * AFSK_TIME;
+    var MARK_PHASE_INC = TWO_PI * MARK_FREQ / SAMPLE_RATE;
+    var SPACE_PHASE_INC = TWO_PI * SPACE_FREQ / SAMPLE_RATE;
 
     function generate_afsk(message) {
-        for (let i = 0; i < message.length; i++) {
-            generate_afsk_tone(message[i]);
+        let phase = 0;
+        let clock = 0;
+        for (let k = 0; k < message.length; k++) {
+            const inc = message[k] ? MARK_PHASE_INC : SPACE_PHASE_INC;
+            const bitEnd = (k + 1) * SAME_SAMPLES_PER_BIT;
+            while (clock < bitEnd) {
+                let s = Math.sin(phase);
+                if (cl) {
+                    if (s > 0.79) {
+                        s = 0.79;
+                    } else if (s < -0.79) {
+                        s = -0.79;
+                    }
+                }
+                samples.push(s);
+                phase += inc;
+                if (phase >= TWO_PI) {
+                    phase -= TWO_PI;
+                }
+                clock++;
+            }
         }
     }
 
@@ -236,14 +234,6 @@ async function fetchAndStore() {
                 }
             }
             samples.push(s);
-        }
-    }
-
-    function generate_afsk_tone(bit) {
-        const sl = samples.length;
-        const copyArray = bit ? markArray : spaceArray;
-        for (let i = 0; i < afsklen; i++) {
-            samples[sl + i] = copyArray[i];
         }
     }
 
@@ -433,7 +423,7 @@ async function fetchAndStore() {
         return num.toString().padStart(totalLength, '0');
     }
 
-    function getDay(date) { return zero_pad_int(Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24), 3); }
+    function getDay(date) { return zero_pad_int(Math.floor((date.getTime() - Date.UTC(date.getUTCFullYear(), 0, 0)) / 86400000), 3); }
 
     function getHour(date) { return zero_pad_int(date.getUTCHours(), 2); }
 
@@ -1745,7 +1735,6 @@ async function fetchAndStore() {
         samples.length = 0;
         startTime = performance.now();
         cl = clipSignal;
-        calcAFSKArray();
 
         var par = parinput.value;
         if (par.length < 8) {
