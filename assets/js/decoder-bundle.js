@@ -211,6 +211,13 @@ async function fetchAndStore() {
 
     const decodeContext = new AudioContext();
 
+    decodeContext.addEventListener("statechange", () => {
+        if (window.isRecording &&
+            (decodeContext.state === "suspended" || decodeContext.state === "interrupted")) {
+            decodeContext.resume().catch(() => {});
+        }
+    });
+
     const filter = decodeContext.createBiquadFilter();
     filter.type = "bandpass";
     filter.frequency.value = 1822.9;
