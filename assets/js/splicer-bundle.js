@@ -1508,13 +1508,123 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         clearInterval(intervalId2);
     };
 
+    const MAX_PCM_BYTES = 1400 * 1024 * 1024;
+
+    const readWavStructure = async (file) => {
+        const readDV = async (off, len) =>
+            new DataView(await file.slice(off, off + len).arrayBuffer());
+        if (file.size < 44) return null;
+        const head = await readDV(0, 12);
+        if (head.getUint32(0, false) !== 0x52494646 || head.getUint32(8, false) !== 0x57415645) {
+            return null;
+        }
+        let offset = 12, fmt = null, dataOffset = -1, dataSize = 0;
+        while (offset + 8 <= file.size) {
+            const hdr = await readDV(offset, 8);
+            const id = hdr.getUint32(0, false);
+            const size = hdr.getUint32(4, true);
+            const body = offset + 8;
+            if (id === 0x666d7420) {
+                const f = await readDV(body, Math.min(Math.max(size, 16), 40));
+                let audioFormat = f.getUint16(0, true);
+                if (audioFormat === 0xFFFE && size >= 40) audioFormat = f.getUint16(24, true);
+                fmt = {
+                    audioFormat,
+                    channels: f.getUint16(2, true),
+                    sampleRate: f.getUint32(4, true),
+                    bitsPerSample: f.getUint16(14, true),
+                };
+            } else if (id === 0x64617461) {
+                dataOffset = body; dataSize = size; break;
+            }
+            if (size <= 0) break;
+            offset = body + size + (size & 1);
+        }
+        if (!fmt || dataOffset < 0) return null;
+        return { fmt, dataOffset, dataSize };
+    };
+
+    const loadWavMonoFloat32 = async (file) => {
+        const info = await readWavStructure(file);
+        if (!info) return null;
+        const { audioFormat, channels, sampleRate, bitsPerSample } = info.fmt;
+        if (!channels || !sampleRate || !bitsPerSample) return null;
+        const isFloat = audioFormat === 3;
+        const isPcmInt = audioFormat === 1;
+        if (!isFloat && !isPcmInt) return null;
+        const bytesPerSample = bitsPerSample >> 3;
+        const frameBytes = bytesPerSample * channels;
+        if (frameBytes <= 0) return null;
+        const dataSize = Math.min(info.dataSize || (file.size - info.dataOffset), file.size - info.dataOffset);
+        const numFrames = Math.floor(dataSize / frameBytes);
+        if (numFrames <= 0) return null;
+        if (numFrames * 4 > MAX_PCM_BYTES) {
+            const gb = (numFrames * 4 / (1024 * 1024 * 1024)).toFixed(1);
+            persistStatus(`File too large to load on this device (needs ~${gb} GB). Try a shorter clip or a lower sample rate.`);
+            return { tooLarge: true };
+        }
+        let out;
+        try {
+            out = new Float32Array(numFrames);
+        } catch (e) {
+            persistStatus('File too large to load on this device.');
+            return { tooLarge: true };
+        }
+        const CHUNK_FRAMES = 1 << 20;
+        let frame = 0, pos = info.dataOffset;
+        while (frame < numFrames) {
+            const framesThis = Math.min(CHUNK_FRAMES, numFrames - frame);
+            const slice = await file.slice(pos, pos + framesThis * frameBytes).arrayBuffer();
+            if (isFloat && bitsPerSample === 32) {
+                const f32 = new Float32Array(slice);
+                if (channels === 1) out.set(f32.subarray(0, framesThis), frame);
+                else for (let i = 0; i < framesThis; i++) out[frame + i] = f32[i * channels];
+            } else if (isPcmInt && bitsPerSample === 16) {
+                const i16 = new Int16Array(slice);
+                for (let i = 0; i < framesThis; i++) out[frame + i] = i16[i * channels] / 32768;
+            } else {
+                const dv = new DataView(slice);
+                for (let i = 0; i < framesThis; i++) {
+                    const so = i * frameBytes;
+                    let v;
+                    if (isFloat && bitsPerSample === 64) v = dv.getFloat64(so, true);
+                    else if (bitsPerSample === 8) v = (dv.getUint8(so) - 128) / 128;
+                    else if (bitsPerSample === 24) {
+                        let x = dv.getUint8(so) | (dv.getUint8(so + 1) << 8) | (dv.getUint8(so + 2) << 16);
+                        if (x & 0x800000) x -= 0x1000000;
+                        v = x / 8388608;
+                    } else if (isPcmInt && bitsPerSample === 32) v = dv.getInt32(so, true) / 2147483648;
+                    else return null;
+                    out[frame + i] = v;
+                }
+            }
+            frame += framesThis;
+            pos += framesThis * frameBytes;
+            await new Promise((r) => setTimeout(r));
+        }
+        return { pcm: out, sampleRate };
+    };
+
     const handleFile = async (file) => {
         if (!file) return;
+        const name = file.name || '';
+        const isWav = /\.wav$/i.test(name) || file.type === 'audio/wav' || file.type === 'audio/x-wav';
+        if (isWav) {
+            let res = null;
+            try { res = await loadWavMonoFloat32(file); } catch (e) { res = null; }
+            if (res && res.tooLarge) return;
+            if (res && res.pcm) {
+                addSegment(res.pcm, res.sampleRate, name || 'File');
+                resetViewWindow();
+                drawWaveform();
+                return;
+            }
+        }
         const ab = await file.arrayBuffer();
         const ctxAudio = getAudioCtx();
         const decoded = await ctxAudio.decodeAudioData(ab);
         const pcm = new Float32Array(decoded.getChannelData(0));
-        addSegment(pcm, decoded.sampleRate, file.name || 'File');
+        addSegment(pcm, decoded.sampleRate, name || 'File');
         resetViewWindow();
         drawWaveform();
     };

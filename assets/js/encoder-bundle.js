@@ -725,6 +725,63 @@ async function fetchAndStore() {
         }
     }
 
+    var buzzerTonePromise = null;
+
+    function loadBuzzerTone() {
+        if (buzzerTonePromise) {
+            return buzzerTonePromise;
+        }
+
+        buzzerTonePromise = (async function () {
+            try {
+                const response = await fetch("assets/buzzer.wav");
+                if (!response.ok) {
+                    throw new Error("Failed to fetch Buzzer tone reference.");
+                }
+
+                const arrayBuffer = await response.arrayBuffer();
+                const decodeContext = new (window.AudioContext || window.webkitAudioContext)();
+                const decode = decodeContext.decodeAudioData.bind(decodeContext);
+                const audioBuffer = decode.length > 1
+                    ? await new Promise((resolve, reject) => decode(arrayBuffer.slice(0), resolve, reject))
+                    : await decode(arrayBuffer.slice(0));
+
+                if (typeof decodeContext.close === "function") {
+                    decodeContext.close().catch(() => { });
+                }
+
+                const channels = Math.max(1, audioBuffer.numberOfChannels);
+                const length = audioBuffer.length;
+                const merged = new Float32Array(length);
+                const invChannels = 1 / channels;
+
+                for (let channel = 0; channel < channels; channel++) {
+                    const channelData = audioBuffer.getChannelData(channel);
+                    for (let i = 0; i < length; i++) {
+                        merged[i] += channelData[i] * invChannels;
+                    }
+                }
+
+                return audioBuffer.sampleRate === SAMPLE_RATE
+                    ? merged
+                    : resamplePcm(merged, audioBuffer.sampleRate, SAMPLE_RATE);
+            } catch (error) {
+                console.error("Unable to decode Buzzer reference tone.", error);
+                return null;
+            }
+        })();
+
+        return buzzerTonePromise;
+    }
+
+    async function create_buzzer_tone() {
+        const referenceTone = await loadBuzzerTone();
+        if (referenceTone && referenceTone.length) {
+            appendPcmToSamples(referenceTone);
+            return;
+        }
+    }
+
     function create_header_string(origin, event, locations, length, date, par) {
         var h = "";
         h += HEADER;
@@ -1220,6 +1277,10 @@ async function fetchAndStore() {
                     break;
                 case "3":
                     create_header_tones(header);
+                    await create_buzzer_tone();
+                    break;
+                case "4":
+                    create_header_tones(header);
                     break;
             }
         }
@@ -1416,6 +1477,9 @@ async function fetchAndStore() {
                 case "2":
                     break;
                 case "3":
+                    create_eom_tones();
+                    break;
+                case "4":
                     create_eom_tones();
                     break;
             }
@@ -2457,9 +2521,10 @@ async function fetchAndStore() {
 
     const attentionToneDiv = document.getElementById("tlenContainer");
     const currentAttentionTone = document.getElementById("att");
+    const attentionToneDurationSettable = ["0", "1"];
 
     currentAttentionTone.addEventListener("change", function () {
-        if (currentAttentionTone.value !== "3") {
+        if (currentAttentionTone.value && attentionToneDurationSettable.includes(currentAttentionTone.value)) {
             attentionToneDiv.style.display = "inline";
         } else {
             attentionToneDiv.style.display = "none";
@@ -2468,11 +2533,13 @@ async function fetchAndStore() {
 
     const endecModeSelect = document.getElementById("overallEndecMode");
 
+    let endecModeInitializing = true;
+
     endecModeSelect.addEventListener("change", function () {
         if (endecModeSelect.value.includes("NWS")) {
             tone = 1;
 
-            if (currentAttentionTone) {
+            if (!endecModeInitializing && currentAttentionTone) {
                 currentAttentionTone.value = "1";
             }
         }
@@ -2480,7 +2547,7 @@ async function fetchAndStore() {
         else {
             tone = 0;
 
-            if (currentAttentionTone) {
+            if (!endecModeInitializing && currentAttentionTone) {
                 currentAttentionTone.value = "0";
             }
         }
@@ -2490,6 +2557,7 @@ async function fetchAndStore() {
 
     currentAttentionTone.dispatchEvent(changeEvent);
     endecModeSelect.dispatchEvent(changeEvent);
+    endecModeInitializing = false;
     currentAttentionTone.dispatchEvent(changeEvent);
     encoderModeSelect.dispatchEvent(changeEvent);
     announcementTypeSelect.dispatchEvent(changeEvent);

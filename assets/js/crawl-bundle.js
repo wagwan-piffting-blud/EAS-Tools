@@ -144,6 +144,7 @@ async function initCrawlEditor() {
             { family: 'Bitstream Vera Sans', file: 'VeraBd.ttf', description: 'sans-serif font' },
             { family: 'Texscan', file: 'texscan.ttf', description: 'older style of sans-serif crawl font' },
             { family: 'Arial Bold', file: 'arialbd.ttf', description: 'sans-serif font used on Bevelled scrolls' },
+            { family: 'VDSwiss V1', file: 'vdswiss-v1.otf', description: 'sans-serif font used on VDS crawls (made by Gigabyte97)' },
             { family: 'User-Upload', file: 'user-upload.ttf', description: 'upload your own font to use!' }
         ];
 

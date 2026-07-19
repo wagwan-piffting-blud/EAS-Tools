@@ -155,7 +155,46 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
         "pickrell": "P IH0 K ER0 L",
         "speechify": "S P IY0 CH AH0 F AY0",
         "louisville": "L UW1 AH V IH L",
+        "monday": "M AH1 N D EY2",
+        "tuesday": "T UW1 Z D EY2",
+        "wednesday": "W EH1 N Z D EY2",
+        "saturday": "S AE1 T ER0 D EY2",
+        "leisure": "L IY1 ZH ER0",
     };
+
+    let activeWordOverrides = overrides;
+
+    function parseCmudict(text) {
+        const map = Object.create(null);
+        const lines = text.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line || line.startsWith(";;;")) continue;
+            const sp = line.indexOf(" ");
+            if (sp < 0) continue;
+            const word = line.slice(0, sp);
+            if (word.indexOf("(") !== -1) continue;
+            const phones = line.slice(sp).trim();
+            if (!phones) continue;
+            map[word.toLowerCase()] = phones;
+        }
+        return map;
+    }
+
+    async function loadCmudict() {
+        try {
+            const url = new URL("../cmudict-0.7b", import.meta.url).href;
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            const dict = parseCmudict(await resp.text());
+            Object.assign(dict, overrides);
+            activeWordOverrides = dict;
+        } catch (err) {
+            console.warn("[PhonemeTools] CMUdict fallback unavailable; using G2P only:", err);
+        }
+    }
+
+    loadCmudict();
 
     mode.addEventListener("change", () => {
         const isWordMode = mode.value == "word";
@@ -173,7 +212,7 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
     function switchcase(value, text, outBackend) {
         switch(value) {
             case "word":
-                return wordToBackend(text, outBackend, { overrides });
+                return wordToBackend(text, outBackend, { overrides: activeWordOverrides });
             case "phoneme":
                 return convertPhonemes(text, { lexicon: overrides });
             case "cross":
@@ -234,7 +273,7 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
                 } else if (modeVal === 'phoneme') {
                     result = convertPhonemes(text, { lexicon: overrides });
                 } else {
-                    result = wordToBackend(text, params.outBackend || 'all', { overrides });
+                    result = wordToBackend(text, params.outBackend || 'all', { overrides: activeWordOverrides });
                 }
                 window.EASBridge.send('phoneme:result', { text: result || '' });
             } catch (err) {

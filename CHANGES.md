@@ -1,9 +1,22 @@
-# 2026-07-15
+# 2026-07-18
 
-- Try to resolve a small audio ducking issue on native Android app when recording alerts via stream decoder.
+- Add CMUDict fallback in phonemizer tool for words that are not found in the override list. This ensures that if a word is not found in the override list, the phonemizer will use the CMUDict to generate the phonetic representation of the word, which should improve accuracy and reduce errors when processing text. The order is now override list, then CMUDict, then g2p via phonemizer. This change should improve the overall accuracy and reliability of the phonemizer tool, especially for words that are not commonly used or have unusual pronunciations.
+
+- Add [VDSwiss](https://fontstruct.com/fontstructions/show/2914531/vdswiss-v1-1) font to Text Crawl Generator. This font was hand-made by Gigabyte97 and is a clean, sans-serif font that is well-suited for use in VDS crawls. Thank you to Gigabyte for creating and allowing me to use the font in EAS Tools!
+
+- Add SAGE 1822 "Buzzer" sound effect to Encoder. This is a variant of the Sage 1822 attention tone that sounds like a loud lawnmower/buzzer, and can be used in place of the standard attention tone. Why did I add this? Because sometimes, you gotta have fun.
+
+- Fix a bug where the Attention Tone mode would be overridden in the Encoder on reload.
 
 ---
 
+2026-07-15:
+
+- Try to resolve a small audio ducking issue on native Android app when recording alerts via stream decoder.
+
+- Splicer bundle edits to ensure large files load properly instead of crashing the native iOS app.
+
+---
 
 2026-07-14:
 
