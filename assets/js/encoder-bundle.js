@@ -495,7 +495,7 @@ async function fetchAndStore() {
         }
 
         var nodes = [];
-        m.forEach(e => { var o = document.createElement("option"); o.innerHTML = e.toString().padStart(2, "0"); o.value = e; nodes.push(o); }); return nodes;
+        m.forEach(e => { var o = document.createElement("option"); o.innerHTML = e.toString().padStart(2, "0"); o.value = e.toString().padStart(2, "0"); nodes.push(o); }); return nodes;
     }
 
     async function saveToWav() {
@@ -784,6 +784,7 @@ async function fetchAndStore() {
 
     function create_header_string(origin, event, locations, length, date, par) {
         var h = "";
+        var lengthCode = /^\d{4}$/.test(String(length)) ? String(length) : "0000";
         h += HEADER;
         h += "-";
         h += origin;
@@ -794,7 +795,7 @@ async function fetchAndStore() {
             h += zero_pad_int(locations[i], 6);
         }
         h += "+";
-        h += length;
+        h += lengthCode;
         h += "-";
         h += getDay(date);
         h += getHour(date);
@@ -1510,6 +1511,40 @@ async function fetchAndStore() {
     var fipsModeSelect = document.getElementById("fipsMode");
     var rawinput = document.getElementById("cheader");
 
+    function selectHasValue(selectElement, value) {
+        if (!selectElement) { return false; }
+        return Array.from(selectElement.options || []).some(opt => opt.value === value);
+    }
+
+    function setSelectNumericValue(selectElement, value) {
+        if (!selectElement) { return false; }
+        const raw = String(value).trim();
+        const num = parseInt(raw, 10);
+        if (!Number.isFinite(num)) { return false; }
+        const candidates = [num.toString().padStart(2, "0"), num.toString(), raw];
+        for (const candidate of candidates) {
+            if (selectHasValue(selectElement, candidate)) {
+                selectElement.value = candidate;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function readSelectInt(selectElement, fallback) {
+        if (!selectElement) { return fallback; }
+        const num = parseInt(selectElement.value, 10);
+        return Number.isFinite(num) ? num : fallback;
+    }
+
+    function getDurationCode() {
+        let hours = readSelectInt(hrselect, 0);
+        let minutes = readSelectInt(minselect, 0);
+        if (hours < 0) { hours = 0; }
+        if (minutes < 0) { minutes = 0; }
+        return hours.toString().padStart(2, "0") + minutes.toString().padStart(2, "0");
+    }
+
     const EVENT_GROUP_KEYS = ["weather", "non_weather", "administrative", "national", "unimplemented", "nws_misc"];
 
     const WEATHER_EVENT_KEYWORDS = [
@@ -1725,10 +1760,19 @@ async function fetchAndStore() {
     }
 
     hrselect.addEventListener("change", function () {
-        hr = parseInt(hrselect.value);
+        var parsedHr = parseInt(hrselect.value, 10);
+        if (!Number.isFinite(parsedHr)) {
+            parsedHr = 0;
+            setSelectNumericValue(hrselect, 0);
+        }
+        hr = parsedHr;
+        var previousMin = readSelectInt(minselect, 0);
         minselect.innerHTML = "";
         var nodes = getMinNodes();
         nodes.forEach(e => { minselect.appendChild(e); });
+        if (!setSelectNumericValue(minselect, previousMin) && minselect.options.length) {
+            minselect.value = minselect.options[0].value;
+        }
     });
 
 
@@ -1760,7 +1804,7 @@ async function fetchAndStore() {
         let eventCode = document.getElementById("events").value;
         let originatorCode = document.getElementById("originators").value;
         hour = document.getElementById("hr").value;
-        minute = document.getElementById("min").value.padEnd(2, "0");
+        minute = readSelectInt(minselect, 0).toString().padStart(2, "0");
         senderid = document.getElementById("par").value;
         locationsList = locations.slice();
         attentionTone = document.getElementById("att").value;
@@ -1812,9 +1856,12 @@ async function fetchAndStore() {
         var time = new Date(timeselect.value);
         var originator = originators.value;
         var event = events.value;
-        var min = parseInt(minselect.value);
         tlen = parseInt(tl.value);
-        var l = hr.toString().padStart(2, "0") + min.toString().padStart(2, "0");
+        var l = getDurationCode();
+        if (!/^\d{4}$/.test(l)) {
+            addStatus("Invalid purge time selection, please re-select the duration!", "ERROR");
+            return;
+        }
         tone = parseInt(att.value);
         var usesCustomHeader = (window.useCustom && window.mode === "header");
 
@@ -2283,13 +2330,10 @@ async function fetchAndStore() {
                         hours = 0;
                     }
                     hr = hours;
-                    hrselect.value = hours.toString().padStart(2, '0');
+                    setSelectNumericValue(hrselect, hours);
                     hrselect.dispatchEvent(new Event('change'));
                     const remainder = minutes % 60;
-                    const minOption = Array.from(minselect.options || []).find(opt => parseInt(opt.value, 10) === remainder);
-                    if (minOption) {
-                        minselect.value = remainder;
-                    }
+                    setSelectNumericValue(minselect, remainder);
                 }
             }
         }
@@ -2413,7 +2457,14 @@ async function fetchAndStore() {
                     else {
                         const element = document.getElementById(key);
                         if (element) {
-                            if (element.tagName === "SELECT" || element.tagName === "INPUT") {
+                            if (element.tagName === "SELECT") {
+                                const stringValue = String(value);
+                                if (selectHasValue(element, stringValue)) {
+                                    element.value = stringValue;
+                                } else {
+                                    setSelectNumericValue(element, stringValue);
+                                }
+                            } else if (element.tagName === "INPUT") {
                                 if (element.type === "checkbox") {
                                     element.checked = value;
                                 } else {
@@ -2596,11 +2647,16 @@ async function fetchAndStore() {
         if (par.length < 8) {
             par += " ".repeat(8 - par.length);
         }
-        var min = parseInt(minselect.value);
-        var l = hr.toString().padStart(2, "0") + min.toString().padStart(2, "0");
+        var l = getDurationCode();
         var time = new Date(timeselect.value);
         headerPreviewElem.textContent = create_header_string(originators.value, events.value, locations, l, time, par);
     }
+
+    minselect.addEventListener("change", function () {
+        if (!Number.isFinite(parseInt(minselect.value, 10)) && minselect.options.length) {
+            minselect.value = minselect.options[0].value;
+        }
+    });
 
     events.addEventListener("change", updateHeaderPreview);
     originators.addEventListener("change", updateHeaderPreview);
@@ -2723,8 +2779,8 @@ async function fetchAndStore() {
                 const el = (id) => document.getElementById(id);
                 if (params.originator && el('originators')) el('originators').value = params.originator;
                 if (params.event && el('events')) el('events').value = params.event;
-                if (params.hours != null && el('hr')) { el('hr').value = params.hours; el('hr').dispatchEvent(new Event('change')); }
-                if (params.minutes != null && el('min')) el('min').value = params.minutes;
+                if (params.hours != null && el('hr')) { setSelectNumericValue(el('hr'), params.hours); el('hr').dispatchEvent(new Event('change')); }
+                if (params.minutes != null && el('min')) setSelectNumericValue(el('min'), params.minutes);
                 if (params.sender && el('par')) el('par').value = params.sender;
                 if (params.attentionTone != null && el('att')) { el('att').value = params.attentionTone.toString(); el('att').dispatchEvent(new Event('change')); }
                 if (params.toneDuration != null && el('tlen')) el('tlen').value = params.toneDuration.toString();

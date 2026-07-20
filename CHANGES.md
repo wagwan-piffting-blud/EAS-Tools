@@ -1,4 +1,14 @@
-# 2026-07-18
+# 2026-07-20
+
+- Fix incorrect SAME Event code for "Nuclear Power Plant Warning" (NUW) in the E2T translation layer. This was previously "Nuclear Plant Warning", which is incorrect. The correct event code is "Nuclear Power Plant Warning", and this change ensures that the E2T translation layer accurately reflects the correct event code for NUW. This change should improve the accuracy and reliability of the E2T translation layer, especially for users who rely on it for generating accurate messages. Event code NPM (Nuclear Power Plant Test) was also corrected.
+
+- Fix a bug where duration times in the encoder would roll over to NaN sometimes in both the web and native apps. This was caused by a bug in the way the encoder was handling duration times, which could result in the duration being set to NaN under certain conditions.
+
+- Add new, native Linux Speechify voice demos and voices to the EAS TTS service. These voices are the EXACT same Speechify voices within Windows, but these run under the [spfy re-implementation engine](https://github.com/wagwan-piffting-blud/Speechify_EAS_Listener/tree/main/spfy) with the speed advantage of native (and more modern) C language compilation. The front-end is taken directly from Speechify, meaning they have the same prosody and pronunciation as the original Speechify voices in 100% of cases. The new native Speechify voices are now available for use in the EAS TTS service, and should be **much** faster to synthesize than the non-native Speechify voices. This change should improve the performance and usability of the EAS TTS service overall. If you still would like to use the (slower) non-native Speechify voices, they are still available for use in the EAS TTS service, but the new native Speechify voices are recommended for most users due to their improved performance and speed. The native voices also support Balabolka-style `<pron sym>` tags, which allow for more precise control over pronunciation of harder words. If you notice any issues with the new native Speechify voices, please let me know so I can investigate and address them as soon as possible. **IMPORTANT NOTE: Currently, the multilingual (i.e. Spanish, French, etc.) Speechify voices are not available in the EAS TTS service, but they will be added in a future update. Jill is also not available currently, either, only Tom is available. For now, only most of the English Speechify voices are available for use with the native environment. I am actively working to resolve this issue.**
+
+---
+
+2026-07-18:
 
 - Add CMUDict fallback in phonemizer tool for words that are not found in the override list. This ensures that if a word is not found in the override list, the phonemizer will use the CMUDict to generate the phonetic representation of the word, which should improve accuracy and reduce errors when processing text. The order is now override list, then CMUDict, then g2p via phonemizer. This change should improve the overall accuracy and reliability of the phonemizer tool, especially for words that are not commonly used or have unusual pronunciations.
 
