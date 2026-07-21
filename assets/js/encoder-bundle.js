@@ -2320,20 +2320,26 @@ async function fetchAndStore() {
         }
 
         if (typeof duration === 'string' && /^\d{4}$/.test(duration) && hrselect && minselect) {
-            const minutes = parseInt(duration, 10);
-            if (!Number.isNaN(minutes)) {
+            let hours = parseInt(duration.slice(0, 2), 10);
+            let mins = parseInt(duration.slice(2, 4), 10);
+            if (Number.isFinite(hours) && Number.isFinite(mins)) {
                 const hrValues = Array.from(hrselect.options || []).map(opt => parseInt(opt.value, 10)).filter(num => !Number.isNaN(num));
                 if (hrValues.length) {
                     const maxHr = Math.max.apply(null, hrValues);
-                    let hours = Math.min(Math.floor(minutes / 60), maxHr);
-                    if (!Number.isFinite(hours) || hours < 0) {
-                        hours = 0;
-                    }
+                    hours = Math.min(Math.max(hours, 0), maxHr);
                     hr = hours;
                     setSelectNumericValue(hrselect, hours);
                     hrselect.dispatchEvent(new Event('change'));
-                    const remainder = minutes % 60;
-                    setSelectNumericValue(minselect, remainder);
+                    const validMins = Array.from(minselect.options || []).map(opt => parseInt(opt.value, 10)).filter(num => !Number.isNaN(num));
+                    if (validMins.length) {
+                        let closest = validMins[0];
+                        for (const vm of validMins) {
+                            if (Math.abs(vm - mins) < Math.abs(closest - mins)) {
+                                closest = vm;
+                            }
+                        }
+                        setSelectNumericValue(minselect, closest);
+                    }
                 }
             }
         }
