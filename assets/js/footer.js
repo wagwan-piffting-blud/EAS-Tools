@@ -82,7 +82,11 @@ function getDateParts(formatter, date) {
     const result = {};
     for (const part of parts) {
         if (part.type !== 'literal') {
-            result[part.type] = Number(part.value);
+            let value = Number(part.value);
+            if (part.type === 'hour' && value === 24) {
+                value = 0;
+            }
+            result[part.type] = value;
         }
     }
     return result;

@@ -1,4 +1,10 @@
-# 2026-07-20
+# 2026-07-21
+
+- Fix a bug where the site-wide footer's TTS request counter would re-fetch the current request count once per second on macOS clients, spamming the server logs with a flood of `get_current_request_count` requests. This was caused by the footer's midnight-rollover logic relying on `Intl.DateTimeFormat` with `hour12: false`, which is spec-ambiguous about whether midnight is reported as hour "00" or "24". On macOS, the formatter resolves to the "24" cycle, which corrupted the timezone offset math and computed the next reset time as a moment already in the past. Because the one-second UI tick re-fetches the counter whenever the reset time has passed, this caused it to fire on every tick indefinitely instead of once every five minutes. The date-parsing logic now normalizes an hour of 24 back to 0, so the reset time is now computed correctly on all platforms. Thanks macOS for being the odd man out in this situation.
+
+---
+
+2026-07-20:
 
 - Fix incorrect SAME Event code for "Nuclear Power Plant Warning" (NUW) in the E2T translation layer. This was previously "Nuclear Plant Warning", which is incorrect. The correct event code is "Nuclear Power Plant Warning", and this change ensures that the E2T translation layer accurately reflects the correct event code for NUW. This change should improve the accuracy and reliability of the E2T translation layer, especially for users who rely on it for generating accurate messages. Event code NPM (Nuclear Power Plant Test) was also corrected.
 
