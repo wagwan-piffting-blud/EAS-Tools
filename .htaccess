@@ -2,6 +2,11 @@ DirectoryIndex index.html
 Options -MultiViews
 FileETag MTime Size
 
+<IfModule mod_mime.c>
+	AddType text/javascript .mjs
+	AddType application/wasm .wasm
+</IfModule>
+
 <IfModule mod_headers.c>
 	<FilesMatch "\.(php|js|mjs|css|html|shtml|htm|json)$">
 		Header unset Pragma
