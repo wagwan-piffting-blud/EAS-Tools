@@ -2,6 +2,8 @@
 
 - Fix small bug regarding Piper TTS voices not loading in some scenarios and late service-worker registration, which caused the TTS voices to not be available in the encoder and splicer tools. Thank you to user umalover in the GWES Discord for reporting this issue.
 
+- Deleted no-longer-needed `.htaccess` file from the root of the repository. This file was previously used to configure certain server settings, but it is no longer necessary due to changes in the deployment process and server configuration.
+
 ---
 
 2026-07-21:
