@@ -532,7 +532,7 @@ Radar has indicated some weak rotation in this storm. While not immediately like
 #end
 ##
 #if(${list.contains(${bullets}, "genericCTA")})
-Severe Thunderstorms can produce damaging winds, destructive hail, deadly lightning and very heavy rain. For your protection seek shelter inside a sturdy building and stay away from windows. Wait until at least 30 minutes after the storm ends to resume outdoor activities.
+Severe Thunderstorms can produce damaging winds, destructive hail, deadly lightning and very heavy rain. For your protection seek shelter inside a sturdy building and stay away from windows.
 
 #end
 ##

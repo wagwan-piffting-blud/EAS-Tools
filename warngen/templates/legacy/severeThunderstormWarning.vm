@@ -343,7 +343,7 @@ A Tornado Watch remains in effect for the area. Although not immediately likely,
 #end
 ##
 #if(${list.contains(${bullets}, "genericCTA")})
-Severe thunderstorms produce damaging winds, destructive hail, deadly lightning and very heavy rain. For your protection, move to an interior room on the lowest floor of your home or business. Wait until at least 30 minutes after the storm ends to resume outdoor activities.
+Severe thunderstorms produce damaging winds, destructive hail, deadly lightning and very heavy rain. For your protection, move to an interior room on the lowest floor of your home or business.
 
 #end
 ##

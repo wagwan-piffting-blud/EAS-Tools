@@ -1,4 +1,10 @@
-# 2026-07-23
+# 2026-07-24
+
+- Remove an errant line in the WarnGen templates that were never part of the actual templates in AWIPS CAVE. This line was added at some point by TB01 and should not have been there: "Wait until at least 30 minutes after the storm ends to resume outdoor activities." This line was never used in real broadcasts or in AWIPS CAVE. Thanks to Gigabyte97 and chcoa for reporting this issue.
+
+---
+
+2026-07-23:
 
 - Fix small bug regarding Piper TTS voices not loading in some scenarios and late service-worker registration, which caused the TTS voices to not be available in the encoder and splicer tools. Thank you to user umalover in the GWES Discord for reporting this issue.
 
