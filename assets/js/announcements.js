@@ -6,6 +6,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.until && new Date(data.until) < new Date()) return;
 
+            if (window.EASBridge && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+                window.EASBridge.send('announcement:show', {
+                    id: data.id || '',
+                    title: data.title || '',
+                    description: data.description || ''
+                });
+                return;
+            }
+
             const announcementKey = 'dismissed_announcement_' + (data.id || '');
 
             if (localStorage.getItem(announcementKey)) return;

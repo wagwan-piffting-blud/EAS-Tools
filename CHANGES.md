@@ -1,4 +1,10 @@
-# 2026-07-24
+# 2026-07-25
+
+- Update announcements.js to support native mobile app announcements. This change allows the announcements feature to work seamlessly on both web and native mobile platforms, ensuring that users receive important updates and notifications regardless of the device they are using.
+
+---
+
+2026-07-24:
 
 - Remove an errant line in the WarnGen templates that were never part of the actual templates in AWIPS CAVE. This line was added at some point by TB01 and should not have been there: "Wait until at least 30 minutes after the storm ends to resume outdoor activities." This line was never used in real broadcasts or in AWIPS CAVE. Thanks to Gigabyte97 and chcoa for reporting this issue.
 
