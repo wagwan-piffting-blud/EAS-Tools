@@ -475,11 +475,29 @@ async function fetchAndStore() {
         return b;
     }
 
+    const MAX_PURGE_HOURS = 99;
+
+    function populateHourOptions() {
+        if (!hrselect) { return; }
+        var previous = hrselect.value;
+        hrselect.innerHTML = "";
+        for (var h = 0; h <= MAX_PURGE_HOURS; h++) {
+            var label = h.toString().padStart(2, "0");
+            var o = document.createElement("option");
+            o.innerHTML = label;
+            o.value = label;
+            hrselect.appendChild(o);
+        }
+        if (previous && Array.from(hrselect.options).some(opt => opt.value === previous)) {
+            hrselect.value = previous;
+        }
+    }
+
     function getMinNodes() {
         var m = [0, 15, 30, 45];
 
         if (hr == 0) {
-            m = [15, 30, 45];
+            m = [0, 15, 30, 45];
         }
 
         else if (hr > 5) {
@@ -1494,6 +1512,7 @@ async function fetchAndStore() {
     var originators = document.getElementById("originators");
     var hrselect = document.getElementById("hr");
     var minselect = document.getElementById("min");
+    populateHourOptions();
     var timeselect = document.getElementById("time");
     var parinput = document.getElementById("par");
     var statuselem = document.getElementById("status");

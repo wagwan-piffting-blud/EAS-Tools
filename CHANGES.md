@@ -2,6 +2,8 @@
 
 - Update announcements.js to support native mobile app announcements. This change allows the announcements feature to work seamlessly on both web and native mobile platforms, ensuring that users receive important updates and notifications regardless of the device they are using.
 
+- Add times from 0000 to 9900 in the encoder's duration dropdown. This also reaches parity with the native mobile apps, which already had these options available. This change provides users with a wider range of duration options for their alerts, allowing for more flexibility in message timing. This closes issue [#53](https://github.com/wagwan-piffting-blud/EAS-Tools/issues/53).
+
 ---
 
 2026-07-24:
