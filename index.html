@@ -1264,6 +1264,11 @@
                     window.EASBridge.on('muxer:deactivate', () => {
                         activate('decoder');
                     });
+                    window.EASBridge.on('encoder:activate', () => {
+                        loadTool('encoder').then(() => {
+                            window.EASBridge.send('encoder:ready', {});
+                        }).catch((e) => console.error('[encoder] tool load failed', e));
+                    });
                 }
             })();
         </script>

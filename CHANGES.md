@@ -8,6 +8,12 @@
 
 - Minor CSS nit: Fix the width of the macro combo box in the audio splicer tool to be 100% of the viewport width on mobile, rather than a fixed width. This change ensures that the macro combo box is properly sized and aligned with the rest of the splicer tool interface, improving usability and aesthetics.
 
+- Update stylesheet a bit more for mobile.
+
+- Update splicer tool even more to handle large (like, near GB size at **least**) files better on native mobile apps. Now you can edit these files in the app without crashing the app or running out of memory. The splicer tool now uses a more efficient method for processing large audio files (backed by storage), which should improve performance and reduce the likelihood of crashes or memory issues on mobile devices.
+
+- Further bug fixes and improvements to performance for both web and native mobile.
+
 ---
 
 2026-07-26:

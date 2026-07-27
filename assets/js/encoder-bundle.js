@@ -2903,7 +2903,13 @@ async function fetchAndStore() {
 
                 if (el('encoderMode')) { el('encoderMode').value = 'builder'; el('encoderMode').dispatchEvent(new Event('change')); }
 
-                stime();
+                if (params.time && isTimeselectValueValid(params.time)) {
+                    timeselect.value = params.time;
+                    lastValidTimeselectValue = params.time;
+                    updateHeaderPreview();
+                } else {
+                    stime();
+                }
 
                 await generateEas();
                 window.EASBridge.send('encoder:generateState', { active: false, success: true });
@@ -2993,12 +2999,13 @@ async function fetchAndStore() {
                 const minutes = String((params && params.minutes) || '0').padStart(2, '0');
                 let par = (params && params.sender) || '';
                 if (par.length < 8) par += ' '.repeat(8 - par.length);
+                const headerTime = (params && params.time && isTimeselectValueValid(params.time)) ? new Date(params.time) : new Date();
                 const header = create_header_string(
                     (params && params.originator) || '',
                     (params && params.event) || '',
                     locs,
                     hours + minutes,
-                    new Date(),
+                    headerTime,
                     par
                 );
                 window.EASBridge.send('encoder:headerPreview', { header: header || '' });

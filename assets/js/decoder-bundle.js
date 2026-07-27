@@ -188,6 +188,7 @@ async function fetchAndStore() {
     const events = window.events || {};
     const canadaCounty = window.canadaCounty || {};
 
+    let _offlineDecode = false;
     const CSS_COLOR_TO_HEX = {
         red: '#F44336', green: '#4CAF50', yellow: '#FFEB3B', white: '#FFFFFF',
         black: '#000000', orange: '#FF9800', blue: '#2196F3'
@@ -198,7 +199,7 @@ async function fetchAndStore() {
         if (color) {
             statuselem.style.color = color;
         }
-        if (window.EASBridge) {
+        if (window.EASBridge && !_offlineDecode) {
             const hexColor = (color && color.startsWith('#')) ? color : (CSS_COLOR_TO_HEX[color] || '#FFFFFF');
             window.EASBridge.send('decoder:status', { text: stat, color: hexColor });
         }
@@ -1933,6 +1934,8 @@ async function fetchAndStore() {
     }
 
     async function stopDecode(resetEndec = true) {
+        _bridgeLevelPeak = 0;
+        if (window.EASBridge) window.EASBridge.send('decoder:level', { db: METER_DB_MIN });
         flushPendingDecodeTail();
         finalizeActiveSameProduct();
         resetDecoderState(resetEndec);
@@ -2950,7 +2953,7 @@ async function fetchAndStore() {
 
     let _runDecoderCallCount = 0;
     let _lastHeaderTimesLog = 0;
-    let _bridgeLevelChunkCount = 0;
+    let _lastBridgeLevelSent = 0;
     let _bridgeLevelPeak = 0;
     function runDecoder(buf) {
         if (!buf || !buf.length) {
@@ -2967,13 +2970,14 @@ async function fetchAndStore() {
         if (mapped > decoderMeterTarget) {
             decoderMeterTarget = mapped;
         }
-        if (window.EASBridge) {
+        if (window.EASBridge && !_offlineDecode) {
             if (mapped > _bridgeLevelPeak) _bridgeLevelPeak = mapped;
-            if (++_bridgeLevelChunkCount >= 10) {
+            const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            if (nowMs - _lastBridgeLevelSent >= METER_FRAME_INTERVAL) {
+                _lastBridgeLevelSent = nowMs;
                 const db = _bridgeLevelPeak > 0 ? (METER_DB_MIN + _bridgeLevelPeak * (METER_DB_MAX - METER_DB_MIN)) : METER_DB_MIN;
                 window.EASBridge.send('decoder:level', { db: db });
                 _bridgeLevelPeak = 0;
-                _bridgeLevelChunkCount = 0;
             }
         }
 
@@ -4444,9 +4448,14 @@ async function fetchAndStore() {
                     }
                 }
                 const chunkSize = 128;
-                for (let i = 0; i < channelData.length; i += chunkSize) {
-                    const chunk = channelData.subarray(i, i + chunkSize);
-                    runDecoder(chunk);
+                _offlineDecode = true;
+                try {
+                    for (let i = 0; i < channelData.length; i += chunkSize) {
+                        const chunk = channelData.subarray(i, i + chunkSize);
+                        runDecoder(chunk);
+                    }
+                } finally {
+                    _offlineDecode = false;
                 }
                 stopDecode(false);
             } catch (e) {
@@ -4544,9 +4553,14 @@ async function fetchAndStore() {
                 updateSampleRate(audioBuffer.sampleRate);
                 const channelData = audioBuffer.getChannelData(0);
                 const chunkSize = 128;
-                for (let i = 0; i < channelData.length; i += chunkSize) {
-                    const chunk = channelData.slice(i, i + chunkSize);
-                    runDecoder(chunk);
+                _offlineDecode = true;
+                try {
+                    for (let i = 0; i < channelData.length; i += chunkSize) {
+                        const chunk = channelData.slice(i, i + chunkSize);
+                        runDecoder(chunk);
+                    }
+                } finally {
+                    _offlineDecode = false;
                 }
                 stopDecode(false);
             }
@@ -4621,8 +4635,13 @@ async function fetchAndStore() {
                     }
                 }
                 const chunkSize = 128;
-                for (let i = 0; i < channelData.length; i += chunkSize) {
-                    runDecoder(channelData.subarray(i, i + chunkSize));
+                _offlineDecode = true;
+                try {
+                    for (let i = 0; i < channelData.length; i += chunkSize) {
+                        runDecoder(channelData.subarray(i, i + chunkSize));
+                    }
+                } finally {
+                    _offlineDecode = false;
                 }
                 stopDecode(false);
             } catch (err) {

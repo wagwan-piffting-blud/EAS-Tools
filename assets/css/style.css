@@ -13,12 +13,12 @@
 
 /* Animation CSS */
 @keyframes fill-progress {
-  0% {
-    width: 0;
-  }
-  100% {
-    width: 40vw;
-  }
+    0% {
+        width: 0;
+    }
+    100% {
+        width: 40vw;
+    }
 }
 
 @keyframes rainbow-animation {
@@ -53,8 +53,8 @@
 }
 
 :root{
-  --sat: env(safe-area-inset-top, 10px);
-  --sab: env(safe-area-inset-bottom, 10px);
+    --sat: env(safe-area-inset-top, 10px);
+    --sab: env(safe-area-inset-bottom, 10px);
 }
 
 html {
@@ -1295,6 +1295,27 @@ button[disabled] {
         gap: 12px;
     }
 
+    #splicer-panel.tool-panel {
+        padding-bottom: 56px;
+    }
+
+    #splicer-panel .splice-storage {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 60;
+        margin: 0;
+        padding: 11px 14px;
+        background: #0b0b0b;
+        color: #e6e6e6;
+        border-top: 1px solid #2a2a2a;
+        font-size: 1em;
+        font-weight: 600;
+        text-align: center;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+    }
+
     .waveform-card,
     .splice-controls,
     .splice-timeline {
@@ -1406,9 +1427,22 @@ button[disabled] {
     body > header {
         padding-top: var(--sat);
     }
+    
+    button[data-splice-play] {
+        font-size: 0.85rem !important;
+    }
 }
 
 /* Light mode */
+@media screen and (max-width: 1079px) and (prefers-color-scheme: light) {
+    #splicer-panel .splice-storage {
+        background: #f0f0f0;
+        color: #1a1a1a;
+        border-top-color: #c0c0c0;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
+    }
+}
+
 @media (prefers-color-scheme: light) {
     * {
         --color-bg: #f5f5f5;

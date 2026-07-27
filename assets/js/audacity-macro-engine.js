@@ -20,6 +20,7 @@
     let modPromise = null;
     let pluginManifest = null;
     let macroManifest = null;
+    let macroListPromise = null;
     const dllCache = new Map();
     const macroTextCache = new Map();
 
@@ -106,6 +107,19 @@
             });
         }
         return modPromise;
+    }
+
+    async function loadMacroList() {
+        if (macroManifest) return macroManifest;
+        if (!macroListPromise) {
+            macroListPromise = (async () => {
+                let mm = [];
+                try { mm = await fetch(cfg.macroDir + 'manifest.json').then((r) => r.json()); } catch (e) { mm = []; }
+                if (!macroManifest) macroManifest = Array.isArray(mm) ? mm : [];
+                return macroManifest;
+            })();
+        }
+        return macroListPromise;
     }
 
     function listMacros() {
@@ -1226,7 +1240,7 @@
         if (rsPool !== null) return rsPool || null;
         rsPool = false;
         try {
-            if (cfg.disableParallel || typeof SharedArrayBuffer === 'undefined' || !global.EmuWorkerPool) return null;
+            if (cfg.disableParallel || !global.EmuWorkerPool) return null;
             rsPool = new global.EmuWorkerPool(cfg.pluginDir.replace(/audacity_plugins\/$/, 'js/') + 'resample-worker.js');
         } catch (e) { rsPool = false; }
         return rsPool || null;
@@ -1238,10 +1252,16 @@
         if (!pool) return resampleAudio(x, fromSr, toSr);
         try {
             const ratio = toSr / fromSr, outLen = Math.max(1, Math.round(x.length * ratio));
-            const xBuf = new SharedArrayBuffer(x.length * 4); new Float32Array(xBuf).set(x);
-            const outBuf = new SharedArrayBuffer(outLen * 4);
-            await pool.resample(xBuf, x.length, outBuf, outLen, fromSr, toSr);
-            return new Float32Array(outBuf).slice();
+            if (typeof SharedArrayBuffer !== 'undefined') {
+                const xBuf = new SharedArrayBuffer(x.length * 4); new Float32Array(xBuf).set(x);
+                const outBuf = new SharedArrayBuffer(outLen * 4);
+                await pool.resample(xBuf, x.length, outBuf, outLen, fromSr, toSr);
+                return new Float32Array(outBuf).slice();
+            }
+            const fc = RS_KF * Math.min(1, ratio), invStep = fromSr / toSr, half = Math.ceil(RS_A / fc);
+            const out = new Float32Array(outLen);
+            await pool.resampleTransfer(x, outLen, invStep, half, fromSr, toSr, out);
+            return out;
         } catch (e) {
             cfg.log('resample parallel failed, serial fallback: ' + (e && e.message));
             return resampleAudio(x, fromSr, toSr);
@@ -1735,7 +1755,7 @@
     }
 
     global.AudacityMacroEngine = {
-        config: cfg, ready, listMacros, resolvePlugin, resolvePluginEntry, resetPluginPool,
+        config: cfg, ready, listMacros, loadMacroList, resolvePlugin, resolvePluginEntry, resetPluginPool,
         applyMacroText, applyMacroFile, fetchMacroText,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
