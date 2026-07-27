@@ -2,7 +2,6 @@
 <html lang="en">
     <head>
         <meta charset="utf-8">
-        <script src="coi-serviceworker.js"></script>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <meta name="robots" content="index, nofollow">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -265,6 +264,10 @@
                     <option value="DEFAULT" selected>None (Default)</option>
                     <!-- will be populated by js -->
                 </select>
+                <br>
+                <br>
+                <label for="endecResample">Emulate ENDEC Sample Rate (band-limits the audio for authenticity; speed and pitch are unaffected):</label>
+                <input type="checkbox" id="endecResample" checked>
                 <br>
                 <br>
                 <label for="clip">Clip Signal (for authenticity):</label>

@@ -39,10 +39,29 @@ function freezeBurstList(list) {
 
 const ENDEC_MODE_PROFILE_SOURCE = {
     DEFAULT: {
-        label: "None (Default)/DASDEC",
+        label: "None (Default)/EASyCAP",
         signature: { tail: "none", lead: "none", burstGapMs: 1000 },
         betweenGapMs: 1000,
         afterGapMs: 1000,
+        sampleRate: 44100,
+        headerBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }],
+        eomBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }]
+    },
+    TFT: {
+        label: "TFT",
+        signature: { tail: "none", lead: "none", burstGapMs: 1000 },
+        betweenGapMs: 1000,
+        afterGapMs: 1000,
+        sampleRate: 8000,
+        headerBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }],
+        eomBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }]
+    },
+    DASDEC: {
+        label: "Monroe Electronics DASDEC",
+        signature: { tail: "none", lead: "none", burstGapMs: 1000 },
+        betweenGapMs: 1000,
+        afterGapMs: 1000,
+        sampleRate: 48000,
         headerBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }],
         eomBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }]
     },
@@ -51,6 +70,7 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         signature: { tail: "00 00", lead: "none", burstGapMs: 1000 },
         betweenGapMs: 1000,
         afterGapMs: 1000,
+        sampleRate: 11025,
         headerBursts: [{ prefix: "", suffix: "\x00\x00" }, { prefix: "", suffix: "\x00\x00" }, { prefix: "", suffix: "\x00\x00" }],
         eomBursts: [{ prefix: "", suffix: "\x00\x00" }, { prefix: "", suffix: "\x00\x00" }, { prefix: "", suffix: "\x00\x00" }]
     },
@@ -59,6 +79,7 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         signature: { tail: "00", lead: "none", burstGapMs: 1000 },
         betweenGapMs: 1000,
         afterGapMs: 1000,
+        sampleRate: 11025,
         headerBursts: [{ prefix: "", suffix: "\x00\x00\x00" }, { prefix: "", suffix: "\x00\x00\x00" }, { prefix: "", suffix: "\x00\x00\x00" }],
         eomBursts: [{ prefix: "\x00", suffix: "\x00" }, { prefix: "\x00", suffix: "\x00" }, { prefix: "\x00", suffix: "\x00" }]
     },
@@ -67,6 +88,7 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         signature: { tail: "00 00 00", lead: "none", burstGapMs: 1000 },
         betweenGapMs: 1000,
         afterGapMs: 1000,
+        sampleRate: 11025,
         headerBursts: [{ prefix: "", suffix: "\x00\x00\x00" }, { prefix: "", suffix: "\x00\x00\x00" }, { prefix: "", suffix: "\x00\x00\x00" }],
         eomBursts: [{ prefix: "", suffix: "\x00\x00\x00" }, { prefix: "", suffix: "\x00\x00\x00" }, { prefix: "", suffix: "\x00\x00\x00" }]
     },
@@ -75,6 +97,7 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         signature: { tail: "FF FF FF", lead: "00 on first burst", burstGapMs: 1000 },
         betweenGapMs: 1000,
         afterGapMs: 1000,
+        sampleRate: 44100,
         headerBursts: [{ prefix: "\x00", suffix: "\xFF\xFF\xFF" }, { prefix: "\xAB", suffix: "\xFF\xFF\xFF" }, { prefix: "\xAB", suffix: "\xFF\xFF\xFF" }],
         eomBursts: [{ prefix: "\x00", suffix: "\xFF\xFF\xFF" }, { prefix: "", suffix: "\xFF\xFF\xFF" }, { prefix: "", suffix: "\xFF\xFF\xFF" }]
     },
@@ -83,22 +106,24 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         signature: { tail: "FF", lead: "none", burstGapMs: 1000 },
         betweenGapMs: 1000,
         afterGapMs: 1000,
+        sampleRate: 44100,
         headerBursts: [{ prefix: "", suffix: "\xFF" }, { prefix: "", suffix: "\xFF" }, { prefix: "", suffix: "\xFF" }],
         eomBursts: [{ prefix: "", suffix: "\xFF" }, { prefix: "", suffix: "\xFF" }, { prefix: "", suffix: "\xFF" }]
     },
     TRILITHIC: {
-        label: "Trilithic EASyPLUS",
+        label: "Trilithic EASyPLUS/EASyCAST/EASyIPTV",
         signature: { tail: "none", lead: "none", burstGapMs: 868 },
         betweenGapMs: 868,
         afterGapMs: 1118,
         relayPop: {
             enabled: false
         },
+        sampleRate: 44100,
         headerBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }],
         eomBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }]
     },
     TRILITHIC_POP: {
-        label: "Trilithic EASyPLUS with Pop",
+        label: "Trilithic EASyPLUS/EASyCAST/EASyIPTV (with pop)",
         signature: { tail: "none", lead: "none", burstGapMs: 868 },
         betweenGapMs: 868,
         afterGapMs: 1118,
@@ -107,6 +132,16 @@ const ENDEC_MODE_PROFILE_SOURCE = {
             fileStart: "assets/pop_start.wav",
             fileEnd: "assets/pop.wav"
         },
+        sampleRate: 44100,
+        headerBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }],
+        eomBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }]
+    },
+    HOLLYANNE: {
+        label: "HollyAnne HU-961",
+        signature: { tail: "none", lead: "none", burstGapMs: 1000 },
+        betweenGapMs: 1000,
+        afterGapMs: 1000,
+        sampleRate: 5000,
         headerBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }],
         eomBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }]
     }
@@ -126,6 +161,7 @@ export const ENDEC_MODE_PROFILES = Object.freeze(
                 signature: Object.freeze(profile.signature),
                 betweenGapMs: profile.betweenGapMs,
                 afterGapMs: profile.afterGapMs,
+                sampleRate: profile.sampleRate,
                 relayPop: profile.relayPop ? Object.freeze({ ...profile.relayPop }) : null,
                 headerBursts: freezeBurstList(profile.headerBursts),
                 eomBursts: freezeBurstList(profile.eomBursts)
@@ -202,6 +238,95 @@ export function resamplePcm(pcm, fromRate, toRate) {
         out[i] = a + (b - a) * frac;
     }
     return out;
+}
+
+const SINC_TABLE_RESOLUTION = 512;
+const SINC_KAISER_BETA = 4.551;
+
+function besselI0(x) {
+    const halfSquared = (x / 2) * (x / 2);
+    let term = 1;
+    let sum = 1;
+    for (let k = 1; k < 40; k++) {
+        term *= halfSquared / (k * k);
+        sum += term;
+        if (term < sum * 1e-12) break;
+    }
+    return sum;
+}
+
+function buildSincTable(cutoff, zeroCrossings) {
+    const halfWidth = zeroCrossings / cutoff;
+    const size = Math.ceil(halfWidth * SINC_TABLE_RESOLUTION) + 2;
+    const table = new Float64Array(size);
+    const betaScale = besselI0(SINC_KAISER_BETA);
+    for (let i = 0; i < size; i++) {
+        const t = i / SINC_TABLE_RESOLUTION;
+        if (t >= halfWidth) {
+            table[i] = 0;
+            continue;
+        }
+        const x = Math.PI * cutoff * t;
+        const sinc = (i === 0) ? 1 : Math.sin(x) / x;
+        const edge = t / halfWidth;
+        const window = besselI0(SINC_KAISER_BETA * Math.sqrt(1 - edge * edge)) / betaScale;
+        table[i] = cutoff * sinc * window;
+    }
+    return { table, halfWidth };
+}
+
+export function resamplePcmSinc(pcm, fromRate, toRate, options = {}) {
+    const src = (pcm instanceof Float32Array) ? pcm : Float32Array.from(pcm || []);
+    if (src.length === 0) return new Float32Array(0);
+    if (!Number.isFinite(fromRate) || !Number.isFinite(toRate) || fromRate <= 0 || toRate <= 0) {
+        return new Float32Array(src);
+    }
+
+    const ratio = toRate / fromRate;
+    const outLength = Number.isFinite(options.outLength)
+        ? Math.max(1, Math.round(options.outLength))
+        : Math.max(1, Math.round(src.length * ratio));
+    if (fromRate === toRate && outLength === src.length) return new Float32Array(src);
+
+    const rolloff = Number.isFinite(options.rolloff) ? options.rolloff : 0.95;
+    const zeroCrossings = Number.isFinite(options.zeroCrossings) ? options.zeroCrossings : 16;
+    const cutoff = Math.min(1, ratio) * rolloff;
+    const { table, halfWidth } = buildSincTable(cutoff, zeroCrossings);
+    const tableLimit = table.length - 2;
+    const step = 1 / ratio;
+    const srcLength = src.length;
+    const out = new Float32Array(outLength);
+
+    for (let i = 0; i < outLength; i++) {
+        const pos = i * step;
+        const first = Math.ceil(pos - halfWidth);
+        const last = Math.floor(pos + halfWidth);
+        let acc = 0;
+        let norm = 0;
+        for (let n = first; n <= last; n++) {
+            const d = Math.abs(pos - n) * SINC_TABLE_RESOLUTION;
+            const idx = d | 0;
+            if (idx > tableLimit) continue;
+            const weight = table[idx] + (table[idx + 1] - table[idx]) * (d - idx);
+            norm += weight;
+            if (n >= 0 && n < srcLength) acc += src[n] * weight;
+        }
+        out[i] = (norm > 1e-9) ? acc / norm : 0;
+    }
+
+    return out;
+}
+
+export function emulateSampleRate(pcm, hostRate, targetRate, options = {}) {
+    const src = (pcm instanceof Float32Array) ? pcm : Float32Array.from(pcm || []);
+    if (src.length === 0) return new Float32Array(0);
+    if (!Number.isFinite(hostRate) || !Number.isFinite(targetRate) || hostRate <= 0 || targetRate <= 0) {
+        return new Float32Array(src);
+    }
+    if (targetRate >= hostRate) return new Float32Array(src);
+
+    const decimated = resamplePcmSinc(src, hostRate, targetRate, options);
+    return resamplePcmSinc(decimated, targetRate, hostRate, { ...options, outLength: src.length });
 }
 
 export function vmifyPcm(pcm, sampleRate, options = {}) {
@@ -755,6 +880,8 @@ export function createTtsTextEditor(config = {}) {
 }
 
 let __piperLoading = null;
+let __piperReady = false;
+let __piperFetchPatched = false;
 
 export function ensurePiperLoaded(config = {}) {
     const {
@@ -772,7 +899,7 @@ export function ensurePiperLoaded(config = {}) {
         : voice;
 
     return (async () => {
-        if (window.PiperTTS?.pcmFor || window.PiperTTS?.predict) return;
+        if (__piperReady) return;
 
         if (!__piperLoading) {
             __piperLoading = new Promise((resolve, reject) => {
@@ -790,26 +917,42 @@ export function ensurePiperLoaded(config = {}) {
             window.ort.env.wasm.wasmPaths = wasmBaseFinal;
         }
 
-        const HF_URL_HINT = '/rhasspy/piper-voices/resolve';
-        const origFetch = window.fetch.bind(window);
-
-        window.fetch = async (input, init) => {
-            const url = typeof input === 'string' ? input : (input?.url || '');
-            if (url.includes(HF_URL_HINT) || /voices(\.json)?$/.test(url)) {
-                const manifest = {};
-                manifest[voiceFinal.id] = { model: voiceFinal.modelUrl, config: voiceFinal.configUrl };
-                return new Response(new Blob([JSON.stringify(manifest)], { type: 'application/json' }), { status: 200 });
-            }
-            return origFetch(input, init);
-        };
+        if (!__piperFetchPatched) {
+            const HF_URL_HINT = '/rhasspy/piper-voices/resolve';
+            const origFetch = window.fetch.bind(window);
+            window.fetch = async (input, init) => {
+                const url = typeof input === 'string' ? input : (input?.url || '');
+                if (url.includes(HF_URL_HINT) || /voices(\.json)?$/.test(url)) {
+                    const manifest = {};
+                    manifest[voiceFinal.id] = { model: voiceFinal.modelUrl, config: voiceFinal.configUrl };
+                    return new Response(new Blob([JSON.stringify(manifest)], { type: 'application/json' }), { status: 200 });
+                }
+                return origFetch(input, init);
+            };
+            __piperFetchPatched = true;
+        }
 
         if (window.PiperTTS?.init) {
+            await window.PiperTTS.init({ voiceId: voiceFinal.id, onnxWasm: wasmBaseFinal });
+        }
+
+        let lastError = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
             try {
-                await window.PiperTTS.init({ voiceId: voiceFinal.id, warmup: false, onnxWasm: wasmBaseFinal });
-            } catch {
-                reportStatus('PiperTTS: init failed.', "ERROR");
+                if (window.PiperTTS?.pcmFor) {
+                    await window.PiperTTS.pcmFor('test', voiceFinal.id, 22050);
+                } else if (window.PiperTTS?.synthToWavBlob) {
+                    await window.PiperTTS.synthToWavBlob('test');
+                }
+                __piperReady = true;
+                return;
+            } catch (e) {
+                lastError = e;
+                await new Promise((r) => setTimeout(r, 500));
             }
         }
+        reportStatus('PiperTTS: warm-up failed, please try again.', "ERROR");
+        throw lastError;
     })();
 }
 

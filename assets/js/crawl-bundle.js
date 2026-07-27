@@ -147,6 +147,7 @@ async function initCrawlEditor() {
             { family: 'VDSwiss V1', file: 'vdswiss-v1.otf', description: 'sans-serif font used on VDS crawls (made by Gigabyte97)' },
             { family: 'User-Upload', file: 'user-upload.ttf', description: 'upload your own font to use!' }
         ];
+        window.crawlFontsToLoad = fontsToLoad;
 
         const fontSelect = document.getElementById('crawlFontFamily');
         if (!fontSelect) return;
@@ -4847,7 +4848,15 @@ async function initCrawlEditor() {
             modes.forEach(m => modeList.push({ value: m, label: m }));
             window.EASBridge.send('crawl:endecModes', { modes: modeList });
         }
+        function sendCrawlFontsToNative() {
+            const list = window.crawlFontsToLoad || [];
+            const fonts = list
+                .filter((f) => f.family !== 'User-Upload')
+                .map((f) => ({ value: f.family, label: `${f.family} (${f.description})`, file: f.file }));
+            window.EASBridge.send('crawl:fontsData', { fonts: fonts });
+        }
         resourcesReady.then(sendEndecModesToNative).catch(() => sendEndecModesToNative());
+        sendCrawlFontsToNative();
 
         window.EASBridge.on('crawl:convertHeader', async (params) => {
             const rawHeader = params?.header;
@@ -4966,6 +4975,7 @@ async function initCrawlEditor() {
 
         window.EASBridge.on('crawl:requestData', () => {
             resourcesReady.then(sendEndecModesToNative).catch(() => sendEndecModesToNative());
+            sendCrawlFontsToNative();
         });
 
         console.log('[EASBridge] Crawl bridge handlers registered');

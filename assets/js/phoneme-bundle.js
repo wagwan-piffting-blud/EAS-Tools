@@ -280,6 +280,23 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
                 window.EASBridge.send('phoneme:result', { text: '[ERROR] ' + (err?.message || String(err)) });
             }
         });
+        window.EASBridge.on('phoneme:requestOptions', () => {
+            const serialize = (id) => {
+                const el = document.getElementById(id);
+                const out = [];
+                if (el) {
+                    for (const opt of el.options) {
+                        out.push({ value: opt.value, label: opt.textContent });
+                    }
+                }
+                return out;
+            };
+            window.EASBridge.send('phoneme:options', {
+                modes: serialize('phonemeMode'),
+                backends: serialize('phonemeOutBackend'),
+                singleBackends: serialize('phonemeCrossModeFrom'),
+            });
+        });
         console.log('[EASBridge] Phoneme bridge handlers registered');
     }
 })();

@@ -1,4 +1,18 @@
-# 2026-07-25
+# EAS Tools Changelog
+
+2026-07-26:
+
+- Add "emulate ENDEC sample rate" option to the encoder. This option allows users to choose whether they want to emulate the sample rate of the selected ENDEC mode or keep the full-bandwidth audio. When enabled, the encoder will resample the audio to match the sample rate of the selected ENDEC mode, which can help add to authenticity when generating alerts. When disabled, the encoder will keep the full-bandwidth audio, which may be preferred for certain use cases. This change provides users with more control over the audio output of the encoder and allows them to choose the option that best suits their needs.
+
+- Added more ENDEC modes, including (but not limited to) HollyAnne. This change expands the range of ENDEC modes available in the encoder (in addition to the sample rate changes listed above), allowing users to generate alerts that are accurate to this model of ENDEC.
+
+- Remove coi-serviceworker.js. This file was previously used to handle service worker registration and caching for the EAS Tools website, but it is no longer needed due to changes in the way the website is deployed and served. The removal of this file should not affect the functionality of the website or any of its tools, as service worker registration is now handled directly by the origin web server (Hetzner VPS). This change simplifies the codebase and reduces potential confusion for developers working on the project.
+
+- More changes may be coming later tonight. If not, this line will be removed.
+
+---
+
+2026-07-25:
 
 - Update announcements.js to support native mobile app announcements. This change allows the announcements feature to work seamlessly on both web and native mobile platforms, ensuring that users receive important updates and notifications regardless of the device they are using.
 

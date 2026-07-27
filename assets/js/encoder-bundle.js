@@ -1,4 +1,4 @@
-import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, getSpfyEngine, getAcuEngine } from './common-functions.js';
+import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, getSpfyEngine, getAcuEngine } from './common-functions.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -544,6 +544,10 @@ async function fetchAndStore() {
         }
 
         return normalizeEndecMode(normalized);
+    }
+
+    function shouldEmulateEndecRate() {
+        return document.getElementById("endecResample")?.checked !== false;
     }
 
     function samplesFromMs(ms) {
@@ -1504,6 +1508,16 @@ async function fetchAndStore() {
             }
         }
 
+        const endecRate = getEndecModeProfile(endecMode).sampleRate;
+        if (endecRate !== SAMPLE_RATE) {
+            if (shouldEmulateEndecRate()) {
+                samples = emulateSampleRate(samples, SAMPLE_RATE, endecRate);
+                addStatus("Emulated " + endecRate + " Hz ENDEC sample rate.");
+            } else {
+                addStatus("ENDEC sample rate emulation is off; keeping full-bandwidth audio.");
+            }
+        }
+
         document.getElementById("generate").disabled = false;
         document.getElementById("save").disabled = false;
     }
@@ -1816,6 +1830,7 @@ async function fetchAndStore() {
     let ttsVoice = (document.getElementById('ttsVoice')?.value || '').trim();
     let rawInput = (document.getElementById("cheader")?.value || '').trim();
     let clipSignal = document.getElementById("clip").checked;
+    let endecResample = shouldEmulateEndecRate();
     let overallEndecMode = document.getElementById("overallEndecMode").value;
 
     async function generateEas() {
@@ -1834,6 +1849,7 @@ async function fetchAndStore() {
         ttsVoice = (document.getElementById('ttsVoice')?.value || '').trim();
         rawInput = (document.getElementById("cheader")?.value || '').trim();
         clipSignal = document.getElementById("clip").checked;
+        endecResample = shouldEmulateEndecRate();
         overallEndecMode = document.getElementById("overallEndecMode").value;
 
         localStorage.setItem("eas-tools-encoder-settings", JSON.stringify({
@@ -1855,11 +1871,12 @@ async function fetchAndStore() {
             'ttsPitch': ttsPitch?.value || '0',
             'cheader': rawInput,
             'clip': clipSignal,
+            'endecResample': endecResample,
             'enable-vmify-custom': document.getElementById('enable-vmify-custom')?.checked || false,
             'vmify-custom-intensity': document.getElementById('vmify-custom-intensity')?.value || '1'
         }));
 
-        samples.length = 0;
+        samples = [];
         startTime = performance.now();
         cl = clipSignal;
 
@@ -2778,6 +2795,49 @@ async function fetchAndStore() {
                 }
             }
             window.EASBridge.send('encoder:endecModesData', { modes: modesArr });
+
+            const originatorsArr = [];
+            const originatorsEl = document.getElementById('originators');
+            if (originatorsEl) {
+                for (const opt of originatorsEl.options) {
+                    originatorsArr.push({ value: opt.value, label: opt.textContent });
+                }
+            }
+            window.EASBridge.send('encoder:originatorsData', { options: originatorsArr });
+
+            const attentionTonesArr = [];
+            const attEl = document.getElementById('att');
+            if (attEl) {
+                for (const opt of attEl.options) {
+                    attentionTonesArr.push({ value: opt.value, label: opt.textContent });
+                }
+            }
+            window.EASBridge.send('encoder:attentionTonesData', { options: attentionTonesArr });
+
+            const announcementTypesArr = [];
+            const announcementTypeEl = document.getElementById('announcementType');
+            if (announcementTypeEl) {
+                for (const opt of announcementTypeEl.options) {
+                    announcementTypesArr.push({ value: opt.value, label: opt.textContent });
+                }
+            }
+            window.EASBridge.send('encoder:announcementTypesData', { options: announcementTypesArr });
+
+            const regionsArr = [];
+            if (window.rgn) {
+                for (const code of Object.keys(window.rgn).sort()) {
+                    regionsArr.push({ value: code, label: window.rgn[code] });
+                }
+            }
+            window.EASBridge.send('encoder:regionsData', { options: regionsArr });
+
+            const eventGroupsArr = [];
+            if (eventsEl) {
+                for (const og of eventsEl.querySelectorAll('optgroup')) {
+                    eventGroupsArr.push({ key: og.getAttribute('data-event-group') || '', label: og.label || '' });
+                }
+            }
+            window.EASBridge.send('encoder:eventGroupsData', { groups: eventGroupsArr });
         }
 
         window.EASBridge.on('encoder:requestData', () => {
@@ -2811,6 +2871,7 @@ async function fetchAndStore() {
                 if (params.toneDuration != null && el('tlen')) el('tlen').value = params.toneDuration.toString();
                 if (params.endecMode && el('overallEndecMode')) el('overallEndecMode').value = params.endecMode;
                 if (params.clip != null && el('clip')) el('clip').checked = params.clip;
+                if (params.endecResample != null && el('endecResample')) el('endecResample').checked = params.endecResample;
                 if (params.announcementType && el('announcementType')) { el('announcementType').value = params.announcementType; el('announcementType').dispatchEvent(new Event('change')); }
                 if (params.ttsText != null) { window.ttsText = params.ttsText; if (el('ttsText')) el('ttsText').value = params.ttsText; }
                 if (params.ttsVoice) {
