@@ -750,12 +750,16 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             invalidateMacroWaveformCache(true);
         }
         const total = state.segments.reduce((sum, seg) => sum + seg.pcm.length, 0);
-        state.pcm = new Float32Array(total);
-        let offset = 0;
-        state.segments.forEach((seg) => {
-            state.pcm.set(seg.pcm, offset);
-            offset += seg.pcm.length;
-        });
+        if (state.segments.length === 1) {
+            state.pcm = state.segments[0].pcm;
+        } else {
+            state.pcm = new Float32Array(total);
+            let offset = 0;
+            state.segments.forEach((seg) => {
+                state.pcm.set(seg.pcm, offset);
+                offset += seg.pcm.length;
+            });
+        }
         if (duration() > 0) {
             setSelection(0, duration());
         } else {
@@ -1040,17 +1044,18 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         });
     };
 
-    const addSegment = (pcm, sampleRate, label, sourceText = '') => {
+    const addSegment = (pcm, sampleRate, label, sourceText = '', adopt = false) => {
         if (!pcm || !pcm.length) return;
         if (!state.sampleRate) state.sampleRate = sampleRate || 44100;
         let finalPcm = pcm;
         if (sampleRate && sampleRate !== state.sampleRate) {
             finalPcm = resamplePcm(pcm, sampleRate, state.sampleRate);
+            adopt = true;
         }
         state.segments.push({
             id: `seg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
             label: label || 'Segment',
-            pcm: new Float32Array(finalPcm),
+            pcm: adopt ? finalPcm : new Float32Array(finalPcm),
             sourceText,
         });
         rebuildTimeline();
@@ -1508,7 +1513,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         clearInterval(intervalId2);
     };
 
-    const MAX_PCM_BYTES = 1400 * 1024 * 1024;
+    const IN_APP_WEBVIEW = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '')
+        || (/Macintosh/.test(navigator.userAgent || '') && (navigator.maxTouchPoints || 0) > 1);
+    const MAX_PCM_BYTES = (IN_APP_WEBVIEW ? 384 : 1400) * 1024 * 1024;
+    const MAX_LOAD_FILE_BYTES = (IN_APP_WEBVIEW ? 384 : 2048) * 1024 * 1024;
+    const DECODE_FILE_LIMIT = (IN_APP_WEBVIEW ? 48 : 400) * 1024 * 1024;
 
     const readWavStructure = async (file) => {
         const readDV = async (off, len) =>
@@ -1609,24 +1618,39 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (!file) return;
         const name = file.name || '';
         const isWav = /\.wav$/i.test(name) || file.type === 'audio/wav' || file.type === 'audio/x-wav';
+        if (file.size > MAX_LOAD_FILE_BYTES) {
+            persistStatus(`This ${(file.size / 1048576).toFixed(0)} MB file is too large to load on this device. Try a shorter clip or a lower sample rate.`);
+            return;
+        }
         if (isWav) {
             let res = null;
             try { res = await loadWavMonoFloat32(file); } catch (e) { res = null; }
             if (res && res.tooLarge) return;
             if (res && res.pcm) {
-                addSegment(res.pcm, res.sampleRate, name || 'File');
+                addSegment(res.pcm, res.sampleRate, name || 'File', '', true);
                 resetViewWindow();
                 drawWaveform();
                 return;
             }
         }
-        const ab = await file.arrayBuffer();
-        const ctxAudio = getAudioCtx();
-        const decoded = await ctxAudio.decodeAudioData(ab);
-        const pcm = new Float32Array(decoded.getChannelData(0));
-        addSegment(pcm, decoded.sampleRate, name || 'File');
-        resetViewWindow();
-        drawWaveform();
+        if (file.size > DECODE_FILE_LIMIT) {
+            const mb = (file.size / 1048576).toFixed(0);
+            persistStatus(isWav
+                ? `This WAV (${mb} MB) isn't standard PCM the streaming loader can read, and it's too large to decode in memory here. Re-export it as 16-bit PCM WAV, or use a shorter clip.`
+                : `This ${mb} MB file is too large to decode in memory on this device. Convert it to 16-bit PCM WAV (which streams in), or use a shorter clip.`);
+            return;
+        }
+        try {
+            const ab = await file.arrayBuffer();
+            const ctxAudio = getAudioCtx();
+            const decoded = await ctxAudio.decodeAudioData(ab);
+            const pcm = new Float32Array(decoded.getChannelData(0));
+            addSegment(pcm, decoded.sampleRate, name || 'File', '', true);
+            resetViewWindow();
+            drawWaveform();
+        } catch (e) {
+            persistStatus('Could not decode this audio file.');
+        }
     };
 
     const piperReportStatus = (message) => {
@@ -2706,6 +2730,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         btn.appendChild(labelSpan);
         btn.appendChild(arrowSpan);
         macroComboBtn = btn;
+        btn.addEventListener('pointerdown', ensureAudacityMacros, { once: true });
 
         const pop = document.createElement('div');
         pop.className = 'splice-macro-combo__pop';
@@ -2972,7 +2997,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         syncLabel();
     }
 
-    if (window.AudacityMacroEngine) {
+    let audacityMacrosStarted = false;
+    function ensureAudacityMacros() {
+        if (audacityMacrosStarted || !window.AudacityMacroEngine) return;
+        audacityMacrosStarted = true;
         window.AudacityMacroEngine.ready()
             .then(() => addAudacityMacrosToSelect())
             .catch((e) => console.warn('[Splicer] Audacity macro engine unavailable:', e));

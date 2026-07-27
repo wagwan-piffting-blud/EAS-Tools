@@ -2982,6 +2982,31 @@ async function fetchAndStore() {
             }
         });
 
+        window.EASBridge.on('encoder:requestHeaderPreview', (params) => {
+            try {
+                const locs = Array.isArray(params && params.locations) ? params.locations : [];
+                if (locs.length < 1) {
+                    window.EASBridge.send('encoder:headerPreview', { header: '' });
+                    return;
+                }
+                const hours = String((params && params.hours) || '0').padStart(2, '0');
+                const minutes = String((params && params.minutes) || '0').padStart(2, '0');
+                let par = (params && params.sender) || '';
+                if (par.length < 8) par += ' '.repeat(8 - par.length);
+                const header = create_header_string(
+                    (params && params.originator) || '',
+                    (params && params.event) || '',
+                    locs,
+                    hours + minutes,
+                    new Date(),
+                    par
+                );
+                window.EASBridge.send('encoder:headerPreview', { header: header || '' });
+            } catch (err) {
+                window.EASBridge.send('encoder:headerPreview', { header: '' });
+            }
+        });
+
         window.EASBridge.on('encoder:setTimeToNow', () => {
             stime();
         });

@@ -1379,8 +1379,8 @@ button[disabled] {
         margin-right: 0;
     }
 
-    #spliceMacros {
-        width: 40vw;
+    div[data-splice-macro-combo] {
+        width: 100vw !important;
     }
 
     .splice-macro-combo {

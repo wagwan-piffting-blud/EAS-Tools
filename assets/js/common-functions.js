@@ -892,11 +892,16 @@ export function ensurePiperLoaded(config = {}) {
     } = config;
 
     const mirror = (typeof window !== 'undefined' && window.__EAS_REMOTE_BASE__) || '';
-    const toMirror = (u) => (mirror && u && !/^https?:\/\//i.test(u)) ? mirror + String(u).replace(/^\.?\//, '') : u;
-    const wasmBaseFinal = toMirror(wasmBase);
-    const voiceFinal = mirror
-        ? { ...voice, modelUrl: toMirror(voice.modelUrl), configUrl: toMirror(voice.configUrl) }
-        : voice;
+    const pageBase = (typeof document !== 'undefined' && document.baseURI) || (typeof location !== 'undefined' ? location.href : '');
+    const toAbs = (u) => {
+        if (!u) return u;
+        if (/^https?:\/\//i.test(u)) return u;
+        const rel = String(u).replace(/^\.?\//, '');
+        if (mirror) return mirror + rel;
+        try { return new URL(rel, pageBase).href; } catch (_) { return u; }
+    };
+    const wasmBaseFinal = toAbs(wasmBase);
+    const voiceFinal = { ...voice, modelUrl: toAbs(voice.modelUrl), configUrl: toAbs(voice.configUrl) };
 
     return (async () => {
         if (__piperReady) return;
@@ -933,7 +938,7 @@ export function ensurePiperLoaded(config = {}) {
         }
 
         if (window.PiperTTS?.init) {
-            await window.PiperTTS.init({ voiceId: voiceFinal.id, onnxWasm: wasmBaseFinal });
+            await window.PiperTTS.init({ voiceId: voiceFinal.id, warmup: false, onnxWasm: wasmBaseFinal });
         }
 
         let lastError = null;
