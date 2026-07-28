@@ -1,5 +1,13 @@
 # EAS Tools Changelog
 
+2026-07-28:
+
+- Add Gorman Redlich EAS-1CG premade background to the Text Crawl Generator. This background is now available as an option in the "Premade Backgrounds" dropdown menu, allowing users to select it for their text crawl projects. The Gorman Redlich EAS-1CG background is a classic design that was used in many EAS broadcasts, and its addition to the Text Crawl Generator provides users with more options for creating authentic-looking EAS screens.
+
+- Add [EAS-1CG Neue font](https://fontstruct.com/fontstructions/show/2783365/eas-1cg-neue) to the Text Crawl Generator. This font is a modernized version of the original EAS-1CG font (also by xyzlojones), and it is now available as an option in the "Font" dropdown menu. The EAS-1CG-Neue font provides a clean and legible typeface that is suitable for use in Gorman EAS screens, and its addition to the Text Crawl Generator allows users to create text crawls that closely resemble those seen in real EAS broadcasts. Credits to xyzlojones for creating the EAS-1CG Neue font.
+
+---
+
 2026-07-27:
 
 - Defer macro list load to only when the user tries to select a macro to apply. This should improve load times for the audio splicer tool, especially on slower devices or connections. The macro list is now only fetched from the server when the user clicks on the "Select Macro" button, rather than loading it eagerly on page load.

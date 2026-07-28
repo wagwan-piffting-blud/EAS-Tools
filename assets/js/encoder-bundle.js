@@ -1,4 +1,4 @@
-import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, getSpfyEngine, getAcuEngine } from './common-functions.js';
+import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, getSpfyEngine, getAcuEngine } from './common-functions.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -518,12 +518,16 @@ async function fetchAndStore() {
 
     async function saveToWav() {
         addStatus("Generating wav file...");
-        wav.fromScratch(1, SAMPLE_RATE, '32', samples.map(e => {
+        const endecRate = getEndecModeProfile(getOverallEndecMode()).sampleRate;
+        const useEndecRate = shouldEmulateEndecRate() && endecRate !== SAMPLE_RATE;
+        const outRate = useEndecRate ? endecRate : SAMPLE_RATE;
+        const outSamples = useEndecRate ? Array.from(resamplePcmSinc(samples, SAMPLE_RATE, endecRate)) : samples;
+        wav.fromScratch(1, outRate, '32', outSamples.map(e => {
             return e * (2147483647 / 2);
         }));
         const wavBuffer = wav.toBuffer().buffer;
         await saveFile('eas.wav', wavBuffer, 'audio/wav');
-        addStatus("Download started...");
+        addStatus(useEndecRate ? `Download started (${outRate} Hz ENDEC rate).` : "Download started...");
     }
 
     function getOverallEndecMode() {

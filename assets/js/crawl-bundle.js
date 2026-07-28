@@ -111,9 +111,21 @@ async function initCrawlEditor() {
         'easyplus': { topLeft: { x: 0, y: 175 } },
         'easyplus_gray': { topLeft: { x: 0, y: 720 } },
         'easyplus_gray_2plus': { topLeft: { x: 0, y: 820 } },
-        'dasdec': { topLeft: { x: 9999, y: 9999 } }
+        'dasdec': { topLeft: { x: 9999, y: 9999 } },
+        'eas_1cg': { topLeft: { x: 9999, y: 9999 } }
     });
+
     const DASDEC_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
+    const EAS_1CG_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
+    const EAS_1CG_BACKGROUND_COLOR = '#545454';
+    const EAS_1CG_TEXT_COLOR = '#FFFFFF';
+    const EAS_1CG_OUTLINE_COLOR = '#000000';
+    const EAS_1CG_OUTLINE_WIDTH = 2;
+    const EAS_1CG_SAFE_AREA_RATIO = 0.1;
+    const EAS_1CG_COLUMNS = 31;
+    const EAS_1CG_ROWS = 8;
+    const EAS_1CG_FONT_FAMILY = 'EAS-1CG Neue';
+    const EAS_1CG_HEADER_LINE = '***EMERGENCY DETAILS Page 1***';
     const ALLOWED_CRAWL_BACKGROUND_MODES = new Set(['solid', 'transparent', 'image', 'premade']);
 
     function normalizeCrawlBackgroundMode(value) {
@@ -144,6 +156,7 @@ async function initCrawlEditor() {
             { family: 'Bitstream Vera Sans', file: 'VeraBd.ttf', description: 'sans-serif font' },
             { family: 'Texscan', file: 'texscan.ttf', description: 'older style of sans-serif crawl font' },
             { family: 'Arial Bold', file: 'arialbd.ttf', description: 'sans-serif font used on Bevelled scrolls' },
+            { family: 'EAS-1CG Neue', file: 'eas-1cg-neue.otf', description: 'font used on Gorman Redlich EAS-1CG crawls' },
             { family: 'VDSwiss V1', file: 'vdswiss-v1.otf', description: 'sans-serif font used on VDS crawls (made by Gigabyte97)' },
             { family: 'User-Upload', file: 'user-upload.ttf', description: 'upload your own font to use!' }
         ];
@@ -3295,6 +3308,15 @@ async function initCrawlEditor() {
             return;
         }
 
+        if (descriptor.source === 'eas_1cg') {
+            updateCrawlControlsFromAsset({
+                width: EAS_1CG_RENDER_DIMENSIONS.width,
+                height: EAS_1CG_RENDER_DIMENSIONS.height,
+                topLeft: initialTopLeft
+            });
+            return;
+        }
+
         updateCrawlControlsFromAsset({ topLeft: initialTopLeft });
         const media = await loadMediaElementFromSource(descriptor.type, descriptor.source);
         if (!media || requestId !== premadeSizingRequestToken) {
@@ -3560,6 +3582,17 @@ async function initCrawlEditor() {
         return pages;
     }
 
+    async function formatDasdecEAS2Text(rawHeader) {
+        const pages = await formatDasdec(rawHeader, true);
+        if (!Array.isArray(pages)) {
+            return [];
+        }
+
+        return pages
+            .map((page) => (Array.isArray(page) ? page.slice(0, -1).filter((line) => line !== '') : []))
+            .filter((page) => page.length);
+    }
+
     async function generateDasdecScreenImage(headerText) {
         const canvas = document.createElement('canvas');
         canvas.width = DASDEC_RENDER_DIMENSIONS.width;
@@ -3602,6 +3635,139 @@ async function initCrawlEditor() {
 
         const img = new Image();
         img.src = canvas.toDataURL('image/png');
+        return img;
+    }
+
+    function formatEas1cgLines(rawText) {
+        const maxLineLength = EAS_1CG_COLUMNS;
+        const sourceLines = String(rawText ?? '').replace(/\r/g, '').split('\n');
+        const formattedLines = [];
+
+        sourceLines.forEach((sourceLine) => {
+            const words = sourceLine.split(/\s+/).filter(Boolean);
+            let currentLine = '';
+
+            words.forEach((word) => {
+                let remaining = word;
+
+                while (remaining.length > maxLineLength) {
+                    if (currentLine) {
+                        formattedLines.push(currentLine);
+                        currentLine = '';
+                    }
+                    formattedLines.push(remaining.slice(0, maxLineLength));
+                    remaining = remaining.slice(maxLineLength);
+                }
+
+                if (!remaining) {
+                    return;
+                }
+
+                if (!currentLine) {
+                    currentLine = remaining;
+                }
+
+                else if ((currentLine.length + remaining.length + 1) <= maxLineLength) {
+                    currentLine += ' ' + remaining;
+                }
+
+                else {
+                    formattedLines.push(currentLine);
+                    currentLine = remaining;
+                }
+            });
+
+            if (currentLine) {
+                formattedLines.push(currentLine);
+            }
+        });
+
+        return formattedLines;
+    }
+
+    async function formatEas1cg(rawHeader, e2tMode) {
+        let fullText = '';
+
+        if (e2tMode === true) {
+            const overrideTzInput = document.getElementById('crawlUseOverrideTZ');
+            const timezoneOverride = overrideTzInput && overrideTzInput.value ? overrideTzInput.value : null;
+            const formatted = E2T(rawHeader, 'GORMAN', false, timezoneOverride);
+            fullText = typeof formatted === 'string' ? formatted : String(formatted ?? '');
+        }
+
+        else {
+            fullText = rawHeader;
+        }
+
+        return [EAS_1CG_HEADER_LINE].concat(formatEas1cgLines(fullText));
+    }
+
+    async function generateEas1cgScreenImage(screenLines) {
+        const canvas = document.createElement('canvas');
+        canvas.width = EAS_1CG_RENDER_DIMENSIONS.width;
+        canvas.height = EAS_1CG_RENDER_DIMENSIONS.height;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = EAS_1CG_BACKGROUND_COLOR;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const safeLeft = canvas.width * EAS_1CG_SAFE_AREA_RATIO;
+        const safeTop = canvas.height * EAS_1CG_SAFE_AREA_RATIO;
+        const safeWidth = canvas.width - safeLeft * 2;
+        const safeHeight = canvas.height - safeTop * 2;
+
+        const lines = (Array.isArray(screenLines) ? screenLines.flat() : [screenLines])
+            .map((line) => String(line ?? ''));
+        const fitScale = lines.length > EAS_1CG_ROWS ? EAS_1CG_ROWS / lines.length : 1;
+
+        const fontStyle = 'normal';
+        const sanitizedFontFamily = /[^a-zA-Z0-9_-]/.test(EAS_1CG_FONT_FAMILY)
+            ? `"${EAS_1CG_FONT_FAMILY.replace(/(["\\])/g, '\\$1')}"`
+            : EAS_1CG_FONT_FAMILY;
+
+        await ensureFontsReady();
+
+        const probeSize = 100;
+        const probeFont = `${fontStyle} ${probeSize}px ${sanitizedFontFamily}`;
+        await document.fonts.load(probeFont);
+        ctx.font = probeFont;
+
+        const probeWidth = ctx.measureText('M'.repeat(EAS_1CG_COLUMNS)).width;
+        const columnFontSize = probeWidth > 0
+            ? probeSize * (safeWidth / probeWidth)
+            : safeWidth / (EAS_1CG_COLUMNS * 0.625);
+
+        const fontSize = Math.max(6, columnFontSize * fitScale);
+        const lineHeight = (safeHeight / EAS_1CG_ROWS) * fitScale;
+        const font = `${fontStyle} ${fontSize}px ${sanitizedFontFamily}`;
+        await document.fonts.load(font);
+
+        ctx.font = font;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ctx.lineJoin = 'round';
+        ctx.fillStyle = EAS_1CG_TEXT_COLOR;
+
+        const renderText = createTextRenderer(ctx, EAS_1CG_OUTLINE_COLOR, EAS_1CG_OUTLINE_WIDTH);
+
+        lines.forEach((line, index) => {
+            renderText(line, safeLeft, safeTop + lineHeight * (index + 0.5));
+        });
+
+        const img = new Image();
+        img.width = canvas.width;
+        img.height = canvas.height;
+        img.src = canvas.toDataURL('image/png');
+
+        await new Promise((resolve) => {
+            if (img.complete && img.naturalWidth > 0) {
+                resolve();
+                return;
+            }
+            img.addEventListener('load', resolve, { once: true });
+            img.addEventListener('error', resolve, { once: true });
+        });
+
         return img;
     }
 
@@ -3831,6 +3997,26 @@ async function initCrawlEditor() {
                             };
                         }
                         window.__dasdecBackground = null;
+                    }
+
+                    else if (descriptor.source === 'eas_1cg') {
+                        const crawlModeValue = document.getElementById('crawlMode').value;
+                        const rawHeader = crawlModeValue === 'header'
+                            ? document.getElementById('crawlRawHeader').value
+                            : document.getElementById('crawlText').value;
+                        const screenLines = await formatEas1cg(rawHeader, crawlModeValue === 'header');
+                        const media = await generateEas1cgScreenImage(screenLines);
+
+                        if (media) {
+                            const topLeft = getPremadeTopLeft(descriptor.source);
+                            return {
+                                image: media,
+                                width: media.naturalWidth || media.width || EAS_1CG_RENDER_DIMENSIONS.width,
+                                height: media.naturalHeight || media.height || EAS_1CG_RENDER_DIMENSIONS.height,
+                                topLeft,
+                                source: descriptor.source
+                            };
+                        }
                     }
                 }
             }
@@ -4176,6 +4362,10 @@ async function initCrawlEditor() {
             && backgroundModeSelect.value === 'premade'
             && premadeSelect
             && premadeSelect.value.includes('dasdec');
+        const usingEas1cgBackground = backgroundModeSelect
+            && backgroundModeSelect.value === 'premade'
+            && premadeSelect
+            && premadeSelect.value.includes('eas_1cg');
 
         let textToCopy = window.crawlGenerator.getCrawlText() || '';
 
@@ -4205,11 +4395,36 @@ async function initCrawlEditor() {
             }
         }
 
+        else if (usingHeaderMode && usingEas1cgBackground) {
+            const rawHeader = document.getElementById('crawlRawHeader').value;
+            if (!rawHeader) {
+                alert('Please provide an EAS header before copying EAS-1CG text.');
+                return;
+            }
+            try {
+                const screenLines = await formatEas1cg(rawHeader, true);
+                if (Array.isArray(screenLines) && screenLines.length) {
+                    textToCopy = screenLines.join('\n').trim();
+                }
+            } catch (error) {
+                console.error('Failed to format EAS-1CG text for copying:', error);
+                addStatus('Failed to format EAS-1CG text. Falling back to displayed crawl text.', 'WARN');
+            }
+        }
+
         try {
             await navigator.clipboard.writeText(textToCopy);
-            addStatus(usingHeaderMode && usingDasdecBackground
-                ? 'Formatted DASDEC text copied to clipboard!'
-                : 'Crawl text copied to clipboard!');
+            if (usingHeaderMode && usingDasdecBackground) {
+                addStatus('Formatted DASDEC text copied to clipboard!');
+            }
+
+            else if (usingHeaderMode && usingEas1cgBackground) {
+                addStatus('Formatted EAS-1CG text copied to clipboard!');
+            }
+
+            else {
+                addStatus('Crawl text copied to clipboard!');
+            }
         } catch (err) {
             alert('Failed to copy text: ' + err);
             addStatus('Failed to copy text: ' + err, 'ERROR');
@@ -4867,11 +5082,9 @@ async function initCrawlEditor() {
                 window.EASBridge.send('crawl:headerConverted', { text: text || '' });
 
                 try {
-                    const dasdecPages = await formatDasdec(rawHeader, true);
+                    const dasdecPages = await formatDasdecEAS2Text(rawHeader);
                     if (dasdecPages && dasdecPages.length) {
-                        const flatText = dasdecPages.map(page => {
-                            return page.slice(0, -1).filter(l => l !== '').join('\n');
-                        }).join('\n');
+                        const flatText = dasdecPages.map(page => page.join('\n')).join('\n');
                         window.EASBridge.send('crawl:dasdecFormatted', { text: flatText });
                     }
                 } catch (e) { /* DASDEC formatting optional */ }
