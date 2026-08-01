@@ -4,6 +4,8 @@
 
 - Minor crawl bundle changes to support app version 3.4.0. The app and web now bridge static backgrounds to the crawl generator, so that the crawl generator in-app can use the same backgrounds as on the web without a major app update needed to add new crawl backgrounds. This change should improve the user experience by allowing users to access new crawl backgrounds without needing to update the app, and it also simplifies the process of adding new backgrounds to the crawl generator in the future.
 
+- Add "eomDelay" option to the encoder. This option allows users to add a delay (in milliseconds) between the end of the announcement (TTS or custom) and the end of message (EOM) tones in the generated audio. The delay can be set to any value between 0 and 30000 milliseconds (aka 30 seconds), and it can be useful for creating a more natural-sounding pause after the announcement before the EOM tones fire. This change provides users with more control over the timing of their generated audio and allows them to create alerts that sound more like real-world broadcasts.
+
 ---
 
 2026-07-28:

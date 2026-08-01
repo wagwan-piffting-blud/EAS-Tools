@@ -1275,6 +1275,16 @@ async function fetchAndStore() {
         });
     }
 
+    const EOM_DELAY_MAX_MILLISECONDS = 30000;
+
+    function getEomDelayMilliseconds() {
+        const delayInput = document.getElementById("eomDelay");
+        if (!delayInput) { return 0; }
+        const delay = parseFloat(delayInput.value);
+        if (!Number.isFinite(delay) || delay <= 0) { return 0; }
+        return Math.min(delay, EOM_DELAY_MAX_MILLISECONDS);
+    }
+
     async function create_alert_async(header, useOverrideTZ, { allowCustomAudio = false } = {}) {
         document.getElementById("generate").disabled = true;
         document.getElementById("save").disabled = true;
@@ -1487,6 +1497,15 @@ async function fetchAndStore() {
             else {
                 addStatus("You must select a custom audio file when using Custom Audio! There will instead be silence.", "ERROR");
                 generate_silence(Math.floor(SAMPLE_RATE * 1));
+            }
+        }
+
+        const hasAnnouncement = window.announcementType === "tts" || (allowCustomAudio && window.announcementType === "custom");
+        if (hasAnnouncement && tone !== null && tone.toString() !== "2") {
+            const eomDelayMilliseconds = getEomDelayMilliseconds();
+            if (eomDelayMilliseconds > 0) {
+                generate_silence(Math.floor(SAMPLE_RATE * (eomDelayMilliseconds / 1000)));
+                addStatus("Waited " + (eomDelayMilliseconds / 1000) + " second" + (eomDelayMilliseconds === 1000 ? "" : "s") + " after the announcement before the EOMs.");
             }
         }
 
@@ -1877,7 +1896,8 @@ async function fetchAndStore() {
             'clip': clipSignal,
             'endecResample': endecResample,
             'enable-vmify-custom': document.getElementById('enable-vmify-custom')?.checked || false,
-            'vmify-custom-intensity': document.getElementById('vmify-custom-intensity')?.value || '1'
+            'vmify-custom-intensity': document.getElementById('vmify-custom-intensity')?.value || '1',
+            'eomDelay': document.getElementById('eomDelay')?.value || '0'
         }));
 
         samples = [];
@@ -2628,6 +2648,30 @@ async function fetchAndStore() {
         }
     });
 
+    const eomDelayContainer = document.getElementById("eomDelayContainer");
+    const eomDelayInput = document.getElementById("eomDelay");
+
+    const syncEomDelayUi = () => {
+        if (!eomDelayContainer) return;
+        const announcesAudio = announcementTypeSelect.value === "tts" || announcementTypeSelect.value === "custom";
+        const emitsEom = currentAttentionTone.value !== "2";
+        eomDelayContainer.style.display = (announcesAudio && emitsEom) ? "block" : "none";
+    };
+
+    announcementTypeSelect.addEventListener("change", syncEomDelayUi);
+    currentAttentionTone.addEventListener("change", syncEomDelayUi);
+
+    if (eomDelayInput) {
+        eomDelayInput.addEventListener("change", () => {
+            const delay = parseFloat(eomDelayInput.value);
+            if (!Number.isFinite(delay) || delay < 0) {
+                eomDelayInput.value = "0";
+            } else if (delay > EOM_DELAY_MAX_MILLISECONDS) {
+                eomDelayInput.value = EOM_DELAY_MAX_MILLISECONDS.toString();
+            }
+        });
+    }
+
     const endecModeSelect = document.getElementById("overallEndecMode");
 
     let endecModeInitializing = true;
@@ -2894,6 +2938,7 @@ async function fetchAndStore() {
                 if (params.bitcrushSpeechify != null && el('shouldBitcrushSpeechify')) el('shouldBitcrushSpeechify').checked = params.bitcrushSpeechify;
                 if (params.vmifyCustom != null && el('enable-vmify-custom')) { el('enable-vmify-custom').checked = params.vmifyCustom; el('enable-vmify-custom').dispatchEvent(new Event('change')); }
                 if (params.vmifyCustomIntensity != null && el('vmify-custom-intensity')) el('vmify-custom-intensity').value = params.vmifyCustomIntensity.toString();
+                if (params.eomDelay != null && el('eomDelay')) el('eomDelay').value = params.eomDelay.toString();
 
                 if (params.fipsMode && el('fipsMode')) {
                     el('fipsMode').value = params.fipsMode;
