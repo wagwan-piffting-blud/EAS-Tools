@@ -1,5 +1,11 @@
 # EAS Tools Changelog
 
+2026-07-31:
+
+- Minor crawl bundle changes to support app version 3.4.0. The app and web now bridge static backgrounds to the crawl generator, so that the crawl generator in-app can use the same backgrounds as on the web without a major app update needed to add new crawl backgrounds. This change should improve the user experience by allowing users to access new crawl backgrounds without needing to update the app, and it also simplifies the process of adding new backgrounds to the crawl generator in the future.
+
+---
+
 2026-07-28:
 
 - Add Gorman Redlich EAS-1CG premade background to the Text Crawl Generator. This background is now available as an option in the "Premade Backgrounds" dropdown menu, allowing users to select it for their text crawl projects. The Gorman Redlich EAS-1CG background is a classic design that was used in many EAS broadcasts, and its addition to the Text Crawl Generator provides users with more options for creating authentic-looking EAS screens.

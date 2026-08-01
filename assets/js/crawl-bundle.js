@@ -5057,6 +5057,7 @@ async function initCrawlEditor() {
     });
 
     if (window.EASBridge) {
+        const PREMADE_STATIC_SOURCES = new Set(['dasdec', 'eas_1cg']);
         function sendEndecModesToNative() {
             const modes = allEndecModes().filter((mode) => mode.toLowerCase() !== 'json');
             const modeList = [{ value: '', label: 'None (Default)' }];
@@ -5070,8 +5071,15 @@ async function initCrawlEditor() {
                 .map((f) => ({ value: f.family, label: `${f.family} (${f.description})`, file: f.file }));
             window.EASBridge.send('crawl:fontsData', { fonts: fonts });
         }
+        function sendPremadeListToNative() {
+            const sel = document.getElementById('crawlBackgroundPremadeSelect');
+            if (!sel) return;
+            const options = Array.from(sel.options).map((o) => ({ value: o.value, label: o.textContent }));
+            window.EASBridge.send('crawl:premadeList', { options: options });
+        }
         resourcesReady.then(sendEndecModesToNative).catch(() => sendEndecModesToNative());
         sendCrawlFontsToNative();
+        sendPremadeListToNative();
 
         window.EASBridge.on('crawl:convertHeader', async (params) => {
             const rawHeader = params?.header;
@@ -5091,6 +5099,60 @@ async function initCrawlEditor() {
             } catch (err) {
                 console.error('[EASBridge] crawl:convertHeader error:', err);
                 window.EASBridge.send('crawl:headerConverted', { text: '' });
+            }
+        });
+
+        window.EASBridge.on('crawl:renderPremade', async (params) => {
+            const requestId = Number.isFinite(params?.requestId) ? params.requestId : 0;
+            const premade = params?.premade || '';
+            const applySizing = params?.applySizing === true;
+            try {
+                const el = (id) => document.getElementById(id);
+                const setVal = (id, val) => { if (el(id) && val != null) el(id).value = val; };
+                setVal('crawlBackgroundMode', 'premade');
+                setVal('crawlBackgroundPremadeSelect', premade);
+                setVal('crawlMode', params?.crawlMode || 'custom');
+                setVal('crawlRawHeader', params?.header != null ? params.header : '');
+                setVal('crawlText', params?.text != null ? params.text : '');
+                setVal('endecMode', params?.endecMode != null ? params.endecMode : '');
+                setVal('easyplusOriginator', params?.easyplusOriginator);
+                setVal('easyplusEventCode', params?.easyplusEventCode);
+                setVal('crawlRepetitions', params?.repetitions);
+
+                const assets = await loadCrawlBackgroundAssets('premade');
+                const descriptor = parseBackgroundSelectionValue(premade);
+                const source = descriptor ? descriptor.source : '';
+
+                let images = [];
+                let rotationDelayMs = 0;
+                const dasdec = window.__dasdecBackground;
+                if (dasdec && Array.isArray(dasdec.pages) && dasdec.pages.length) {
+                    images = dasdec.pages.map((p) => p && p.src).filter(Boolean);
+                    rotationDelayMs = Number.isFinite(dasdec.rotationDelayMs) ? dasdec.rotationDelayMs : 4000;
+                } else if (assets && assets.image && assets.image.src) {
+                    images = [assets.image.src];
+                }
+                stopDasdecRotationState();
+
+                const topLeft = assets && assets.topLeft ? assets.topLeft : null;
+                const tlx = topLeft && Number.isFinite(topLeft.x) && topLeft.x < 9999 ? topLeft.x : 0;
+                const tly = topLeft && Number.isFinite(topLeft.y) && topLeft.y < 9999 ? topLeft.y : 0;
+                window.EASBridge.send('crawl:premadeImage', {
+                    requestId: requestId,
+                    premade: premade,
+                    source: source,
+                    applySizing: applySizing,
+                    images: images,
+                    rotationDelayMs: rotationDelayMs,
+                    width: assets && Number.isFinite(assets.width) ? assets.width : 0,
+                    height: assets && Number.isFinite(assets.height) ? assets.height : 0,
+                    topLeftX: tlx,
+                    topLeftY: tly,
+                    scroll: !PREMADE_STATIC_SOURCES.has(source)
+                });
+            } catch (err) {
+                console.error('[EASBridge] crawl:renderPremade error:', err);
+                window.EASBridge.send('crawl:premadeImage', { requestId: requestId, premade: premade, images: [], error: true });
             }
         });
 
@@ -5189,6 +5251,7 @@ async function initCrawlEditor() {
         window.EASBridge.on('crawl:requestData', () => {
             resourcesReady.then(sendEndecModesToNative).catch(() => sendEndecModesToNative());
             sendCrawlFontsToNative();
+            sendPremadeListToNative();
         });
 
         console.log('[EASBridge] Crawl bridge handlers registered');
