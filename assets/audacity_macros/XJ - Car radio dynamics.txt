@@ -1,0 +1,8 @@
+SetProject:Rate="44100"
+SelectAll:
+MixAndRender:
+Stereo to Mono:
+Distortion:DC_Block="0" Noise_Floor="-70" Parameter_1="2.5" Parameter_2="50" Repeats="5" Threshold_dB="-15" Type="Hard Overdrive"
+Allpassphase:Frequency="0.36399999" Intensity="0.20299999" Mix="0.60100001" Q="0.53399998"
+Low-passFilter:frequency="100" rolloff="dB6"
+High-passFilter:frequency="200" rolloff="dB6"
