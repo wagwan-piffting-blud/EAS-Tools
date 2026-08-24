@@ -1,7 +1,7 @@
-<!-- 
-    This is an absolute override file, indicating that a higher priority 
+<!--
+    This is an absolute override file, indicating that a higher priority
     version of the file will completely replace a lower priority version
-    of the file. 
+    of the file.
 -->
 <!--Fire Warning configuration -->
 <!-- MODIFIED
@@ -22,7 +22,7 @@ PLACED IN FULL BELOW THE INCLUDE LINE BELOW. -->
 
 <!-- Include Various geospatial XML files to create their objects. These are *NOT*
 turned on unless the corresponding .vm file is turned on in a given template's .vm file
--->  
+-->
 <include file="mileMarkers.xml"/>
 <!-- To enable, make sure mileMarkers.vm is added/uncommented in a WarnGen template's .vm file -->
 <include file="pointMarkers.xml"/>
@@ -35,7 +35,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <!-- enable/disable WarnGen Pathcast Track -->
  <trackEnabled>false</trackEnabled>
 
- <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+ <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE.
  	The various menu items are also the different maps
  	that can be loaded with each template. -->
  <maps>
@@ -48,26 +48,26 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <followups>
 	<followup>COR</followup>
  </followups>
- 
+
  <!-- Product ID: nnn id of the product -->
  <productId>FRW</productId>
 
  <!-- Phensigs: The list of phenomena and significance combinations that this template applies to -->
  <phensigs>
  </phensigs>
- 
+
   <!-- Enables/disables user from selecting the Restart button the GUI -->
  <enableRestart>true</enableRestart>
- 
+
   <!-- Enable/disables the system to lock text based on various patterns -->
  <autoLockText>false</autoLockText>
 
- <!-- Included watches: If a tornado watch or severe thunderstorm watch is to be 
- 	included with the warning product include TO.A and/or SV.A, 
+ <!-- Included watches: If a tornado watch or severe thunderstorm watch is to be
+ 	included with the warning product include TO.A and/or SV.A,
  	respectively. Please refer to 'includedWatchAreaBuffer' in <areaConfig/>. -->
  <includedWatches>
  </includedWatches>
- 
+
  <!-- durations: the list of possible durations of the warning -->
  <defaultDuration>60</defaultDuration>
  <durations>
@@ -77,13 +77,13 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <duration>50</duration>
   <duration>60</duration>
   <duration>75</duration>
-  <duration>90</duration> 
-  <duration>105</duration> 
-  <duration>120</duration> 
-  <duration>150</duration> 
-  <duration>180</duration> 
+  <duration>90</duration>
+  <duration>105</duration>
+  <duration>120</duration>
+  <duration>150</duration>
+  <duration>180</duration>
  </durations>
- 
+
 <bulletActionGroups>
 <bulletActionGroup action="NEW">
  <bullets>

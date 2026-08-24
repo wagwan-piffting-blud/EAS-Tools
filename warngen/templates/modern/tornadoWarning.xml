@@ -152,7 +152,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
 </bulletActionGroup>
 <bulletActionGroup action="COR" phen="TO" sig="W">
 <bullets>
-  <bullet bulletName="torEmergency" bulletText="** SELECT FOR TORNADO EMERGENCY **" bulletGroup="torEMER" parseString="TORNADO EMERGENCY"/>
+  <bullet bulletName="torEmergency" bulletText="** SELECT FOR TORNADO EMERGENCY **" parseString="TORNADO EMERGENCY"/>
   <bullet bulletText="*********** BASIS FOR WARNING (CHOOSE 1) **********" bulletType="title"/>
 <!--
   <bullet bulletName="meteorologistsTOR" bulletText="NWS Meteorologists detected" bulletGroup="warnBasis" parseString="&quot;METEOROLOGISTS DETECTED&quot;,&quot;-SQUALL&quot;,&quot;-LARGE AND EXTREMELY DANGEROUS&quot;"/>

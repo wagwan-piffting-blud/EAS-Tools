@@ -1,7 +1,7 @@
-<!-- 
-    This is an absolute override file, indicating that a higher priority 
+<!--
+    This is an absolute override file, indicating that a higher priority
     version of the file will completely replace a lower priority version
-    of the file. 
+    of the file.
 -->
 <!-- Areal Flood Advisory configuration -->
 <!-- Modified by
@@ -45,17 +45,17 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <unitDistance>mi</unitDistance>
  <unitSpeed>mph</unitSpeed>
 
- <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+ <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE.
     The various menu items are also the different maps
     that can be loaded with each template. -->
  <maps>
   <map>County Names</map>
   <map>County Warning Areas</map>
   <!--  <map>FFMP Small Stream Basin Links</map> -->
-  <!--  <map>Major Rivers</map> --> 
+  <!--  <map>Major Rivers</map> -->
  </maps>
- 
- <!-- Followups: VTEC actions of allowable followups when this template is selected 
+
+ <!-- Followups: VTEC actions of allowable followups when this template is selected
   Each followup will become available when the appropriate time range permits.
  -->
  <followups>
@@ -63,7 +63,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <followup>COR</followup>
   <followup>EXT</followup>
  </followups>
- 
+
  <!-- Product ID: nnn id of the product -->
  <productId>FLS</productId>
 
@@ -74,15 +74,15 @@ turned on unless the corresponding .vm file is turned on in a given template's .
 
  <!-- Enables/disables user from selecting the Restart button the GUI -->
  <enableRestart>true</enableRestart>
- 
+
    <!-- Enable/disables the system to lock text based on various patterns -->
  <autoLockText>true</autoLockText>
 
-  <!-- if trackEnabled is set to 'true' = makes third bullet initial position and movement 
-as well as fourth bullet pathcast (which are optional info) available to forecaster.   
+  <!-- if trackEnabled is set to 'true' = makes third bullet initial position and movement
+as well as fourth bullet pathcast (which are optional info) available to forecaster.
 Must be paired with proper vm code (which are commented out in arealFloodAdvisory.vm)! -->
-<trackEnabled>false</trackEnabled> 
-  
+<trackEnabled>false</trackEnabled>
+
  <!-- durations: the list of possible durations -->
  <defaultDuration>180</defaultDuration>
  <durations>
@@ -106,8 +106,8 @@ Must be paired with proper vm code (which are commented out in arealFloodAdvisor
   <duration>2880</duration>
   <duration>3600</duration>
  </durations>
- 
-   <!-- UNCOMMENT IF YOU HAVE YOUR RIVER DRAINAGE BASINS SETUP 
+
+   <!-- UNCOMMENT IF YOU HAVE YOUR RIVER DRAINAGE BASINS SETUP
 <pointSource variable="riverdrainages">
   <pointSource>ffmp_basins</pointSource>
   <geometryDecimationTolerance>0.064</geometryDecimationTolerance>
@@ -120,7 +120,7 @@ Must be paired with proper vm code (which are commented out in arealFloodAdvisor
   <withinPolygon>true</withinPolygon>
 </pointSource>
 -->
- 
+
 <lockedGroupsOnFollowup>ic,advType,optType</lockedGroupsOnFollowup>
 <bulletActionGroups>
 <bulletActionGroup action="NEW" phen="FA" sig="Y">
@@ -130,7 +130,7 @@ Must be paired with proper vm code (which are commented out in arealFloodAdvisor
   <bullet bulletName="small" bulletText="Small stream" bulletGroup="advType" parseString="&quot;-URBAN AND&quot;,&quot;-ARROYO&quot;,&quot;SMALL STREAM FLOOD ADVISORY&quot;"/>
   <bullet bulletName="uss" bulletText="Urban and small stream" bulletGroup="advType" parseString="URBAN AND SMALL STREAM FLOOD ADVISORY"/>
   <bullet bulletName="arroyo" bulletText="Arroyo and small stream" bulletGroup="advType" parseString="ARROYO AND SMALL STREAM"/>
-  <bullet bulletName="hydrologic" bulletText="Hydrologic" bulletGroup="advType" parseString="HYDROLOGIC ADVISORY"/> 
+  <bullet bulletName="hydrologic" bulletText="Hydrologic" bulletGroup="advType" parseString="HYDROLOGIC ADVISORY"/>
   <bullet bulletText="*********** PRIMARY CAUSE *********** " bulletType="title"/>
   <bullet bulletName="ER" bulletText="Excessive rain (default)" bulletDefault="true" bulletGroup="ic" parseString=".ER."/>
   <bullet bulletName="SM" bulletText="Snowmelt" bulletGroup="ic" parseString=".SM."/>
@@ -162,7 +162,7 @@ Must be paired with proper vm code (which are commented out in arealFloodAdvisor
   <bullet bulletName="rainEdit" bulletText="User defined amount" bulletGroup="rainAmt" parseString="INCHES OF RAIN HAVE FALLEN"/>
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletDefault="true" bulletText="Select for a list of cities" bulletGroup="pcast"/>
-<!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->  
+<!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->
   <bullet bulletName="addRainfall" bulletText="Additional rainfall of XX inches expected" parseString="ADDITIONAL RAINFALL"/>
   <bullet bulletName="specificPlace" bulletText="Specify location" parseString="FLOODING IS OCCURING"/>
   <bullet bulletName="drainages" bulletText="Automated list of drainages" parseString="THIS INCLUDES THE FOLLOWING STREAMS AND DRAINAGES" loadMap="River Drainage Basins"/>
@@ -188,7 +188,7 @@ Must be paired with proper vm code (which are commented out in arealFloodAdvisor
   <bullet bulletName="small" bulletText="small stream" bulletGroup="advType" parseString="&quot;-URBAN AND&quot;,&quot;-ARROYO&quot;,&quot;SMALL STREAM FLOOD ADVISORY&quot;" showString="&quot;-URBAN AND&quot;,&quot;-ARROYO&quot;,&quot;SMALL STREAM FLOOD ADVISORY&quot;"/>
   <bullet bulletName="uss" bulletText="urban and small stream" bulletGroup="advType" parseString="URBAN AND SMALL STREAM FLOOD ADVISORY" showString="URBAN AND SMALL STREAM FLOOD ADVISORY"/>
   <bullet bulletName="arroyo" bulletText="arroyo and small stream" bulletGroup="advType" parseString="ARROYO" showString="ARROYO AND SMALL STREAM"/>
-  <bullet bulletName="hydrologic" bulletText="hydrologic" bulletGroup="advType" parseString="HYDROLOGIC ADVISORY" showString="HYDROLOGIC ADVISORY"/> 
+  <bullet bulletName="hydrologic" bulletText="hydrologic" bulletGroup="advType" parseString="HYDROLOGIC ADVISORY" showString="HYDROLOGIC ADVISORY"/>
   <bullet bulletText="***** PRIMARY CAUSE (locked) *****" bulletType="title"/>
   <bullet bulletName="ER" bulletText="Excessive rain" bulletGroup="ic" parseString=".ER." showString=".ER."/>
   <bullet bulletName="SM" bulletText="Snowmelt" bulletGroup="ic" parseString=".SM." showString=".SM."/>
@@ -221,7 +221,7 @@ Must be paired with proper vm code (which are commented out in arealFloodAdvisor
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="WILL REMAIN OVER" showString="WILL REMAIN OVER"/>
-<!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->  
+<!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->
   <bullet bulletName="addRainfall" bulletText="Additional rainfall of XX inches expected" parseString="ADDITIONAL RAINFALL"/>
   <bullet bulletName="specificPlace" bulletText="Specify location" parseString="FLOODING IS OCCURING"/>
   <bullet bulletName="drainages" bulletText="Automated list of drainages" parseString="THIS INCLUDES THE FOLLOWING STREAMS AND DRAINAGES" loadMap="River Drainage Basins"/>
@@ -247,7 +247,7 @@ Must be paired with proper vm code (which are commented out in arealFloodAdvisor
   <bullet bulletName="small" bulletText="small stream" bulletGroup="advType" parseString="&quot;-URBAN AND&quot;,&quot;-ARROYO&quot;,&quot;SMALL STREAM FLOOD ADVISORY&quot;" showString="&quot;-URBAN AND&quot;,&quot;-ARROYO&quot;,&quot;SMALL STREAM FLOOD ADVISORY&quot;"/>
   <bullet bulletName="uss" bulletText="urban and small stream" bulletGroup="advType" parseString="URBAN AND SMALL STREAM FLOOD ADVISORY" showString="URBAN AND SMALL STREAM FLOOD ADVISORY"/>
   <bullet bulletName="arroyo" bulletText="arroyo and small stream" bulletGroup="advType" parseString="ARROYO" showString="ARROYO AND SMALL STREAM"/>
-  <bullet bulletName="hydrologic" bulletText="hydrologic" bulletGroup="advType" parseString="HYDROLOGIC ADVISORY" showString="HYDROLOGIC ADVISORY"/> 
+  <bullet bulletName="hydrologic" bulletText="hydrologic" bulletGroup="advType" parseString="HYDROLOGIC ADVISORY" showString="HYDROLOGIC ADVISORY"/>
   <bullet bulletText="***** PRIMARY CAUSE (locked) *****" bulletType="title"/>
   <bullet bulletName="ER" bulletText="Excessive rain" bulletGroup="ic" parseString=".ER." showString=".ER."/>
   <bullet bulletName="SM" bulletText="Snowmelt" bulletGroup="ic" parseString=".SM." showString=".SM."/>
@@ -280,7 +280,7 @@ Must be paired with proper vm code (which are commented out in arealFloodAdvisor
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="WILL REMAIN OVER" showString="WILL REMAIN OVER"/>
-<!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->  
+<!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->
   <bullet bulletName="addRainfall" bulletText="Additional rainfall of XX inches expected" parseString="ADDITIONAL RAINFALL"/>
   <bullet bulletName="specificPlace" bulletText="Specify location" parseString="FLOODING IS OCCURING"/>
   <bullet bulletName="drainages" bulletText="Automated list of drainages" parseString="THIS INCLUDES THE FOLLOWING STREAMS AND DRAINAGES" loadMap="River Drainage Basins"/>

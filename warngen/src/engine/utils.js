@@ -213,12 +213,60 @@
         }
     };
 
+    function define(target, name, fn) {
+        if (typeof target[name] === "function") return;
+        Object.defineProperty(target, name, {
+            value: fn, writable: true, configurable: true, enumerable: false
+        });
+    }
+
+    /**
+     * AWIPS templates call the java.util.List / java.lang.String API directly. velocityjs
+     * resolves .size(), .get(), .substring() and friends on its own but has no notion of
+     * .contains(), .isEmpty(), .equals(), .matches() or .compareTo(), and templates build
+     * their own lists (#set($x = [])) so decorating only the context objects is not enough.
+     */
+    function installJavaShims() {
+        define(Array.prototype, "contains", function (x) { return this.indexOf(x) !== -1; });
+        define(Array.prototype, "isEmpty",  function ()  { return this.length === 0; });
+        define(Array.prototype, "equals",   function (o) {
+            return Array.isArray(o) && o.length === this.length &&
+                   this.every(function (v, i) { return v === o[i]; });
+        });
+
+        define(String.prototype, "contains",          function (x) { return this.indexOf(x) !== -1; });
+        define(String.prototype, "isEmpty",           function ()  { return this.length === 0; });
+        define(String.prototype, "equals",            function (o) { return String(this) === String(o); });
+        define(String.prototype, "equalsIgnoreCase",  function (o) {
+            return String(this).toUpperCase() === String(o).toUpperCase();
+        });
+        define(String.prototype, "matches",  function (re) { return new RegExp("^(?:" + re + ")$").test(this); });
+        define(String.prototype, "compareTo", function (o) {
+            var a = String(this), b = String(o);
+            return a < b ? -1 : (a > b ? 1 : 0);
+        });
+        define(String.prototype, "compareToIgnoreCase", function (o) {
+            var a = String(this).toUpperCase(), b = String(o).toUpperCase();
+            return a < b ? -1 : (a > b ? 1 : 0);
+        });
+
+        define(Number.prototype, "intValue",    function () { return Math.trunc(Number(this)); });
+        define(Number.prototype, "doubleValue", function () { return Number(this); });
+        define(Number.prototype, "compareTo",   function (o) {
+            var a = Number(this), b = Number(o);
+            return a < b ? -1 : (a > b ? 1 : 0);
+        });
+    }
+
+    installJavaShims();
+
     return {
         dateUtil:    dateUtil,
         makeDateUtil: makeDateUtil,
         timeFormat:  timeFormat,
         list:        list,
         mathUtil:    mathUtil,
+        installJavaShims: installJavaShims,
 
         _isUsDst:        isUsDst,
         _effectiveZone:  effectiveZone,

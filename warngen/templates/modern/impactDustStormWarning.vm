@@ -10,6 +10,7 @@
 ##                                Practice mode                                           ##
 ##        E.Bookbinder 01-30-2019 DR20914 Fix format error caused when no highway         ##
 ##                                mile markers are found                                  ##
+##        Bookbinder 9-21-2023 Force selection of CTA for && break point DR 2036278       ##
 ############################################################################################
 ##
 #parse("config.vm")
@@ -26,27 +27,27 @@
 #############################################################
 #### CREATE BASIS WORDING ###################################
 #############################################################
-#if(${list.contains(${bullets}, "meteorologists")})
+#if($bullets.contains("meteorologists"))
   #set($reportAuthDSW = "capable of producing")
   #set($source = "Detected by National Weather Service meteorologists.")
 #end
-#if(${list.contains(${bullets}, "doppler")})
+#if($bullets.contains("doppler"))
   #set($reportAuthDSW = "capable of producing")
   #set($source = "Doppler radar.")
 #end
-#if(${list.contains(${bullets}, "trainedSpotters")})
+#if($bullets.contains("trainedSpotters"))
   #set($reportAuthDSW = "producing")
   #set($source = "Trained weather spotters.")
 #end
-#if(${list.contains(${bullets}, "lawEnforcement")})
+#if($bullets.contains("lawEnforcement"))
   #set($reportAuthDSW = "producing")
   #set($source = "Law enforcement.")
 #end
-#if(${list.contains(${bullets}, "emergencyMgmt")})
+#if($bullets.contains("emergencyMgmt"))
   #set($reportAuthDSW = "producing")
   #set($source = "Emergency Management.")
 #end
-#if(${list.contains(${bullets}, "public")})
+#if($bullets.contains("public"))
   #set($reportAuthDSW = "producing")
   #set($source = "Public.")
 #end
@@ -55,7 +56,7 @@
 ###################################################
 #set($vsbyHazard = "Less than a quarter mile visibility")
 #set($vsbyDist = 100)
-#if(${list.contains(${bullets}, "qtrVis")})
+#if($bullets.contains("qtrVis"))
   #set($vsbyThreat = "Less than a quarter mile")
   #set($vsbyTrail = "visibility")
   #set($vsbyLead = "")
@@ -63,7 +64,7 @@
   #set($vsbyTag = "0.25MI")
   #set($vsbyHazard = "Less than a quarter mile visibility")
 #end
-#if(${list.contains(${bullets}, "zeroVis")})
+#if($bullets.contains("zeroVis"))
   #set($vsbyThreat = "Near zero")
   #set($vsbyTrail = "visibility")
   #set($vsbyLead = "")
@@ -76,17 +77,17 @@
 ###################################################
 #set($windHazard = "")
 #set($windSpeed = 0)
-#if(${list.contains(${bullets}, "40mphWind")})
+#if($bullets.contains("40mphWind"))
   #set($windSpeed = 40)
   #set($windTag = "40MPH")
   #set($windHazard = " with strong wind in excess of 40 mph")
 #end
-#if(${list.contains(${bullets}, "50mphWind")})
+#if($bullets.contains("50mphWind"))
   #set($windSpeed = 50)
   #set($windTag = "50MPH")
   #set($windHazard = " with strong wind in excess of 50 mph")
 #end
-#if(${list.contains(${bullets}, "60mphWind")})
+#if($bullets.contains("60mphWind"))
   #set($windSpeed = 60)
   #set($windTag = "60MPH")
   #set($windHazard = " with damaging wind in excess of 60 mph")
@@ -159,9 +160,9 @@ THIS IS A TEST MESSAGE. #### Uncomment below pull in mile marker info
 , ${reportB3} ##
 ##Many of the variables passed below are controlled by config.vm
 #if(${stormType} == "line")
-#handleClosestPoints(${list}, ${closestPoints}, ${otherClosestPoints}, ${stormType}, ${nearPhrase} , ${maxLandNearDistance}, ${overPhrase}, ${maxLandOverDistance}, ${landDistanceUnits}, ${useSecondReferenceLine})
+#handleClosestPoints(${closestPoints}, ${otherClosestPoints}, ${stormType}, ${nearPhrase} , ${maxLandNearDistance}, ${overPhrase}, ${maxLandOverDistance}, ${landDistanceUnits}, ${useSecondReferenceLine})
 #else
-#handleClosestPoints(${list}, ${closestPoints}, ${otherClosestPoints}, ${stormType}, ${nearPhrase} , ${maxLandNearDistance}, ${overPhrase}, ${maxLandOverDistance}, ${landDistanceUnits}, ${useSecondReferenceCell})
+#handleClosestPoints(${closestPoints}, ${otherClosestPoints}, ${stormType}, ${nearPhrase} , ${maxLandNearDistance}, ${overPhrase}, ${maxLandOverDistance}, ${landDistanceUnits}, ${useSecondReferenceCell})
 #end
 #if(${movementSpeed} < ${landStationary} || ${stationary})
 , and is nearly stationary.
@@ -204,14 +205,14 @@ THIS IS A TEST MESSAGE. #### Uncomment below pull in mile marker info
 #set($pathcastLead = "This dust channel")
 #set($otherLead = "This dust channel")
 #end
-#if(${list.contains(${bullets}, "pathcast")})
+#if($bullets.contains("pathcast"))
 
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE. ##
 #end
 #pathCast("${pathcastLead} will be near..."${otherLead} ${pathCast} ${otherPoints} ${areas} ${dateUtil} ${timeFormat} 0)
 
-#elseif(${list.contains(${bullets}, "listofcities")})
+#elseif($bullets.contains("listofcities"))
 
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE. ##
@@ -241,7 +242,7 @@ Locations impacted include...
 ##############################################
 ###### SPECIAL VENUE/EVENT CASE ##############
 ##############################################
-#if(${list.contains(${bullets}, "specialEvent")})
+#if($bullets.contains("specialEvent"))
 #if(${stormType} == "line")
 Those attending the !**EVENT/VENUE NAME OR LOCATION**! are in the path of this wall of dust and should prepare for imminent dangerous weather conditions. Seek shelter now!
 
@@ -272,39 +273,42 @@ Those attending the !**EVENT/VENUE NAME OR LOCATION**! are in the path of this d
 #if(${ctaSelected} == "YES")
 PRECAUTIONARY/PREPAREDNESS ACTIONS...
 
+#else
+!** YOU DID NOT SELECT A CTA **!
+
 #end
 ##
-#if(${list.contains(${bullets}, "healthCTA")})
+#if($bullets.contains("healthCTA"))
 Dust storms are unhealthy and have been known to lead to Valley Fever. Avoid outdoor exposure.
 
 #end
 ##
-#if(${list.contains(${bullets}, "genericCTA")})
+#if($bullets.contains("genericCTA"))
 Dust storms lead to dangerous driving conditions with visibility reduced to near zero. If driving, avoid dust storms if possible. If caught in one, pull off the road, turn off your lights and keep your foot off the brake.
 
 #end
 ##
-#if(${list.contains(${bullets}, "motoristCTA")})
+#if($bullets.contains("motoristCTA"))
 Motorists should not drive into a dust storm. PULL ASIDE STAY ALIVE!
 
 #end
 ##
-#if(${list.contains(${bullets}, "lawEnforcementCTA")})
+#if($bullets.contains("lawEnforcementCTA"))
 To report severe weather, contact the National Weather Service, or your nearest law enforcement agency, who will relay your report to the National Weather Service office in ${officeLoc}.
 
 #end
 ##
-#if(${list.contains($bullets, "dangerousTravelCTA")})
+#if($bullets.contains("dangerousTravelCTA"))
 There is no safe place on a highway when a dust storm hits. Visibility can be lost immediately, making it difficult or impossible to slow down and avoid stopped vehicles. Delay travel, or safely exit the highway before the dust storm arrives.
 
 #end
 ##
-#if(${list.contains(${bullets}, "boatersCTA")})
+#if($bullets.contains("boatersCTA"))
 If on or near !**NAME OF LAKE**!, get out of the water and move indoors or inside a vehicle. Remember, lightning can strike out to 15 miles from the parent thunderstorm. If you can hear thunder, you are close enough to be struck by lightning. Move to safe shelter now! Do not be caught on the water in a thunderstorm.
 
 #end
 ##
-#if(${list.contains(${bullets}, "ThunderstormCTA")})
+#if($bullets.contains("ThunderstormCTA"))
 Strong to severe thunderstorms are also possible behind ${reportType4}. Keep updated with this quickly evolving situation.
 
 #end
@@ -317,11 +321,11 @@ Strong to severe thunderstorms are also possible behind ${reportType4}. Keep upd
 ## WATCHES ##
 #############
 
-#if(${list.contains(${includedWatches}, "TO.A")})
-#inserttorwatches(${watches}, ${list}, ${secondtimezone}, ${dateUtil}, ${timeFormat})
+#if($includedWatches.contains("TO.A"))
+#inserttorwatches(${watches}, ${secondtimezone}, ${dateUtil}, ${timeFormat})
 #end
-#if(${list.contains(${includedWatches}, "SV.A")})
-#insertsvrwatches(${watches}, ${list}, ${secondtimezone}, ${dateUtil}, ${timeFormat})
+#if($includedWatches.contains("SV.A"))
+#insertsvrwatches(${watches}, ${secondtimezone}, ${dateUtil}, ${timeFormat})
 #end
 ##
 #if(${productClass}=="T")
@@ -329,7 +333,7 @@ THIS IS A TEST MESSAGE. DO NOT TAKE ACTION BASED ON THIS MESSAGE.
 
 #end
 
-#printcoords(${areaPoly}, ${list})
+#printcoords(${areaPoly})
 
 #tml(${TMLtime}, ${timeFormat}, ${movementDirection}, ${movementInKnots}, ${eventLocation})
 

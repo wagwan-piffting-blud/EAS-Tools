@@ -5,44 +5,44 @@
 ## please contact Phil Kurimski - WFO DTX
 #########################################################################
 #*
-#if(${list.contains(${bullets}, "BigRockDam")})
+#if($bullets.contains("BigRockDam"))
     #set($riverName = "Phil River")
     #set($damName = "Big Rock Dam")
     #set($cityInfo = "Evan, located about 3 miles")
 #end
-#if(${list.contains(${bullets}, "BigRockhighfast")})
+#if($bullets.contains("BigRockhighfast"))
     #set($scenario = "If a complete failure of the dam occurs, the water depth at Evan could exceed 18 feet in 16 minutes.")
 #end
-#if(${list.contains(${bullets}, "BigRockhighnormal")})
+#if($bullets.contains("BigRockhighnormal"))
     #set($scenario = "If a complete failure of the dam occurs, the water depth at Evan could exceed 23 feet in 31 minutes.")
 #end
-#if(${list.contains(${bullets}, "BigRockmediumfast")})
+#if($bullets.contains("BigRockmediumfast"))
     #set($scenario = "If a complete failure of the dam occurs, the water depth at Evan could exceed 14 feet in 19 minutes.")
 #end
-#if(${list.contains(${bullets}, "BigRockmediumnormal")})
+#if($bullets.contains("BigRockmediumnormal"))
     #set($scenario = "If a complete failure of the dam occurs, the water depth at Evan could exceed 17 feet in 32 minutes.")
 #end
-#if(${list.contains(${bullets}, "BigRockruleofthumb")})
+#if($bullets.contains("BigRockruleofthumb"))
     #set($ruleofthumb = "Flood wave estimate based on the dam in Idaho: Flood initially half of original height behind dam and 3-4 mph; 5 miles in 1/2 hours; 10 miles in 1 hour; and 20 miles in 9 hours.")
 #end
-#if(${list.contains(${bullets}, "BranchedOakDam")})
+#if($bullets.contains("BranchedOakDam"))
     #set($riverName = "Kells River")
     #set($damName = "Branched Oak Dam")
     #set($cityInfo = "Dangelo, located about 6 miles")
 #end
-#if(${list.contains(${bullets}, "BranchedOakhighfast")})
+#if($bullets.contains("BranchedOakhighfast"))
     #set($scenario = "If a complete failure of the dam occurs, the water depth at Dangelo could exceed 19 feet in 32 minutes.")
 #end
-#if(${list.contains(${bullets}, "BranchedOakhighnormal")})
+#if($bullets.contains("BranchedOakhighnormal"))
     #set($scenario = "If a complete failure of the dam occurs, the water depth at Dangelo could exceed 26 feet in 56 minutes.")
 #end
-#if(${list.contains(${bullets}, "BranchedOakmediumfast")})
+#if($bullets.contains("BranchedOakmediumfast"))
     #set($scenario = "If a complete failure of the dam occurs, the water depth at Dangelo could exceed 14 feet in 33 minutes.")
 #end
-#if(${list.contains(${bullets}, "BranchedOakmediumnormal")})
+#if($bullets.contains("BranchedOakmediumnormal"))
     #set($scenario = "If a complete failure of the dam occurs, the water depth at Dangelo could exceed 20 feet in 60 minutes.")
 #end
-#if(${list.contains(${bullets}, "BranchedOakruleofthumb")})
+#if($bullets.contains("BranchedOakruleofthumb"))
     #set($ruleofthumb = "Flood wave estimate based on the dam in Idaho: Flood initially half of original height behind dam and 3-4 mph; 5 miles in 1/2 hours; 10 miles in 1 hour; and 20 miles in 9 hours.")
 #end
 *#
@@ -65,7 +65,7 @@
     #set($emergencyHeadline = "#capitalize(${emergencyText} 'ALL')")
     #set($headline = "For ${reportType2} ${damName} on the ${riverName} ")
 ## The following line will capitalize the headline in the product.
-## If the headline will be mixed case just comment out the line below.    
+## If the headline will be mixed case just comment out the line below.
     #set($headline = "#capitalize(${headline} 'ALL')")
     #set($reportType1 = "${reportType2} ${damName} on the ${riverName}")
 ##    #set($reportType1 = "${reportType2} ${damName} ON THE ${riverName}${reportInfo}")

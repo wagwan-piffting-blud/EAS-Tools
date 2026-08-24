@@ -1,0 +1,280 @@
+{
+  "version": 1,
+  "default": "tom",
+  "voices": [
+    {
+      "id": "aicraig",
+      "display": "Craig",
+      "lang": "en-US",
+      "prefix": "aicraig",
+      "large": false,
+      "dir": "en-US/aicraig",
+      "totalBytes": 93819884,
+      "files": [
+        {
+          "name": "aicraig.vin",
+          "bytes": 34264978,
+          "parts": [
+            "aicraig.vin"
+          ]
+        },
+        {
+          "name": "aicraig8.vdb",
+          "bytes": 59508248,
+          "parts": [
+            "aicraig8.vdb"
+          ]
+        },
+        {
+          "name": "aicraig.vcf",
+          "bytes": 46658,
+          "parts": [
+            "aicraig.vcf"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crsmara",
+      "display": "CRS Mara",
+      "lang": "en-US",
+      "prefix": "crsmara",
+      "large": false,
+      "dir": "en-US/crsmara",
+      "totalBytes": 134229904,
+      "files": [
+        {
+          "name": "crsmara.vin",
+          "bytes": 39425094,
+          "parts": [
+            "crsmara.vin"
+          ]
+        },
+        {
+          "name": "crsmara8.vdb",
+          "bytes": 94751658,
+          "parts": [
+            "crsmara8.vdb.part000",
+            "crsmara8.vdb.part001"
+          ]
+        },
+        {
+          "name": "crsmara.vcf",
+          "bytes": 53152,
+          "parts": [
+            "crsmara.vcf"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crstom",
+      "display": "CRS Tom",
+      "lang": "en-US",
+      "prefix": "crstom",
+      "large": true,
+      "dir": "en-US/crstom",
+      "totalBytes": 160237002,
+      "files": [
+        {
+          "name": "crstom.vin",
+          "bytes": 59211464,
+          "parts": [
+            "crstom.vin"
+          ]
+        },
+        {
+          "name": "crstom8.vdb",
+          "bytes": 100978880,
+          "parts": [
+            "crstom8.vdb.part000",
+            "crstom8.vdb.part001"
+          ]
+        },
+        {
+          "name": "crstom.vcf",
+          "bytes": 46658,
+          "parts": [
+            "crstom.vcf"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jill",
+      "display": "Jill",
+      "lang": "en-US",
+      "prefix": "jill",
+      "large": false,
+      "dir": "en-US/jill",
+      "totalBytes": 108645520,
+      "files": [
+        {
+          "name": "jill.vin",
+          "bytes": 37343530,
+          "parts": [
+            "jill.vin"
+          ]
+        },
+        {
+          "name": "jill8.vdb",
+          "bytes": 71249014,
+          "parts": [
+            "jill8.vdb"
+          ]
+        },
+        {
+          "name": "jill.vcf",
+          "bytes": 52976,
+          "parts": [
+            "jill.vcf"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tom",
+      "display": "Tom",
+      "lang": "en-US",
+      "prefix": "tom",
+      "large": false,
+      "dir": "en-US/tom",
+      "totalBytes": 96717314,
+      "files": [
+        {
+          "name": "tom.vin",
+          "bytes": 34264978,
+          "parts": [
+            "tom.vin"
+          ]
+        },
+        {
+          "name": "tom8.vdb",
+          "bytes": 59508248,
+          "parts": [
+            "tom8.vdb"
+          ]
+        },
+        {
+          "name": "tom.vcf",
+          "bytes": 46650,
+          "parts": [
+            "tom.vcf"
+          ]
+        },
+        {
+          "name": "tom8.pmdata",
+          "bytes": 1540794,
+          "parts": [
+            "tom8.pmdata"
+          ]
+        },
+        {
+          "name": "tom8.pmindex",
+          "bytes": 1356644,
+          "parts": [
+            "tom8.pmindex"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "javier",
+      "display": "Javier",
+      "lang": "es-MX",
+      "prefix": "javier",
+      "large": false,
+      "dir": "es-MX/javier",
+      "totalBytes": 112177664,
+      "files": [
+        {
+          "name": "javier.vin",
+          "bytes": 32884096,
+          "parts": [
+            "javier.vin"
+          ]
+        },
+        {
+          "name": "javier8.vdb",
+          "bytes": 79248554,
+          "parts": [
+            "javier8.vdb"
+          ]
+        },
+        {
+          "name": "javier.vcf",
+          "bytes": 45014,
+          "parts": [
+            "javier.vcf"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "paulina",
+      "display": "Paulina",
+      "lang": "es-MX",
+      "prefix": "paulina",
+      "large": true,
+      "dir": "es-MX/paulina",
+      "totalBytes": 309702512,
+      "files": [
+        {
+          "name": "paulina.vin",
+          "bytes": 45378864,
+          "parts": [
+            "paulina.vin"
+          ]
+        },
+        {
+          "name": "paulina8.vdb",
+          "bytes": 264278522,
+          "parts": [
+            "paulina8.vdb.part000",
+            "paulina8.vdb.part001",
+            "paulina8.vdb.part002"
+          ]
+        },
+        {
+          "name": "paulina.vcf",
+          "bytes": 45126,
+          "parts": [
+            "paulina.vcf"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "felix",
+      "display": "Felix",
+      "lang": "fr-CA",
+      "prefix": "felix",
+      "large": false,
+      "dir": "fr-CA/felix",
+      "totalBytes": 137580662,
+      "files": [
+        {
+          "name": "felix.vin",
+          "bytes": 49955046,
+          "parts": [
+            "felix.vin"
+          ]
+        },
+        {
+          "name": "felix8.vdb",
+          "bytes": 87578332,
+          "parts": [
+            "felix8.vdb"
+          ]
+        },
+        {
+          "name": "felix.vcf",
+          "bytes": 47284,
+          "parts": [
+            "felix.vcf"
+          ]
+        }
+      ]
+    }
+  ]
+}

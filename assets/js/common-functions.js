@@ -221,6 +221,7 @@ export const NANO_TTS_VOLUME = 0.5;
 export const NANO_TTS_WORKER_URL = new URL('./text2wav-worker.js', import.meta.url);
 
 export const SPFY_WORKER_URL = new URL('./spfy-worker.js', import.meta.url);
+export const SPFY_MANIFEST_URL = new URL('../wasm_tts_voices/spfy/voices/manifest.json', import.meta.url);
 export const ACU_WORKER_URL = new URL('./acu-worker.js', import.meta.url);
 
 export function resamplePcm(pcm, fromRate, toRate) {
@@ -743,7 +744,7 @@ export function createWasmVoiceWorkerEngine(config = {}) {
         if (!state.worker || !state.ready || state.currentJob || !state.queue.length) return;
         const job = state.queue.shift();
         state.currentJob = job;
-        state.worker.postMessage({ type: 'synth', text: job.text });
+        state.worker.postMessage({ type: 'synth', text: job.text, voice: job.voice || null });
     };
 
     const handleMessage = (event) => {
@@ -813,7 +814,7 @@ export function createWasmVoiceWorkerEngine(config = {}) {
         if (typeof opts.onProgress === 'function') onProgress = opts.onProgress;
         ensureWorker();
         return new Promise((resolve, reject) => {
-            state.queue.push({ text, resolve, reject });
+            state.queue.push({ text, resolve, reject, voice: opts.voice || null });
             pump();
         });
     };
@@ -826,10 +827,19 @@ export function getSpfyEngine() {
     if (!__spfyEngine) {
         __spfyEngine = createWasmVoiceWorkerEngine({
             workerUrl: SPFY_WORKER_URL,
-            readyStatus: 'Speechify voice ready.',
+            readyStatus: 'Speechify engine ready.',
         });
     }
     return __spfyEngine;
+}
+
+export const SPFY_DEFAULT_VOICE = 'tom';
+
+export function parseSpfyVoiceId(value) {
+    const normalized = ('' + (value || '')).trim().toLowerCase();
+    if (normalized === 'spfy') return SPFY_DEFAULT_VOICE;
+    if (normalized.startsWith('spfy:')) return normalized.slice(5) || SPFY_DEFAULT_VOICE;
+    return null;
 }
 
 let __acuEngine = null;
@@ -1062,4 +1072,122 @@ export async function populateRemoteVoiceList(config = {}) {
         reportError(error);
         return false;
     }
+}
+
+const SPFY_LANGUAGE_LABELS = {
+    'en-US': 'English',
+    'en-GB': 'British English',
+    'es-MX': 'Spanish',
+    'es-ES': 'Castilian Spanish',
+    'fr-CA': 'Canadian French',
+    'fr-FR': 'French',
+};
+
+function spfyLanguageLabel(lang) {
+    const tag = ('' + (lang || '')).trim();
+    if (!tag) return '';
+    if (SPFY_LANGUAGE_LABELS[tag]) return SPFY_LANGUAGE_LABELS[tag];
+
+    try {
+        const name = new Intl.DisplayNames(['en'], { type: 'language' }).of(tag);
+        if (name && name !== tag) return name;
+    }
+
+    catch (error) { }
+
+    return tag;
+}
+
+function spfyVoiceOptionLabel(voice) {
+    const language = spfyLanguageLabel(voice.lang);
+    const rate = Number(voice.sampleRate) > 0 ? Math.round(Number(voice.sampleRate) / 1000) + 'kHz' : '8kHz';
+    const megabytes = Number(voice.totalBytes) > 0 ? Math.round(Number(voice.totalBytes) / (1024 * 1024)) : 0;
+
+    let label = '[Speechify] WebAssembly (local) Speechify ' + (voice.display || voice.id) + ' - ';
+    if (language) label += language + ', ';
+    label += rate;
+    if (megabytes) label += ' (~' + megabytes + ' MB one-time download)';
+    return label;
+}
+
+let __spfyManifestPromise = null;
+export function loadSpfyVoiceManifest({ force = false } = {}) {
+    if (force) __spfyManifestPromise = null;
+
+    if (!__spfyManifestPromise) {
+        __spfyManifestPromise = fetch(SPFY_MANIFEST_URL, { cache: 'no-store' })
+            .then((response) => {
+                if (!response || !response.ok) throw new Error('HTTP ' + (response ? response.status : '?'));
+                return response.json();
+            })
+            .then((manifest) => {
+                if (!manifest || !Array.isArray(manifest.voices) || !manifest.voices.length) {
+                    throw new Error('Speechify voice manifest is empty');
+                }
+                return manifest;
+            })
+            .catch((error) => {
+                __spfyManifestPromise = null;
+                throw error;
+            });
+    }
+
+    return __spfyManifestPromise;
+}
+
+export async function populateSpfyVoiceList(config = {}) {
+    const {
+        selectElement,
+        reportError = () => {},
+    } = config;
+
+    if (!selectElement) return false;
+
+    const slot = selectElement.querySelector('[data-spfy-voice-slot]');
+
+    let manifest;
+    try {
+        manifest = await loadSpfyVoiceManifest();
+    }
+
+    catch (error) {
+        console.error("Error fetching Speechify voice manifest:", error);
+        if (slot) {
+            slot.textContent = '[Speechify] Voice list unavailable';
+            slot.disabled = true;
+        }
+        reportError(error);
+        return false;
+    }
+
+    const previousValue = selectElement.value;
+    for (const stale of selectElement.querySelectorAll('option[data-spfy-voice]')) {
+        stale.remove();
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (const voice of manifest.voices) {
+        if (!voice || !voice.id) continue;
+        const option = document.createElement('option');
+        option.value = 'spfy:' + voice.id;
+        option.dataset.spfyVoice = voice.id;
+        option.textContent = spfyVoiceOptionLabel(voice);
+        fragment.appendChild(option);
+    }
+
+    if (slot && slot.parentNode) {
+        slot.parentNode.insertBefore(fragment, slot);
+        slot.remove();
+    }
+
+    else {
+        selectElement.appendChild(fragment);
+    }
+
+    if (previousValue && selectElement.value !== previousValue) {
+        const restored = Array.from(selectElement.options).some(option => option.value === previousValue);
+        if (restored) selectElement.value = previousValue;
+    }
+
+    return true;
 }

@@ -1,7 +1,7 @@
-<!-- 
-    This is an absolute override file, indicating that a higher priority 
+<!--
+    This is an absolute override file, indicating that a higher priority
     version of the file will completely replace a lower priority version
-    of the file. 
+    of the file.
 -->
 <!-- Areal Flood Warning configuration -->
 <!-- Modified by
@@ -46,17 +46,17 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <unitDistance>mi</unitDistance>
  <unitSpeed>mph</unitSpeed>
 
- <!-- OPTIONAL: Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+ <!-- OPTIONAL: Maps to load on template selection. Refer to 'Maps' menu in CAVE.
     The various menu items are also the different maps
     that can be loaded with each template. -->
  <maps>
     <map>County Names</map>
     <map>County Warning Areas</map>
   <!--  <map>FFMP Small Stream Basin Links</map> -->
-  <!--  <map>Major Rivers</map> --> 
+  <!--  <map>Major Rivers</map> -->
  </maps>
 
- <!-- Followups: VTEC actions of allowable followups when this template is selected 
+ <!-- Followups: VTEC actions of allowable followups when this template is selected
     Each followup will become available when the appropriate time range permits.
  -->
  <followups>
@@ -64,7 +64,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <followup>COR</followup>
   <followup>EXT</followup>
  </followups>
- 
+
  <!-- Product ID: nnn id of the product -->
  <productId>FLW</productId>
 
@@ -72,18 +72,18 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <phensigs>
    <phensig>FA.W</phensig>
  </phensigs>
- 
+
   <!-- Enables/disables user from selecting the Restart button the GUI -->
  <enableRestart>true</enableRestart>
- 
+
   <!-- Enable/disables the system to lock text based on various patterns -->
  <autoLockText>true</autoLockText>
- 
-  <!-- if trackEnabled is set to 'true' = makes third bullet initial position and movement 
-as well as fourth bullet pathcast (which are optional info) available to forecaster.   
+
+  <!-- if trackEnabled is set to 'true' = makes third bullet initial position and movement
+as well as fourth bullet pathcast (which are optional info) available to forecaster.
 Must be paired with proper vm code (also commented out in arealFloodWarning.vm)! -->
- <trackEnabled>false</trackEnabled> 
-  
+ <trackEnabled>false</trackEnabled>
+
  <!-- durations: the list of possible durations -->
  <defaultDuration>180</defaultDuration>
  <durations>
@@ -104,8 +104,8 @@ Must be paired with proper vm code (also commented out in arealFloodWarning.vm)!
   <duration>8640</duration>
   <duration>10080</duration>
  </durations>
- 
-<!-- UNCOMMENT IF YOU HAVE YOUR RIVER DRAINAGE BASINS SETUP 
+
+<!-- UNCOMMENT IF YOU HAVE YOUR RIVER DRAINAGE BASINS SETUP
 <pointSource variable="riverdrainages">
   <pointSource>ffmp_basins</pointSource>
   <geometryDecimationTolerance>0.064</geometryDecimationTolerance>
@@ -153,7 +153,7 @@ Must be paired with proper vm code (also commented out in arealFloodWarning.vm)!
   <bullet bulletName="plainRain" bulletText="Heavy rainfall (no thunder)" bulletGroup="event" parseString="&quot;HEAVY RAIN&quot;,&quot;-THUNDERSTORM&quot;,&quot;-REPORTED FLOODING&quot;"/>
   <bullet bulletName="floodOccurring" bulletText="Flooding occurring" bulletGroup="event" parseString="&quot;REPORTED FLOODING&quot;"/>
   <bullet bulletName="genericFlood" bulletText="Generic (provide reasoning)" bulletGroup="event"/>
-<!--  <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" parseString="&quot;MOVEMENT&quot;,&quot;STATIONARY&quot;,&quot;MPH&quot;"/> --> 
+<!--  <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" parseString="&quot;MOVEMENT&quot;,&quot;STATIONARY&quot;,&quot;MPH&quot;"/> -->
   <bullet bulletText="*********** RAIN AMOUNT (CHOOSE 1) **********" bulletType="title"/>
   <bullet bulletName="rain1" bulletText="One inch so far" bulletGroup="rainAmt" parseString="ONE INCH OF RAIN HAS ALREADY FALLEN"/>
   <bullet bulletName="rain2" bulletText="Two inches so far" bulletGroup="rainAmt" parseString="TWO INCHES OF RAIN HAVE ALREADY FALLEN"/>
@@ -161,7 +161,7 @@ Must be paired with proper vm code (also commented out in arealFloodWarning.vm)!
   <bullet bulletName="rainEdit" bulletText="User defined amount" bulletGroup="rainAmt" parseString="INCHES OF RAIN HAVE FALLEN"/>
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletDefault="true" bulletText="Select for a list of cities" bulletGroup="pcast"/>
-<!--  <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->  
+<!--  <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->
   <bullet bulletName="drainages" bulletText="Automated list of drainages" parseString="THIS INCLUDES THE FOLLOWING STREAMS AND DRAINAGES" loadMap="River Drainage Basins"/>
   <bullet bulletName="addRainfall" bulletText="Additional rainfall of XX is expected" parseString="ADDITIONAL RAINFALL AMOUNTS OF"/>
   <bullet bulletName="specificStream" bulletText="Flooding is occurring in a specific stream/river" parseString="FLOOD WATERS ARE MOVING DOWN"/>
@@ -221,7 +221,7 @@ Must be paired with proper vm code (also commented out in arealFloodWarning.vm)!
   <bullet bulletName="rainEdit" bulletText="User defined amount" bulletGroup="rainAmt" parseString="INCHES OF RAIN HAVE FALLEN"/>
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;"/>
-<!--  <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->  
+<!--  <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->
   <bullet bulletName="addRainfall" bulletText="Additional rainfall of XX inches expected" parseString="ADDITIONAL RAINFALL"/>
   <bullet bulletName="drainages" bulletText="Automated list of drainages" parseString="THIS INCLUDES THE FOLLOWING STREAMS AND DRAINAGES" loadMap="River Drainage Basins"/>
   <bullet bulletName="specificStream" bulletText="Flooding is occurring in a specific stream/river" parseString="FLOOD WATERS ARE MOVING DOWN"/>
@@ -282,7 +282,7 @@ Must be paired with proper vm code (also commented out in arealFloodWarning.vm)!
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="WILL REMAIN OVER" showString="WILL REMAIN OVER"/>
-<!--  <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->  
+<!--  <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->
   <bullet bulletName="addRainfall" bulletText="Additional rainfall of XX inches expected" parseString="ADDITIONAL RAINFALL"/>
   <bullet bulletName="drainages" bulletText="Automated list of drainages" parseString="THIS INCLUDES THE FOLLOWING STREAMS AND DRAINAGES" loadMap="River Drainage Basins"/>
   <bullet bulletName="specificStream" bulletText="Flooding is occurring in a specific stream/river" parseString="FLOOD WATERS ARE MOVING DOWN"/>
@@ -302,6 +302,6 @@ Must be paired with proper vm code (also commented out in arealFloodWarning.vm)!
   <bullet bulletName="warningMeansCTA" bulletText="Flood Warning means" parseString="A FLOOD WARNING MEANS"/>
  </bullets>
 </bulletActionGroup>
-</bulletActionGroups> 
+</bulletActionGroups>
 
 </warngenConfig>

@@ -20,6 +20,8 @@ Date     Ticket#    Engineer    Description
 09/16/13            EBookbinder Initial creation
 06/08/17 DCS 19299  Mike Rega   Add optional 4th bullet filter to exclude
                                 cities outside the CWA
+03/01/22 ASM 22724  Derek Haines Added distanceThresholdLOS to pathcast config to allow separate
+                                 distanceThreshold for line of storms
 -->
 
 <!-- CREATE DEFAULT OBJECTS. THIS SHOULD GENERALLY NOT BE TOUCHED -->
@@ -107,7 +109,7 @@ Date     Ticket#    Engineer    Description
     </sortBy>
 </pointSource>
 
-<!-- CREATE pointSource OBJECT TO GENERATE LIST OF SECONDARY POINTS TO DOT (3RD BULLET) 
+<!-- CREATE pointSource OBJECT TO GENERATE LIST OF SECONDARY POINTS TO DOT (3RD BULLET)
 ...OR ABOUT XXX MILES FROM LARGER KNOWN LOCATION -->
 <pointSource variable="otherClosestPoints">
     <pointField>NAME</pointField>
@@ -134,7 +136,8 @@ Date     Ticket#    Engineer    Description
     <type>AREA</type>
     <inclusionPercent>1</inclusionPercent>
     <withinPolygon>true</withinPolygon>
-    <distanceThreshold>8.0</distanceThreshold>
+    <distanceThreshold>4.0</distanceThreshold>
+    <distanceThresholdLOS>4.0</distanceThresholdLOS>
     <interval>5</interval>
     <delta>5</delta>
     <maxResults>10</maxResults>

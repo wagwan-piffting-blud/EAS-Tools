@@ -1,7 +1,7 @@
-<!-- 
-    This is an absolute override file, indicating that a higher priority 
+<!--
+    This is an absolute override file, indicating that a higher priority
     version of the file will completely replace a lower priority version
-    of the file. 
+    of the file.
 -->
 <!-- Special Marine Warning configuration -->
 <warngenConfig>
@@ -22,7 +22,7 @@ PLACED IN FULL BELOW THE INCLUDE LINE BELOW. -->
 
 <!-- Include Various geospatial XML files to create their objects. These are *NOT*
 turned on unless the corresponding .vm file is turned on in a given template's .vm file
--->  
+-->
 <include file="dssEvents.xml"/>
 <!-- To enable, make sure dssEvents.vm is added/uncommented in the impactSpecialMarineWarning.vm .vm file -->
 <include file="mileMarkers.xml"/>
@@ -35,7 +35,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <unitDistance>nmi</unitDistance>
  <unitSpeed>kn</unitSpeed>
 
- <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+ <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE.
  	The various menu items are also the different maps
  	that can be loaded with each template. -->
  <maps>
@@ -43,14 +43,14 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  </maps>
 
 
- <!-- Followups: VTEC actions of allowable followups when this template is selected 
+ <!-- Followups: VTEC actions of allowable followups when this template is selected
 	Each followup will become available when the appropriate time range permits.
  -->
  <followups>
   <followup>NEW</followup>
   <followup>COR</followup>
  </followups>
- 
+
  <!-- Product ID: nnn id of the product -->
  <productId>SMW</productId>
 
@@ -58,15 +58,15 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <phensigs>
    <phensig>MA.W</phensig>
  </phensigs>
- 
+
   <!-- Enables/disables user from selecting the Restart button the GUI -->
  <enableRestart>true</enableRestart>
- 
+
   <!-- Enable/disables the system to lock text based on various patterns -->
  <autoLockText>true</autoLockText>
- 
-  <!-- Included watches: If a tornado watch or severe thunderstorm watch is to be 
- 	included with the warning product include TO.A and/or SV.A, 
+
+  <!-- Included watches: If a tornado watch or severe thunderstorm watch is to be
+ 	included with the warning product include TO.A and/or SV.A,
  	respectively. Please refer to 'includedWatchAreaBuffer' in <areaConfig/>. -->
  <includedWatches>
   <includedWatch>TO.A</includedWatch>
@@ -75,7 +75,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
 
  <!-- Include references to marine zones for watches.  See marineZoneWording.xml. -->
  <includeMarineAreasInWatches>true</includeMarineAreasInWatches>
- 
+
  <!-- durations: the list of possible durations of the warning -->
  <defaultDuration>30</defaultDuration>
  <durations>
@@ -90,15 +90,15 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <duration>90</duration>
   <duration>120</duration>
  </durations>
- 
+
 <!-- Customized several sections in bullet section including:
  	Placed Basis Section at the top to come in line with SVR templates
 	Added Satellite Imagery to Basis Section
 	Removed Severe and Strong T-storm selections with Thunderstorm in Event Type Section
 		Thunderstorm Severity will be determined by selections in Threat Section
 	Added Shower...Cloud and Front to Event Type Section
-	Added a Threat Section with selections for Wind...Hail and Waterspouts 
-        Changed the CTA Bullet names for easier parsing in the vm file 
+	Added a Threat Section with selections for Wind...Hail and Waterspouts
+        Changed the CTA Bullet names for easier parsing in the vm file
         Added Special Event option to Pathcast section
         Placed CTA section at the bottom to come in line with SVR templates -->
 <bulletActionGroups>
@@ -148,7 +148,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   -->
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText="****** ADDITIONAL REPORTS *******" bulletType="title"/>
-  <bullet bulletName="addlRpt" bulletText="Select to include additional damage information..."/>  
+  <bullet bulletName="addlRpt" bulletText="Select to include additional damage information..."/>
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText="*********** Optional Pathcast Section **********" bulletType="title"/>
   <bullet bulletName="pathcast" bulletText="Select for pathcast" bulletGroup="pcast" parseString="WILL BE NEAR..."/>
@@ -211,12 +211,12 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   -->
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText="****** ADDITIONAL REPORTS *******" bulletType="title"/>
-  <bullet bulletName="addlRpt" bulletText="Select to include additional damage information..."/>  
+  <bullet bulletName="addlRpt" bulletText="Select to include additional damage information..."/>
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText="*********** Optional Pathcast Section **********" bulletType="title"/>
   <bullet bulletName="pathcast" bulletText="Select for pathcast" bulletGroup="pcast" parseString="WILL BE NEAR..."/>
   <bullet bulletName="listoflocations" bulletText="Select for a list of locations" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;" showString="LOCATIONS IMPACTED INCLUDE"/>
-  <bullet bulletName="listoflocations" bulletText="Select for a list of locations" bulletGroup="pcast" parseString="WILL REMAIN OVER" showString="WILL REMAIN OVER"/> 
+  <bullet bulletName="listoflocations" bulletText="Select for a list of locations" bulletGroup="pcast" parseString="WILL REMAIN OVER" showString="WILL REMAIN OVER"/>
   <bullet bulletName="specialEvent" bulletText="Special heads-up for large event/venue" parseString="THOSE ATTENDING"/>
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText=" ****** CALLS TO ACTION (CHOOSE 1 OR MORE) ****** " bulletType="title"/>

@@ -12,7 +12,7 @@ dssEvents.xml
 
 #if(${marine})
 #if (($dss_events_marine))
-#set($size = ${list.size($dss_events_marine)})
+#set($size = $dss_events_marine.size())
 #if ($size > 0)
 People attending ##
 #set($counter = 1)
@@ -22,7 +22,7 @@ ${dss.name}, ##
 #set($counter = $counter + 1)
 #elseif($counter == $size)
 #if($size > 1)
-and ## 
+and ##
 #end
 ${dss.name} ##
 #end
@@ -32,7 +32,7 @@ should seek safe shelter immediately!
 #end
 #end
 #elseif (($dss_events))
-#set($size = ${list.size($dss_events)})
+#set($size = $dss_events.size())
 #if ($size > 0)
 People attending ##
 #set($counter = 1)
@@ -42,7 +42,7 @@ ${dss.name}, ####
 #set($counter = $counter + 1)
 #elseif($counter == $size)
 #if($size > 1)
-and ## 
+and ##
 #end
 ${dss.name} ##
 #end

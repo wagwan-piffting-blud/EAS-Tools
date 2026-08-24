@@ -18,7 +18,9 @@
         var initialOverrides = opts.initialOverrides || [];
         var onChange         = opts.onChange || function () {};
 
-        var bullets = (bulletConfig.actions || {})[action] || [];
+        // opts.bullets lets the caller pick an action+phenomenon group; without it, fall back
+        // to the first group configured for the action.
+        var bullets = opts.bullets || (bulletConfig.actions || {})[action] || [];
 
         container.innerHTML = "";
         container.className = (container.className || "") + " bullet-panel";

@@ -1,4 +1,4 @@
-import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME, PIPER_DEFAULT_VOICE_ID as PIPER_VOICE, resamplePcm, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, getSpfyEngine, getAcuEngine } from './common-functions.js';
+import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME, PIPER_DEFAULT_VOICE_ID as PIPER_VOICE, resamplePcm, resamplePcmSinc, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId } from './common-functions.js';
 
 (async function () {
     let splicerTextEditor = null;
@@ -53,6 +53,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const selLenLabel = panel.querySelector('[data-selection-length]');
     const loadFileBtn = panel.querySelector('[data-splice-load]');
     const macroSelect = panel.querySelector('[data-splice-macro-select]');
+    const macroUploadInput = panel.querySelector('[data-splice-macro-upload]');
+    const macroUploadBtn = panel.querySelector('[data-splice-macro-upload-btn]');
+    const macroRemoveBtn = panel.querySelector('[data-splice-macro-remove-btn]');
     const previewMacroBtn = panel.querySelector('[data-splice-preview-macro]');
     const exportMacroBtn = panel.querySelector('[data-splice-export-macro]');
     const spliceLoudnessInput = panel.querySelector('[data-splice-loudness]');
@@ -83,7 +86,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     canvas.style.touchAction = 'none';
 
     const DB_NAME = 'eas-splicer';
+    const DB_VERSION = 2;
     const STORE = 'projects';
+    const MACRO_STORE = 'customMacros';
     const CACHE_KEY = 'current';
     const voiceBackendMap = {};
     let enable60HzHum = enable60HzHumCheckbox?.checked === true;
@@ -238,6 +243,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
             vmifyEnabled ? '1' : '0',
             vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
+            macroId === 'CHAIN' ? chainSig() : '',
             state.pcm.length,
             state.sampleRate,
         ];
@@ -312,7 +318,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 let processed = null;
                 try {
                     const fxPcm = applyExportFxToPcm(pcmRef, sr, macroId);
-                    if (macroId.startsWith('AUD:') && window.AudacityMacroEngine) {
+                    if (macroId === 'CHAIN') {
+                        const out = await applyMacroChainToPcm(fxPcm, sr, macroProgressCb);
+                        setMacroProgress(1, 'Macro preview ready!');
+                        processed = { pcm: out.pcm, sampleRate: out.sampleRate };
+                    } else if (macroId.startsWith('AUD:') && window.AudacityMacroEngine) {
                         const out = await window.AudacityMacroEngine.applyMacroFile(fxPcm, sr, macroId.slice(4), { onProgress: macroProgressCb });
                         setMacroProgress(1, 'Macro preview ready!');
                         processed = { pcm: out.pcm, sampleRate: out.sampleRate };
@@ -342,7 +352,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     macroWaveformPcm = processed.pcm;
                     macroWaveformSampleRate = processed.sampleRate || sr;
                     macroWaveformActiveKey = key;
-                    macroWaveformOutputSig = macroId.startsWith('AUD:') ? getMacroOutputSignature(macroId) : null;
+                    macroWaveformOutputSig = (macroId.startsWith('AUD:') || macroId === 'CHAIN') ? getMacroOutputSignature(macroId) : null;
                 } else {
                     macroWaveformPcm = null;
                     macroWaveformSampleRate = 0;
@@ -581,8 +591,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
         if (!cacheDbPromise) {
             cacheDbPromise = new Promise((resolve, reject) => {
-                const req = indexedDB.open(DB_NAME, 1);
-                req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = () => {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+                    if (!db.objectStoreNames.contains(MACRO_STORE)) db.createObjectStore(MACRO_STORE);
+                };
                 req.onsuccess = () => resolve(req.result);
                 req.onerror = () => reject(req.error);
             });
@@ -673,6 +687,58 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             });
         } catch (err) {
             persistStatus(`Failed clearing cache: ${err}.`, false);
+        }
+    };
+
+    const saveCustomMacroToDb = async (file, text) => {
+        const dbp = getDb();
+        if (!dbp) return;
+        try {
+            const db = await dbp;
+            if (!db.objectStoreNames.contains(MACRO_STORE)) return;
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(MACRO_STORE, 'readwrite');
+                tx.objectStore(MACRO_STORE).put({ file, text, savedAt: Date.now() }, file);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+        } catch (err) {
+            persistStatus(`Failed saving custom macro: ${err}.`, false);
+        }
+    };
+
+    const deleteCustomMacroFromDb = async (file) => {
+        const dbp = getDb();
+        if (!dbp) return;
+        try {
+            const db = await dbp;
+            if (!db.objectStoreNames.contains(MACRO_STORE)) return;
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(MACRO_STORE, 'readwrite');
+                tx.objectStore(MACRO_STORE).delete(file);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+        } catch (err) {
+            persistStatus(`Failed removing custom macro: ${err}.`, false);
+        }
+    };
+
+    const loadCustomMacrosFromDb = async () => {
+        const dbp = getDb();
+        if (!dbp) return [];
+        try {
+            const db = await dbp;
+            if (!db.objectStoreNames.contains(MACRO_STORE)) return [];
+            return await new Promise((resolve, reject) => {
+                const tx = db.transaction(MACRO_STORE, 'readonly');
+                const req = tx.objectStore(MACRO_STORE).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        } catch (err) {
+            console.error('Failed to load custom macros!', err);
+            return [];
         }
     };
 
@@ -2312,8 +2378,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (mode === 'nanotts') {
             return nanoTts.synth(text);
         }
-        if (mode === 'spfy') {
-            return getSpfyEngine().synth(text, { reportStatus: piperReportStatus, onProgress: wasmVoiceProgress });
+        const spfyVoice = parseSpfyVoiceId(mode);
+        if (spfyVoice !== null) {
+            return getSpfyEngine().synth(text, { reportStatus: piperReportStatus, onProgress: wasmVoiceProgress, voice: spfyVoice });
         }
         if (mode === 'acuvoice') {
             return getAcuEngine().synth(text, { reportStatus: piperReportStatus, onProgress: wasmVoiceProgress });
@@ -2326,6 +2393,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
     const getVoiceList = async () => {
         if (!voiceSelect || voiceListLoaded) return;
+
+        await populateSpfyVoiceList({
+            selectElement: voiceSelect,
+            reportError: () => {
+                if (ttsStatus) ttsStatus.textContent = "Failed to load the Speechify voice list.";
+            },
+        });
 
         const ok = await populateRemoteVoiceList({
             selectElement: voiceSelect,
@@ -2386,25 +2460,26 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     };
 
     const bitcrushSpeechifyPcm = async (pcm, sampleRate) => {
-        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
-            return pcm;
-        }
-
         const sr = Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : 44100;
 
-        const fallbackExciter = () => {
-            const nyquist = sr / 2;
-            if (nyquist < 5000) return pcm;
+        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
+            return { pcm, sampleRate: sr };
+        }
 
-            const out = new Float32Array(pcm.length);
+        const fallbackExciter = () => {
+            const workSr = sr / 2 < 5000 ? 44100 : sr;
+            const src = workSr === sr ? pcm : resamplePcmSinc(pcm, sr, workSr);
+            const nyquist = workSr / 2;
+
+            const out = new Float32Array(src.length);
             const drive = 3.16;
-            const driven = new Float32Array(pcm.length);
-            for (let i = 0; i < pcm.length; i++) {
-                driven[i] = Math.tanh(pcm[i] * drive);
+            const driven = new Float32Array(src.length);
+            for (let i = 0; i < src.length; i++) {
+                driven[i] = Math.tanh(src[i] * drive);
             }
 
             const freq = Math.min(4000, nyquist * 0.8);
-            const w0 = 2 * Math.PI * freq / sr;
+            const w0 = 2 * Math.PI * freq / workSr;
             const cos0 = Math.cos(w0);
             const alp = Math.sin(w0) / (2 * 0.707);
             const norm = 1 / (1 + alp);
@@ -2420,7 +2495,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             const hfGain = 1.41;
             let peak = 0;
 
-            for (let i = 0; i < pcm.length; i++) {
+            for (let i = 0; i < src.length; i++) {
                 const x0 = driven[i];
                 const y0 = b0 * x0 + b1 * s1x1 + b2 * s1x2 - a1 * s1y1 - a2 * s1y2;
                 s1x2 = s1x1; s1x1 = x0;
@@ -2430,7 +2505,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 s2x2 = s2x1; s2x1 = y0;
                 s2y2 = s2y1; s2y1 = y1;
 
-                out[i] = pcm[i] + y1 * hfGain;
+                out[i] = src[i] + y1 * hfGain;
                 const abs = out[i] < 0 ? -out[i] : out[i];
                 if (abs > peak) peak = abs;
             }
@@ -2440,7 +2515,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 for (let i = 0; i < out.length; i++) out[i] *= g;
             }
 
-            return out;
+            return { pcm: out, sampleRate: workSr };
         };
 
         if (typeof window.SOXModule !== "function") {
@@ -2545,7 +2620,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 result[i] = (orig[i] + hf[i]) * gain * inv;
             }
 
-            return result;
+            return { pcm: result, sampleRate: workRate };
         } catch {
             return fallbackExciter();
         }
@@ -2649,11 +2724,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
                             const sourcePcm = buffer.getChannelData(0);
                             const shouldBitcrushSpeechify = shouldBitcrushSpeechifyCheckbox?.checked === true && /Speechify/i.test(voiceId || "");
-                            const pcm = shouldBitcrushSpeechify
-                                ? await bitcrushSpeechifyPcm(sourcePcm, buffer.sampleRate)
-                                : sourcePcm;
-
-                            resolve({ pcm, sampleRate: buffer.sampleRate });
+                            if (shouldBitcrushSpeechify) {
+                                const crushed = await bitcrushSpeechifyPcm(sourcePcm, buffer.sampleRate);
+                                resolve({ pcm: crushed.pcm, sampleRate: crushed.sampleRate });
+                            } else {
+                                resolve({ pcm: sourcePcm, sampleRate: buffer.sampleRate });
+                            }
                         }).catch((error) => {
                             if (typeof audioContext.close === "function") {
                                 audioContext.close().catch(() => { });
@@ -2675,10 +2751,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                             if (buffer) {
                                 const sourcePcm = buffer.getChannelData(0);
                                 const shouldBitcrushSpeechify = shouldBitcrushSpeechifyCheckbox?.checked === true && /Speechify/i.test(voiceId || "");
-                                const pcm = shouldBitcrushSpeechify
-                                    ? await bitcrushSpeechifyPcm(sourcePcm, buffer.sampleRate)
-                                    : sourcePcm;
-                                resolve({ pcm, sampleRate: buffer.sampleRate });
+                                if (shouldBitcrushSpeechify) {
+                                    const crushed = await bitcrushSpeechifyPcm(sourcePcm, buffer.sampleRate);
+                                    resolve({ pcm: crushed.pcm, sampleRate: crushed.sampleRate });
+                                    return;
+                                }
+                                resolve({ pcm: sourcePcm, sampleRate: buffer.sampleRate });
                             } else {
                                 finishWithError(new Error("No audio found in response"));
                             }
@@ -3086,13 +3164,18 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             ttsButton.disabled = true;
             if (ttsStatus) ttsStatus.textContent = 'Generating...';
             try {
-                if (normalizedVoice === 'wasm' || normalizedVoice === 'nanotts' || normalizedVoice === 'spfy' || normalizedVoice === 'acuvoice') {
+                if (normalizedVoice === 'wasm' || normalizedVoice === 'nanotts' || parseSpfyVoiceId(normalizedVoice) !== null || normalizedVoice === 'acuvoice') {
                     const valid = await validateMarkupAndText(voiceBackendMap, selectedVoiceValue, text);
                     if (!valid) {
                         if (ttsStatus) ttsStatus.textContent = 'Text contains invalid phonemes or markup for this backend.';
                         return;
                     }
-                    const { pcm, sampleRate } = await synthTts(text, normalizedVoice);
+                    let { pcm, sampleRate } = await synthTts(text, normalizedVoice);
+                    if (parseSpfyVoiceId(normalizedVoice) !== null && shouldBitcrushSpeechifyCheckbox?.checked === true) {
+                        const crushed = await bitcrushSpeechifyPcm(pcm, sampleRate);
+                        pcm = crushed.pcm;
+                        sampleRate = crushed.sampleRate;
+                    }
                     addSegment(pcm, sampleRate, 'TTS', text);
                     if (ttsStatus) ttsStatus.textContent = `Added ${(pcm.length / (sampleRate || state.sampleRate)).toFixed(2)}s of audio.`;
                     setButtonDisabledState(false);
@@ -3262,6 +3345,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (!ids.length) return;
 
         const previous = macroSelect.value;
+        const customGroup = macroSelect.querySelector('optgroup[data-custom]');
 
         while (macroSelect.firstChild) {
             macroSelect.removeChild(macroSelect.firstChild);
@@ -3309,6 +3393,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
 
         addAudacityMacrosToSelect();
+        if (customGroup) macroSelect.appendChild(customGroup);
+        updateChainOption();
         if (previous) macroSelect.value = previous;
     }
 
@@ -3623,6 +3709,712 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         mo.observe(macroSelect, { childList: true, subtree: true });
 
         syncLabel();
+    }
+
+    const MAX_MACRO_UPLOAD_BYTES = 1024 * 1024;
+
+    function addCustomMacroOption(file) {
+        if (!macroSelect) return;
+        const id = 'AUD:' + file;
+        for (const opt of macroSelect.querySelectorAll('option')) {
+            if (opt.value === id) return;
+        }
+        let grp = macroSelect.querySelector('optgroup[data-custom]');
+        if (!grp) {
+            grp = document.createElement('optgroup');
+            grp.label = 'Custom macros (this session)';
+            grp.setAttribute('data-custom', '1');
+            macroSelect.appendChild(grp);
+        }
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = file.replace(/\.txt$/i, '');
+        grp.appendChild(opt);
+    }
+
+    async function handleMacroUpload(fileObj) {
+        if (!fileObj) return;
+        if (!window.AudacityMacroEngine || !window.AudacityMacroEngine.registerCustomMacro) {
+            persistStatus('Macro engine unavailable; cannot load custom macros.', false);
+            return;
+        }
+        if (fileObj.size > MAX_MACRO_UPLOAD_BYTES) {
+            persistStatus('Macro file "' + fileObj.name + '" is too large (limit 1 MB).', false);
+            return;
+        }
+        let text;
+        try {
+            text = await fileObj.text();
+        } catch (err) {
+            reportErrorStatus('Could not read macro file "' + fileObj.name + '".', err);
+            return;
+        }
+        let steps;
+        try {
+            steps = await window.AudacityMacroEngine.expandMacroSteps(text);
+        } catch (err) {
+            reportErrorStatus('Could not parse macro file "' + fileObj.name + '".', err);
+            return;
+        }
+        if (!steps.length) {
+            persistStatus('"' + fileObj.name + '" contains no runnable macro commands.', false);
+            return;
+        }
+        const file = window.AudacityMacroEngine.registerCustomMacro(fileObj.name, text);
+        addCustomMacroOption(file);
+        const id = 'AUD:' + file;
+        if (macroSelect && macroSelect.value !== id) {
+            macroSelect.value = id;
+            macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        await saveCustomMacroToDb(file, text);
+        persistStatus('Custom macro "' + file.replace(/\.txt$/i, '') + '" loaded (' + steps.length + ' step' + (steps.length === 1 ? '' : 's') + '), selected, and saved for future sessions.');
+    }
+
+    function isCustomMacroSelected() {
+        if (!macroSelect) return false;
+        const grp = macroSelect.querySelector('optgroup[data-custom]');
+        if (!grp) return false;
+        for (const o of grp.children) {
+            if (o.value === macroSelect.value) return true;
+        }
+        return false;
+    }
+
+    function updateRemoveMacroState() {
+        if (macroRemoveBtn) macroRemoveBtn.disabled = !isCustomMacroSelected();
+    }
+
+    async function removeSelectedCustomMacro() {
+        if (!isCustomMacroSelected()) return;
+        const id = macroSelect.value;
+        const file = id.slice(4);
+        if (window.AudacityMacroEngine?.unregisterCustomMacro) {
+            window.AudacityMacroEngine.unregisterCustomMacro(file);
+        }
+        const grp = macroSelect.querySelector('optgroup[data-custom]');
+        if (grp) {
+            for (const o of [...grp.children]) {
+                if (o.value === id) o.remove();
+            }
+            if (!grp.children.length) grp.remove();
+        }
+        await deleteCustomMacroFromDb(file);
+        const beforeLen = macroChain.length;
+        macroChain = macroChain.filter((it) => it.id !== id);
+        if (macroChain.length !== beforeLen) onChainMutated();
+        macroSelect.value = 'FLAT';
+        if (macroSelect.value !== 'FLAT' && macroSelect.options.length) macroSelect.selectedIndex = 0;
+        macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        persistStatus('Custom macro "' + file.replace(/\.txt$/i, '') + '" removed.');
+    }
+
+    async function restoreCustomMacros() {
+        if (!window.AudacityMacroEngine || !window.AudacityMacroEngine.registerCustomMacro) return;
+        const rows = await loadCustomMacrosFromDb();
+        if (rows.length) {
+            rows.sort((a, b) => (a?.savedAt || 0) - (b?.savedAt || 0));
+            let restored = 0;
+            for (const row of rows) {
+                if (!row || typeof row.text !== 'string' || !row.file) continue;
+                const file = window.AudacityMacroEngine.registerCustomMacro(row.file, row.text);
+                addCustomMacroOption(file);
+                restored++;
+            }
+            if (restored) {
+                persistStatus('Restored ' + restored + ' custom macro' + (restored === 1 ? '' : 's') + '.');
+                restoreAudMacroSelection();
+            }
+        }
+        updateRemoveMacroState();
+    }
+
+    let macroChain = [];
+    const MAX_CHAIN_ITEMS = 10;
+    const MAX_CHAIN_STEPS = 250;
+    const CHAIN_STORAGE_KEY = 'splicer.macroChain';
+
+    const CHAIN_BUILTIN_EFFECTS = [
+        { cmd: 'Amplify', params: 'Ratio="0.70794578"' },
+        { cmd: 'Normalize', params: 'PeakLevel="-1"' },
+        { cmd: 'LoudnessNormalization', params: 'NormalizeTo="1" RMSLevel="-20" DualMono="1"' },
+        { cmd: 'Compressor', params: 'Threshold="-12" Ratio="2" AttackTime="0.2" ReleaseTime="1" NoiseFloor="-40" Normalize="1" UsePeak="0"' },
+        { cmd: 'Limiter', params: 'type="SoftLimit" thresh="-6" hold="10" makeup="No" gain-L="0" gain-R="0"' },
+        { cmd: 'NoiseGate', params: 'threshold="-48" level-reduction="-12" attack="250" gate-freq="0" low-cut="None"' },
+        { cmd: 'PopMute', params: 'thresh="-6" floor="-24" look="10" rel="10"' },
+        { cmd: 'High-passFilter', params: 'frequency="200" rolloff="dB12"' },
+        { cmd: 'Low-passFilter', params: 'frequency="3000" rolloff="dB12"' },
+        { cmd: 'BassAndTreble', params: 'Bass="10" Treble="0" Gain="0" Link_Sliders="0"' },
+        { cmd: 'ParametricEq', params: 'freq="1000" width="5" gain="-6"' },
+        { cmd: 'NotchFilter', params: 'frequency="60" q="1"' },
+        { cmd: 'MultibandEq', params: 'bands="10" band="3" gain="6"' },
+        { cmd: 'ChebyshevTypeIFilter', params: 'fType="Lowpass" order="4" fc="3000" ripple="0.05"' },
+        { cmd: 'CombFilter', params: 'f="440" decay="0.025" norm-level="0.95"' },
+        { cmd: 'Distortion', params: 'Type="Leveller" Threshold_dB="-10.457575" Noise_Floor="-70" Parameter_1="84" Parameter_2="14" Repeats="3" DC_Block="0"' },
+        { cmd: 'Clipper', params: 'tube="Yes"' },
+        { cmd: 'TapeSaturationLimiter', params: 'thres="-3" ratio="2" hfhz="4500" hfgain="-5" makeup="Off"' },
+        { cmd: 'HarmonicEnhancer', params: '' },
+        { cmd: 'NoiseThing', params: '' },
+        { cmd: 'Echo', params: 'Delay="1" Decay="0.5"' },
+        { cmd: 'Delay', params: 'delay-type="Regular" delay="0.3" dgain="-6" number="5" shift="0"' },
+        { cmd: 'Phaser', params: 'Stages="2" DryWet="128" Freq="0.4" Phase="0" Depth="100" Feedback="0" Gain="-6"' },
+        { cmd: 'Tremolo', params: 'wave="Sine" lfo="4" wet="40" phase="0"' },
+        { cmd: 'Flanger(linear)', params: '' },
+        { cmd: 'RandomAmplitudeModulation', params: 'maxspeed="0.5" factor="80"' },
+        { cmd: 'RandomPitchModulation', params: 'depth="0.1" maxspeed="0.5" factor="80" maxdepth="0.5"' },
+        { cmd: 'ChangeSpeed', params: 'Percentage="10"' },
+        { cmd: 'StudioFadeOut', params: '' },
+        { cmd: 'FadeIn', params: '' },
+        { cmd: 'FadeOut', params: '' },
+        { cmd: 'Reverse', params: '' },
+        { cmd: 'Invert', params: '' },
+    ];
+
+    const chainSig = () => macroChain.map((it) => it.id + (it.params ? '{' + it.params + '}' : '')).join('>');
+
+    function persistMacroChain() {
+        try {
+            localStorage.setItem(CHAIN_STORAGE_KEY, JSON.stringify(macroChain.map((it) => ({ id: it.id, label: it.label, steps: it.steps, params: it.params || '' }))));
+        } catch (e) { }
+    }
+
+    function updateChainOption() {
+        if (!macroSelect) return;
+        let opt = macroSelect.querySelector('option[data-chain]');
+        if (!macroChain.length) {
+            if (opt) {
+                const wasSelected = macroSelect.value === 'CHAIN';
+                opt.remove();
+                if (wasSelected) {
+                    macroSelect.value = 'FLAT';
+                    if (macroSelect.value !== 'FLAT' && macroSelect.options.length) macroSelect.selectedIndex = 0;
+                    macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            return;
+        }
+        if (!opt) {
+            opt = document.createElement('option');
+            opt.value = 'CHAIN';
+            opt.setAttribute('data-chain', '1');
+            const first = macroSelect.firstElementChild;
+            if (first && first.tagName === 'OPTION') {
+                macroSelect.insertBefore(opt, first.nextSibling);
+            } else {
+                macroSelect.insertBefore(opt, macroSelect.firstChild);
+            }
+        }
+        opt.textContent = 'Macro Chain (' + macroChain.length + ' macro' + (macroChain.length === 1 ? '' : 's') + ')';
+    }
+
+    function onChainMutated() {
+        persistMacroChain();
+        updateChainOption();
+        if (macroSelect && macroSelect.value === 'CHAIN') {
+            invalidateMacroPreview();
+            scheduleMacroWaveformUpdate();
+        }
+    }
+
+    function restoreMacroChain() {
+        let saved = null;
+        try {
+            saved = JSON.parse(localStorage.getItem(CHAIN_STORAGE_KEY) || 'null');
+        } catch (e) {
+            saved = null;
+        }
+        if (Array.isArray(saved)) {
+            macroChain = saved
+                .filter((it) => it && typeof it.id === 'string' && it.id && it.id !== 'CHAIN' && it.id !== 'FLAT')
+                .slice(0, MAX_CHAIN_ITEMS)
+                .map((it) => ({
+                    id: it.id,
+                    label: (typeof it.label === 'string' && it.label) ? it.label : it.id,
+                    steps: Number.isFinite(it.steps) && it.steps > 0 ? it.steps : 1,
+                    params: typeof it.params === 'string' ? it.params : '',
+                }));
+        }
+        updateChainOption();
+    }
+
+    async function chainStepsForId(id) {
+        if (!id.startsWith('AUD:')) return 1;
+        if (!window.AudacityMacroEngine || !window.AudacityMacroEngine.expandMacroSteps) return 1;
+        try {
+            const text = await window.AudacityMacroEngine.fetchMacroText(id.slice(4));
+            const steps = await window.AudacityMacroEngine.expandMacroSteps(text);
+            return Math.max(1, steps.length);
+        } catch (e) {
+            return 1;
+        }
+    }
+
+    const chainTotalSteps = () => macroChain.reduce((a, it) => a + (it.steps || 1), 0);
+
+    async function decodeWavBlobDirect(blob) {
+        try {
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+            let pos = 12, fmt = 1, ch = 1, sr = 44100, bits = 16, doff = 0, dlen = 0;
+            while (pos + 8 <= bytes.length) {
+                const id = String.fromCharCode(bytes[pos], bytes[pos + 1], bytes[pos + 2], bytes[pos + 3]);
+                const sz = dv.getUint32(pos + 4, true);
+                if (id === 'fmt ') {
+                    fmt = dv.getUint16(pos + 8, true);
+                    ch = dv.getUint16(pos + 10, true);
+                    sr = dv.getUint32(pos + 12, true);
+                    bits = dv.getUint16(pos + 22, true);
+                } else if (id === 'data') {
+                    doff = pos + 8;
+                    dlen = sz;
+                }
+                pos += 8 + sz + (sz & 1);
+            }
+            const bytesPer = bits >> 3;
+            if (!doff || !ch || !bytesPer) return decodeWavBlobToFloat32(blob);
+            const frames = Math.floor(Math.min(dlen, bytes.length - doff) / (ch * bytesPer));
+            const out = new Float32Array(frames);
+            for (let i = 0; i < frames; i++) {
+                let acc = 0;
+                for (let c = 0; c < ch; c++) {
+                    const o = doff + (i * ch + c) * bytesPer;
+                    let v = 0;
+                    if (bits === 16) v = dv.getInt16(o, true) / 32768;
+                    else if (bits === 24) { const x = bytes[o] | (bytes[o + 1] << 8) | (bytes[o + 2] << 16); v = ((x << 8) >> 8) / 8388608; }
+                    else if (bits === 32 && fmt === 3) v = dv.getFloat32(o, true);
+                    else if (bits === 32) v = dv.getInt32(o, true) / 2147483648;
+                    else if (bits === 8) v = (bytes[o] - 128) / 128;
+                    acc += v;
+                }
+                out[i] = acc / ch;
+            }
+            return { pcm: out, sampleRate: sr };
+        } catch (err) {
+            return decodeWavBlobToFloat32(blob);
+        }
+    }
+
+    async function applyMacroChainToPcm(pcm, sampleRate, onProgress) {
+        if (!macroChain.length) return { pcm, sampleRate };
+        let cur = pcm;
+        let sr = sampleRate;
+        const total = macroChain.length;
+        for (let i = 0; i < total; i++) {
+            const item = macroChain[i];
+            const base = i / total;
+            const span = 1 / total;
+            const stageLabel = 'Chain ' + (i + 1) + '/' + total + ': ' + item.label;
+            if (onProgress) onProgress({ step: i + 1, total, cmd: stageLabel, fraction: base });
+            if (item.id.startsWith('AUD:') || item.id.startsWith('CMD:')) {
+                if (!window.AudacityMacroEngine) {
+                    throw new Error('Audacity macro engine unavailable for "' + item.label + '".');
+                }
+                const stageProgress = {
+                    onProgress: (p) => {
+                        if (onProgress) onProgress({
+                            step: i + 1,
+                            total,
+                            cmd: stageLabel + ' - ' + p.cmd,
+                            fraction: base + Math.max(0, Math.min(1, p.fraction)) * span,
+                        });
+                    },
+                };
+                const out = item.id.startsWith('AUD:')
+                    ? await window.AudacityMacroEngine.applyMacroFile(cur, sr, item.id.slice(4), stageProgress)
+                    : await window.AudacityMacroEngine.applyMacroText(cur, sr, item.id.slice(4) + ':' + (item.params || ''), stageProgress);
+                cur = out.pcm;
+                sr = out.sampleRate;
+            } else {
+                const blob = await renderMacroWithSox(cur, sr, item.id, 0);
+                if (!blob) throw new Error('SoX macro "' + item.label + '" failed to render.');
+                const dec = await decodeWavBlobDirect(blob);
+                if (!dec || !dec.pcm || !dec.pcm.length) throw new Error('SoX macro "' + item.label + '" returned no audio.');
+                cur = dec.pcm;
+                sr = dec.sampleRate;
+                if (item.id === 'NOISY_DX_RECORDING') {
+                    cur = addStaticNoiseToPcm(cur, sr, { level: 0.14, fadeDepth: 0.45, fadeRateHz: 0.6 });
+                }
+            }
+            if (onProgress) onProgress({ step: i + 1, total, cmd: stageLabel, fraction: (i + 1) / total });
+        }
+        return { pcm: cur, sampleRate: sr };
+    }
+
+    function setupChainEditor() {
+        const openBtn = panel.querySelector('[data-splice-chain-editor-btn]');
+        if (!openBtn || !macroSelect) return;
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'splice-chain-backdrop';
+        backdrop.hidden = true;
+
+        const modal = document.createElement('div');
+        modal.className = 'splice-chain-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Macro chain editor');
+
+        const title = document.createElement('h3');
+        title.textContent = 'Macro Chain Editor';
+
+        const intro = document.createElement('p');
+        intro.className = 'splice-chain-intro';
+        intro.textContent = 'Build an ordered chain of macros and effects, applied top to bottom in one pass. Limits: ' + MAX_CHAIN_ITEMS + ' macros or ' + MAX_CHAIN_STEPS + ' total effect steps, whichever comes first.';
+
+        const cols = document.createElement('div');
+        cols.className = 'splice-chain-cols';
+
+        const availCol = document.createElement('div');
+        availCol.className = 'splice-chain-col';
+        const availLabel = document.createElement('label');
+        availLabel.textContent = 'Available macros and effects';
+        availLabel.setAttribute('for', 'splice-chain-search');
+        const availSearch = document.createElement('input');
+        availSearch.type = 'search';
+        availSearch.id = 'splice-chain-search';
+        availSearch.className = 'splice-chain-search';
+        availSearch.placeholder = 'Filter...';
+        const availList = document.createElement('ul');
+        availList.className = 'splice-chain-avail-list';
+        availList.setAttribute('aria-label', 'Available macros; use the Add button on an entry to append it to the chain');
+        availCol.appendChild(availLabel);
+        availCol.appendChild(availSearch);
+        availCol.appendChild(availList);
+
+        const chainCol = document.createElement('div');
+        chainCol.className = 'splice-chain-col';
+        const chainLabel = document.createElement('span');
+        chainLabel.className = 'splice-chain-col-label';
+        chainLabel.id = 'splice-chain-list-label';
+        chainLabel.textContent = 'Chain (applied top to bottom)';
+        const chainCount = document.createElement('span');
+        chainCount.className = 'splice-chain-count';
+        const chainListEl = document.createElement('ol');
+        chainListEl.className = 'splice-chain-list';
+        chainListEl.setAttribute('aria-labelledby', 'splice-chain-list-label');
+        chainCol.appendChild(chainLabel);
+        chainCol.appendChild(chainCount);
+        chainCol.appendChild(chainListEl);
+
+        cols.appendChild(availCol);
+        cols.appendChild(chainCol);
+
+        const actions = document.createElement('div');
+        actions.className = 'splice-chain-actions';
+        const statusSpan = document.createElement('span');
+        statusSpan.className = 'splice-chain-status';
+        statusSpan.setAttribute('aria-live', 'polite');
+        const useBtn = document.createElement('button');
+        useBtn.type = 'button';
+        useBtn.textContent = 'Use Chain';
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.textContent = 'Clear Chain';
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.textContent = 'Close';
+        actions.appendChild(statusSpan);
+        actions.appendChild(useBtn);
+        actions.appendChild(clearBtn);
+        actions.appendChild(closeBtn);
+
+        modal.appendChild(title);
+        modal.appendChild(intro);
+        modal.appendChild(cols);
+        modal.appendChild(actions);
+        backdrop.appendChild(modal);
+        document.body.appendChild(backdrop);
+
+        const chainEditorStatus = (msg) => {
+            statusSpan.textContent = msg || '';
+        };
+
+        const collectAvailable = () => {
+            const rows = [];
+            const walk = (node, group) => {
+                for (const child of node.children) {
+                    if (child.tagName === 'OPTGROUP') {
+                        walk(child, child.label || '');
+                    } else if (child.tagName === 'OPTION') {
+                        const value = child.value;
+                        if (!value || value === 'FLAT' || value === 'CHAIN') continue;
+                        const id = value.startsWith('AUD:') ? value : (value === 'ENDEC' ? 'DIGITAL_ENDEC' : value.toUpperCase());
+                        rows.push({ id, label: child.textContent || value, group, params: '' });
+                    }
+                }
+            };
+            walk(macroSelect, '');
+            for (const fx of CHAIN_BUILTIN_EFFECTS) {
+                rows.push({ id: 'CMD:' + fx.cmd, label: fx.cmd, group: 'Audacity built-in effects', params: fx.params });
+            }
+            return rows;
+        };
+
+        const renderChainList = () => {
+            chainListEl.textContent = '';
+            chainCount.textContent = macroChain.length
+                ? macroChain.length + '/' + MAX_CHAIN_ITEMS + ' macros, ' + chainTotalSteps() + '/' + MAX_CHAIN_STEPS + ' steps'
+                : 'Empty - add macros from the list on the left.';
+            macroChain.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'splice-chain-item';
+                li.draggable = true;
+                li.dataset.index = String(index);
+
+                const name = document.createElement('span');
+                name.className = 'splice-chain-item-name';
+                name.textContent = (index + 1) + '. ' + item.label + ' (' + (item.steps || 1) + ' step' + ((item.steps || 1) === 1 ? '' : 's') + ')';
+
+                let paramsInput = null;
+                if (item.id.startsWith('CMD:')) {
+                    paramsInput = document.createElement('input');
+                    paramsInput.type = 'text';
+                    paramsInput.className = 'splice-chain-item-params';
+                    paramsInput.value = item.params || '';
+                    paramsInput.placeholder = 'Key="Value" parameters';
+                    paramsInput.setAttribute('aria-label', 'Parameters for ' + item.label);
+                    paramsInput.addEventListener('change', () => {
+                        item.params = paramsInput.value;
+                        onChainMutated();
+                        chainEditorStatus('Updated parameters for "' + item.label + '".');
+                    });
+                    paramsInput.addEventListener('pointerdown', () => { li.draggable = false; });
+                    paramsInput.addEventListener('blur', () => { li.draggable = true; });
+                }
+
+                const controls = document.createElement('span');
+                controls.className = 'splice-chain-item-controls';
+                const upBtn = document.createElement('button');
+                upBtn.type = 'button';
+                upBtn.textContent = '↑';
+                upBtn.setAttribute('aria-label', 'Move "' + item.label + '" up');
+                upBtn.disabled = index === 0;
+                upBtn.addEventListener('click', () => moveChainItem(index, index - 1));
+                const downBtn = document.createElement('button');
+                downBtn.type = 'button';
+                downBtn.textContent = '↓';
+                downBtn.setAttribute('aria-label', 'Move "' + item.label + '" down');
+                downBtn.disabled = index === macroChain.length - 1;
+                downBtn.addEventListener('click', () => moveChainItem(index, index + 1));
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.textContent = '✕';
+                delBtn.setAttribute('aria-label', 'Remove "' + item.label + '" from chain');
+                delBtn.addEventListener('click', () => removeChainItem(index));
+                controls.appendChild(upBtn);
+                controls.appendChild(downBtn);
+                controls.appendChild(delBtn);
+
+                li.appendChild(name);
+                if (paramsInput) li.appendChild(paramsInput);
+                li.appendChild(controls);
+
+                li.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', 'C|' + index);
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                chainListEl.appendChild(li);
+            });
+        };
+
+        const renderAvailList = () => {
+            availList.textContent = '';
+            const filter = availSearch.value.trim().toLowerCase();
+            let lastGroup = null;
+            for (const row of collectAvailable()) {
+                if (filter && row.label.toLowerCase().indexOf(filter) === -1) continue;
+                if (row.group !== lastGroup && row.group) {
+                    const head = document.createElement('li');
+                    head.className = 'splice-chain-group';
+                    head.setAttribute('role', 'presentation');
+                    head.textContent = row.group;
+                    availList.appendChild(head);
+                }
+                lastGroup = row.group;
+                const li = document.createElement('li');
+                li.className = 'splice-chain-avail-item';
+                li.draggable = true;
+
+                const name = document.createElement('span');
+                name.className = 'splice-chain-item-name';
+                name.textContent = row.label;
+
+                const addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.textContent = 'Add';
+                addBtn.setAttribute('aria-label', 'Add "' + row.label + '" to chain');
+                addBtn.addEventListener('click', () => { addChainItem(row.id, row.label, macroChain.length, row.params); });
+
+                li.appendChild(name);
+                li.appendChild(addBtn);
+                li.addEventListener('dblclick', () => { addChainItem(row.id, row.label, macroChain.length, row.params); });
+                li.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ t: 'A', id: row.id, label: row.label, params: row.params }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                });
+                availList.appendChild(li);
+            }
+            if (!availList.children.length) {
+                const empty = document.createElement('li');
+                empty.className = 'splice-chain-group';
+                empty.textContent = 'No macros match.';
+                availList.appendChild(empty);
+            }
+        };
+
+        async function addChainItem(id, label, at, params) {
+            if (macroChain.length >= MAX_CHAIN_ITEMS) {
+                chainEditorStatus('Chain is full (max ' + MAX_CHAIN_ITEMS + ' macros).');
+                return;
+            }
+            const steps = await chainStepsForId(id);
+            const total = chainTotalSteps();
+            if (total + steps > MAX_CHAIN_STEPS) {
+                chainEditorStatus('Adding "' + label + '" would exceed the budget of ' + MAX_CHAIN_STEPS + ' effect steps (chain has ' + total + ', this adds ' + steps + ').');
+                return;
+            }
+            const index = Math.max(0, Math.min(macroChain.length, at));
+            macroChain.splice(index, 0, { id, label, steps, params: params || '' });
+            onChainMutated();
+            renderChainList();
+            chainEditorStatus('Added "' + label + '".');
+        }
+
+        function moveChainItem(from, to) {
+            if (from === to || from < 0 || from >= macroChain.length || to < 0 || to >= macroChain.length) return;
+            const [item] = macroChain.splice(from, 1);
+            macroChain.splice(to, 0, item);
+            onChainMutated();
+            renderChainList();
+        }
+
+        function removeChainItem(index) {
+            if (index < 0 || index >= macroChain.length) return;
+            const [item] = macroChain.splice(index, 1);
+            onChainMutated();
+            renderChainList();
+            chainEditorStatus('Removed "' + item.label + '".');
+        }
+
+        const getDropIndex = (e) => {
+            const lis = [...chainListEl.querySelectorAll('li[data-index]')];
+            for (const li of lis) {
+                const r = li.getBoundingClientRect();
+                if (e.clientY < r.top + r.height / 2) return parseInt(li.dataset.index, 10);
+            }
+            return macroChain.length;
+        };
+
+        const clearDropMarkers = () => {
+            for (const li of chainListEl.querySelectorAll('.splice-chain-drop-before')) {
+                li.classList.remove('splice-chain-drop-before');
+            }
+            chainListEl.classList.remove('splice-chain-drop-end');
+        };
+
+        chainListEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            clearDropMarkers();
+            const idx = getDropIndex(e);
+            const target = chainListEl.querySelector('li[data-index="' + idx + '"]');
+            if (target) target.classList.add('splice-chain-drop-before');
+            else chainListEl.classList.add('splice-chain-drop-end');
+        });
+        chainListEl.addEventListener('dragleave', (e) => {
+            if (!chainListEl.contains(e.relatedTarget)) clearDropMarkers();
+        });
+        chainListEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            clearDropMarkers();
+            const raw = e.dataTransfer.getData('text/plain') || '';
+            const idx = getDropIndex(e);
+            let data = null;
+            try {
+                data = JSON.parse(raw);
+            } catch (err) {
+                data = null;
+            }
+            if (data && data.t === 'A' && typeof data.id === 'string') {
+                addChainItem(data.id, data.label || data.id, idx, data.params || '');
+            } else if (data === null && raw.startsWith('C|')) {
+                const from = parseInt(raw.slice(2), 10);
+                if (Number.isFinite(from)) {
+                    let to = idx;
+                    if (from < to) to--;
+                    moveChainItem(from, Math.max(0, Math.min(macroChain.length - 1, to)));
+                }
+            }
+        });
+
+        let lastFocus = null;
+        const openChainEditor = () => {
+            lastFocus = document.activeElement;
+            availSearch.value = '';
+            renderAvailList();
+            renderChainList();
+            chainEditorStatus('');
+            backdrop.hidden = false;
+            availSearch.focus();
+        };
+        const closeChainEditor = () => {
+            backdrop.hidden = true;
+            if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+        };
+
+        openBtn.addEventListener('click', openChainEditor);
+        closeBtn.addEventListener('click', closeChainEditor);
+        backdrop.addEventListener('mousedown', (e) => {
+            if (e.target === backdrop) closeChainEditor();
+        });
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeChainEditor();
+            }
+        });
+        availSearch.addEventListener('input', renderAvailList);
+
+        clearBtn.addEventListener('click', () => {
+            macroChain = [];
+            onChainMutated();
+            renderChainList();
+            chainEditorStatus('Chain cleared.');
+        });
+
+        useBtn.addEventListener('click', () => {
+            if (!macroChain.length) {
+                chainEditorStatus('Chain is empty - add at least one macro first.');
+                return;
+            }
+            updateChainOption();
+            if (macroSelect.value !== 'CHAIN') {
+                macroSelect.value = 'CHAIN';
+                macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+                invalidateMacroPreview();
+                scheduleMacroWaveformUpdate();
+            }
+            closeChainEditor();
+            persistStatus('Macro chain selected (' + macroChain.length + ' macro' + (macroChain.length === 1 ? '' : 's') + ').');
+        });
+    }
+
+    function setupMacroUpload() {
+        if (!macroUploadBtn || !macroUploadInput) return;
+        macroUploadBtn.addEventListener('click', () => macroUploadInput.click());
+        macroUploadInput.addEventListener('change', () => {
+            const f = macroUploadInput.files && macroUploadInput.files[0];
+            macroUploadInput.value = '';
+            if (f) handleMacroUpload(f);
+        });
+        if (macroRemoveBtn) {
+            macroRemoveBtn.addEventListener('click', () => { removeSelectedCustomMacro(); });
+        }
+        if (macroSelect) {
+            macroSelect.addEventListener('change', updateRemoveMacroState);
+        }
+        updateRemoveMacroState();
     }
 
     let audacityListStarted = false;
@@ -3946,6 +4738,18 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const exportGain = Math.pow(10, loudnessDbfs / 20);
         const pcmForExport = clonePcmWithGain(fxPcm, exportGain);
 
+        if (id === 'CHAIN') {
+            try {
+                const processed = await applyMacroChainToPcm(fxPcm, sampleRate, macroProgressCb);
+                setMacroProgress(1, 'Macro chain render complete');
+                return encodeWavFromPcm(clonePcmWithGain(processed.pcm, exportGain), processed.sampleRate);
+            } catch (err) {
+                setMacroProgress(1, '');
+                reportErrorStatus('Macro chain failed; exporting dry.', err);
+                return encodeWavFromPcm(pcmForExport, sampleRate);
+            }
+        }
+
         if (id.startsWith('AUD:') && window.AudacityMacroEngine) {
             try {
                 const processed = await window.AudacityMacroEngine.applyMacroFile(
@@ -3992,6 +4796,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
             vmifyEnabled ? '1' : '0',
             vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
+            (macroId || '').toUpperCase() === 'CHAIN' ? chainSig() : '',
         ].join('|');
     };
 
@@ -4015,6 +4820,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             bitcrushEnabled ? (bitcrushDownsampleInput?.value ?? '') : '',
             vmifyEnabled ? '1' : '0',
             vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
+            (macroId || '').toUpperCase() === 'CHAIN' ? chainSig() : '',
         ].join('|');
     };
 
@@ -4036,7 +4842,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             && sameSegmentPcmRefs(macroRenderBlobCache.segRefs, segRefs)) {
             return macroRenderBlobCache.blob;
         }
-        if (macroId.startsWith('AUD:') && macroWaveformPcm && macroWaveformPcm.length
+        if ((macroId.startsWith('AUD:') || macroId === 'CHAIN') && macroWaveformPcm && macroWaveformPcm.length
             && macroWaveformOutputSig && macroWaveformOutputSig === getMacroOutputSignature(macroId)) {
             const exportGain = Math.pow(10, getExportLoudnessDbfs() / 20);
             const reusedBlob = encodeWavFromPcm(clonePcmWithGain(macroWaveformPcm, exportGain), macroWaveformSampleRate);
@@ -4233,7 +5039,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             const line = raw.trim(); if (!line) continue;
             const ci = line.indexOf(':'); if (ci < 0) continue;
             const cmd = line.slice(0, ci).trim();
-            if (cmd.startsWith('Macro_') || cmd === 'Message') continue;
+            if (cmd === 'Message') continue;
+            if (cmd.startsWith('Macro_')) return false;
             if (!MACRO_CHUNK_SAFE.has(cmd)) return false;
             any = true;
         }
@@ -4241,10 +5048,27 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     };
 
     async function streamExportMacroDisk(macroId, sr, totalFrames) {
-        if (!macroId || !macroId.startsWith('AUD:') || !window.AudacityMacroEngine) return false;
+        if (!macroId || !window.AudacityMacroEngine) return false;
         if (exportExtrasActive()) return false;
         let text;
-        try { text = await window.AudacityMacroEngine.fetchMacroText(macroId.slice(4)); }
+        let streamName;
+        try {
+            if (macroId === 'CHAIN') {
+                if (!macroChain.length || macroChain.some((it) => !it.id.startsWith('AUD:') && !it.id.startsWith('CMD:'))) return false;
+                text = macroChain.map((it) => it.id.startsWith('AUD:')
+                    ? 'Macro_' + it.id.slice(4).replace(/\.txt$/i, '') + ':'
+                    : it.id.slice(4) + ':' + (it.params || '')).join('\n');
+                streamName = 'Macro Chain';
+            } else if (macroId.startsWith('AUD:')) {
+                text = await window.AudacityMacroEngine.fetchMacroText(macroId.slice(4));
+                streamName = macroId.slice(4);
+            } else {
+                return false;
+            }
+            if (window.AudacityMacroEngine.expandMacroFlat) {
+                text = await window.AudacityMacroEngine.expandMacroFlat(text);
+            }
+        }
         catch (e) { return false; }
         if (!macroIsStreamable(text)) return false;
 
@@ -4268,7 +5092,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const applyGain = Math.abs(gain - 1) > EXPORT_GAIN_TOLERANCE;
         const W = MACRO_STREAM_W;
         const WIN = STREAM_WIN_FRAMES;
-        const name = macroId.slice(4);
+        const name = streamName;
         try {
             await writable.write(new Uint8Array(header));
             for (let start = 0; start < totalFrames; start += WIN) {
@@ -4616,7 +5440,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const voiceBackend = Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(voiceSelect.value));
         const ttsControls = document.getElementById('ttsRatePitchControls2');
 
-        if (/Speechify/i.test(voiceSelect.value)) {
+        if (/Speechify/i.test(voiceSelect.value) || parseSpfyVoiceId(voiceSelect.value) !== null) {
             shouldBitcrushSpeechifyDiv.style.display = 'block';
         } else {
             shouldBitcrushSpeechifyDiv.style.display = 'none';
@@ -4641,7 +5465,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     spliceLoudnessInput?.dispatchEvent(changeEvent);
 
     setupMacroCombo();
+    setupMacroUpload();
+    setupChainEditor();
     await loadSoxMacroDefs();
+    await restoreCustomMacros();
+    restoreMacroChain();
     ensureAudacityMacroList();
     bindEvents();
     updateSelectionLabels();

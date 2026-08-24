@@ -1,1 +1,5 @@
 assets/wasm_tts_voices/**/*.data filter=lfs diff=lfs merge=lfs -text
+assets/wasm_tts_voices/**/*.vin filter=lfs diff=lfs merge=lfs -text
+assets/wasm_tts_voices/**/*.vdb filter=lfs diff=lfs merge=lfs -text
+assets/wasm_tts_voices/**/*.vdb.part* filter=lfs diff=lfs merge=lfs -text
+assets/wasm_tts_voices/**/*.vin.part* filter=lfs diff=lfs merge=lfs -text

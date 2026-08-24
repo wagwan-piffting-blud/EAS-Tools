@@ -1,7 +1,7 @@
-<!-- 
-    This is an absolute override file, indicating that a higher priority 
+<!--
+    This is an absolute override file, indicating that a higher priority
     version of the file will completely replace a lower priority version
-    of the file. 
+    of the file.
 -->
 <!-- Extreme Wind Warning configuration
    MODIFIED EVAN BOOKBINDER 09-16-2011 OB11.0.8-8
@@ -22,7 +22,7 @@ PLACED IN FULL BELOW THE INCLUDE LINE BELOW. -->
 
 <!-- Include Various geospatial XML files to create their objects. These are *NOT*
 turned on unless the corresponding .vm file is turned on in a given template's .vm file
--->  
+-->
 <include file="mileMarkers.xml"/>
 <!-- To enable, make sure mileMarkers.vm is added/uncommented in a WarnGen template's .vm file -->
 <include file="pointMarkers.xml"/>
@@ -32,7 +32,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <unitDistance>mi</unitDistance>
  <unitSpeed>mph</unitSpeed>
 
- <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+ <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE.
  	The various menu items are also the different maps
  	that can be loaded with each template. -->
  <maps>
@@ -45,7 +45,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <followup>NEW</followup>
   <followup>COR</followup>
  </followups>
- 
+
  <!-- Product ID: nnn id of the product -->
  <productId>EWW</productId>
 
@@ -53,21 +53,21 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <phensigs>
    <phensig>EW.W</phensig>
  </phensigs>
- 
+
   <!-- Enables/disables user from selecting the Restart button the GUI -->
  <enableRestart>true</enableRestart>
- 
+
    <!-- Enable/disables the system to lock text based on various patterns -->
  <autoLockText>true</autoLockText>
- 
- <!-- Included watches: If a tornado watch or severe thunderstorm watch is to be 
- 	included with the warning product include TO.A and/or SV.A, 
+
+ <!-- Included watches: If a tornado watch or severe thunderstorm watch is to be
+ 	included with the warning product include TO.A and/or SV.A,
  	respectively. Please refer to 'includedWatchAreaBuffer' in <areaConfig/>. -->
  <includedWatches>
   <includedWatch>TO.A</includedWatch>
   <includedWatch>SV.A</includedWatch>
  </includedWatches>
- 
+
  <!-- durations: the list of possible durations of the warning -->
  <defaultDuration>60</defaultDuration>
  <durations>
@@ -78,7 +78,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <duration>120</duration>
   <duration>180</duration>
  </durations>
- 
+
 <bulletActionGroups>
 <bulletActionGroup action="NEW" phen="EW" sig="W">
  <bullets>

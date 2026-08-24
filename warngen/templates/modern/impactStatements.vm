@@ -88,21 +88,21 @@
 ## IF A LANDSPOUT/VERY WEAK TORNADO IS SELECTED THE FOLLOWING
 ## IMPACT STATEMENT WILL BE USED WITH TONED DOWN WORDING
 ################################################################
-#if(${list.contains($bullets, "landspoutTornado")})
+#if($bullets.contains("landspoutTornado"))
 #set ($torimpact = "Expect damage to mobile homes, roofs, and vehicles.")
 #end
 ############################################################################
 ## IF A SIGNIFICANT TORNADO IS SELECTED THE FOLLOWING IMPACT STATEMENT
 ## WILL BE USED TO HEIGHTEN AWARENESS OF THIS DANGEROUS SITUATION
 ############################################################################
-#if(${list.contains($bullets, "considerableTornado")})
+#if($bullets.contains("considerableTornado"))
 #set ($torimpact = "You are in a life-threatening situation. Flying debris may be deadly to those caught without shelter. Mobile homes will be destroyed. Considerable damage to homes, businesses, and vehicles is likely and complete destruction is possible.")
 #end
 ############################################################################
 ## IF A TORNADO EMERGENCY IS SELECTED THE FOLLOWING IMPACT STATEMENT
 ## WILL BE USED TO HEIGHTEN AWARENESS OF THIS DANGEROUS SITUATION
 ############################################################################
-#if(${list.contains($bullets, "torEmergency")})
+#if($bullets.contains("torEmergency"))
 #set ($torimpact = "You are in a life-threatening situation. Flying debris may be deadly to those caught without shelter. Mobile homes will be destroyed. Considerable damage to homes, businesses, and vehicles is likely and complete destruction is possible.")
 #end
 ############################################################################
@@ -147,12 +147,12 @@
 ## HANDLE WATERSPOUTS #############################
 ###################################################
 #set($smwWaterspoutImpact = "")
-#if(${list.contains(${bullets}, "thunderstorm")})
+#if($bullets.contains("thunderstorm"))
 	#set($extraImpact = "easily overturn boats and ")
 #else
 	#set($extraImpact = "")
 #end
-#if(${list.contains(${bullets}, "sightedSpout")} || ${list.contains(${bullets}, "possibleSpout")})
+#if($bullets.contains("sightedSpout") || $bullets.contains("possibleSpout"))
 	#set($smwWaterspoutImpact = "Waterspouts can ${extraImpact}create locally hazardous seas.")
 #end
 ##########################################################
@@ -180,7 +180,7 @@
 ## Note: This will override any and all selections above
 ##########################################################
 #set($smwVolcanoImpact = "")
-#if(${list.contains(${bullets}, "volcano")})
+#if($bullets.contains("volcano"))
 	#set($smwVolcanoImpact = "Volcanic ash can cause damage to machinery including ship engines, may clog water intakes, and may reduce visibility for navigation. Ashfall can also cause or exacerbate health problems for people in the area. During a volcanic eruption, it is recommended to move away from the eruption to an unaffected area as quickly and safely as possible.")
 	#set($smwimpact = "${smwVolcanoImpact}")
 #end

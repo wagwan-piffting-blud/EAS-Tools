@@ -289,7 +289,7 @@
                         <select id="ttsVoice" name="ttsVoice">
                             <option value="wasm" selected>[WASM] WebAssembly (local) Voice (takes longer time depending on text length)</option>
                             <option value="nanotts">[NanoTTS] WebAssembly (local) Voice #2 (faster, but less natural)</option>
-                            <option value="spfy">[Speechify] WebAssembly (local) Speechify voice - Tom, 8kHz (~100 MB one-time download)</option>
+                            <option value="" data-spfy-voice-slot disabled>[Speechify] Loading voice list...</option>
                             <option value="acuvoice">[AcuVoice] WebAssembly (local) AcuVoice - Roger (~160 MB one-time download)</option>
                         </select>
                         <br>
@@ -303,12 +303,11 @@
                             <label for="ttsPitch">Speech Pitch: <span id="ttsPitchValue">0</span></label>
                             <input type="range" id="ttsPitch" name="ttsPitch" min="-10" max="10" value="0" step="1">
                             <button type="button" id="ttsPitchReset">Reset</button>
+                        </div>
+                        <div id="shouldBitcrushSpeechifyContainer" style="display: none;">
                             <br>
-                            <br>
-                            <div id="shouldBitcrushSpeechifyContainer">
-                                <label for="shouldBitcrushSpeechify">"VM-Sounding" Speechify Output:</label>
-                                <input type="checkbox" id="shouldBitcrushSpeechify" name="shouldBitcrushSpeechify"></input>
-                            </div>
+                            <label for="shouldBitcrushSpeechify">"VM-Sounding" Speechify Output:</label>
+                            <input type="checkbox" id="shouldBitcrushSpeechify" name="shouldBitcrushSpeechify"></input>
                         </div>
                         <br class="overrideTZ">
                         <br class="overrideTZ">
@@ -631,7 +630,7 @@
                             <select id="ttsVoice2" name="ttsVoice2">
                                 <option value="wasm" selected>[WASM] WebAssembly (local) Voice (takes longer time depending on text length)</option>
                                 <option value="nanotts">[NanoTTS] WebAssembly (local) Voice #2 (faster, but less natural)</option>
-                                <option value="spfy">[Speechify] WebAssembly (local) Speechify voice - Tom, 8kHz (~100 MB one-time download)</option>
+                                <option value="" data-spfy-voice-slot disabled>[Speechify] Loading voice list...</option>
                                 <option value="acuvoice">[AcuVoice] WebAssembly (local) AcuVoice - Roger (~160 MB one-time download)</option>
                             </select>
                             <div id="ttsRatePitchControls2">
@@ -644,11 +643,11 @@
                                 <label for="ttsPitch2">Speech Pitch: <span id="ttsPitchValue2">0</span></label>
                                 <input type="range" id="ttsPitch2" name="ttsPitch2" min="-10" max="10" value="0" step="1">
                                 <button type="button" id="ttsPitchReset2">Reset</button>
-                                <div id="shouldBitcrushSpeechifyContainer2">
-                                    <br>
-                                    <label for="shouldBitcrushSpeechify2">"VM-Sounding" Speechify Output:</label>
-                                    <input type="checkbox" id="shouldBitcrushSpeechify2" name="shouldBitcrushSpeechify2"></input>
-                                </div>
+                            </div>
+                            <div id="shouldBitcrushSpeechifyContainer2" style="display: none;">
+                                <br>
+                                <label for="shouldBitcrushSpeechify2">"VM-Sounding" Speechify Output:</label>
+                                <input type="checkbox" id="shouldBitcrushSpeechify2" name="shouldBitcrushSpeechify2"></input>
                             </div>
                             <br class="splicerOverrideTZ">
                             <br class="splicerOverrideTZ">
@@ -682,7 +681,6 @@
                         <button type="button" data-splice-add-silence>Add Silence</button>
                         <span data-splice-silence-status class="status-line"></span>
                     </div>
-                    <br>
                     <label for="spliceLoudness">Adjust Loudness (dB, -60 to +12):</label>
                     <input id="spliceLoudness" type="number" step="0.1" min="-60" max="12" value="0" data-splice-loudness>
                     <br>
@@ -739,7 +737,14 @@
                         <select id="spliceMacros" data-splice-macro-select>
                             <!-- The macro list will be loaded by JS -->
                         </select>
+                        <br>
+                        <br>
+                        <button type="button" data-splice-chain-editor-btn>Macro Chain Editor</button>
                         <button type="button" disabled data-splice-preview-macro>Play Macro Preview</button>
+                        <br>
+                        <input id="spliceMacroUpload" type="file" accept=".txt,text/plain" data-splice-macro-upload style="display: none;">
+                        <button type="button" data-splice-macro-upload-btn>Upload Custom Macro</button>
+                        <button type="button" disabled data-splice-macro-remove-btn>Remove Custom Macro</button>
                     </div>
                     <div class="splice-action-grid">
                         <button type="button" disabled data-splice-split-selection>Split at Selection</button>

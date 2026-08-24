@@ -3,13 +3,13 @@ Louisiana \ Parish
 LA+ \ Parishes
 Louisiana+ \ Parishes
 DC \
-District of Columbia \ 
-DC+ \ 
-District of Columbia+ \ 
+District of Columbia \
+DC+ \
+District of Columbia+ \
 AK \
-Alaska \ 
-AK+ \ 
-Alaska+ \ 
+Alaska \
+AK+ \
+Alaska+ \
 PR \ Municipality
 Puerto Rico \ Municipality
 PR+ \ Municipalities
@@ -18,6 +18,10 @@ GU \
 Guam \
 GU+ \
 Guam+ \
+MP \
+Northern Mariana Islands \
+MP+ \
+Northern Mariana Islands+ \
 DEFAULT+ \ Counties
 DEFAULT \ County
 City \

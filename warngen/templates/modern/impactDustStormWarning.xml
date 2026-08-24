@@ -12,7 +12,7 @@ PLACED IN FULL BELOW THE INCLUDE LINE BELOW. -->
 
 <!-- Include Various geospatial XML files to create their objects. These are *NOT*
 turned on unless the corresponding .vm file is turned on in a given template's .vm file
--->  
+-->
 <include file="mileMarkers.xml"/>
 <!-- To enable, make sure mileMarkers.vm is added/uncommented in a WarnGen template's .vm file -->
 <include file="pointMarkers.xml"/>
@@ -22,14 +22,14 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <unitDistance>mi</unitDistance>
  <unitSpeed>mph</unitSpeed>
 
- <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+ <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE.
  	The various menu items are also the different maps
  	that can be loaded with each template. -->
  <maps>
   <map>County Names</map>
   <map>County Warning Areas</map>
   </maps>
-  
+
  <!-- Followups: VTEC actions of allowable followups when this template is selected -->
  <followups>
   <followup>NEW</followup>
@@ -37,20 +37,20 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  </followups>
 
 <productId>DSW</productId>
- 
+
  <!-- Phensigs: The list of phenomena and significance combinations that this template applies to -->
  <phensigs>
    <phensig>DS.W</phensig>
  </phensigs>
- 
+
  <!-- Enables/disables user from selecting the Restart button the GUI -->
  <enableRestart>true</enableRestart>
 
   <!-- Enable/disables the system to lock text based on various patterns -->
  <autoLockText>true</autoLockText>
- 
- <!-- Included watches: If a tornado watch or severe thunderstorm watch is to be 
- 	included with the warning product include TO.A and/or SV.A, 
+
+ <!-- Included watches: If a tornado watch or severe thunderstorm watch is to be
+ 	included with the warning product include TO.A and/or SV.A,
  	respectively. Please refer to 'includedWatchAreaBuffer' in <areaConfig/>. -->
  <includedWatches>
   <includedWatch>TO.A</includedWatch>
@@ -66,15 +66,15 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <duration>90</duration>
   <duration>120</duration>
  </durations>
- 
- <!-- bullets: User specified text generation options 
+
+ <!-- bullets: User specified text generation options
           - bulletName: an id that is passed to the template when a bullet
                       is selected. This should be unique
           - bulletText: the text presented to the user in the selection list
           - bulletType: "title" makes the bullet unselectable
           				"basin" correlates the item to a Geometry in the customlocations table
-          - bulletGroup: Only one bullet can be selected per bulletGroup 
-          - parseString: this string must MATCH a unique phrase in the associated bulletText. 
+          - bulletGroup: Only one bullet can be selected per bulletGroup
+          - parseString: this string must MATCH a unique phrase in the associated bulletText.
           	This will be used to highlight the appropriate bullet on a follow up-->
 <bulletActionGroups>
 <bulletActionGroup action="NEW" phen="DS" sig="W">

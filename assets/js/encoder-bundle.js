@@ -1,4 +1,4 @@
-import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, getSpfyEngine, getAcuEngine } from './common-functions.js';
+import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId } from './common-functions.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -405,7 +405,172 @@ async function fetchAndStore() {
         return out;
     }
 
+    const bitcrushSpeechifyPcm = async (pcm, sampleRate) => {
+        const sr = Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : 44100;
 
+        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
+            return { pcm, sampleRate: sr };
+        }
+
+        const fallbackExciter = () => {
+            const workSr = sr / 2 < 5000 ? 44100 : sr;
+            const src = workSr === sr ? pcm : resamplePcmSinc(pcm, sr, workSr);
+            const nyquist = workSr / 2;
+
+            const out = new Float32Array(src.length);
+            const drive = 3.16;
+            const driven = new Float32Array(src.length);
+            for (let i = 0; i < src.length; i++) {
+                driven[i] = Math.tanh(src[i] * drive);
+            }
+
+            const freq = Math.min(4000, nyquist * 0.8);
+            const w0 = 2 * Math.PI * freq / workSr;
+            const cos0 = Math.cos(w0);
+            const alp = Math.sin(w0) / (2 * 0.707);
+            const norm = 1 / (1 + alp);
+            const b0 = ((1 + cos0) / 2) * norm;
+            const b1 = -(1 + cos0) * norm;
+            const b2 = b0;
+            const a1 = (-2 * cos0) * norm;
+            const a2 = (1 - alp) * norm;
+
+            let s1x1 = 0, s1x2 = 0, s1y1 = 0, s1y2 = 0;
+            let s2x1 = 0, s2x2 = 0, s2y1 = 0, s2y2 = 0;
+
+            const hfGain = 1.41;
+            let peak = 0;
+
+            for (let i = 0; i < src.length; i++) {
+                const x0 = driven[i];
+                const y0 = b0 * x0 + b1 * s1x1 + b2 * s1x2 - a1 * s1y1 - a2 * s1y2;
+                s1x2 = s1x1; s1x1 = x0;
+                s1y2 = s1y1; s1y1 = y0;
+
+                const y1 = b0 * y0 + b1 * s2x1 + b2 * s2x2 - a1 * s2y1 - a2 * s2y2;
+                s2x2 = s2x1; s2x1 = y0;
+                s2y2 = s2y1; s2y1 = y1;
+
+                out[i] = src[i] + y1 * hfGain;
+                const abs = out[i] < 0 ? -out[i] : out[i];
+                if (abs > peak) peak = abs;
+            }
+
+            if (peak > 0.9441) {
+                const g = 0.9441 / peak;
+                for (let i = 0; i < out.length; i++) out[i] *= g;
+            }
+
+            return { pcm: out, sampleRate: workSr };
+        };
+
+        if (typeof window.SOXModule !== "function") {
+            return fallbackExciter();
+        }
+
+        const input16 = new Int16Array(pcm.length);
+        for (let i = 0; i < pcm.length; i++) {
+            let s = pcm[i];
+            if (s > 1) s = 1;
+            else if (s < -1) s = -1;
+            input16[i] = s < 0 ? (s * 0x8000) : (s * 0x7fff);
+        }
+        const inputRaw = new Uint8Array(input16.buffer);
+
+        const runSox = async (args, files) => {
+            const cfg = {
+                arguments: args,
+                preRun(mod) {
+                    const vfs = (mod || cfg).FS;
+                    for (const [name, data] of files) {
+                        vfs.writeFile(name, data);
+                    }
+                },
+                postRun() { }
+            };
+
+            const ret = window.SOXModule(cfg);
+            let inst = cfg;
+            if (ret && typeof ret.then === "function") {
+                inst = await ret;
+            } else if (ret && ret.FS) {
+                inst = ret;
+            }
+
+            const fs = inst.FS || cfg.FS;
+            if (!fs) return null;
+
+            try {
+                const raw = fs.readFile("out.raw", { encoding: "binary" });
+                if (!raw || !raw.length) return null;
+                const safe = new Uint8Array(raw.length);
+                safe.set(raw);
+                return safe;
+            } catch {
+                return null;
+            }
+        };
+
+        const toInt16 = (u8) => {
+            const buf = new ArrayBuffer(u8.byteLength);
+            new Uint8Array(buf).set(u8);
+            return new Int16Array(buf);
+        };
+
+        try {
+            const needsUpsample = sr < 21000;
+            const workRate = needsUpsample ? 44100 : sr;
+            let workData = inputRaw;
+
+            if (needsUpsample) {
+                const upRaw = await runSox([
+                    "-t", "raw", "-r", String(sr), "-L",
+                    "-e", "signed-integer", "-b", "16", "-c", "1", "in.raw",
+                    "-t", "raw", "-r", String(workRate), "-L",
+                    "-e", "signed-integer", "-b", "16", "-c", "1", "out.raw",
+                    "rate", "-v", String(workRate)
+                ], [["in.raw", inputRaw]]);
+
+                if (!upRaw) return fallbackExciter();
+                workData = upRaw;
+            }
+
+            const hfRaw = await runSox([
+                "-t", "raw", "-r", String(workRate), "-L",
+                "-e", "signed-integer", "-b", "16", "-c", "1", "in.raw",
+                "-t", "raw", "-r", String(workRate), "-L",
+                "-e", "signed-integer", "-b", "16", "-c", "1", "out.raw",
+                "overdrive", "10",
+                "sinc", "4k-10.5k",
+                "gain", "3"
+            ], [["in.raw", workData]]);
+
+            if (!hfRaw) return fallbackExciter();
+
+            const orig = toInt16(workData);
+            const hf = toInt16(hfRaw);
+            const mixLen = Math.min(orig.length, hf.length);
+
+            let peak = 0;
+            for (let i = 0; i < mixLen; i++) {
+                const v = orig[i] + hf[i];
+                const a = v < 0 ? -v : v;
+                if (a > peak) peak = a;
+            }
+
+            const ceiling = 30934;
+            const gain = peak > ceiling ? ceiling / peak : 1.0;
+            const inv = 1 / 0x7fff;
+            const result = new Float32Array(mixLen);
+            for (let i = 0; i < mixLen; i++) {
+                result[i] = (orig[i] + hf[i]) * gain * inv;
+            }
+
+            return { pcm: result, sampleRate: workRate };
+        } catch {
+            return fallbackExciter();
+        }
+    };
 
     function appendPcmToSamples(pcm) {
         if (!pcm) return;
@@ -845,6 +1010,11 @@ async function fetchAndStore() {
     async function getVoiceList() {
         const voiceListElement = document.getElementById("ttsVoice");
 
+        await populateSpfyVoiceList({
+            selectElement: voiceListElement,
+            reportError: (error) => addStatus("Error fetching the Speechify voice list: " + error.message + ". Speechify voices will not be available.", "ERROR"),
+        });
+
         await populateRemoteVoiceList({
             selectElement: voiceListElement,
             voiceBackendMap,
@@ -1008,170 +1178,6 @@ async function fetchAndStore() {
                         return Promise.reject(new TypeError("Unsupported payload type"));
                     };
 
-                    async function bitcrushPcm(pcm) {
-                        if (!(pcm instanceof Float32Array) || pcm.length === 0) {
-                            return pcm;
-                        }
-
-                        const fallbackExciter = () => {
-                            const nyquist = SAMPLE_RATE / 2;
-                            if (nyquist < 5000) return pcm;
-
-                            const out = new Float32Array(pcm.length);
-
-                            const drive = 3.16;
-                            const driven = new Float32Array(pcm.length);
-                            for (let i = 0; i < pcm.length; i++) {
-                                driven[i] = Math.tanh(pcm[i] * drive);
-                            }
-
-                            const freq = Math.min(4000, nyquist * 0.8);
-                            const w0 = 2 * Math.PI * freq / SAMPLE_RATE;
-                            const cos0 = Math.cos(w0);
-                            const alp = Math.sin(w0) / (2 * 0.707);
-                            const norm = 1 / (1 + alp);
-                            const b0 = ((1 + cos0) / 2) * norm;
-                            const b1 = -(1 + cos0) * norm;
-                            const b2 = b0;
-                            const a1 = (-2 * cos0) * norm;
-                            const a2 = (1 - alp) * norm;
-
-                            let s1x1 = 0, s1x2 = 0, s1y1 = 0, s1y2 = 0;
-                            let s2x1 = 0, s2x2 = 0, s2y1 = 0, s2y2 = 0;
-
-                            const hfGain = 1.41;
-                            let peak = 0;
-
-                            for (let i = 0; i < pcm.length; i++) {
-                                const x0 = driven[i];
-                                const y0 = b0 * x0 + b1 * s1x1 + b2 * s1x2 - a1 * s1y1 - a2 * s1y2;
-                                s1x2 = s1x1; s1x1 = x0;
-                                s1y2 = s1y1; s1y1 = y0;
-
-                                const y1 = b0 * y0 + b1 * s2x1 + b2 * s2x2 - a1 * s2y1 - a2 * s2y2;
-                                s2x2 = s2x1; s2x1 = y0;
-                                s2y2 = s2y1; s2y1 = y1;
-
-                                out[i] = pcm[i] + y1 * hfGain;
-                                const abs = out[i] < 0 ? -out[i] : out[i];
-                                if (abs > peak) peak = abs;
-                            }
-
-                            if (peak > 0.9441) {
-                                const g = 0.9441 / peak;
-                                for (let i = 0; i < out.length; i++) out[i] *= g;
-                            }
-                            return out;
-                        };
-
-                        if (typeof window.SOXModule !== "function") {
-                            return fallbackExciter();
-                        }
-
-                        const input16 = new Int16Array(pcm.length);
-                        for (let i = 0; i < pcm.length; i++) {
-                            let s = pcm[i];
-                            if (s > 1) s = 1; else if (s < -1) s = -1;
-                            input16[i] = s < 0 ? (s * 0x8000) : (s * 0x7fff);
-                        }
-                        const inputRaw = new Uint8Array(input16.buffer);
-
-                        const runSox = async (args, files) => {
-                            const cfg = {
-                                arguments: args,
-                                preRun(mod) {
-                                    const vfs = (mod || cfg).FS;
-                                    for (const [name, data] of files) {
-                                        vfs.writeFile(name, data);
-                                    }
-                                },
-                                postRun() { }
-                            };
-
-                            const ret = window.SOXModule(cfg);
-                            let inst = cfg;
-                            if (ret && typeof ret.then === "function") {
-                                inst = await ret;
-                            } else if (ret && ret.FS) {
-                                inst = ret;
-                            }
-
-                            const fs = inst.FS || cfg.FS;
-                            if (!fs) return null;
-
-                            try {
-                                const raw = fs.readFile("out.raw", { encoding: "binary" });
-                                if (!raw || !raw.length) return null;
-                                const safe = new Uint8Array(raw.length);
-                                safe.set(raw);
-                                return safe;
-                            } catch {
-                                return null;
-                            }
-                        };
-
-                        const toInt16 = (u8) => {
-                            const buf = new ArrayBuffer(u8.byteLength);
-                            new Uint8Array(buf).set(u8);
-                            return new Int16Array(buf);
-                        };
-
-                        try {
-                            const needsUpsample = SAMPLE_RATE < 21000;
-                            const workRate = needsUpsample ? 44100 : SAMPLE_RATE;
-                            let workData = inputRaw;
-
-                            if (needsUpsample) {
-                                const upRaw = await runSox([
-                                    "-t", "raw", "-r", String(SAMPLE_RATE), "-L",
-                                    "-e", "signed-integer", "-b", "16", "-c", "1", "in.raw",
-                                    "-t", "raw", "-r", String(workRate), "-L",
-                                    "-e", "signed-integer", "-b", "16", "-c", "1", "out.raw",
-                                    "rate", "-v", String(workRate)
-                                ], [["in.raw", inputRaw]]);
-
-                                if (!upRaw) return fallbackExciter();
-                                workData = upRaw;
-                            }
-
-                            const hfRaw = await runSox([
-                                "-t", "raw", "-r", String(workRate), "-L",
-                                "-e", "signed-integer", "-b", "16", "-c", "1", "in.raw",
-                                "-t", "raw", "-r", String(workRate), "-L",
-                                "-e", "signed-integer", "-b", "16", "-c", "1", "out.raw",
-                                "overdrive", "10",
-                                "sinc", "4k-10.5k",
-                                "gain", "3"
-                            ], [["in.raw", workData]]);
-
-                            if (!hfRaw) return fallbackExciter();
-
-                            const orig = toInt16(workData);
-                            const hf = toInt16(hfRaw);
-                            const mixLen = Math.min(orig.length, hf.length);
-
-                            let peak = 0;
-                            for (let i = 0; i < mixLen; i++) {
-                                const v = orig[i] + hf[i];
-                                const a = v < 0 ? -v : v;
-                                if (a > peak) peak = a;
-                            }
-
-                            const ceiling = 30934;
-                            const gain = peak > ceiling ? ceiling / peak : 1.0;
-
-                            const inv = 1 / 0x7fff;
-                            const result = new Float32Array(mixLen);
-                            for (let i = 0; i < mixLen; i++) {
-                                result[i] = (orig[i] + hf[i]) * gain * inv;
-                            }
-
-                            return result;
-                        } catch (err) {
-                            return fallbackExciter();
-                        }
-                    }
-
                     toArrayBuffer(rawPayload).then((arrayBuffer) => {
                         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                         const decode = audioContext.decodeAudioData.bind(audioContext);
@@ -1191,8 +1197,11 @@ async function fetchAndStore() {
                             generate_silence(Math.floor(SAMPLE_RATE * 0.25));
 
                             if (/Speechify/i.test(window.ttsVoice) && document.getElementById('shouldBitcrushSpeechify').checked) {
-                                const bitcrushed = await bitcrushPcm(normalizedPcm);
-                                appendPcmToSamples(bitcrushed);
+                                const bitcrushed = await bitcrushSpeechifyPcm(normalizedPcm, SAMPLE_RATE);
+                                const bitcrushedPcm = bitcrushed.sampleRate === SAMPLE_RATE
+                                    ? bitcrushed.pcm
+                                    : resamplePcmSinc(bitcrushed.pcm, bitcrushed.sampleRate, SAMPLE_RATE);
+                                appendPcmToSamples(bitcrushedPcm);
                             }
 
                             else {
@@ -1379,10 +1388,11 @@ async function fetchAndStore() {
                 }
             }
 
-            else if (normalizedVoice === "spfy" || normalizedVoice === "acuvoice") {
+            else if (parseSpfyVoiceId(normalizedVoice) !== null || normalizedVoice === "acuvoice") {
                 const announcementText = (window.ttsText || '').trim();
-                const engine = normalizedVoice === "spfy" ? getSpfyEngine() : getAcuEngine();
-                const engineLabel = normalizedVoice === "spfy" ? "Speechify" : "AcuVoice";
+                const spfyVoice = parseSpfyVoiceId(normalizedVoice);
+                const engine = spfyVoice !== null ? getSpfyEngine() : getAcuEngine();
+                const engineLabel = spfyVoice !== null ? "Speechify" : "AcuVoice";
                 if (!announcementText) {
                     addStatus(`${engineLabel} requires announcement text. There will instead be silence.`, "ERROR");
                     generate_silence(Math.floor(SAMPLE_RATE * 1));
@@ -1395,10 +1405,21 @@ async function fetchAndStore() {
                             generate_silence(Math.floor(SAMPLE_RATE * 1));
                             return;
                         }
-                        const result = await engine.synth(announcementText, { reportStatus: piperReportStatus, onProgress: setVoiceDownloadProgress });
+                        const result = await engine.synth(announcementText, { reportStatus: piperReportStatus, onProgress: setVoiceDownloadProgress, voice: spfyVoice });
                         if (result?.pcm?.length) {
                             const resampled = resamplePcm(result.pcm, result.sampleRate, SAMPLE_RATE);
-                            appendAnnouncement(resampled);
+                            if (spfyVoice !== null && document.getElementById('shouldBitcrushSpeechify')?.checked === true) {
+                                const normalized = normalizeTtsPcm(resampled, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
+                                const bitcrushed = await bitcrushSpeechifyPcm(normalized, SAMPLE_RATE);
+                                const bitcrushedPcm = bitcrushed.sampleRate === SAMPLE_RATE
+                                    ? bitcrushed.pcm
+                                    : resamplePcmSinc(bitcrushed.pcm, bitcrushed.sampleRate, SAMPLE_RATE);
+                                generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+                                appendPcmToSamples(bitcrushedPcm);
+                                generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+                            } else {
+                                appendAnnouncement(resampled);
+                            }
                         } else {
                             addStatus(`${engineLabel} did not return audio. There will instead be silence.`, "ERROR");
                             generate_silence(Math.floor(SAMPLE_RATE * 1));
@@ -1806,7 +1827,7 @@ async function fetchAndStore() {
             ttsRatePitchControls.style.display = 'none';
         }
 
-        if (selectedBackend.toLowerCase().includes("spfy") || /Speechify/i.test(window.ttsVoice)) {
+        if (selectedBackend.toLowerCase().includes("spfy") || /Speechify/i.test(window.ttsVoice) || parseSpfyVoiceId(window.ttsVoice) !== null) {
             document.getElementById('shouldBitcrushSpeechifyContainer').style.display = 'block';
         }
 

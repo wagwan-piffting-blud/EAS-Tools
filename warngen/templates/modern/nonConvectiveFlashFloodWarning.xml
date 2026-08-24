@@ -9,7 +9,7 @@
     Phil Kurimski WFO DTX 08-18-2011 OB 11.0.8-4
     Evan Bookbinder       09-16-2011 OB 11.0.8-8
     Phil Kurimski         09-23-2011 OB 11.0.8-8
-    Phil Kurimski         01-26-2012 OB 12.1.1-1 
+    Phil Kurimski         01-26-2012 OB 12.1.1-1
     Qinglu Lin            04-04-2012 DR 14691. Added <feAreaField> tag.
     Phil Kurimski         04-27-2012
     Evan Bookbinder       09-11-2012 Added settings for locations shapefile
@@ -26,7 +26,7 @@
                                      corrected their bulletGroup="" settings
     Mike Rega             10-27-2014 fixed EMER floodSeverity=3 error
     Mike Dangelo          10-20-2015 Standard CTAs
-    -                     02-21-2017 Removed bulletDefault="true" from "County dispatch" 
+    -                     02-21-2017 Removed bulletDefault="true" from "County dispatch"
                                      bullet in bullet Action Groups "EXT" and "COR". DCS20237
     Phil Kurimski         03-21-2018 Fixed FFW Emergency CTA Parse String DR 20671
 -->
@@ -38,7 +38,7 @@ PLACED IN FULL BELOW THE INCLUDE LINE BELOW. -->
 
 <!-- Include Various geospatial XML files to create their objects. These are *NOT*
 turned on unless the corresponding .vm file is turned on in a given template's .vm file
--->  
+-->
 <include file="mileMarkers.xml"/>
 <!-- To enable, make sure mileMarkers.vm is added/uncommented in a WarnGen template's .vm file -->
 <include file="pointMarkers.xml"/>
@@ -48,23 +48,23 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <unitDistance>mi</unitDistance>
  <unitSpeed>mph</unitSpeed>
 
- <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+ <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE.
     The various menu items are also the different maps
     that can be loaded with each template. -->
  <maps>
    <map>County Names</map>
    <map>County Warning Areas</map>
-   <map>Major Rivers</map> 
+   <map>Major Rivers</map>
  </maps>
- 
- <!-- Followups: VTEC actions of allowable followups when this template is selected 
+
+ <!-- Followups: VTEC actions of allowable followups when this template is selected
     Each followup will become available when the appropriate time range permits. -->
  <followups>
   <followup>NEW</followup>
   <followup>COR</followup>
   <followup>EXT</followup>
  </followups>
- 
+
  <!-- Product ID: nnn id of the product -->
  <productId>FFW</productId>
 
@@ -72,7 +72,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <phensigs>
    <phensig>FF.W</phensig>
  </phensigs>
- 
+
 <!-- Enables/disables user from selecting the Restart button the GUI -->
 <enableRestart>true</enableRestart>
 
@@ -104,7 +104,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <duration>8640</duration>
   <duration>10080</duration>
  </durations>
- 
+
 <lockedGroupsOnFollowup>dam,ic,ffwEMER</lockedGroupsOnFollowup>
 <bulletActionGroups>
 <bulletActionGroup action="NEW" phen="FF" sig="W">
@@ -173,7 +173,7 @@ Alaska end -->
   <!-- The following are examples on how to include site specific dams in your template
        You can choose to do this by editing the template and listing each dam in the
        template or listing the dams in a separate file and using the include command -->
-<include file="damInfoBullet.xml"/> 
+<include file="damInfoBullet.xml"/>
 <!--<damInfoBullets>
 <damInfoBullet bulletGroup="dam" bulletText="Big Rock Dam (Fairfield County)" bulletName="BigRockDam"  parseString="BIG ROCK"  coords="LAT...LON 4109 7338 4116 7311 4116 7320"/>
 <damInfoBullet bulletGroup="scenario" bulletText="scenario - high fast" bulletName="BigRockhighfast"  parseString="COMPLETE FAILURE OF BIG ROCK"/>
@@ -221,7 +221,7 @@ Alaska end -->
   <bullet bulletName="bureau" bulletText="Bureau of Reclamation" bulletGroup="reportedBy" parseString="BUREAU OF RECLAMATION REPORTED"/>
   <bullet bulletName="public" bulletText="The public" bulletGroup="reportedBy" parseString="THE PUBLIC REPORTED"/>
   <bullet bulletName="onlyGauge" bulletText="Gauge reports" bulletGroup="reportedBy" parseString="GAUGE REPORTS "/>
-<!-- Uncomment for Alaska  
+<!-- Uncomment for Alaska
   <bullet bulletName="CAP" bulletText="Civil Air Patrol" bulletGroup="reportedBy" parseString="CIVIL AIR PATROL "/>
   <bullet bulletName="alaskaVoc" bulletText="Alaska Volcano Observatory" bulletGroup="reportedBy" parseString="ALASKA VOLCANO OBSERVATORY "/>
   <bullet bulletName="cascadeVoc" bulletText="Cascades Volcano Observatory" bulletGroup="reportedBy" parseString="CASCADES VOLCANO OBSERVATORY "/>
@@ -304,7 +304,7 @@ Alaska end -->
   <bullet bulletName="bureau" bulletText="Bureau of Reclamation" bulletGroup="reportedBy" parseString="BUREAU OF RECLAMATION REPORTED"/>
   <bullet bulletName="public" bulletText="The public" bulletGroup="reportedBy" parseString="THE PUBLIC REPORTED"/>
   <bullet bulletName="onlyGauge" bulletText="Gauge reports" bulletGroup="reportedBy" parseString="GAUGE REPORTS "/>
-<!-- Uncomment for Alaska    
+<!-- Uncomment for Alaska
   <bullet bulletName="CAP" bulletText="Civil Air Patrol" bulletGroup="reportedBy" parseString="CIVIL AIR PATROL "/>
   <bullet bulletName="cascadeVoc" bulletText="Cascades Volcano Observatory" bulletGroup="reportedBy" parseString="CASCADES VOLCANO OBSERVATORY "/>
   <bullet bulletName="alaskaVoc" bulletText="Alaska Volcano Observatory" bulletGroup="reportedBy" parseString="ALASKA VOLCANO OBSERVATORY "/>
@@ -357,7 +357,7 @@ Alaska end -->
 <damInfoBullet bulletGroup="ruleofthumb" bulletText="rule of thumb" bulletName="BranchedOakruleofthumb"  parseString="FLOOD WAVE ESTIMATE"/>
 </damInfoBullets> -->
  </bulletActionGroup>
-</bulletActionGroups> 
+</bulletActionGroups>
 
  <pointSource variable="riverdrainages">
     <pointSource>ffmp_basins</pointSource>

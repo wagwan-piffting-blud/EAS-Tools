@@ -200,6 +200,87 @@
         return t;
     }
 
+    const customMacros = [];
+
+    function registerCustomMacro(name, text) {
+        let file = String(name || '').split(/[\\/]/).pop().trim();
+        if (!file) file = 'Custom Macro';
+        if (!/\.txt$/i.test(file)) file += '.txt';
+        macroTextCache.set(file, String(text ?? ''));
+        if (customMacros.indexOf(file) === -1) customMacros.push(file);
+        cfg.log(`registered custom macro "${file}" (${macroTextCache.get(file).length} chars)`);
+        return file;
+    }
+
+    function unregisterCustomMacro(file) {
+        const i = customMacros.indexOf(file);
+        if (i !== -1) customMacros.splice(i, 1);
+        macroTextCache.delete(file);
+        cfg.log(`unregistered custom macro "${file}"`);
+        return i !== -1;
+    }
+
+    function listCustomMacros() {
+        return customMacros.map((file) => ({
+            id: 'AUD:' + file,
+            file,
+            name: file.replace(/\.txt$/i, ''),
+        }));
+    }
+
+    function macroFileForName(name) {
+        const list = customMacros.concat(macroManifest || []);
+        const want = String(name).trim();
+        let hit = list.find((f) => f === want + '.txt');
+        if (hit) return hit;
+        hit = list.find((f) => f.toLowerCase() === want.toLowerCase() + '.txt');
+        if (hit) return hit;
+        const n = norm(want);
+        return list.find((f) => norm(f.replace(/\.txt$/i, '')) === n) || null;
+    }
+
+    const MACRO_MAX_DEPTH = 8;
+
+    async function expandMacroLines(text, stack, out) {
+        for (const raw of String(text).split(/\r?\n/)) {
+            const line = raw.trim();
+            if (!line) continue;
+            const ci = line.indexOf(':');
+            if (ci < 0) continue;
+            const cmd = line.slice(0, ci).trim();
+            const params = line.slice(ci + 1);
+            if (cmd === 'Message') continue;
+            if (cmd.startsWith('Macro_')) {
+                const name = cmd.slice(6);
+                const file = macroFileForName(name);
+                if (!file) { cfg.log(`  [skip] nested macro "${name}" (no matching macro file)`); continue; }
+                const key = norm(file);
+                if (stack.indexOf(key) !== -1) { cfg.log(`  [skip] nested macro "${name}" (recursive call)`); continue; }
+                if (stack.length >= MACRO_MAX_DEPTH) { cfg.log(`  [skip] nested macro "${name}" (nested deeper than ${MACRO_MAX_DEPTH})`); continue; }
+                let sub;
+                try { sub = await fetchMacroText(file); }
+                catch (e) { cfg.log(`  [skip] nested macro "${name}" (fetch failed: ${(e && e.message) || e})`); continue; }
+                cfg.log(`  [macro] expanding "${name}" -> ${file}`);
+                stack.push(key);
+                await expandMacroLines(sub, stack, out);
+                stack.pop();
+                continue;
+            }
+            out.push({ cmd, params });
+        }
+        return out;
+    }
+
+    async function expandMacroSteps(text) {
+        await loadMacroList();
+        return expandMacroLines(text, [], []);
+    }
+
+    async function expandMacroFlat(text) {
+        const steps = await expandMacroSteps(text);
+        return steps.map((st) => st.cmd + ':' + st.params).join('\n');
+    }
+
     const yieldToUI = () => new Promise((r) => setTimeout(r, 0));
 
     async function runPlugin(dllBytes, paramStr, pcm, sr, onBlock) {
@@ -275,7 +356,7 @@
         return out;
     }
 
-    const PB_WARMUP = { mdacombo: 131072, roughrider2: 131072, dbluecrusher: 131072, sc4: 262144 };
+    const PB_WARMUP = { mdacombo: 131072, roughrider2: 131072, dbluecrusher: 131072, sc4: 262144, allpassphase: 65536 };
     let pbPool = null;
     function pbIsNode() { return typeof process !== 'undefined' && process.versions && process.versions.node && typeof window === 'undefined'; }
     function getPbPool() {
@@ -1704,17 +1785,7 @@
         const onStep = opts.onStep || null;
         const proj = { sr, length: pcm.length, tracks: [new Float32Array(pcm)], pans: [0], selected: new Set([0]), clipboard: null, selRange: null, undoStack: [], redoStack: [], undoEnabled: false };
 
-        const steps = [];
-        for (const raw of text.split(/\r?\n/)) {
-            const line = raw.trim();
-            if (!line) continue;
-            const ci = line.indexOf(':');
-            if (ci < 0) continue;
-            const cmd = line.slice(0, ci).trim();
-            const params = line.slice(ci + 1);
-            if (cmd.startsWith('Macro_') || cmd === 'Message') continue;
-            steps.push({ cmd, params });
-        }
+        const steps = await expandMacroLines(text, [], []);
         const total = steps.length;
         proj.undoEnabled = steps.some(st => st.cmd === 'Undo' || st.cmd === 'Redo');
         let maxUndoRun = 0; for (let i = 0, run = 0; i < total; i++) { if (steps[i].cmd === 'Undo') { run++; if (run > maxUndoRun) maxUndoRun = run; } else run = 0; }
@@ -1756,6 +1827,7 @@
 
     global.AudacityMacroEngine = {
         config: cfg, ready, listMacros, loadMacroList, resolvePlugin, resolvePluginEntry, resetPluginPool,
-        applyMacroText, applyMacroFile, fetchMacroText,
+        applyMacroText, applyMacroFile, fetchMacroText, expandMacroSteps, expandMacroFlat,
+        registerCustomMacro, unregisterCustomMacro, listCustomMacros,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -695,6 +695,197 @@ button[disabled] {
     color: var(--color-border-light);
 }
 
+.splice-chain-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 4500;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.splice-chain-backdrop[hidden] {
+    display: none;
+}
+
+.splice-chain-modal {
+    display: flex;
+    flex-direction: column;
+    width: max(1240px, 96vw);
+    max-height: 88vh;
+    background-color: #111111;
+    border: 1px solid var(--color-orange);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    padding: 14px;
+    overflow: hidden;
+    font-family: "Hack", monospace;
+}
+
+.splice-chain-modal h3 {
+    margin: 0 0 6px;
+    color: var(--color-orange);
+}
+
+.splice-chain-intro {
+    margin: 0 0 10px;
+    font-size: 0.8rem;
+    color: var(--color-border-light);
+}
+
+.splice-chain-cols {
+    display: flex;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.splice-chain-col {
+    flex: 1 1 50%;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.splice-chain-col > label,
+.splice-chain-col-label {
+    font-size: 0.85rem;
+    color: var(--color-text);
+}
+
+.splice-chain-count {
+    font-size: 0.75rem;
+    color: var(--color-border-light);
+    margin: 2px 0 4px;
+}
+
+.splice-chain-search {
+    flex: 0 0 auto;
+    margin: 6px 0;
+    padding: 6px 8px;
+    background-color: #1c1c1c;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    font-family: "Hack", monospace;
+    font-size: 0.9rem;
+}
+
+.splice-chain-search:focus {
+    outline: none;
+    border-color: var(--color-orange);
+}
+
+.splice-chain-avail-list,
+.splice-chain-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 200px;
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+}
+
+.splice-chain-group {
+    padding: 8px 10px 2px;
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--color-border-light);
+}
+
+.splice-chain-avail-item,
+.splice-chain-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 10px;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    cursor: grab;
+}
+
+.splice-chain-avail-item:hover,
+.splice-chain-item:hover {
+    background-color: #1c1c1c;
+}
+
+.splice-chain-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.splice-chain-item-controls {
+    display: flex;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+.splice-chain-item-params {
+    flex: 1 1 40%;
+    min-width: 80px;
+    padding: 3px 6px;
+    background-color: #1c1c1c;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    font-family: "Hack", monospace;
+    font-size: 0.75rem;
+}
+
+.splice-chain-item-params:focus {
+    outline: none;
+    border-color: var(--color-orange);
+}
+
+.splice-chain-avail-item button,
+.splice-chain-item-controls button {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+}
+
+.splice-chain-drop-before {
+    box-shadow: inset 0 2px 0 var(--color-orange);
+}
+
+.splice-chain-list.splice-chain-drop-end {
+    box-shadow: inset 0 -2px 0 var(--color-orange);
+}
+
+.splice-chain-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.splice-chain-status {
+    flex: 1 1 auto;
+    font-size: 0.8rem;
+    color: var(--color-border-light);
+    min-width: 0;
+}
+
+@media (max-width: 720px) {
+    .splice-chain-cols {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .splice-chain-avail-list,
+    .splice-chain-list {
+        min-height: 130px;
+        max-height: 30vh;
+    }
+}
+
 #eas-tools-logo {
     background: url('../eas-tools-logo.png?v=2') no-repeat center;
     background-size: 115%;
@@ -1427,7 +1618,7 @@ button[disabled] {
     body > header {
         padding-top: var(--sat);
     }
-    
+
     button[data-splice-play] {
         font-size: 0.85rem !important;
     }
@@ -1619,6 +1810,26 @@ button[disabled] {
 
     .splice-macro-combo__opt.is-selected.is-active::after {
         color: var(--color-text);
+    }
+
+    .splice-chain-modal {
+        background-color: #f0f0f0;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .splice-chain-search {
+        background-color: var(--color-bg);
+        border-color: var(--color-border-light);
+    }
+
+    .splice-chain-item-params {
+        background-color: var(--color-bg);
+        border-color: var(--color-border-light);
+    }
+
+    .splice-chain-avail-item:hover,
+    .splice-chain-item:hover {
+        background-color: #e0e0e0;
     }
 }
 

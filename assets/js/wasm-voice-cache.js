@@ -3,6 +3,7 @@
     var STORE = 'files';
     var DB_VERSION = 1;
     var CACHE_VERSION = 'v1';
+    var HEAD_TIMEOUT_MS = 8000;
 
     var dbPromise = null;
 
@@ -47,6 +48,49 @@
         });
     }
 
+    function idbDelete(key) {
+        return openDb().then(function (db) {
+            return new Promise(function (resolve, reject) {
+                var tx = db.transaction(STORE, 'readwrite');
+                tx.objectStore(STORE).delete(key);
+                tx.oncomplete = function () { resolve(); };
+                tx.onerror = function () { reject(tx.error); };
+            });
+        });
+    }
+
+    function deleteCached(cacheKeys) {
+        var list = Array.isArray(cacheKeys) ? cacheKeys : [cacheKeys];
+        return Promise.all(list.map(function (k) {
+            return idbDelete(CACHE_VERSION + ':' + k).catch(function () { });
+        }));
+    }
+
+    function pruneKeys(prefix, keepCacheKeys) {
+        var keep = {};
+        var list = Array.isArray(keepCacheKeys) ? keepCacheKeys : [];
+        for (var i = 0; i < list.length; i++) keep[CACHE_VERSION + ':' + list[i]] = true;
+        var full = CACHE_VERSION + ':' + prefix;
+        return openDb().then(function (db) {
+            return new Promise(function (resolve, reject) {
+                var tx = db.transaction(STORE, 'readwrite');
+                var store = tx.objectStore(STORE);
+                var req = store.getAllKeys();
+                req.onsuccess = function () {
+                    var keys = req.result || [];
+                    for (var i = 0; i < keys.length; i++) {
+                        var k = keys[i];
+                        if (typeof k === 'string' && k.indexOf(full) === 0 && !keep[k]) {
+                            store.delete(k);
+                        }
+                    }
+                };
+                tx.oncomplete = function () { resolve(); };
+                tx.onerror = function () { reject(tx.error); };
+            });
+        }).catch(function () { });
+    }
+
     function fetchBlobWithProgress(url, onProgress) {
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
@@ -59,7 +103,13 @@
             };
             xhr.onload = function () {
                 if (xhr.status >= 200 && xhr.status < 300) {
-                    resolve(xhr.response);
+                    resolve({
+                        blob: xhr.response,
+                        head: {
+                            etag: xhr.getResponseHeader('ETag') || '',
+                            lastModified: xhr.getResponseHeader('Last-Modified') || '',
+                        },
+                    });
                 } else {
                     reject(new Error('HTTP ' + xhr.status + ' for ' + url));
                 }
@@ -79,26 +129,120 @@
         return _remoteBasePromise;
     }
 
+    function resolveUrl(url) {
+        return remoteBase().then(function (base) {
+            if (base && !/^https?:\/\//i.test(url)) {
+                try {
+                    var abs = new URL(url, (scope.location && scope.location.href) || undefined);
+                    return base + abs.pathname.replace(/^\//, '') + abs.search;
+                } catch (e) { }
+            }
+            return url;
+        });
+    }
+
+    function bustUrl(url) {
+        return url + (url.indexOf('?') === -1 ? '?' : '&') + 'cb=' + Date.now();
+    }
+
+    function headValidators(url) {
+        if (typeof scope.fetch !== 'function') return Promise.resolve(null);
+        var opts = { method: 'HEAD', cache: 'no-store' };
+        var timer = null;
+        try {
+            if (typeof AbortController === 'function') {
+                var ctl = new AbortController();
+                opts.signal = ctl.signal;
+                timer = setTimeout(function () { ctl.abort(); }, HEAD_TIMEOUT_MS);
+            }
+        } catch (e) { }
+        return scope.fetch(url, opts).then(function (r) {
+            if (timer) clearTimeout(timer);
+            if (!r || !r.ok) return null;
+            var enc = (r.headers.get('content-encoding') || '').toLowerCase();
+            var len = parseInt(r.headers.get('content-length') || '', 10);
+            return {
+                etag: r.headers.get('etag') || '',
+                lastModified: r.headers.get('last-modified') || '',
+                contentLength: isFinite(len) ? len : -1,
+                encoded: !!(enc && enc !== 'identity'),
+            };
+        }).catch(function () {
+            if (timer) clearTimeout(timer);
+            return null;
+        });
+    }
+
+    function unwrapRecord(value) {
+        if (value instanceof Blob) {
+            return { blob: value, etag: '', lastModified: '' };
+        }
+        if (value && value.blob instanceof Blob) {
+            return { blob: value.blob, etag: value.etag || '', lastModified: value.lastModified || '' };
+        }
+        return null;
+    }
+
+    function validatorsMatch(rec, head) {
+        if (!head) return true;
+        if (rec.etag && head.etag) return rec.etag === head.etag;
+        if (rec.lastModified && head.lastModified) return rec.lastModified === head.lastModified;
+        if (!head.encoded && head.contentLength >= 0) return head.contentLength === rec.blob.size;
+        return true;
+    }
+
+    function storeRecord(key, blob, head) {
+        return idbPut(key, {
+            blob: blob,
+            etag: (head && head.etag) || '',
+            lastModified: (head && head.lastModified) || '',
+            savedAt: Date.now(),
+        }).catch(function () { });
+    }
+
     function fetchCachedBlob(url, opts) {
         opts = opts || {};
         var key = CACHE_VERSION + ':' + (opts.cacheKey || url);
         var onProgress = opts.onProgress;
+        var expectedBytes = (typeof opts.expectedBytes === 'number' && isFinite(opts.expectedBytes)) ? opts.expectedBytes : null;
+        var revalidate = opts.revalidate !== false;
 
-        return remoteBase().then(function (base) {
-            var fetchUrl = url;
-            if (base) {
-                try {
-                    var abs = new URL(url, (scope.location && scope.location.href) || undefined);
-                    fetchUrl = base + abs.pathname.replace(/^\//, '') + abs.search;
-                } catch (e) { }
-            }
-            return idbGet(key).catch(function () { return null; }).then(function (hit) {
-                if (hit instanceof Blob && hit.size > 0) {
-                    if (onProgress) onProgress({ phase: 'cache', loaded: hit.size, total: hit.size });
-                    return hit;
+        return resolveUrl(url).then(function (fetchUrl) {
+            return idbGet(key).catch(function () { return null; }).then(function (raw) {
+                var rec = unwrapRecord(raw);
+
+                var serveCached = function () {
+                    if (onProgress) onProgress({ phase: 'cache', loaded: rec.blob.size, total: rec.blob.size });
+                    return rec.blob;
+                };
+
+                var download = function (bust) {
+                    return fetchBlobWithProgress(bust ? bustUrl(fetchUrl) : fetchUrl, onProgress).then(function (result) {
+                        return storeRecord(key, result.blob, result.head).then(function () { return result.blob; });
+                    });
+                };
+
+                if (!rec || !rec.blob || !rec.blob.size) {
+                    return download(false);
                 }
-                return fetchBlobWithProgress(fetchUrl, onProgress).then(function (blob) {
-                    return idbPut(key, blob).catch(function () { }).then(function () { return blob; });
+
+                if (expectedBytes !== null) {
+                    if (rec.blob.size === expectedBytes) return serveCached();
+                    return download(true);
+                }
+
+                if (!revalidate) {
+                    return serveCached();
+                }
+
+                return headValidators(fetchUrl).then(function (head) {
+                    if (validatorsMatch(rec, head)) {
+                        if (head && ((!rec.etag && head.etag) || (!rec.lastModified && head.lastModified))) {
+                            storeRecord(key, rec.blob, head);
+                        }
+                        return serveCached();
+                    }
+                    return download(true);
                 });
             });
         });
@@ -125,6 +269,9 @@
         fetchCachedBlob: fetchCachedBlob,
         idbGet: idbGet,
         idbPut: idbPut,
+        deleteCached: deleteCached,
+        pruneKeys: pruneKeys,
+        resolveUrl: resolveUrl,
         makeAggregateProgress: makeAggregateProgress,
     };
 })(typeof self !== 'undefined' ? self : this);

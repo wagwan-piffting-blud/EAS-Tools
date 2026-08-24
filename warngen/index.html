@@ -107,6 +107,18 @@
             <span class="meta-note">Office picker swaps the visible counties to that CWA's coverage area + updates
                 headers/VTEC</span>
         </div>
+        <div class="meta-bar followup-bar" id="followup-bar" style="display:none">
+            <strong>Followup:</strong>
+            <label id="phen-label">Phenomenon
+                <select id="phen-select"></select>
+            </label>
+            <button type="button" id="capture-baseline-btn" class="secondary-btn"
+                title="Remember the current counties and expiration as the original warning this followup updates">Capture
+                original warning</button>
+            <button type="button" id="clear-baseline-btn" class="secondary-btn">Clear</button>
+            <span id="baseline-note" class="meta-note">No original warning captured -- issue a warning first, or
+                capture the current polygon.</span>
+        </div>
         <main class="split">
             <div id="map"></div>
             <div class="output-pane">
@@ -140,6 +152,69 @@
         <script src="src/config/xmlParser.js"></script>
         <script src="src/ui/BulletPanel.js"></script>
         <script>
+            // Fragments are #parse()d by the product templates and are never rendered directly.
+            var MODERN_FRAGMENTS = [
+                "VM_global_library.vm", "config.vm", "forecasterName.vm", "impactStatements.vm",
+                "mileMarkers.vm", "pointMarkers.vm", "damInfo.vm", "burnScarInfo.vm",
+                "dssEvents.vm", "dupCounties.vm", "stormReports.vm", "marineCombo.vm"
+            ];
+
+            // The modern set is the AWIPS 23.4.3 baseline warngen directory. followup: true marks
+            // the templates whose bullet configs only offer CAN/CON/EXP/COR action groups.
+            var MODERN_PRODUCTS = [
+                { vm: "impactTornadoWarning.vm", label: "Tornado Warning (IBW)", group: "Convective", defaults: ["doppler"] },
+                { vm: "tornadoWarning.vm", label: "Tornado Warning (legacy wording)", group: "Convective", defaults: ["doppler"] },
+                { vm: "impactSevereThunderstormWarning.vm", label: "Severe Thunderstorm Warning (IBW)", group: "Convective", defaults: ["doppler"] },
+                { vm: "severeThunderstormWarning.vm", label: "Severe Thunderstorm Warning (legacy wording)", group: "Convective", defaults: ["doppler"] },
+                { vm: "extremeWindWarning.vm", label: "Extreme Wind Warning", group: "Convective", defaults: ["basis1", "var1"] },
+
+                { vm: "impactFlashFloodWarning.vm", label: "Flash Flood Warning (IBW)", group: "Flood", defaults: ["doppler"] },
+                { vm: "flashFloodWarning.vm", label: "Flash Flood Warning (legacy wording)", group: "Flood", defaults: ["doppler"] },
+                { vm: "impactNonConvectiveFlashFloodWarning.vm", label: "Non-Convective Flash Flood Warning (IBW)", group: "Flood" },
+                { vm: "nonConvectiveFlashFloodWarning.vm", label: "Non-Convective Flash Flood Warning", group: "Flood" },
+                { vm: "impactBurnScarFlashFloodWarning.vm", label: "Burn Scar Flash Flood Warning (IBW)", group: "Flood" },
+                { vm: "burnScarFlashFloodWarning.vm", label: "Burn Scar Flash Flood Warning", group: "Flood" },
+                { vm: "arealFloodWarning.vm", label: "Areal Flood Warning", group: "Flood" },
+                { vm: "arealFloodAdvisory.vm", label: "Areal Flood Advisory", group: "Flood" },
+
+                { vm: "impactSpecialMarineWarning.vm", label: "Special Marine Warning (IBW)", group: "Marine" },
+                { vm: "specialMarineWarning.vm", label: "Special Marine Warning", group: "Marine" },
+                { vm: "marineWeatherStatement.vm", label: "Marine Weather Statement", group: "Marine" },
+                { vm: "marineWeatherStatementAshfall.vm", label: "Marine Weather Statement (ashfall)", group: "Marine" },
+
+                { vm: "impactSnowSquallWarning.vm", label: "Snow Squall Warning", group: "Winter / dust / fire" },
+                { vm: "impactDustStormWarning.vm", label: "Dust Storm Warning", group: "Winter / dust / fire" },
+                { vm: "impactDustAdvisory.vm", label: "Blowing Dust Advisory", group: "Winter / dust / fire" },
+                { vm: "fireWarning.vm", label: "Fire Warning", group: "Winter / dust / fire" },
+                { vm: "airportWeatherWarning.vm", label: "Airport Weather Warning", group: "Winter / dust / fire" },
+
+                { vm: "impactSpecialWeatherStatement.vm", label: "Special Weather Statement (IBW)", group: "Statements", defaults: ["strongThunderstorm", "listofcities"] },
+                { vm: "specialWeatherStatement.vm", label: "Special Weather Statement", group: "Statements", defaults: ["strongThunderstorm", "listofcities"] },
+                { vm: "impactSignificantWeatherAdvisory.vm", label: "Significant Weather Advisory (IBW)", group: "Statements" },
+                { vm: "significantWeatherAdvisory.vm", label: "Significant Weather Advisory", group: "Statements" },
+                { vm: "shortTermForecast.vm", label: "Short Term Forecast", group: "Statements" },
+
+                { vm: "impactSevereWeatherStatement.vm", label: "Severe Weather Statement (IBW)", group: "Followups", followup: true },
+                { vm: "severeWeatherStatement.vm", label: "Severe Weather Statement", group: "Followups", followup: true },
+                { vm: "extremeWindWarningFollowup.vm", label: "Extreme Wind Warning followup", group: "Followups", followup: true },
+                { vm: "impactFlashFloodWarningFollowup.vm", label: "Flash Flood Statement (IBW)", group: "Followups", followup: true },
+                { vm: "flashFloodWarningFollowup.vm", label: "Flash Flood Statement", group: "Followups", followup: true },
+                { vm: "impactNonConvectiveFlashFloodWarningFollowup.vm", label: "Non-Convective Flash Flood Statement (IBW)", group: "Followups", followup: true },
+                { vm: "nonConvectiveFlashFloodWarningFollowup.vm", label: "Non-Convective Flash Flood Statement", group: "Followups", followup: true },
+                { vm: "impactBurnScarFlashFloodWarningFollowup.vm", label: "Burn Scar Flash Flood Statement (IBW)", group: "Followups", followup: true },
+                { vm: "burnScarFlashFloodWarningFollowup.vm", label: "Burn Scar Flash Flood Statement", group: "Followups", followup: true },
+                { vm: "arealFloodWarningFollowup.vm", label: "Areal Flood Warning followup", group: "Followups", followup: true },
+                { vm: "arealFloodAdvisoryFollowup.vm", label: "Areal Flood Advisory followup", group: "Followups", followup: true },
+                { vm: "impactSpecialMarineWarningFollowup.vm", label: "Marine Weather Statement followup (IBW)", group: "Followups", followup: true },
+                { vm: "specialMarineWarningFollowup.vm", label: "Marine Weather Statement followup", group: "Followups", followup: true },
+                { vm: "impactSnowSquallWarningFollowup.vm", label: "Snow Squall Warning followup", group: "Followups", followup: true },
+                { vm: "impactDustStormWarningFollowup.vm", label: "Dust Storm Warning followup", group: "Followups", followup: true },
+                { vm: "impactDustAdvisoryFollowup.vm", label: "Blowing Dust Advisory followup", group: "Followups", followup: true }
+            ];
+
+            var MODERN_PRODUCT_BY_VM = {};
+            MODERN_PRODUCTS.forEach(function (p) { MODERN_PRODUCT_BY_VM[p.vm] = p; });
+
             var TEMPLATE_FILES_BY_ERA = {
                 legacy: [
                     "VM_global_library.vm", "config.vm", "forecasterName.vm",
@@ -149,15 +224,7 @@
                     "extremeWindWarning.vm", "specialWeatherStatement.vm",
                     "flashFloodWarning.vm"
                 ],
-                modern: [
-                    "VM_global_library.vm", "config.vm", "forecasterName.vm",
-                    "mileMarkers.vm", "damInfo.vm", "dssEvents.vm", "dupCounties.vm",
-                    "impactStatements.vm",
-                    "severeThunderstormWarning.vm", "tornadoWarning.vm",
-                    "impactSevereThunderstormWarning.vm", "impactTornadoWarning.vm",
-                    "extremeWindWarning.vm", "specialWeatherStatement.vm",
-                    "flashFloodWarning.vm"
-                ]
+                modern: MODERN_FRAGMENTS.concat(MODERN_PRODUCTS.map(function (p) { return p.vm; }))
             };
             var XML_FILES_BY_ERA = {
                 legacy: [
@@ -166,51 +233,53 @@
 
                     "specialWeatherStatement.xml", "flashFloodWarning.xml"
                 ],
-                modern: [
-                    "severeThunderstormWarning.xml", "tornadoWarning.xml",
-                    "impactSevereThunderstormWarning.xml", "impactTornadoWarning.xml",
-                    "extremeWindWarning.xml", "specialWeatherStatement.xml",
-                    "flashFloodWarning.xml"
-                ]
+                modern: MODERN_PRODUCTS.map(function (p) { return p.vm.replace(/\.vm$/, ".xml"); })
             };
 
-            var TEMPLATE_META = {
-                "severeThunderstormWarning.vm": {
-                    productId: "SVR",
-                    xml: "severeThunderstormWarning.xml",
-                    defaults: ["doppler"]
-                },
-                "tornadoWarning.vm": {
-                    productId: "TOR",
-                    xml: "tornadoWarning.xml",
-                    defaults: ["doppler"]
-                },
-                "impactSevereThunderstormWarning.vm": {
-                    productId: "SVR",
-                    xml: "impactSevereThunderstormWarning.xml",
-                    defaults: ["doppler"]
-                },
-                "impactTornadoWarning.vm": {
-                    productId: "TOR",
-                    xml: "impactTornadoWarning.xml",
-                    defaults: ["doppler"]
-                },
-                "extremeWindWarning.vm": {
-                    productId: "EWW",
-                    xml: "extremeWindWarning.xml",
-                    defaults: ["basis1", "var1"]
-                },
-                "specialWeatherStatement.vm": {
-                    productId: "SPS",
-                    xml: "specialWeatherStatement.xml",
-                    defaults: ["strongThunderstorm", "listofcities"]
-                },
-                "flashFloodWarning.vm": {
-                    productId: "FFW",
-                    xml: "flashFloodWarning.xml",
-                    defaults: ["doppler"]
-                }
+            // Product ids come from each bullet config's <productId>; these are only the
+            // fallbacks used before the XML has loaded.
+            var TEMPLATE_PRODUCT_FALLBACK = {
+                TOR: ["tornadoWarning.vm", "impactTornadoWarning.vm"],
+                SVR: ["severeThunderstormWarning.vm", "impactSevereThunderstormWarning.vm"],
+                EWW: ["extremeWindWarning.vm"],
+                SVS: ["severeWeatherStatement.vm", "impactSevereWeatherStatement.vm", "extremeWindWarningFollowup.vm"],
+                SPS: ["specialWeatherStatement.vm", "impactSpecialWeatherStatement.vm",
+                      "significantWeatherAdvisory.vm", "impactSignificantWeatherAdvisory.vm"],
+                NOW: ["shortTermForecast.vm"],
+                FFW: ["flashFloodWarning.vm", "impactFlashFloodWarning.vm",
+                      "nonConvectiveFlashFloodWarning.vm", "impactNonConvectiveFlashFloodWarning.vm",
+                      "burnScarFlashFloodWarning.vm", "impactBurnScarFlashFloodWarning.vm"],
+                FFS: ["flashFloodWarningFollowup.vm", "impactFlashFloodWarningFollowup.vm",
+                      "nonConvectiveFlashFloodWarningFollowup.vm", "impactNonConvectiveFlashFloodWarningFollowup.vm",
+                      "burnScarFlashFloodWarningFollowup.vm", "impactBurnScarFlashFloodWarningFollowup.vm"],
+                FLW: ["arealFloodWarning.vm"],
+                FLS: ["arealFloodAdvisory.vm", "arealFloodWarningFollowup.vm", "arealFloodAdvisoryFollowup.vm"],
+                SMW: ["specialMarineWarning.vm", "impactSpecialMarineWarning.vm"],
+                MWS: ["marineWeatherStatement.vm", "marineWeatherStatementAshfall.vm",
+                      "specialMarineWarningFollowup.vm", "impactSpecialMarineWarningFollowup.vm"],
+                SQW: ["impactSnowSquallWarning.vm", "impactSnowSquallWarningFollowup.vm"],
+                DSW: ["impactDustStormWarning.vm", "impactDustStormWarningFollowup.vm",
+                      "impactDustAdvisory.vm", "impactDustAdvisoryFollowup.vm"],
+                FRW: ["fireWarning.vm"],
+                AWW: ["airportWeatherWarning.vm"]
             };
+
+            var TEMPLATE_META = (function () {
+                var meta = {};
+                var pidOf = {};
+                Object.keys(TEMPLATE_PRODUCT_FALLBACK).forEach(function (pid) {
+                    TEMPLATE_PRODUCT_FALLBACK[pid].forEach(function (vm) { pidOf[vm] = pid; });
+                });
+                MODERN_PRODUCTS.forEach(function (p) {
+                    meta[p.vm] = {
+                        productId: pidOf[p.vm] || "SVR",
+                        xml: p.vm.replace(/\.vm$/, ".xml"),
+                        defaults: p.defaults || [],
+                        followup: !!p.followup
+                    };
+                });
+                return meta;
+            }());
 
             var TEMPLATE_OPTIONS_BY_ERA = {
                 legacy: [
@@ -220,15 +289,9 @@
                     { value: "specialWeatherStatement.vm", label: "Special Weather Statement (legacy)" },
                     { value: "flashFloodWarning.vm", label: "Flash Flood Warning (legacy)" }
                 ],
-                modern: [
-                    { value: "severeThunderstormWarning.vm", label: "Severe Thunderstorm Warning (modern)" },
-                    { value: "impactSevereThunderstormWarning.vm", label: "Severe Thunderstorm Warning (modern, IBW)" },
-                    { value: "tornadoWarning.vm", label: "Tornado Warning (modern)" },
-                    { value: "impactTornadoWarning.vm", label: "Tornado Warning (modern, IBW)" },
-                    { value: "extremeWindWarning.vm", label: "Extreme Wind Warning (modern)" },
-                    { value: "specialWeatherStatement.vm", label: "Special Weather Statement (modern)" },
-                    { value: "flashFloodWarning.vm", label: "Flash Flood Warning (modern)" }
-                ]
+                modern: MODERN_PRODUCTS.map(function (p) {
+                    return { value: p.vm, label: p.label, group: p.group };
+                })
             };
 
             var ALL_US = "_ALL_US_";
@@ -272,7 +335,11 @@
             }
 
             var WMO_PRODUCT_PREFIX = {
-                TOR: "WFUS", SVR: "WUUS", EWW: "WUUS", FFW: "WGUS", SPS: "WWUS"
+                TOR: "WFUS", SVR: "WUUS", SVS: "WWUS", EWW: "WUUS",
+                FFW: "WGUS", FFS: "WGUS", FLW: "WGUS", FLS: "WGUS",
+                SMW: "WHUS", MWS: "WHUS",
+                SPS: "WWUS", NOW: "FPUS", SQW: "WWUS", DSW: "WWUS",
+                FRW: "WWUS", AWW: "WWUS"
             };
             var WFO_REGION = {
 
@@ -468,6 +535,12 @@
             var currentProductId = "SVR";
             var currentDurations = [30];
             var currentDefaultDuration = 30;
+            var currentPhenomena = "";
+
+            // The warning a followup updates: its counties, ETN and expiration. Captured on every
+            // NEW render so switching to a followup template usually needs no extra input.
+            var followupBaseline = null;
+            var lastRenderedAreas = [];
 
             var templates = { legacy: {}, modern: {} };
             var xmlConfigs = { legacy: {}, modern: {} };
@@ -484,6 +557,7 @@
             var bulletPanelCtrl = null;
             var stormMarker = null;
             var pendingDuration = null;
+            var pendingAction = null;
             var pendingNormalize = false;
 
             var STORAGE_KEY = "warngen-state-v1";
@@ -514,7 +588,8 @@
                             issued: document.getElementById("issued-input").value
                         },
                         bullets: selectedBullets.slice(),
-                        fillIns: Object.assign({}, fillInValues)
+                        fillIns: Object.assign({}, fillInValues),
+                        followupBaseline: followupBaseline
                     };
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
                 } catch (e) { }
@@ -559,9 +634,11 @@
                 }
                 set("office-select", f.office);
                 set("etn-input", f.etn);
-                set("action-select", f.action);
                 set("issued-input", f.issued);
 
+                // The action list is rebuilt from the template's bullet config, so a followup
+                // action cannot be assigned until rebuildBulletPanel() has run.
+                if (f.action != null) pendingAction = f.action;
                 if (f.duration != null) pendingDuration = f.duration;
             }
 
@@ -809,9 +886,7 @@
                 PHI: "KPHI Mount Holly NJ",
                 PIH: "KPIH Pocatello ID",
                 PPG: "NSTU Pago Pago AS",
-                PQE: "Pacific Region East",
                 PQR: "KPQR Portland OR",
-                PQW: "Pacific Region West",
                 PSR: "KPSR Phoenix AZ",
                 PUB: "KPUB Pueblo CO",
                 RAH: "KRAH Raleigh NC",
@@ -898,14 +973,151 @@
                 var opts = TEMPLATE_OPTIONS_BY_ERA[era] || TEMPLATE_OPTIONS_BY_ERA.legacy;
                 tsel.innerHTML = "";
                 var prevStillValid = false;
+                var groups = {};
                 opts.forEach(function (o) {
                     var opt = document.createElement("option");
                     opt.value = o.value;
                     opt.textContent = o.label;
-                    tsel.appendChild(opt);
+                    if (o.group) {
+                        if (!groups[o.group]) {
+                            groups[o.group] = document.createElement("optgroup");
+                            groups[o.group].label = o.group;
+                            tsel.appendChild(groups[o.group]);
+                        }
+                        groups[o.group].appendChild(opt);
+                    } else {
+                        tsel.appendChild(opt);
+                    }
                     if (o.value === prev) prevStillValid = true;
                 });
                 tsel.value = prevStillValid ? prev : opts[0].value;
+            }
+
+            var ACTION_LABELS = {
+                NEW: "NEW -- new warning",
+                COR: "COR -- correction",
+                CON: "CON -- continue",
+                CAN: "CAN -- cancel",
+                CANCON: "CANCON -- cancel part, continue rest",
+                EXP: "EXP -- expire",
+                EXT: "EXT -- extend"
+            };
+
+            /** Offers exactly the actions the selected template's bullet config supports. */
+            function rebuildActionOptions(cfg, meta, desired) {
+                var sel = document.getElementById("action-select");
+                var prev = desired || sel.value;
+                var actions = (cfg.actionList && cfg.actionList.length)
+                    ? cfg.actionList.slice()
+                    : ["NEW", "COR"];
+
+                // A template offering both CAN and CON can also issue them as one product.
+                if (actions.indexOf("CAN") !== -1 && actions.indexOf("CON") !== -1
+                    && actions.indexOf("CANCON") === -1) {
+                    actions.splice(actions.indexOf("CAN") + 1, 0, "CANCON");
+                }
+
+                var order = ["NEW", "CON", "CAN", "CANCON", "EXT", "EXP", "COR"];
+                actions.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+
+                sel.innerHTML = "";
+                var stillValid = false;
+                actions.forEach(function (a) {
+                    var opt = document.createElement("option");
+                    opt.value = a;
+                    opt.textContent = ACTION_LABELS[a] || a;
+                    sel.appendChild(opt);
+                    if (a === prev) stillValid = true;
+                });
+                sel.value = stillValid ? prev : (meta.followup ? (actions.indexOf("CON") !== -1 ? "CON" : actions[0]) : actions[0]);
+                return sel.value;
+            }
+
+            /** A severe weather statement covers both SV and TO, so the phenomenon is a choice. */
+            function rebuildPhenOptions(cfg, action) {
+                var sel = document.getElementById("phen-select");
+                var label = document.getElementById("phen-label");
+                var phens = WarngenXmlParser.phensForAction(cfg, action === "CANCON" ? "CAN" : action);
+                var prev = sel.value;
+
+                sel.innerHTML = "";
+                phens.forEach(function (p) {
+                    var opt = document.createElement("option");
+                    opt.value = p;
+                    opt.textContent = PHEN_LABELS[p] ? (p + " -- " + PHEN_LABELS[p]) : p;
+                    sel.appendChild(opt);
+                });
+                label.style.display = phens.length > 1 ? "" : "none";
+
+                if (!phens.length) return "";
+                sel.value = phens.indexOf(prev) !== -1 ? prev : phens[0];
+                return sel.value;
+            }
+
+            var PHEN_LABELS = {
+                TO: "Tornado", SV: "Severe Thunderstorm", FF: "Flash Flood", FA: "Areal Flood",
+                MA: "Marine", SQ: "Snow Squall", DS: "Dust Storm", EW: "Extreme Wind"
+            };
+
+            function updateFollowupBar(meta) {
+                var bar = document.getElementById("followup-bar");
+                var action = document.getElementById("action-select").value;
+                var needsBar = !!meta.followup || action === "CANCON" || action === "CAN"
+                    || action === "CON" || action === "EXP" || action === "EXT";
+                bar.style.display = needsBar ? "" : "none";
+                if (needsBar) updateBaselineNote();
+            }
+
+            function areaKey(a) { return (a.stateabbr || a.state || "") + a.fips; }
+
+            function updateBaselineNote() {
+                var note = document.getElementById("baseline-note");
+                if (!followupBaseline) {
+                    note.textContent = "No original warning captured -- issue a warning first, or capture the current polygon.";
+                    return;
+                }
+                var dropped = computeCancelAreas(lastRenderedAreas);
+                note.textContent = "Original: " + followupBaseline.areas.length + " counties, ETN "
+                    + followupBaseline.etn + ", expires "
+                    + new Date(followupBaseline.expire).toLocaleString()
+                    + (dropped.length
+                        ? " | cancelling " + dropped.map(function (a) { return a.name; }).join(", ")
+                        : " | no counties dropped");
+            }
+
+            /** Counties in the original warning that the current polygon no longer covers. */
+            function computeCancelAreas(currentAreas) {
+                if (!followupBaseline) return [];
+                var keep = {};
+                (currentAreas || []).forEach(function (a) { keep[areaKey(a)] = true; });
+                return followupBaseline.areas.filter(function (a) { return !keep[areaKey(a)]; });
+            }
+
+            function captureBaseline(areas, expire, etn, phenomena, ic) {
+                if (!areas || !areas.length) return;
+                followupBaseline = {
+                    areas: areas.map(function (a) {
+                        return {
+                            name: a.name, fips: a.fips, state: a.state, stateabbr: a.stateabbr,
+                            state_zone: a.state_zone, parentRegion: a.parentRegion,
+                            partOfArea: a.partOfArea || [], partOfParentRegion: a.partOfParentRegion || [],
+                            areaNotation: a.areaNotation, areasNotation: a.areasNotation, points: []
+                        };
+                    }),
+                    expire: expire.toISOString(),
+                    etn: etn,
+                    phenomena: phenomena,
+                    ic: ic
+                };
+            }
+
+            // Immediate cause codes are selected through same-named bullets in the flood configs.
+            var IMMEDIATE_CAUSE_CODES = ["ER", "SM", "RS", "IJ", "IC", "GO", "DM", "DR"];
+            function immediateCauseFrom(bullets) {
+                for (var i = 0; i < bullets.length; i++) {
+                    if (IMMEDIATE_CAUSE_CODES.indexOf(bullets[i]) !== -1) return bullets[i];
+                }
+                return "ER";
             }
 
             function rebuildBulletPanel(bulletOverrides) {
@@ -927,6 +1139,15 @@
 
                 currentProductId = cfg.productId || meta.productId;
 
+                if (pendingAction) {
+                    document.getElementById("action-select").value = pendingAction;
+                    action = pendingAction;
+                }
+                action = rebuildActionOptions(cfg, meta, pendingAction);
+                pendingAction = null;
+                currentPhenomena = rebuildPhenOptions(cfg, action);
+                updateFollowupBar(meta);
+
                 if (cfg.durations && cfg.durations.length > 0) {
                     currentDurations = cfg.durations;
                     currentDefaultDuration = cfg.defaultDuration || cfg.durations[0];
@@ -947,8 +1168,13 @@
                     durSel.appendChild(opt);
                 });
 
+                // CANCON is a partial cancellation: the template emits a CAN segment for the
+                // dropped counties and a CON segment for the rest, so it borrows CAN's bullets.
+                var bulletAction = (action === "CANCON") ? "CAN" : action;
+
                 bulletPanelCtrl = WarngenBulletPanel.build(container, cfg, {
-                    action: action,
+                    action: bulletAction,
+                    bullets: WarngenXmlParser.bulletsFor(cfg, bulletAction, currentPhenomena),
                     initialOverrides: bulletOverrides || meta.defaults,
                     onChange: function (names) {
                         selectedBullets = names;
@@ -1551,6 +1777,26 @@
                         });
                     }
 
+                    lastRenderedAreas = areas;
+
+                    var meta = TEMPLATE_META[tmpl] || TEMPLATE_META["severeThunderstormWarning.vm"];
+                    var isFollowupAction = ["CON", "CAN", "CANCON", "EXP", "EXT"].indexOf(action) !== -1;
+                    var immediateCause = immediateCauseFrom(selectedBullets);
+
+                    // A followup runs against the original warning: same ETN, same expiration,
+                    // and the counties that dropped out of the polygon become its CAN segment.
+                    var cancelareas = (action === "CANCON" || action === "COR") ? computeCancelAreas(areas) : [];
+                    var followupExpire = null;
+                    if (isFollowupAction && followupBaseline) {
+                        followupExpire = new Date(followupBaseline.expire);
+                        if (isNaN(followupExpire.getTime())) followupExpire = null;
+                    }
+                    if (action === "CAN" || action === "EXP") cancelareas = [];
+
+                    // A partial cancellation with nothing to cancel is just a continuation.
+                    var canconEmpty = (action === "CANCON" && !cancelareas.length);
+                    if (canconEmpty) action = "CON";
+
                     var ctx = WarngenContext.buildMockContext({
                         crossesTimezone: effectiveCrossTz,
                         localtimezone: localtimezone,
@@ -1580,8 +1826,21 @@
                         officeLoc: officeMeta.loc,
                         action: action,
                         etn: etn,
-                        duration: duration
+                        duration: duration,
+
+                        expire: followupExpire || undefined,
+                        phenomena: currentPhenomena || undefined,
+                        cancelareas: cancelareas,
+                        oldvtec: etn,
+                        ic: immediateCause
                     });
+
+                    if (!isFollowupAction && areas.length) {
+                        captureBaseline(areas, ctx.expire, etn, currentPhenomena, immediateCause);
+                    }
+                    if (document.getElementById("followup-bar").style.display !== "none") {
+                        updateBaselineNote();
+                    }
 
                     var t0 = performance.now();
                     lastRawOutput = WarngenRender.render(tmpl, templates[era], ctx);
@@ -1625,6 +1884,7 @@
                         tags.push(tzInfo.primary || "single TZ");
                     }
                     if (labels.length > 0) tags.push(labels.length + " FILL-IN" + (labels.length === 1 ? "" : "S"));
+                    if (canconEmpty) tags.push("CANCON -> CON, no counties dropped");
                     setStatus("Rendered " + hits.length + " counties in " + dt + " ms [" + tags.join(", ") + "]", false);
                 } catch (e) {
                     document.getElementById("output").textContent = "ERROR\n\n" + e.stack;
@@ -1678,6 +1938,34 @@
             document.getElementById("action-select").addEventListener("change", function () {
 
                 rebuildBulletPanel();
+                doRender();
+            });
+            document.getElementById("phen-select").addEventListener("change", function () {
+                currentPhenomena = this.value;
+                rebuildBulletPanel();
+                doRender();
+            });
+            document.getElementById("capture-baseline-btn").addEventListener("click", function () {
+                if (!lastRenderedAreas.length) {
+                    setStatus("Draw a polygon first -- there are no counties to capture.", true);
+                    return;
+                }
+                var issuedRaw = document.getElementById("issued-input").value;
+                var issued = issuedRaw ? new Date(issuedRaw) : new Date();
+                if (isNaN(issued.getTime())) issued = new Date();
+                var mins = parseInt(document.getElementById("duration-select").value, 10) || 30;
+                var etnRaw = parseInt(document.getElementById("etn-input").value, 10) || 1;
+                captureBaseline(lastRenderedAreas, new Date(issued.getTime() + mins * 60000),
+                    String(etnRaw).padStart(4, "0"), currentPhenomena, immediateCauseFrom(selectedBullets));
+                updateBaselineNote();
+                saveState();
+                doRender();
+                setStatus("Captured " + followupBaseline.areas.length + " counties as the original warning.", false);
+            });
+            document.getElementById("clear-baseline-btn").addEventListener("click", function () {
+                followupBaseline = null;
+                updateBaselineNote();
+                saveState();
                 doRender();
             });
             document.getElementById("office-select").addEventListener("change", function () {
@@ -1804,7 +2092,20 @@
                     "severe thunderstorm warning": "severeThunderstormWarning.vm",
                     "flash flood warning": "flashFloodWarning.vm",
                     "extreme wind warning": "extremeWindWarning.vm",
-                    "special weather statement": "specialWeatherStatement.vm"
+                    "special weather statement": "specialWeatherStatement.vm",
+                    "severe weather statement": "impactSevereWeatherStatement.vm",
+                    "flash flood statement": "impactFlashFloodWarningFollowup.vm",
+                    "flood warning": "arealFloodWarning.vm",
+                    "flood advisory": "arealFloodAdvisory.vm",
+                    "flood statement": "arealFloodWarningFollowup.vm",
+                    "special marine warning": "impactSpecialMarineWarning.vm",
+                    "marine weather statement": "marineWeatherStatement.vm",
+                    "snow squall warning": "impactSnowSquallWarning.vm",
+                    "dust storm warning": "impactDustStormWarning.vm",
+                    "blowing dust advisory": "impactDustAdvisory.vm",
+                    "significant weather advisory": "impactSignificantWeatherAdvisory.vm",
+                    "short term forecast": "shortTermForecast.vm",
+                    "fire warning": "fireWarning.vm"
                 }
             };
 
@@ -2086,8 +2387,13 @@
                     if (result.etn) {
                         document.getElementById("etn-input").value = parseInt(result.etn, 10) || 1;
                     }
+                    // The imported bulletin's own VTEC action wins, so importing a statement
+                    // lands on CON/CAN/EXP instead of resetting to NEW.
                     var actionSel = document.getElementById("action-select");
-                    actionSel.value = (result.action === "COR") ? "COR" : "NEW";
+                    var importedAction = ["NEW", "CON", "CAN", "EXP", "EXT", "COR"].indexOf(result.action) !== -1
+                        ? result.action : "NEW";
+                    pendingAction = importedAction;
+                    actionSel.value = importedAction;
 
                     if (result.startTime instanceof Date && !isNaN(result.startTime.getTime())) {
                         document.getElementById("issued-input").value = formatLocalDatetime(result.startTime);
@@ -2162,6 +2468,9 @@
                     applyFormState(saved.form);
                     savedBullets = saved.bullets && saved.bullets.length ? saved.bullets : null;
                     if (saved.fillIns) fillInValues = saved.fillIns;
+                    if (saved.followupBaseline && saved.followupBaseline.areas) {
+                        followupBaseline = saved.followupBaseline;
+                    }
                     updateBearingLabel();
                 }
 

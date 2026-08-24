@@ -9,9 +9,28 @@
     var WMO_PRODUCT_PREFIX = {
         TOR: "WFUS",
         SVR: "WUUS",
+        SVS: "WWUS",
         EWW: "WUUS",
         FFW: "WGUS",
-        SPS: "WWUS"
+        FFS: "WGUS",
+        FLW: "WGUS",
+        FLS: "WGUS",
+        SMW: "WHUS",
+        MWS: "WHUS",
+        SPS: "WWUS",
+        NOW: "FPUS",
+        SQW: "WWUS",
+        DSW: "WWUS",
+        FRW: "WWUS",
+        AWW: "WWUS"
+    };
+
+    /** VTEC phenomenon each PIL defaults to when the bullet config does not name one. */
+    var PRODUCT_PHENOMENA = {
+        TOR: "TO", SVR: "SV", SVS: "SV", EWW: "EW",
+        FFW: "FF", FFS: "FF", FLW: "FA", FLS: "FA",
+        SMW: "MA", MWS: "MA", SQW: "SQ", DSW: "DS",
+        SPS: "SP", NOW: "SP", FRW: "FW", AWW: "AW"
     };
 
     var WMO_REGION_FALLBACK = {
@@ -170,6 +189,15 @@
 
         var ugcline = UGC.build(areas, expire, "C");
 
+        // Followup state. cancelareas are the areas that were in the original warning but have
+        // dropped out of the current polygon; they get their own UGC line and VTEC segment.
+        // null rather than [] when nothing was dropped: the templates gate their CAN segment on
+        // #if(${cancelareas}), and an empty list would still emit a segment with an empty UGC.
+        var cancelareas = (opts.cancelareas && opts.cancelareas.length) ? opts.cancelareas : null;
+        var ugclinecan  = cancelareas ? UGC.build(cancelareas, expire, "C") : "";
+        var phenomena   = opts.phenomena || PRODUCT_PHENOMENA[productId] || "SV";
+        var significance = opts.significance || "W";
+
         return {
 
             WMOId:        WMOId,
@@ -195,6 +223,15 @@
             secondtimezone: secondtimezone,
 
             ugcline:       ugcline,
+            ugclinecan:    ugclinecan,
+            cancelareas:   cancelareas,
+            cancelaffectedCounties: opts.cancelaffectedCounties || cancelareas || [],
+            affectedCounties:       opts.affectedCounties || areas,
+            phenomena:     phenomena,
+            significance:  significance,
+            oldvtec:       opts.oldvtec || etn,
+            ic:            opts.ic || "ER",
+            floodic:       opts.floodic || opts.ic || "ER",
             areas:         areas,
             areaPoly:      areaPoly,
             eventLocation: eventLocation,

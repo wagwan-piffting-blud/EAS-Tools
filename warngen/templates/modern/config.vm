@@ -41,7 +41,7 @@
 ### "A SEVERE THUNDERSTORM WAS LOCATED NEAR PODUNK"
 ### ONE VARIABLE IS SET FOR A SINGLE STORM, THE OTHER FOR A LINE OF STORMS
 #set ($useSecondReferenceCell = true)
-#set ($useSecondReferenceLine = false) 
+#set ($useSecondReferenceLine = false)
 
 ### INCLUDE STATE ABBREVIATIONS WITH ZONE LISTING IN MND HEADER? true or false
 ###

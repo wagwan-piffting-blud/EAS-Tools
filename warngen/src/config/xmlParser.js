@@ -43,13 +43,19 @@
             phensigs:        textsOf(root, "phensig"),
             defaultDuration: parseInt(textOf(root, "defaultDuration") || "0", 10),
             durations:       textsOf(root, "duration").map(function (d) { return parseInt(d, 10); }),
-            actions:         {}
+            actions:         {},
+            groups:          [],
+            actionList:      []
         };
 
         var bags = root.getElementsByTagName("bulletActionGroup");
         for (var i = 0; i < bags.length; i++) {
             var bag = bags[i];
-            var action = bag.getAttribute("action") || "NEW";
+
+            // Followup configs open with an action-less group holding a "select a followup"
+            // title. It is a placeholder, not a NEW action, and must not reach the action list.
+            var action = bag.getAttribute("action");
+            if (!action) continue;
             var bulletEls = bag.getElementsByTagName("bullet");
             var bullets = [];
             for (var j = 0; j < bulletEls.length; j++) {
@@ -64,12 +70,45 @@
                     showString:  b.getAttribute("showString")
                 });
             }
-            result.actions[action] = bullets;
+
+            // Followup configs carry one group per action *and* phenomenon: a severe weather
+            // statement has separate SV and TO groups for every one of CAN/CON/EXP.
+            result.groups.push({
+                action:  action,
+                phen:    bag.getAttribute("phen") || "",
+                sig:     bag.getAttribute("sig") || "W",
+                bullets: bullets
+            });
+            if (result.actionList.indexOf(action) === -1) result.actionList.push(action);
+            if (!result.actions[action]) result.actions[action] = bullets;
         }
         return result;
     }
 
+    /** Phenomenon codes offered for an action, in document order. */
+    function phensForAction(cfg, action) {
+        var out = [];
+        (cfg.groups || []).forEach(function (g) {
+            if (g.action !== action || !g.phen) return;
+            if (out.indexOf(g.phen) === -1) out.push(g.phen);
+        });
+        return out;
+    }
+
+    /** Bullets for an action/phenomenon pair, falling back to the action's first group. */
+    function bulletsFor(cfg, action, phen) {
+        var groups = cfg.groups || [];
+        for (var i = 0; i < groups.length; i++) {
+            if (groups[i].action === action && (!phen || groups[i].phen === phen)) {
+                return groups[i].bullets;
+            }
+        }
+        return (cfg.actions || {})[action] || [];
+    }
+
     return {
-        parseBulletConfig: parseBulletConfig
+        parseBulletConfig: parseBulletConfig,
+        phensForAction:    phensForAction,
+        bulletsFor:        bulletsFor
     };
 }));

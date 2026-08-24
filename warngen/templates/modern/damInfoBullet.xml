@@ -1,11 +1,11 @@
-<!-- 
-    This is an absolute override file, indicating that a higher priority 
+<!--
+    This is an absolute override file, indicating that a higher priority
     version of the file will completely replace a lower priority version
-    of the file. 
+    of the file.
 -->
 <!-- The following is an example on how to set up the bullets for a site
      specific dam break -->
-<!-- 
+<!--
 <damInfoBullets>
 <damInfoBullet bulletGroup="dam" bulletText="Big Rock Dam (Ray/Lafayette Counties)" bulletName="BigRockDam"  parseString="BIG ROCK" showString="BIG ROCK DAM" coords="LAT...LON 3917 9405 3923 9387 3919 9385 3913 9394 3911 9405"/>
 <damInfoBullet bulletGroup="scenario" bulletText="scenario - high fast" bulletName="BigRockhighfast"  parseString="COMPLETE FAILURE OF BIG ROCK" showString="BIG ROCK DAM"/>

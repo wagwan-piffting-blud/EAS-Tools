@@ -54,7 +54,7 @@ THIS IS A TEST MESSAGE. ##
 #set($eventType = "a shower")
 #set($pathcastLead = "This shower will be near... ")
 #set($otherLead = ${pathcastLead})
-#if(${list.contains(${bullets}, "rainShower")})
+#if($bullets.contains("rainShower"))
 #if(${stormType} == "line")
 	#set($eventType = "showers")
 	#set($pathcastLead = "These showers will be near... ")
@@ -67,7 +67,7 @@ THIS IS A TEST MESSAGE. ##
 	#set($reportType2 = "${otherLead} was")
 #end
 #end
-#if(${list.contains(${bullets}, "snowShower")})
+#if($bullets.contains("snowShower"))
 #if(${stormType} == "line")
 	#set($eventType = "snow showers")
 	#set($pathcastLead = "These snow showers will be near... ")
@@ -80,43 +80,43 @@ THIS IS A TEST MESSAGE. ##
 	#set($reportType2 = "${otherLead} was")
 #end
 #end
-#if(${list.contains(${bullets}, "snowSquall")})
+#if($bullets.contains("snowSquall"))
 	#set($eventType = "a snow squall")
 	#set($pathcastLead = "The snow squalls will be near... ")
 	#set($otherLead = "The snow squalls")
 	#set($reportType2 = "${otherLead} were")
 #end
-#if(${list.contains(${bullets}, "leadingRain")})
+#if($bullets.contains("leadingRain"))
 	#set($eventType = "the leading edge of an area of rain")
 	#set($pathcastLead = "The rain will begin at ")
 	#set($otherLead = "the rain")
 	#set($reportType2 = "${otherLead} was")
 #end
-#if(${list.contains(${bullets}, "leadingSnow")})
+#if($bullets.contains("leadingSnow"))
 	#set($eventType = "the leading edge of an area of snow")
 	#set($pathcastLead = "The snow will begin at ")
 	#set($otherLead = "the snow")
 	#set($reportType2 = "${otherLead} was")
 #end
-#if(${list.contains(${bullets}, "backedgeRain")})
+#if($bullets.contains("backedgeRain"))
 	#set($eventType = "the back edge of an area of rain")
 	#set($pathcastLead = "The rain will end at ")
 	#set($otherLead = "the rain")
 	#set($reportType2 = "${otherLead} was")
 #end
-#if(${list.contains(${bullets}, "backedgeSnow")})
+#if($bullets.contains("backedgeSnow"))
 	#set($eventType = "the back edge of an area of snow")
 	#set($pathcastLead = "The snow will end at ")
 	#set($otherLead = "the snow")
 	#set($reportType2 = "${otherLead} WAS")
 #end
-#if(${list.contains(${bullets}, "gFront")})
+#if($bullets.contains("gFront"))
 	#set($eventType = "a gust front")
 	#set($pathcastLead = "The gust front will be near... ")
 	#set($otherLead = "The gust front")
 	#set($reportType2 = "${otherLead} was")
 #end
-#if(${list.contains(${bullets}, "cFront")})
+#if($bullets.contains("cFront"))
 	#set($eventType = "a cold front")
 	#set($pathcastLead = "The cold front will be near... ")
 	#set($otherLead = "The cold front")
@@ -127,25 +127,25 @@ THIS IS A TEST MESSAGE. ##
 ## and based on selections above.
 #######################################################################
 #set($report = "!** YOU DIDN'T SELECT A BASIS **! ${eventType}")
-#if(${list.contains(${bullets}, "doppler")})
+#if($bullets.contains("doppler"))
   #set($report = "Doppler radar indicated ${eventType} ")
 #end
-#if(${list.contains(${bullets}, "trainedSpotters")})
+#if($bullets.contains("trainedSpotters"))
   #set($report = "trained weather spotters reported ${eventType} ")
 #end
-#if(${list.contains(${bullets}, "lawEnforcement")})
+#if($bullets.contains("lawEnforcement"))
   #set($report = "local law enforcement reported ${eventType} ")
 #end
-#if(${list.contains(${bullets}, "public")})
+#if($bullets.contains("public"))
   #set($report = "the public reported ${eventType} ")
 #end
-#if(${list.contains(${bullets}, "satellite")})
+#if($bullets.contains("satellite"))
   #set($report = "satellite imagery indicated ${eventType} ")
 #end
 ######################################################
 ###### Storm current location description   ##########
 ######################################################
-#if(${list.contains(${bullets}, "blankStatement")})
+#if($bullets.contains("blankStatement"))
 .NOW...
 
 #else
@@ -154,9 +154,9 @@ THIS IS A TEST MESSAGE. ##
 #thirdBullet(${dateUtil},${event},${timeFormat},${localtimezone},${secondtimezone}), ${report}##
 ##Many of the variables passed below are controlled by config.vm
 #if(${stormType} == "line")
-#handleClosestPoints(${list}, ${closestPoints}, ${otherClosestPoints}, ${stormType}, ${nearPhrase} , ${maxLandNearDistance}, ${overPhrase}, ${maxLandOverDistance}, ${landDistanceUnits}, ${useSecondReferenceLine})
+#handleClosestPoints(${closestPoints}, ${otherClosestPoints}, ${stormType}, ${nearPhrase} , ${maxLandNearDistance}, ${overPhrase}, ${maxLandOverDistance}, ${landDistanceUnits}, ${useSecondReferenceLine})
 #else
-#handleClosestPoints(${list}, ${closestPoints}, ${otherClosestPoints}, ${stormType}, ${nearPhrase} , ${maxLandNearDistance}, ${overPhrase}, ${maxLandOverDistance}, ${landDistanceUnits}, ${useSecondReferenceCell})
+#handleClosestPoints(${closestPoints}, ${otherClosestPoints}, ${stormType}, ${nearPhrase} , ${maxLandNearDistance}, ${overPhrase}, ${maxLandOverDistance}, ${landDistanceUnits}, ${useSecondReferenceCell})
 #end
 #if(${movementSpeed} < ${landStationary} || ${stationary})
 . ${reportType2} nearly stationary.
@@ -171,13 +171,13 @@ THIS IS A TEST MESSAGE. DO NOT TAKE ACTION BASED ON THIS MESSAGE.
 #################################################
 ## Set Pathcast
 #################################################
-#if(${list.contains(${bullets}, "pathcast")})
+#if($bullets.contains("pathcast"))
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE. ##
 #end
 #pathCast("${pathcastLead}" ${otherLead} ${pathCast} ${otherPoints} ${areas} ${dateUtil} ${timeFormat} 0)
 
-#elseif(${list.contains(${bullets}, "listofcities")})
+#elseif($bullets.contains("listofcities"))
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE. ##
 #end
@@ -189,19 +189,19 @@ THIS IS A TEST MESSAGE. ##
 
 #end
 
-#if(${list.contains(${bullets}, "gustFrontPassage")})
+#if($bullets.contains("gustFrontPassage"))
 Gusty winds to !**WIND SPEED**! mph will accompany the front.
 
 #end
-#if(${list.contains(${bullets}, "frontalPassage")})
+#if($bullets.contains("frontalPassage"))
 Winds behind the cold front will suddenly shift to the !** DIRECTION **! and increase to !** SPEED **! mph.
 
 #end
-#if(${list.contains(${bullets}, "heavySnow")})
+#if($bullets.contains("heavySnow"))
 Heavy falling and blowing snow will create near zero visibility.
 
 #end
-#if(${list.contains(${bullets}, "snowAmt")})
+#if($bullets.contains("snowAmt"))
 Locations can expect !** EXPECTED SNOW **! inches of snow.
 
 #end

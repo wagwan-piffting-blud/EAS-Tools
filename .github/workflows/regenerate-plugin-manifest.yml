@@ -1,0 +1,56 @@
+# Auto-regenerates assets/audacity_plugins/manifest.json whenever plugin DLLs change.
+name: Regenerate plugin manifest
+
+on:
+  push:
+    branches: ["main"]
+    # Trigger on any change inside the plugin folder, EXCEPT the manifest itself (the negation
+    # stops the bot's own manifest commit from re-triggering this workflow) and _archive/,
+    # which is deliberately not part of the manifest.
+    paths:
+      - "assets/audacity_plugins/**"
+      - "!assets/audacity_plugins/manifest.json"
+      - "!assets/audacity_plugins/_archive/**"
+      - "tools/generate-plugin-manifest.mjs"
+
+  # Allows manual regeneration from the Actions tab.
+  workflow_dispatch:
+
+# Needed so the GITHUB_TOKEN can push the regenerated manifest back.
+permissions:
+  contents: write
+
+# If several plugin pushes land quickly, only finish the newest regeneration.
+concurrency:
+  group: "plugin-manifest-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Warnings (shadowed norms, Debug builds, x64 binaries) surface as run annotations;
+      # only a hard problem — an unreadable DLL or an alias pointing at a missing file —
+      # fails the step and leaves the manifest untouched.
+      - name: Regenerate manifest
+        run: node tools/generate-plugin-manifest.mjs
+
+      - name: Commit and push if changed
+        run: |
+          if [ -n "$(git status --porcelain assets/audacity_plugins/manifest.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add assets/audacity_plugins/manifest.json
+            git commit -m "chore: regenerate audacity plugin manifest"
+            git push
+          else
+            echo "Manifest already up to date; nothing to commit."
+          fi

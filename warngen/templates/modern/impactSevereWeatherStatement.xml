@@ -1,7 +1,7 @@
-<!-- 
-    This is an absolute override file, indicating that a higher priority 
+<!--
+    This is an absolute override file, indicating that a higher priority
     version of the file will completely replace a lower priority version
-    of the file. 
+    of the file.
 -->
 <!-- Severe Weather Statement configuration -->
 <!-- MODIFIED BY EVAN BOOKBINDER WFO EAX 3-24-2011 - INITIAL REWRITE
@@ -30,6 +30,10 @@
         were not selected at the same time when only one was selected DR 20132
      Phil Kurimski   03-21-2018 Added Torrential Rainfall CTA to TOR section DR 20671
      Phil Kurimski   05-13-2020 IBW Svr Tag changes DCS 22060
+     Mike Rega       06-23-2021 DR 21460 add Radar to TDS sig menu text
+     Evan Bookbinder 7-29-2021 corrected hail wind menu DR 22809
+     Evan Bookbinder 5-11-2023 fixed parse string for wind speeds to avoid picking up
+                     HAZARD wind for fast storm motion instead of wind tag DR 2034179
 -->
 <!--
 	Velocity Variables:
@@ -55,7 +59,7 @@ PLACED IN FULL BELOW THE INCLUDE LINE BELOW. -->
 
 <!-- Include Various geospatial XML files to create their objects. These are *NOT*
 turned on unless the corresponding .vm file is turned on in a given template's .vm file
--->  
+-->
 <include file="mileMarkers.xml"/>
 <!-- To enable, make sure mileMarkers.vm is added/uncommented in the impactSevereWeatherStatement.vm file -->
 <include file="pointMarkers.xml"/>
@@ -67,8 +71,8 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <!-- Config distance/speed units -->
  <unitDistance>mi</unitDistance>
  <unitSpeed>mph</unitSpeed>
- 
-  <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+
+  <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE.
  	The various menu items are also the different maps
  	that can be loaded with each template. -->
  <maps>
@@ -83,7 +87,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <followup>CAN</followup>
   <followup>EXP</followup>
  </followups>
- 
+
  <!-- Product ID: nnn id of the product -->
  <productId>SVS</productId>
 
@@ -92,24 +96,24 @@ turned on unless the corresponding .vm file is turned on in a given template's .
    <phensig>SV.W</phensig>
    <phensig>TO.W</phensig>
  </phensigs>
- 
+
  <includedWatches>
   <includedWatch>TO.A</includedWatch>
   <includedWatch>SV.A</includedWatch>
  </includedWatches>
- 
+
  <enableRestart>false</enableRestart>
 
   <!-- Enable/disables the system to lock text based on various patterns -->
  <autoLockText>true</autoLockText>
- 
+
  <!-- durations: the list of possible durations of the svs -->
  <!-- THIS REALLY SERVES NO PURPOSE BUT WILL CRASH WARNGEN IF REMVOED -->
  <defaultDuration>30</defaultDuration>
  <durations>
   <duration>30</duration>
  </durations>
- 
+
 <bulletActionGroups>
 <bulletActionGroup>
  <bullets>
@@ -160,7 +164,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletText="********* CANCELLATION INFO ********" bulletType="title"/>
   <bullet bulletName="weakened" bulletText="Storm Weakened" bulletGroup="canexp1"/>
   <bullet bulletName="movedout" bulletText="Storm moved out of warned area" bulletGroup="canexp1"/>
-  <bullet bulletName="wkndandmoved" bulletText="Storm weakened and moved out of warned area" bulletGroup="canexp1"/> 
+  <bullet bulletName="wkndandmoved" bulletText="Storm weakened and moved out of warned area" bulletGroup="canexp1"/>
   <bullet bulletName="tordowngrade" bulletText="Tornado Wrng Cancellation - Svr Still in Effect" bulletGroup="canexp1"/>
   <bullet bulletName="torreissue" bulletText="Tornado Wrng Expiring - Will Reissue" bulletGroup="canexp1"/>
     <bullet bulletText="" bulletType="title"/>
@@ -181,7 +185,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletText="********* END OF WARNING INFO ********" bulletType="title"/>
   <bullet bulletName="weakened" bulletText="Storm Weakened" bulletGroup="canexp1"/>
   <bullet bulletName="movedout" bulletText="Storm moved out of warned area" bulletGroup="canexp1"/>
-  <bullet bulletName="wkndandmoved" bulletText="Storm weakened and moved out of warned area" bulletGroup="canexp1"/> 
+  <bullet bulletName="wkndandmoved" bulletText="Storm weakened and moved out of warned area" bulletGroup="canexp1"/>
   <bullet bulletName="tordowngrade" bulletText="Tornado Wrng Cancellation - Svr Still in Effect" bulletGroup="canexp1"/>
   <bullet bulletName="torreissue" bulletText="Tornado Wrng Expiring - Will Reissue" bulletGroup="canexp1"/>
     <bullet bulletText="" bulletType="title"/>
@@ -209,7 +213,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletText="*********** BASIS FOR WARNING (CHOOSE 1) **********" bulletType="title"/>
   <bullet bulletName="dopplerTOR" bulletText="Doppler radar indicated" bulletGroup="group1" parseString="&quot;SOURCE...RADAR INDICATED&quot;,&quot;-PRODUCING BOTH TORNADOES AND EXTENSIVE STRAIGHT LINE&quot;"/>
   <bullet bulletName="dopplerSquallTOR" bulletText="Squall line w/ embedded tornadoes" bulletGroup="group1" parseString="&quot;SOURCE...RADAR INDICATED&quot;,&quot;PRODUCING BOTH TORNADOES AND EXTENSIVE STRAIGHT LINE&quot;"/>
-  <bullet bulletName="confirmedDopplerTOR" bulletText="Confirmed tornado (TDS sig - OBSERVED Tag)" bulletGroup="group1" parseString="SOURCE...RADAR CONFIRMED"/>
+  <bullet bulletName="confirmedDopplerTOR" bulletText="Radar confirmed tornado (TDS sig - OBSERVED Tag)" bulletGroup="group1" parseString="SOURCE...RADAR CONFIRMED"/>
   <bullet bulletName="spotterTOR" bulletText="Trained weather spotters reported a tornado" bulletGroup="group1" parseString="&quot;SOURCE...WEATHER SPOTTERS&quot;,&quot;-FUNNEL CLOUD&quot;"/>
   <bullet bulletName="lawEnforcementTOR" bulletText="Law enforcement reported a tornado" bulletGroup="group1" parseString="SOURCE...LAW ENFORCEMENT"/>
   <bullet bulletName="emergencyManagementTOR" bulletText="Emergency management reported a tornado" bulletGroup="group1" parseString="SOURCE...EMERGENCY MANAGEMENT"/>
@@ -227,11 +231,11 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   -->
   <!-- Uncomment out the following section to include wind threats -->
   <!--
-  <bullet bulletName="60mphWind" bulletText="60 mph wind" bulletGroup="toggle2" parseString="60 MPH"/>
-  <bullet bulletName="70mphWind" bulletText="70 mph wind" bulletGroup="toggle2" parseString="70 MPH"/>
-  <bullet bulletName="80mphWind" bulletText="80 mph wind" bulletGroup="toggle2" parseString="80 MPH"/>
-  <bullet bulletName="90mphWind" bulletText="90 mph wind" bulletGroup="toggle2" parseString="90 MPH"/>
-  <bullet bulletName="100mphWind" bulletText="100 mph wind" bulletGroup="toggle2" parseString="100 MPH"/>
+  <bullet bulletName="60mphWind" bulletText="60 mph wind" bulletGroup="toggle2" parseString="GUST...60 MPH"/>
+  <bullet bulletName="70mphWind" bulletText="70 mph wind" bulletGroup="toggle2" parseString="GUST...70 MPH"/>
+  <bullet bulletName="80mphWind" bulletText="80 mph wind" bulletGroup="toggle2" parseString="GUST...80 MPH"/>
+  <bullet bulletName="90mphWind" bulletText="90 mph wind" bulletGroup="toggle2" parseString="GUST...90 MPH"/>
+  <bullet bulletName="100mphWind" bulletText="100 mph wind" bulletGroup="toggle2" parseString="GUST...100 MPH"/>
   -->
   <bullet bulletName="noHail" bulletText="NO HAIL" bulletGroup="group2" parseString="0.00 IN"/>
   <bullet bulletName="smallHail" bulletText="Small Hail" bulletGroup="group2" parseString="&lt;.75 IN"/>
@@ -243,8 +247,9 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletName="tennisBallHail" bulletText="Tennis ball hail (2 1/2&quot;)" bulletGroup="group2" parseString="2.50 IN"/>
   <bullet bulletName="baseballHail" bulletText="Baseball size hail (2 3/4&quot;)" bulletGroup="group2" parseString="2.75 IN"/>
   <bullet bulletName="threeinchHail" bulletText="Three inch hail (3&quot;)" bulletGroup="group2" parseString="3.00 IN"/>
-  <bullet bulletName="softballHail" bulletText="Softball size hail (4&quot;)" bulletGroup="group2" parseString="4.00 IN"/>  
-  <bullet bulletName="grapefruitHail" bulletText="Grapefruit size hail (4 1/2&quot;)" bulletGroup="group2" parseString="4.50 IN"/>  
+  <bullet bulletName="softballHail" bulletText="Softball size hail (4&quot;)" bulletGroup="group2" parseString="4.00 IN"/>
+  <bullet bulletName="grapefruitHail" bulletText="Grapefruit size hail (4 1/2&quot;)" bulletGroup="group2" parseString="4.50 IN"/>
+  <bullet bulletName="dvdHail" bulletText="DVD size hail (5&quot;)" bulletGroup="toggle3" parseString="5.00 IN"/>
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText="******** ADDITIONAL REPORTS ********" bulletType="title"/>
   <bullet bulletName="addlTorInfo" bulletText="Select to include additional tornado/damage information..."/>
@@ -286,11 +291,11 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletName="publicSVR" bulletText="Public Reported" bulletGroup="radioset1" parseString="SOURCE...PUBLIC"/>
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText="*********** THREAT (CHOOSE 1 each wind/hail) **********" bulletType="title"/>
-  <bullet bulletName="60mphWind" bulletText="60 mph wind" bulletGroup="radioset2" parseString="60 MPH"/>
-  <bullet bulletName="70mphWind" bulletText="70 mph wind" bulletGroup="radioset2" parseString="70 MPH"/>
-  <bullet bulletName="80mphWind" bulletText="80 mph wind" bulletGroup="radioset2" parseString="80 MPH"/>
-  <bullet bulletName="90mphWind" bulletText="90 mph wind" bulletGroup="radioset2" parseString="90 MPH"/>
-  <bullet bulletName="100mphWind" bulletText="100 mph wind" bulletGroup="radioset2" parseString="100 MPH"/>
+  <bullet bulletName="60mphWind" bulletText="60 mph wind" bulletGroup="radioset2" parseString="GUST...60 MPH"/>
+  <bullet bulletName="70mphWind" bulletText="70 mph wind" bulletGroup="radioset2" parseString="GUST...70 MPH"/>
+  <bullet bulletName="80mphWind" bulletText="80 mph wind" bulletGroup="radioset2" parseString="GUST...80 MPH"/>
+  <bullet bulletName="90mphWind" bulletText="90 mph wind" bulletGroup="radioset2" parseString="GUST...90 MPH"/>
+  <bullet bulletName="100mphWind" bulletText="100 mph wind" bulletGroup="radioset2" parseString="GUST...100 MPH"/>
   <bullet bulletName="pennyHail" bulletText="Penny size hail (3/4&quot;)" bulletGroup="radioset3" parseString="0.75 IN"/>
   <bullet bulletName="nickelHail" bulletText="Nickel size hail (7/8&quot;)" bulletGroup="radioset3" parseString="0.88 IN"/>
   <bullet bulletName="quarterHail" bulletText="Quarter size hail (1&quot;)" bulletGroup="radioset3" parseString="1.00 IN"/>
@@ -301,10 +306,12 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletName="tennisBallHail" bulletText="Tennis ball hail (2 1/2&quot;)" bulletGroup="radioset3" parseString="2.50 IN"/>
   <bullet bulletName="baseballHail" bulletText="Baseball size hail (2 3/4&quot;)" bulletGroup="radioset3" parseString="2.75 IN"/>
   <bullet bulletName="threeinchHail" bulletText="Three inch hail (3&quot;)" bulletGroup="radioset3" parseString="3.00 IN"/>
-  <bullet bulletName="softballHail" bulletText="Softball size hail (4&quot;)" bulletGroup="radioset3" parseString="4.00 IN"/>  
+  <bullet bulletName="softballHail" bulletText="Softball size hail (4&quot;)" bulletGroup="radioset3" parseString="4.00 IN"/>
   <bullet bulletName="grapefruitHail" bulletText="Grapefruit size hail (4 1/2&quot;)" bulletGroup="radioset3" parseString="4.50 IN"/>
+  <bullet bulletName="dvdHail" bulletText="DVD size hail (5&quot;)" bulletGroup="toggle3" parseString="5.00 IN"/>
   <bullet bulletText="" bulletType="title"/>
-  <bullet bulletText="******** SELECT FROM BELOW IF EITHER SEVERE HAIL OR WIND OBSERVED ********" bulletType="title"/>
+  <bullet bulletText="******** SELECT FROM BELOW IF EITHER  ********" bulletType="title"/>
+  <bullet bulletText="******** SEVERE HAIL OR WIND OBSERVED ********" bulletType="title"/>
   <bullet bulletName="observedHail" bulletText="Select for Observed Hail" parseString="HAIL THREAT...OBSERVED"/>
   <bullet bulletName="observedWind" bulletText="Select for Observed Wind" parseString="WIND THREAT...OBSERVED"/>
   <bullet bulletText="" bulletType="title"/>
@@ -358,7 +365,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletText="*********** BASIS FOR WARNING (CHOOSE 1) **********" bulletType="title"/>
   <bullet bulletName="dopplerTOR" bulletText="Doppler radar indicated" bulletGroup="group1" parseString="&quot;SOURCE...RADAR INDICATED&quot;,&quot;-PRODUCING BOTH TORNADOES AND EXTENSIVE STRAIGHT LINE&quot;"/>
   <bullet bulletName="dopplerSquallTOR" bulletText="Squall line w/ embedded tornadoes" bulletGroup="group1" parseString="&quot;SOURCE...RADAR INDICATED&quot;,&quot;PRODUCING BOTH TORNADOES AND EXTENSIVE STRAIGHT LINE&quot;"/>
-  <bullet bulletName="confirmedDopplerTOR" bulletText="Confirmed tornado (TDS sig - OBSERVED Tag)" bulletGroup="group1" parseString="SOURCE...RADAR CONFIRMED"/>
+  <bullet bulletName="confirmedDopplerTOR" bulletText="Radar confirmed tornado (TDS sig - OBSERVED Tag)" bulletGroup="group1" parseString="SOURCE...RADAR CONFIRMED"/>
   <bullet bulletName="spotterTOR" bulletText="Trained weather spotters reported a tornado" bulletGroup="group1" parseString="&quot;SOURCE...WEATHER SPOTTERS&quot;,&quot;-FUNNEL CLOUD&quot;"/>
   <bullet bulletName="lawEnforcementTOR" bulletText="Law enforcement reported a tornado" bulletGroup="group1" parseString="SOURCE...LAW ENFORCEMENT"/>
   <bullet bulletName="emergencyManagementTOR" bulletText="Emergency management reported a tornado" bulletGroup="group1" parseString="SOURCE...EMERGENCY MANAGEMENT"/>
@@ -376,11 +383,11 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   -->
   <!-- Uncomment out the following section to include wind threats -->
   <!--
-  <bullet bulletName="60mphWind" bulletText="60 mph wind" bulletGroup="toggle2" parseString="60 MPH"/>
-  <bullet bulletName="70mphWind" bulletText="70 mph wind" bulletGroup="toggle2" parseString="70 MPH"/>
-  <bullet bulletName="80mphWind" bulletText="80 mph wind" bulletGroup="toggle2" parseString="80 MPH"/>
-  <bullet bulletName="90mphWind" bulletText="90 mph wind" bulletGroup="toggle2" parseString="90 MPH"/>
-  <bullet bulletName="100mphWind" bulletText="100 mph wind" bulletGroup="toggle2" parseString="100 MPH"/>
+  <bullet bulletName="60mphWind" bulletText="60 mph wind" bulletGroup="toggle2" parseString="GUST...60 MPH"/>
+  <bullet bulletName="70mphWind" bulletText="70 mph wind" bulletGroup="toggle2" parseString="GUST...70 MPH"/>
+  <bullet bulletName="80mphWind" bulletText="80 mph wind" bulletGroup="toggle2" parseString="GUST...80 MPH"/>
+  <bullet bulletName="90mphWind" bulletText="90 mph wind" bulletGroup="toggle2" parseString="GUST...90 MPH"/>
+  <bullet bulletName="100mphWind" bulletText="100 mph wind" bulletGroup="toggle2" parseString="GUST...100 MPH"/>
   -->
   <bullet bulletName="noHail" bulletText="NO HAIL" bulletGroup="group2" parseString="0.00 IN"/>
   <bullet bulletName="smallHail" bulletText="Small Hail" bulletGroup="group2" parseString="&lt;.75 IN"/>
@@ -394,6 +401,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletName="threeinchHail" bulletText="Three inch hail (3&quot;)" bulletGroup="group2" parseString="3.00 IN"/>
   <bullet bulletName="softballHail" bulletText="Softball size hail (4&quot;)" bulletGroup="group2" parseString="4.00 IN"/>
   <bullet bulletName="grapefruitHail" bulletText="Grapefruit size hail (4 1/2&quot;)" bulletGroup="group2" parseString="4.50 IN"/>
+  <bullet bulletName="dvdHail" bulletText="DVD size hail (5&quot;)" bulletGroup="toggle3" parseString="5.00 IN"/>
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText="******** ADDITIONAL REPORTS ********" bulletType="title"/>
   <bullet bulletName="addlTorInfo" bulletText="Select to include additional tornado/damage information..."/>
@@ -434,11 +442,11 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletName="publicSVR" bulletText="Public Reported" bulletGroup="radioset1" parseString="SOURCE...PUBLIC"/>
   <bullet bulletText="" bulletType="title"/>
   <bullet bulletText="*********** THREAT (CHOOSE 1 each wind/hail) **********" bulletType="title"/>
-  <bullet bulletName="60mphWind" bulletText="60 mph wind" bulletGroup="radioset2" parseString="60 MPH"/>
-  <bullet bulletName="70mphWind" bulletText="70 mph wind" bulletGroup="radioset2" parseString="70 MPH"/>
-  <bullet bulletName="80mphWind" bulletText="80 mph wind" bulletGroup="radioset2" parseString="80 MPH"/>
-  <bullet bulletName="90mphWind" bulletText="90 mph wind" bulletGroup="radioset2" parseString="90 MPH"/>
-  <bullet bulletName="100mphWind" bulletText="100 mph wind" bulletGroup="radioset2" parseString="100 MPH"/>
+  <bullet bulletName="60mphWind" bulletText="60 mph wind" bulletGroup="radioset2" parseString="GUST...60 MPH"/>
+  <bullet bulletName="70mphWind" bulletText="70 mph wind" bulletGroup="radioset2" parseString="GUST...70 MPH"/>
+  <bullet bulletName="80mphWind" bulletText="80 mph wind" bulletGroup="radioset2" parseString="GUST...80 MPH"/>
+  <bullet bulletName="90mphWind" bulletText="90 mph wind" bulletGroup="radioset2" parseString="GUST...90 MPH"/>
+  <bullet bulletName="100mphWind" bulletText="100 mph wind" bulletGroup="radioset2" parseString="GUST...100 MPH"/>
   <bullet bulletName="pennyHail" bulletText="Penny size hail (3/4&quot;)" bulletGroup="radioset3" parseString="0.75 IN"/>
   <bullet bulletName="nickelHail" bulletText="Nickel size hail (7/8&quot;)" bulletGroup="radioset3" parseString="0.88 IN"/>
   <bullet bulletName="quarterHail" bulletText="Quarter size hail (1&quot;)" bulletGroup="radioset3" parseString="1.00 IN"/>
@@ -451,8 +459,10 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletName="threeinchHail" bulletText="Three inch hail (3&quot;)" bulletGroup="radioset3" parseString="3.00 IN"/>
   <bullet bulletName="softballHail" bulletText="Softball size hail (4&quot;)" bulletGroup="radioset3" parseString="4.00 IN"/>
   <bullet bulletName="grapefruitHail" bulletText="Grapefruit size hail (4 1/2&quot;)" bulletGroup="radioset3" parseString="4.50 IN"/>
+  <bullet bulletName="dvdHail" bulletText="DVD size hail (5&quot;)" bulletGroup="toggle3" parseString="5.00 IN"/>
   <bullet bulletText="" bulletType="title"/>
-  <bullet bulletText="******** SELECT FROM BELOW IF EITHER SEVERE HAIL OR WIND OBSERVED ********" bulletType="title"/>
+  <bullet bulletText="******** SELECT FROM BELOW IF EITHER  ********" bulletType="title"/>
+  <bullet bulletText="******** SEVERE HAIL OR WIND OBSERVED ********" bulletType="title"/>
   <bullet bulletName="observedHail" bulletText="Select for Observed Hail" parseString="HAIL THREAT...OBSERVED"/>
   <bullet bulletName="observedWind" bulletText="Select for Observed Wind" parseString="WIND THREAT...OBSERVED"/>
   <bullet bulletText="" bulletType="title"/>

@@ -4,7 +4,7 @@
                  Phil Kurimski  11-28-2017 Added River Drainages and removed local from local law enforcement and rain from automated rain gauges
                  Phil Kurimski  12-01-2017 Changed Events section to be more concise
                  Phil Kurimski  03-21-2018 Fixed FFW Emergency and Urban Areas CTA Parse Strings DCS 20667
-                 Evan Bookbinder 06-05-2019 DR 21342 Remove obselete ffwEmer locked tag and migrate IBW rain rate to amount/duration                 
+                 Evan Bookbinder 06-05-2019 DR 21342 Remove obselete ffwEmer locked tag and migrate IBW rain rate to amount/duration
 -->
 
 <warngenConfig>
@@ -16,7 +16,7 @@ PLACED IN FULL BELOW THE INCLUDE LINE BELOW. -->
 
 <!-- Include Various geospatial XML files to create their objects. These are *NOT*
 turned on unless the corresponding .vm file is turned on in a given template's .vm file
--->  
+-->
 <include file="mileMarkers.xml"/>
 <!-- To enable, make sure mileMarkers.vm is added/uncommented in a WarnGen template's .vm file -->
 <include file="pointMarkers.xml"/>
@@ -26,17 +26,17 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <unitDistance>mi</unitDistance>
  <unitSpeed>mph</unitSpeed>
 
- <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE. 
+ <!-- Maps to load on template selection. Refer to 'Maps' menu in CAVE.
     The various menu items are also the different maps
     that can be loaded with each template. -->
  <maps>
   <map>County Names</map>
   <map>County Warning Areas</map>
   <!--  <map>FFMP Small Stream Basin Links</map> -->
-  <!--  <map>Major Rivers</map> --> 
+  <!--  <map>Major Rivers</map> -->
  </maps>
 
- <!-- Followups: VTEC actions of allowable followups when this template is selected 
+ <!-- Followups: VTEC actions of allowable followups when this template is selected
     Each followup will become available when the appropriate time range permits.
  -->
  <followups>
@@ -45,7 +45,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <followup>CAN</followup>
   <followup>EXP</followup>
  </followups>
- 
+
  <!-- Product ID: nnn id of the product -->
  <productId>FFS</productId>
 
@@ -53,26 +53,26 @@ turned on unless the corresponding .vm file is turned on in a given template's .
  <phensigs>
    <phensig>FF.W</phensig>
  </phensigs>
- 
+
   <!-- Enables/disables user from selecting the Restart button the GUI -->
  <enableRestart>false</enableRestart>
- 
+
    <!-- Enable/disables the system to lock text based on various patterns -->
  <autoLockText>true</autoLockText>
- 
- <!-- if trackEnabled is set to 'true' = makes third bullet initial position and movement 
-as well as fourth bullet pathcast (which are optional info) available to forecaster.   
+
+ <!-- if trackEnabled is set to 'true' = makes third bullet initial position and movement
+as well as fourth bullet pathcast (which are optional info) available to forecaster.
 Must be paired with proper vm code (also commented out in flashFloodWarningFollowup.vm)! -->
-  <trackEnabled>false</trackEnabled> 
-  <!-- <trackEnabled>true</trackEnabled> --> 
- 
+  <trackEnabled>false</trackEnabled>
+  <!-- <trackEnabled>true</trackEnabled> -->
+
  <!-- durations: the list of possible durations of the warning -->
   <!-- THE DURATIONS REALLY SERVE NO PURPOSE IN A FOLLOWUP BUT WILL CRASH WARNGEN IF REMVOED -->
  <defaultDuration>30</defaultDuration>
  <durations>
   <duration>30</duration>
  </durations>
- 
+
 <pointSource variable="riverdrainages">
     <pointSource>ffmp_basins</pointSource>
     <geometryDecimationTolerance>0.064</geometryDecimationTolerance>
@@ -85,7 +85,7 @@ Must be paired with proper vm code (also commented out in flashFloodWarningFollo
     <withinPolygon>true</withinPolygon>
 </pointSource>
 
-<lockedGroupsOnFollowup>ic</lockedGroupsOnFollowup> 
+<lockedGroupsOnFollowup>ic</lockedGroupsOnFollowup>
 <bulletActionGroups>
 <bulletActionGroup>
  <bullets>
@@ -124,9 +124,9 @@ Must be paired with proper vm code (also commented out in flashFloodWarningFollo
   <bullet bulletText="*********** EVENTS (CHOOSE IF APPLICABLE) **********" bulletType="title"/>
   <bullet bulletName="thunder" bulletText="Thunderstorm(s) causing flooding" bulletGroup="event" bulletDefault="true" parseString="THUNDERSTORM"/>
   <bullet bulletName="flash" bulletText="Flash flooding occurring" parseString="FLASH FLOODING IS ALREADY OCCURRING."/>
-<!-- <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" showString="STATIONARY" parseString="STATIONARY"/> 
+<!-- <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" showString="STATIONARY" parseString="STATIONARY"/>
   <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" showString="MOVING" parseString="MOVING"/>
---> 
+-->
   <bullet bulletText="*********** (OPTIONAL) DEBRIS FLOW INFO **********" bulletType="title"/>
   <bullet bulletName="burnScar" bulletText="Burn scar area with debris flow" bulletGroup="addevent" parseString="BURN SCAR"/>
   <bullet bulletName="mudSlide" bulletText="Mud Slides" bulletGroup="addevent" parseString="MUD SLIDE"/>
@@ -185,8 +185,8 @@ Must be paired with proper vm code (also commented out in flashFloodWarningFollo
   <bullet bulletText="*********** EVENTS (CHOOSE IF APPLICABLE) **********" bulletType="title"/>
   <bullet bulletName="thunder" bulletText="Thunderstorm(s) causing flooding" bulletGroup="event" bulletDefault="true" parseString="THUNDERSTORM"/>
   <bullet bulletName="flash" bulletText="Flash flooding occurring" parseString="FLASH FLOODING IS ALREADY OCCURRING."/>
-<!-- <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" showString="STATIONARY" parseString="STATIONARY"/> 
-  <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" showString="MOVING" parseString="MOVING"/> 
+<!-- <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" showString="STATIONARY" parseString="STATIONARY"/>
+  <bullet bulletName="stormPosition" bulletText="* USE DOT to specify initial position *" showString="MOVING" parseString="MOVING"/>
 -->
   <bullet bulletText="*********** (OPTIONAL) DEBRIS FLOW INFO **********" bulletType="title"/>
   <bullet bulletName="burnScar" bulletText="Burn scar area with debris flow" bulletGroup="addevent" parseString="BURN SCAR"/>

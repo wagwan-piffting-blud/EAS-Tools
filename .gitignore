@@ -4,3 +4,4 @@
 pytest-cache*/
 tests/
 *.patch
+_archive/
