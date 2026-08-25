@@ -34,6 +34,14 @@
 ## Sites can use different airports by modifying the code below
 #######################################################################
 #set ($site = "!** YOU DIDN'T SELECT AN AIRPORT **!")
+#######################################################################
+## A localized airport list is supplied by the host application. AWIPS
+## sites hard-code their fields below instead; both paths still work.
+#######################################################################
+#if(${awwSiteId} && ${awwSiteId.length()} > 0)
+  #set ($site = "${awwSiteName} /${awwSiteId}/.")
+  #set ($awwId = "${awwSiteId}")
+#end
 #if($bullets.contains("SUM"))
   #set ($site = "Some Airport /SUM/.")
   #set ($awwId = "SUM")

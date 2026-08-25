@@ -1,0 +1,26 @@
+{
+    "_comment": [
+        "UGC marine prefix -> SAME state field. A marine SAME code is 0 + this field + the",
+        "UGC zone number, so ANZ350 becomes 073350.",
+        "Derived from the marine entries in same-us.json by tools/build-marine-same.mjs;",
+        "NWS SameCode.txt covers counties only and has no marine listing to fetch."
+    ],
+    "prefixes": {
+        "AM": "75",
+        "AN": "73",
+        "GM": "77",
+        "LC": "94",
+        "LE": "96",
+        "LH": "93",
+        "LM": "92",
+        "LO": "97",
+        "LS": "91",
+        "PH": "59",
+        "PK": "58",
+        "PM": "65",
+        "PS": "61",
+        "PZ": "57",
+        "PW": "70",
+        "SL": "98"
+    }
+}

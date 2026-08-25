@@ -297,7 +297,7 @@ async function initCrawlEditor() {
 
     const DEFAULT_VDS_BASE_DELAY = 10;
 
-    function createVdsExportState(ctx, lines) {
+    function createVdsExportState(ctx, lines, scaleX) {
         const normalizedLines = Array.isArray(lines) ? lines : [];
         const charMetrics = [];
         const lineWidths = [];
@@ -309,7 +309,7 @@ async function initCrawlEditor() {
 
             characters.forEach((char) => {
                 const glyph = char === '' ? ' ' : char;
-                const width = ctx.measureText(glyph).width;
+                const width = measureScaledWidth(ctx, glyph, scaleX);
                 metrics.push({
                     char,
                     offset: cursor,
@@ -418,28 +418,58 @@ async function initCrawlEditor() {
         });
     }
 
-    function createTextRenderer(ctx, outlineColor, outlineWidth) {
+    const DEFAULT_TEXT_WIDTH_PERCENT = 100;
+
+    const MIN_TEXT_WIDTH_PERCENT = 0;
+    const MAX_TEXT_WIDTH_PERCENT = 200;
+
+    // Number(null) and Number('') are both 0, and 0 is now a legal width, so an empty or
+    // missing control has to be caught before the numeric coercion or clearing the box
+    // would render the crawl invisible.
+    function clampTextWidthPercent(percent) {
+        if (percent === null || percent === undefined || percent === '') {
+            return DEFAULT_TEXT_WIDTH_PERCENT;
+        }
+        const parsed = Number(percent);
+        if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_TEXT_WIDTH_PERCENT;
+        return Math.min(MAX_TEXT_WIDTH_PERCENT, Math.max(MIN_TEXT_WIDTH_PERCENT, parsed));
+    }
+
+    // A scale of exactly 0 makes the canvas matrix non-invertible, which silently kills
+    // every later draw on that context, so the narrowest setting still keeps a sliver.
+    function normalizeTextScale(percent) {
+        return Math.max(0.001, clampTextWidthPercent(percent) / 100);
+    }
+
+    function measureScaledWidth(ctx, text, scaleX) {
+        return ctx.measureText(text).width * (Number.isFinite(scaleX) ? scaleX : 1);
+    }
+
+    function createTextRenderer(ctx, outlineColor, outlineWidth, scaleX) {
         const parsedWidth = Number(outlineWidth);
         const hasOutline = Boolean(outlineColor) && Number.isFinite(parsedWidth) && parsedWidth > 0;
+        const sx = Number.isFinite(scaleX) && scaleX > 0 ? scaleX : 1;
+        const stretched = sx !== 1;
 
-        if (!hasOutline) {
-            return (text, x, y) => {
-                if (text === undefined || text === null) return;
-                const stringText = typeof text === 'string' ? text : String(text);
-                if (!stringText) return;
-                ctx.fillText(stringText, x, y);
-            };
+        if (hasOutline) {
+            ctx.strokeStyle = outlineColor;
+            ctx.lineWidth = parsedWidth;
         }
 
-        ctx.strokeStyle = outlineColor;
-        ctx.lineWidth = parsedWidth;
+        const paint = hasOutline
+            ? (stringText, x, y) => { ctx.strokeText(stringText, x, y); ctx.fillText(stringText, x, y); }
+            : (stringText, x, y) => { ctx.fillText(stringText, x, y); };
 
         return (text, x, y) => {
             if (text === undefined || text === null) return;
             const stringText = typeof text === 'string' ? text : String(text);
             if (!stringText) return;
-            ctx.strokeText(stringText, x, y);
-            ctx.fillText(stringText, x, y);
+            if (!stretched) { paint(stringText, x, y); return; }
+            ctx.save();
+            ctx.translate(x, 0);
+            ctx.scale(sx, 1);
+            paint(stringText, 0, y);
+            ctx.restore();
         };
     }
 
@@ -839,12 +869,13 @@ async function initCrawlEditor() {
 
         const outlineWidth = Number(generator.outlineWidth);
         const scaledOutlineWidth = Number.isFinite(outlineWidth) ? Math.max(1, Math.round(outlineWidth * scale)) : undefined;
-        const renderText = createTextRenderer(captureCtx, generator.outlineColor, scaledOutlineWidth);
+        const textScaleX = normalizeTextScale(generator.textWidthPercent);
+        const renderText = createTextRenderer(captureCtx, generator.outlineColor, scaledOutlineWidth, textScaleX);
 
-        const vdsState = useVdsMode ? createVdsExportState(captureCtx, lines) : null;
+        const vdsState = useVdsMode ? createVdsExportState(captureCtx, lines, textScaleX) : null;
 
         const maxLineWidth = lines.reduce((maxWidth, line) => {
-            const width = captureCtx.measureText(line).width;
+            const width = measureScaledWidth(captureCtx, line, textScaleX);
             return width > maxWidth ? width : maxWidth;
         }, 0);
 
@@ -1214,11 +1245,12 @@ async function initCrawlEditor() {
             captureCtx.letterSpacing = `${kerningPx}px`;
         }
 
-        const renderText = createTextRenderer(captureCtx, generator.outlineColor, generator.outlineWidth);
-        const vdsState = useVdsMode ? createVdsExportState(captureCtx, lines) : null;
+        const textScaleX = normalizeTextScale(generator.textWidthPercent);
+        const renderText = createTextRenderer(captureCtx, generator.outlineColor, generator.outlineWidth, textScaleX);
+        const vdsState = useVdsMode ? createVdsExportState(captureCtx, lines, textScaleX) : null;
 
         const maxLineWidth = lines.reduce((maxWidth, line) => {
-            const width = captureCtx.measureText(line).width;
+            const width = measureScaledWidth(captureCtx, line, textScaleX);
             return width > maxWidth ? width : maxWidth;
         }, 0);
         const translation = (typeof generator._computeTopLeftTranslation === 'function')
@@ -2235,6 +2267,7 @@ async function initCrawlEditor() {
             this.repetitions = 0;
             this.crawlRepetitions = 0;
             this.kerningPercent = 0;
+            this.textWidthPercent = DEFAULT_TEXT_WIDTH_PERCENT;
             this._frameHistory = [];
             this._frameHistoryLimit = 15;
             this._responsiveViewportHandler = null;
@@ -2584,7 +2617,8 @@ async function initCrawlEditor() {
 
             if (this.vdsMode) {
                 this.ctx.textAlign = 'left';
-                const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth);
+                const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth,
+                    this._textScaleX());
                 const state = this._ensureVdsState(lines);
                 const maxLineWidth = state.maxLineWidth || 0;
                 const translation = this._computeTopLeftTranslation(maxLineWidth, lines.length);
@@ -2633,11 +2667,10 @@ async function initCrawlEditor() {
             }
 
             this.ctx.textAlign = 'center';
-            const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth);
-            const maxLineWidth = lines.reduce((maxWidth, line) => {
-                const width = this.ctx.measureText(line).width;
-                return width > maxWidth ? width : maxWidth;
-            }, 0);
+            const frameScaleX = this._textScaleX();
+            const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth,
+                frameScaleX);
+            const maxLineWidth = this._maxLineWidth(lines, frameScaleX);
             const translation = this._computeTopLeftTranslation(maxLineWidth, lines.length);
             const translationX = Number.isFinite(translation.x) ? translation.x : 0;
             const bounds = this._computeCrawlBounds(maxLineWidth);
@@ -2748,6 +2781,41 @@ async function initCrawlEditor() {
                 this.kerningPercent = parsed;
                 const px = (parsed / 100) * this.fontSize;
                 this.ctx.letterSpacing = `${px}px`;
+                this.startFromRightInitialized = false;
+                this._invalidateVdsState();
+                this._resetFrameHistory();
+            }
+        }
+
+        _textScaleX() {
+            return normalizeTextScale(this.textWidthPercent);
+        }
+
+        /**
+         * measureText on a crawl-length string is not cheap, and the widest line only
+         * changes when the text, font, spacing or width scale does -- never per frame.
+         * The key covers every input, so the cache invalidates itself rather than relying
+         * on callers to remember.
+         */
+        _maxLineWidth(lines, scaleX) {
+            const key = this.ctx.font + '|' + this.ctx.letterSpacing + '|' + scaleX + '|' + this.text;
+            if (this._lineWidthKey === key && Number.isFinite(this._lineWidthValue)) {
+                return this._lineWidthValue;
+            }
+            let widest = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const width = measureScaledWidth(this.ctx, lines[i], scaleX);
+                if (width > widest) widest = width;
+            }
+            this._lineWidthKey = key;
+            this._lineWidthValue = widest;
+            return widest;
+        }
+
+        setTextWidth(percent) {
+            const parsed = Number(percent);
+            if (Number.isFinite(parsed)) {
+                this.textWidthPercent = clampTextWidthPercent(parsed);
                 this.startFromRightInitialized = false;
                 this._invalidateVdsState();
                 this._resetFrameHistory();
@@ -2879,6 +2947,7 @@ async function initCrawlEditor() {
             }
 
             const lineWidths = [];
+            const vdsScaleX = this._textScaleX();
             const charMetrics = normalizedLines.map((line) => {
                 const metrics = [];
                 const characters = Array.from(line);
@@ -2886,7 +2955,7 @@ async function initCrawlEditor() {
 
                 characters.forEach((char) => {
                     const measuredChar = char === '' ? ' ' : char;
-                    const width = this.ctx.measureText(measuredChar).width;
+                    const width = measureScaledWidth(this.ctx, measuredChar, vdsScaleX);
                     metrics.push({
                         char,
                         offset: cursor,
@@ -3045,10 +3114,7 @@ async function initCrawlEditor() {
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
 
-            const maxLineWidth = lines.reduce((maxWidth, line) => {
-                const width = this.ctx.measureText(line).width;
-                return width > maxWidth ? width : maxWidth;
-            }, 0);
+            const maxLineWidth = this._maxLineWidth(lines, this._textScaleX());
 
             const bounds = this._computeCrawlBounds(maxLineWidth);
             this.offsetX = Number.isFinite(bounds.start) ? bounds.start : this.canvas.width / 2;
@@ -3060,7 +3126,8 @@ async function initCrawlEditor() {
             this._clearBackground();
             this.ctx.fillStyle = this.textColor;
             this.ctx.lineJoin = this.outlineJoin;
-            const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth);
+            const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth,
+                this._textScaleX());
             const releaseClip = this._applyCrawlClip(this.ctx, bounds.inset);
 
             const translation = this._computeTopLeftTranslation(maxLineWidth, lines.length);
@@ -4093,6 +4160,7 @@ async function initCrawlEditor() {
         let crawlTopLeftOffsetY = document.getElementById('crawlTopLeftPixelY').value;
         const repetitions = document.getElementById('crawlRepetitions').value;
         const crawlKerning = document.getElementById('crawlKerning').value;
+        const crawlTextWidth = document.getElementById('crawlTextWidth').value;
 
         if (crawlBackgroundMode === 'transparent') {
             bgColor = 'transparent';
@@ -4170,7 +4238,8 @@ async function initCrawlEditor() {
             crawlTopLeftOffsetX,
             crawlTopLeftOffsetY,
             repetitions,
-            crawlKerning
+            crawlKerning,
+            crawlTextWidth
         };
 
         localStorage.setItem(localStorageKey, JSON.stringify(settings));
@@ -4222,6 +4291,7 @@ async function initCrawlEditor() {
         generator.setVDSMode(useVDSMode);
         generator.setRepetitions(repetitions);
         generator.setKerning(crawlKerning);
+        generator.setTextWidth(crawlTextWidth);
         setPauseButtonState(false);
         resumeDasdecRotationState();
         window.crawlGenerator._updateButtons(false);
@@ -4780,6 +4850,8 @@ async function initCrawlEditor() {
         const outlineWidth = Number(document.getElementById('crawlOutlineWidth').value) || 0;
         const outlineJoin = document.getElementById('crawlOutlineJoin').value || 'round';
         const kerning = Number(document.getElementById('crawlKerning').value) || 0;
+        const textWidthEl = document.getElementById('crawlTextWidth');
+        const textScaleX = normalizeTextScale(textWidthEl ? textWidthEl.value : DEFAULT_TEXT_WIDTH_PERCENT);
 
         let fontFamily = fontFamilyRaw;
         if (fontFamilyRaw === USER_UPLOAD_FONT_FAMILY) {
@@ -4808,7 +4880,7 @@ async function initCrawlEditor() {
         const kerningPx = (kerning / 100) * fontSize;
         ctx.letterSpacing = `${kerningPx}px`;
 
-        const renderText = createTextRenderer(ctx, outlineColor, outlineWidth);
+        const renderText = createTextRenderer(ctx, outlineColor, outlineWidth, textScaleX);
         const lines = (text || '').split('\n');
         const lineHeight = fontSize + 10;
         const totalTextHeight = lines.length * lineHeight;
@@ -4835,7 +4907,7 @@ async function initCrawlEditor() {
         'crawlText', 'crawlTextColor', 'crawlFontSize', 'crawlFontFamily',
         'crawlFontStyle', 'crawlOutlineColor', 'crawlOutlineWidth',
         'crawlOutlineJoin', 'crawlBgColor', 'crawlBackgroundMode',
-        'crawlKerning', 'crawlCustomFontFile'
+        'crawlKerning', 'crawlTextWidth', 'crawlCustomFontFile'
     ];
 
     _previewInputIds.forEach((id) => {

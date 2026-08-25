@@ -3,3 +3,14 @@ assets/wasm_tts_voices/**/*.vin filter=lfs diff=lfs merge=lfs -text
 assets/wasm_tts_voices/**/*.vdb filter=lfs diff=lfs merge=lfs -text
 assets/wasm_tts_voices/**/*.vdb.part* filter=lfs diff=lfs merge=lfs -text
 assets/wasm_tts_voices/**/*.vin.part* filter=lfs diff=lfs merge=lfs -text
+
+# Generated geographic data. These are megabyte-scale minified single-line JSON, so a
+# textual diff is one unreadable line either way; regenerate with the matching tool in
+# warngen/tools rather than editing by hand.
+warngen/data/us_counties.geojson -diff linguist-generated=true
+warngen/data/us_highways.geojson -diff linguist-generated=true
+warngen/data/forecast_zones.geojson -diff linguist-generated=true
+warngen/data/marine_zones.geojson -diff linguist-generated=true
+warngen/data/us_cities.json -diff linguist-generated=true
+warngen/data/us_airports.json -diff linguist-generated=true
+assets/E2T/include/zone-county.json -diff linguist-generated=true

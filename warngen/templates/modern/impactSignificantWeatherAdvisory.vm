@@ -292,10 +292,19 @@ ${dateUtil.format(${now}, ${timeFormat.header}, ${localtimezone})}
 
 THIS IS A TEST MESSAGE. ##
 #end
+#if(${windSpeed} >= 40 || ${hailSize} >= 0.70)
+...SIGNIFICANT WEATHER ADVISORY FOR ##
+#headlineLocList(${affectedCounties} true true true false "ALL" "ELLIPSES")
+ UNTIL #headlineExpire(${dateUtil},${expire},${timeFormat},${localtimezone},${secondtimezone})
+...
+#elseif(${windSpeed} == 0 && ${hailSize} == 0)
+!** YOU DID NOT SELECT ANY WIND OR HAIL THREATS. PLEASE RE-GENERATE THIS ADVISORY **!
+#else
 ...${headline} will impact portions of ##
 #headlineLocList(${affectedCounties} true true true false "AS IS" "COMMA")
  through #headlineExpire(${dateUtil},${expire},${timeFormat},${localtimezone},${secondtimezone})
 ...
+#end
 ######################################################
 ###### Storm current location description   ##########
 ######################################################

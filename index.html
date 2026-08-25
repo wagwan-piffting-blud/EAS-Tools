@@ -143,7 +143,7 @@
                 <label for="encoderMode">Select EAS Header Generation Mode:</label>
                 <select id="encoderMode">
                     <option value="builder" selected>Build your own EAS Header</option>
-                    <option value="header">Generate from EAS Header String</option>
+                    <option value="header">Generate from EAS Header or AWIPS/VTEC Product</option>
                 </select>
                 <br>
                 <hr>
@@ -233,9 +233,9 @@
                     <div id="locs"></div>
                 </div>
                 <div id="stringEncoder" style="display: none;">
-                    <label for="cheader">Enter SAME Header here:</label>&nbsp;
+                    <label for="cheader">Enter a SAME header or paste an AWIPS/VTEC product:</label>&nbsp;
                     <br class="mobileBreak">
-                    <input type="text" id="cheader" name="cheader" placeholder="ZCZC-WXR-TOR..."></input>
+                    <textarea id="cheader" name="cheader" rows="4" placeholder="ZCZC-WXR-TOR-035013+0045-2321657-KEPZ/NWS-&#10;&#10;...or a product carrying its UGC and P-VTEC lines:&#10;NMC013-201730-&#10;/O.NEW.KEPZ.DS.W.0001.260820T1657Z-260820T1730Z/"></textarea>
                     <br class="mobileBreak">
                     <button type="button" data-encoder-transfer>Transfer Header to Builder Mode</button>
                 </div>
@@ -305,7 +305,6 @@
                             <button type="button" id="ttsPitchReset">Reset</button>
                         </div>
                         <div id="shouldBitcrushSpeechifyContainer" style="display: none;">
-                            <br>
                             <label for="shouldBitcrushSpeechify">"VM-Sounding" Speechify Output:</label>
                             <input type="checkbox" id="shouldBitcrushSpeechify" name="shouldBitcrushSpeechify"></input>
                         </div>
@@ -473,6 +472,9 @@
                     <br>
                     <label for="crawlKerning">Crawl Kerning (percentage, 0 to 100%):</label>
                     <input type="number" id="crawlKerning" min="0" max="100" value="0">
+                    <br>
+                    <label for="crawlTextWidth">Crawl Text Width (percentage, 0 to 200%):</label>
+                    <input type="number" id="crawlTextWidth" min="0" max="200" value="100">
                     <br>
                     <label for="crawlRestartDelay">Crawl Restart Delay (milliseconds, 500-60000 in steps of 500):</label>
                     <input type="number" id="crawlRestartDelay" min="500" max="60000" value="1000" step="500">
@@ -814,13 +816,13 @@
                 <pre id="phonemeOutput"></pre>
             </section>
             <section id="normalizer-panel" class="tool-panel" aria-labelledby="tab-normalizer">
-                <h2 class="section-heading">VTAC/AWIPS Product Normalizer</h2>
+                <h2 class="section-heading">VTEC/AWIPS Product Normalizer</h2>
                 <hr>
                 <label for="shouldRepeat">Include "Repeating..." line: </label>
                 <input type="checkbox" id="shouldRepeat" name="shouldRepeat">
                 <br>
                 <br>
-                <label for="productToNormalize">Enter raw VTAC/AWIPS product text:</label>
+                <label for="productToNormalize">Enter raw VTEC/AWIPS product text:</label>
                 <br>
                 <br>
                 <textarea id="productToNormalize" class="ttsText normalizerCM"></textarea>
@@ -945,7 +947,7 @@
                     },
                     normalizer: {
                         element: document.getElementById('normalizer-panel'),
-                        name: "VTAC/AWIPS Product Normalizer"
+                        name: "VTEC/AWIPS Product Normalizer"
                     },
                     warngen: {
                         element: document.getElementById('warngen-panel'),

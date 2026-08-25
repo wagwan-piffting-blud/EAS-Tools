@@ -9,9 +9,6 @@
         <link rel="stylesheet" href="warngen.css">
     </head>
     <body class="app-body">
-        <header>
-            <h1>WarnGen</h1>
-        </header>
         <div class="controls">
             <label for="template-select">Template:</label>
             <select id="template-select">
@@ -66,6 +63,19 @@
             click on the map to place vertices &rarr; click the first vertex (or
             double-click anywhere) to close the shape. The bulletin re-renders
             live with the impacted counties. Click <em class="redEm">Clear</em> to start over fresh.
+        </div>
+        <div class="storm-bar">
+            <strong>Area:</strong>
+            <label class="checkbox-label">
+                <input type="radio" name="selection-mode" id="mode-polygon" value="polygon" checked>
+                Draw polygon
+            </label>
+            <label class="checkbox-label">
+                <input type="radio" name="selection-mode" id="mode-areas" value="areas">
+                Click whole areas
+            </label>
+            <button type="button" id="clear-areas" class="mini-btn" style="display: none;">Clear selection</button>
+            <span id="area-count" class="motion-label"></span>
         </div>
         <div class="storm-bar">
             <strong>Storm motion:</strong>
@@ -130,6 +140,13 @@
                     <div class="panel-label">Bullet picker</div>
                     <div id="bullet-list"></div>
                 </div>
+                <div id="watch-panel" class="fillin-panel-container" style="display: none;">
+                    <div class="panel-label">Watches in effect <span class="panel-hint">(AWIPS reads these from the active table; enter them here)</span></div>
+                    <div id="watch-list"></div>
+                    <div class="watch-actions">
+                        <button type="button" id="watch-add">+ Add watch</button>
+                    </div>
+                </div>
                 <div id="fillin-panel" class="fillin-panel-container" style="display: none;">
                     <div class="panel-label">Fill-ins <span class="panel-hint">(forecaster-supplied values)</span></div>
                     <div id="fillin-list"></div>
@@ -190,8 +207,8 @@
 
                 { vm: "impactSpecialWeatherStatement.vm", label: "Special Weather Statement (IBW)", group: "Statements", defaults: ["strongThunderstorm", "listofcities"] },
                 { vm: "specialWeatherStatement.vm", label: "Special Weather Statement", group: "Statements", defaults: ["strongThunderstorm", "listofcities"] },
-                { vm: "impactSignificantWeatherAdvisory.vm", label: "Significant Weather Advisory (IBW)", group: "Statements" },
-                { vm: "significantWeatherAdvisory.vm", label: "Significant Weather Advisory", group: "Statements" },
+                { vm: "impactSignificantWeatherAdvisory.vm", label: "Significant Weather Advisory (IBW)", group: "Statements", defaults: ["doppler", "wind40", "listofcities"] },
+                { vm: "significantWeatherAdvisory.vm", label: "Significant Weather Advisory", group: "Statements", defaults: ["doppler", "wind40", "listofcities"] },
                 { vm: "shortTermForecast.vm", label: "Short Term Forecast", group: "Statements" },
 
                 { vm: "impactSevereWeatherStatement.vm", label: "Severe Weather Statement (IBW)", group: "Followups", followup: true },
@@ -588,7 +605,12 @@
                             issued: document.getElementById("issued-input").value
                         },
                         bullets: selectedBullets.slice(),
+                        selectionMode: selectionMode,
+                        selectedAreaKeys: Object.keys(selectedAreaKeys),
                         fillIns: Object.assign({}, fillInValues),
+                        watchEntries: watchEntries.map(function (w) {
+                            return { phenSig: w.phenSig, etn: w.etn, expire: w.expire };
+                        }),
                         followupBaseline: followupBaseline
                     };
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -713,6 +735,74 @@
                 });
             }
 
+            /**
+             * Templates hatch one of three geographies, named by the geospatialConfig they
+             * include. Counties are on the startup path because most products want them;
+             * the zone and marine files are several megabytes each and only load when a
+             * template that needs them is picked.
+             */
+            var AREA_SOURCES = {
+                COUNTY: { file: null, ugc: "C", noun: "county", nouns: "counties" },
+                ZONE:   { file: "data/forecast_zones.geojson", ugc: "Z", noun: "forecast zone", nouns: "forecast zones" },
+                MARINE: { file: "data/marine_zones.geojson",   ugc: "Z", noun: "marine zone",   nouns: "marine zones" }
+            };
+
+            var extraGeojson = { ZONE: null, MARINE: null };
+            var extraLoading = { ZONE: null, MARINE: null };
+            var visibleExtra = { ZONE: null, MARINE: null };
+
+            function ensureAreaSourceLoaded(kind) {
+                var spec = AREA_SOURCES[kind];
+                if (!spec || !spec.file) return Promise.resolve(null);
+                if (extraGeojson[kind]) return Promise.resolve(extraGeojson[kind]);
+                if (extraLoading[kind]) return extraLoading[kind];
+                extraLoading[kind] = fetch(spec.file)
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        extraGeojson[kind] = j;
+                        applyExtraFilter(kind, document.getElementById("office-select").value);
+                        return j;
+                    })
+                    .catch(function (e) {
+                        extraLoading[kind] = null;
+                        throw e;
+                    });
+                return extraLoading[kind];
+            }
+
+            function loadAirports() {
+                return fetch("data/us_airports.json")
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) { airportIndex = (j && j.airports) || {}; })
+                    .catch(function () { airportIndex = {}; });
+            }
+
+            function applyExtraFilter(kind, cwa) {
+                var src = extraGeojson[kind];
+                visibleExtra[kind] = !src ? null : (cwa === ALL_US ? src : {
+                    type: "FeatureCollection",
+                    features: src.features.filter(function (f) { return f.properties.cwa === cwa; })
+                });
+
+                var layer = (kind === "MARINE") ? marineLayer : zoneLayer;
+                layer.clearLayers();
+                if (visibleExtra[kind] && currentAreaSource === kind) {
+                    layer.addData(visibleExtra[kind]);
+                }
+            }
+
+            /** The geography the current template hatches, already filtered to the office. */
+            function activeHatchSource() {
+                if (currentAreaSource === "COUNTY") return visibleCounties;
+                return visibleExtra[currentAreaSource] || null;
+            }
+
+            /** Stable key for an area across re-filters, unique within a source. */
+            function featureAreaKey(feature) {
+                var p = feature.properties;
+                return p.state + ":" + p.fips;
+            }
+
             function filterCountiesByCwa(cwa) {
                 if (!countyGeojson) return null;
                 var fipsList = cwaCountyIndex[cwa];
@@ -729,7 +819,13 @@
                 };
             }
 
-            function applyCwaFilter(cwa) {
+            // Changing office invalidates any selected areas, but the boot-time call is only
+            // applying the office that was already in effect, so it passes keepSelection.
+            function applyCwaFilter(cwa, keepSelection) {
+                applyExtraFilter("ZONE", cwa);
+                applyExtraFilter("MARINE", cwa);
+                if (!keepSelection) clearAreaSelection();
+                if (currentProductId === "AWW") rebuildBulletPanel();
                 visibleCounties = filterCountiesByCwa(cwa);
                 countyLayer.clearLayers();
                 if (visibleCounties) {
@@ -1138,6 +1234,8 @@
                 var cfg = WarngenXmlParser.parseBulletConfig(xmlText);
 
                 currentProductId = cfg.productId || meta.productId;
+                currentIncludedWatches = cfg.includedWatches || [];
+                currentAreaSource = cfg.areaSource || "COUNTY";
 
                 if (pendingAction) {
                     document.getElementById("action-select").value = pendingAction;
@@ -1172,16 +1270,181 @@
                 // dropped counties and a CON segment for the rest, so it borrows CAN's bullets.
                 var bulletAction = (action === "CANCON") ? "CAN" : action;
 
+                var panelBullets = withCwaAirports(
+                    cfg, WarngenXmlParser.bulletsFor(cfg, bulletAction, currentPhenomena));
+
                 bulletPanelCtrl = WarngenBulletPanel.build(container, cfg, {
                     action: bulletAction,
-                    bullets: WarngenXmlParser.bulletsFor(cfg, bulletAction, currentPhenomena),
+                    bullets: panelBullets,
                     initialOverrides: bulletOverrides || meta.defaults,
                     onChange: function (names) {
                         selectedBullets = names;
+                        applyDamBulletPolygon(cfg, bulletAction, names);
+                        rebuildWatchPanel();
                         doRender();
                         saveState();
                     }
                 });
+                rebuildWatchPanel();
+            }
+
+            /**
+             * Whole-area mode is how county-based products are built: instead of hatching
+             * whatever a polygon happens to clip, the forecaster names the areas outright and
+             * each is warned in full. partOfArea stays empty so the templates say "Douglas
+             * County" rather than "southeastern Douglas County".
+             */
+            // Whole-area mode has no polygon for autoResolveCwaFromPolygon to work from, so
+            // the first area clicked out of All US picks the office instead. applyCwaFilter
+            // wipes the selection, hence the adoption has to land before the toggle.
+            function adoptOfficeFromArea(feature) {
+                var sel = document.getElementById("office-select");
+                if (sel.value !== ALL_US) return null;
+                var p = feature.properties || {};
+                if (!p.cwa) {
+                    return { text: (p.name || "That area") + " has no CWA stamp; pick an office manually.", isError: true };
+                }
+                sel.value = p.cwa;
+                applyCwaFilter(p.cwa);
+                return {
+                    text: "Auto-picked office " + (OFFICE_LABELS[p.cwa] || p.cwa) + " from "
+                        + p.name + " " + (p.state || "") + ".",
+                    isError: false
+                };
+            }
+
+            function toggleAreaSelection(feature) {
+                if (selectionMode !== "areas") return;
+                var note = adoptOfficeFromArea(feature);
+                var key = featureAreaKey(feature);
+                if (selectedAreaKeys[key]) delete selectedAreaKeys[key];
+                else selectedAreaKeys[key] = true;
+                refreshAreaSelectionUi();
+                doRender();
+                if (note) setStatus(note.text, note.isError);
+                saveState();
+            }
+
+            function clearAreaSelection() {
+                selectedAreaKeys = {};
+                refreshAreaSelectionUi();
+            }
+
+            function selectedAreaCount() {
+                return Object.keys(selectedAreaKeys).length;
+            }
+
+            function refreshAreaSelectionUi() {
+                var areas = (selectionMode === "areas");
+                document.getElementById("clear-areas").style.display = areas ? "" : "none";
+                document.getElementById("area-count").textContent = areas
+                    ? selectedAreaCount() + " selected"
+                    : "";
+            }
+
+            /**
+             * Products still carry a LAT...LON block, so derive one from the selected areas.
+             * A convex hull of their vertices is what AWIPS would call the affected area when
+             * no storm polygon was drawn.
+             */
+            function hullOf(features) {
+                var pts = [];
+                features.forEach(function (f) {
+                    var polys = f.geometry.type === "Polygon"
+                        ? [f.geometry.coordinates]
+                        : f.geometry.coordinates;
+                    polys.forEach(function (p) {
+                        p[0].forEach(function (c) { pts.push([c[0], c[1]]); });
+                    });
+                });
+                if (pts.length < 3) return null;
+
+                pts.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+                function cross(o, a, b) {
+                    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+                }
+                var lower = [];
+                for (var i = 0; i < pts.length; i++) {
+                    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) {
+                        lower.pop();
+                    }
+                    lower.push(pts[i]);
+                }
+                var upper = [];
+                for (var j = pts.length - 1; j >= 0; j--) {
+                    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[j]) <= 0) {
+                        upper.pop();
+                    }
+                    upper.push(pts[j]);
+                }
+                var hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+                if (hull.length < 3) return null;
+                hull.push(hull[0]);
+                return hull;
+            }
+
+            /**
+             * The AWW config ships AWIPS's SUM/ANT/TST example airports, which every office is
+             * expected to localize. Swap in the real fields for the selected CWA instead.
+             */
+            function withCwaAirports(cfg, bullets) {
+                if (cfg.productId !== "AWW" || !airportIndex) return bullets;
+                var cwa = document.getElementById("office-select").value;
+                var list = airportIndex[cwa] || [];
+                cwaAirports = {};
+
+                var rest = bullets.filter(function (b) {
+                    return !(b.group === "dam" || /Choose Airport/i.test(b.text || ""));
+                });
+                var head = [{ text: "*****Choose Airport*****...(Choose 1) ", type: "title" }];
+
+                if (!list.length) {
+                    head.push({ text: "  (no airports on file for " + cwa + ")", type: "title" });
+                    return head.concat(rest);
+                }
+                list.forEach(function (a) {
+                    cwaAirports[a.site] = a;
+                    head.push({
+                        name: a.site,
+                        text: a.name + " (" + a.site + ")" + (a.city ? " - " + a.city : ""),
+                        group: "dam",
+                        coords: a.coords
+                    });
+                });
+                return head.concat(rest);
+            }
+
+            function selectedAirport() {
+                for (var i = 0; i < selectedBullets.length; i++) {
+                    var a = cwaAirports[selectedBullets[i]];
+                    if (a) return a;
+                }
+                return null;
+            }
+
+            /** Airport polygons come from the generated list, not the bullet config. */
+            function airportRingFor(names) {
+                for (var i = 0; i < names.length; i++) {
+                    var a = cwaAirports[names[i]];
+                    if (a && a.coords) return WarngenXmlParser.parseCoords(a.coords);
+                }
+                return null;
+            }
+
+            // AWIPS asks the forecaster to pick the airport and then hit "Dam Break Threat
+            // Area" to stamp its polygon. Selecting the bullet does both here.
+            function applyDamBulletPolygon(cfg, action, names) {
+                var ring = airportRingFor(names)
+                    || WarngenXmlParser.coordsForBullets(cfg, action, currentPhenomena, names);
+                if (!ring) { lastDamRingKey = null; return; }
+                var key = JSON.stringify(ring);
+                if (key === lastDamRingKey) return;
+                lastDamRingKey = key;
+                var closed = ring.slice();
+                closed.push(closed[0]);
+                restorePolygon(closed);
+                if (currentPolygon) map.fitBounds(currentPolygon.getBounds(), { padding: [40, 40] });
+                autoResolveCwaFromPolygon();
             }
 
             var map = L.map("map", {
@@ -1194,6 +1457,20 @@
             });
 
             var ALL_US_BOUNDS = L.latLngBounds([12, -130], [49, -66]);
+
+            function hatchLayerOptions(color, fill) {
+                return {
+                    style: { color: color, weight: 1, fillColor: fill, fillOpacity: 0.15 },
+                    onEachFeature: function (feature, layer) {
+                        var p = feature.properties;
+                        layer.bindTooltip(p.name + " (" + p.state + "Z" + p.fips + ")", { sticky: true });
+                        layer.on("click", function () { toggleAreaSelection(feature); });
+                    }
+                };
+            }
+
+            var marineLayer = L.geoJSON(null, hatchLayerOptions("#458588", "#83a59822")).addTo(map);
+            var zoneLayer = L.geoJSON(null, hatchLayerOptions("#8f7a3f", "#d5b06022")).addTo(map);
 
             var countyLayer = L.geoJSON(null, {
                 style: {
@@ -1211,6 +1488,7 @@
                     layer.on("tooltipopen", function () {
                         if (isDrawing) layer.closeTooltip();
                     });
+                    layer.on("click", function () { toggleAreaSelection(feature); });
                 }
             }).addTo(map);
 
@@ -1507,51 +1785,266 @@
                 return /\b(?:SELECT|REGENERATE|RE-GENERATE|CLOSE THIS WINDOW|PLEASE ENTER|WARNGEN GUI)\b/.test(u);
             }
 
+            var FILLIN_RE = /!\*\*\s*([^*]*?)\s*\*\*!/g;
+            var FILLIN_SEP = "\u0000";
+
+            function fillInKey(label, ordinal) {
+                return label + FILLIN_SEP + ordinal;
+            }
+
+            // Anonymous blanks (!** **!) carry no label of their own, so name them after the
+            // words around them. Leading words stop at the previous blank on the line, so two
+            // blanks in one sentence stay tellable apart. A blank left with no more than one
+            // leading word borrows the word that follows it -- the unit in "of ___ to ___ mph".
+            function fillInHint(text, start, end) {
+                var lineStart = text.lastIndexOf("\n", start) + 1;
+                var lineEnd = text.indexOf("\n", end);
+                if (lineEnd === -1) lineEnd = text.length;
+
+                var scan = new RegExp(FILLIN_RE.source, "g");
+                scan.lastIndex = lineStart;
+                var prevEnd = lineStart;
+                var b;
+                while ((b = scan.exec(text)) !== null && b.index < start) {
+                    prevEnd = b.index + b[0].length;
+                }
+
+                var before = text.slice(prevEnd, start).replace(/\s+/g, " ").trim();
+                var lead = before ? before.split(" ").slice(-3).join(" ").replace(/[.,;:]+$/, "") : "";
+                if (lead.split(" ").length > 1) return lead + " ___";
+
+                var after = text.slice(end, lineEnd)
+                    .replace(new RegExp(FILLIN_RE.source, "g"), " ")
+                    .split(/[.,;:!?]/)[0]
+                    .replace(/\s+/g, " ").trim();
+                var tail = after ? after.split(" ")[0] : "";
+                if (!lead && !tail) return "";
+                return (lead ? lead + " " : "") + "___" + (tail ? " " + tail : "");
+            }
+
             function extractFillIns(text) {
-                var re = /!\*\*\s*([^*]+?)\s*\*\*!/g;
-                var seen = {};
-                var order = [];
+                var re = new RegExp(FILLIN_RE.source, "g");
+                var counts = {};
+                var slots = [];
                 var m;
                 while ((m = re.exec(text)) !== null) {
                     var label = m[1];
                     if (isErrorPlaceholder(label)) continue;
-                    if (!seen[label]) {
-                        seen[label] = true;
-                        order.push(label);
+                    var ordinal = counts[label] || 0;
+                    counts[label] = ordinal + 1;
+                    var display = label;
+                    if (!display) {
+                        display = fillInHint(text, m.index, m.index + m[0].length) || "(blank)";
                     }
+                    slots.push({
+                        key: fillInKey(label, ordinal),
+                        label: label,
+                        ordinal: ordinal,
+                        display: display
+                    });
                 }
-                return order;
+                var shown = {};
+                slots.forEach(function (slot) { shown[slot.display] = (shown[slot.display] || 0) + 1; });
+                var nth = {};
+                slots.forEach(function (slot) {
+                    if (shown[slot.display] < 2) return;
+                    nth[slot.display] = (nth[slot.display] || 0) + 1;
+                    slot.display += " #" + nth[slot.display];
+                });
+                return slots;
             }
 
             var fillInValues = {};
             var lastRawOutput = "";
 
-            function rebuildFillInPanel(labels) {
-                var panel = document.getElementById("fillin-panel");
-                var list = document.getElementById("fillin-list");
-                if (labels.length === 0) {
+            // WarnGen never issues a watch; it reports ones already in the active table (see
+            // WatchUtil.getWatches). With no active table in the browser, the forecaster
+            // supplies them. State and part-of-state come from the polygon, exactly as
+            // WatchUtil.determineAffectedPortions derives them from the warned counties.
+            var currentIncludedWatches = [];
+            var watchEntries = [];
+            var currentAreaSource = "COUNTY";
+            var lastDamRingKey = null;
+            var airportIndex = null;
+            var selectionMode = "polygon";
+            var selectedAreaKeys = {};
+            var cwaAirports = {};
+
+            function getIssuedDate() {
+                var raw = document.getElementById("issued-input").value;
+                var d = raw ? new Date(raw) : new Date();
+                return isNaN(d.getTime()) ? new Date() : d;
+            }
+
+            function watchBulletFor(phenSig) {
+                return phenSig === "TO.A" ? "includeTorWatches" : "includeSvrWatches";
+            }
+
+            function activeWatchTypes() {
+                return currentIncludedWatches.filter(function (ps) {
+                    return selectedBullets.indexOf(watchBulletFor(ps)) !== -1;
+                });
+            }
+
+            function buildWatches(areas, tz, dstLess) {
+                var types = activeWatchTypes();
+                if (!types.length || !areas.length) return [];
+                var out = [];
+                watchEntries.forEach(function (entry) {
+                    if (types.indexOf(entry.phenSig) === -1) return;
+                    var end = parseWatchExpiry(entry.expire, tz, dstLess);
+                    if (!end) return;
+                    var byState = {};
+                    var order = [];
+                    areas.forEach(function (area) {
+                        var state = area.parentRegion || area.stateabbr;
+                        if (!state) return;
+                        if (!byState[state]) { byState[state] = {}; order.push(state); }
+                        (area.partOfParentRegion || []).forEach(function (dir) {
+                            byState[state][dir] = true;
+                        });
+                    });
+                    order.forEach(function (state) {
+                        out.push({
+                            phenSig: entry.phenSig,
+                            etn: entry.etn,
+                            state: state,
+                            partOfState: Object.keys(byState[state]),
+                            endTime: end
+                        });
+                    });
+                });
+                return out;
+            }
+
+            // "HHMM" or "HH:MM" local clock time, resolved against the issuance date and
+            // rolled to tomorrow when the watch runs past midnight.
+            function parseWatchExpiry(value, tz, dstLess) {
+                var m = /^(\d{1,2}):?(\d{2})$/.exec(String(value || "").trim());
+                if (!m) return null;
+                var hh = parseInt(m[1], 10);
+                var mm = parseInt(m[2], 10);
+                if (hh > 23 || mm > 59) return null;
+                var base = getIssuedDate();
+                var off = WarngenUtils._zoneOffsetMinutes(tz, base, dstLess) * 60000;
+                var local = new Date(base.getTime() + off);
+                var end = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(),
+                    local.getUTCDate(), hh, mm) - off);
+                if (end.getTime() <= base.getTime()) end = new Date(end.getTime() + 86400000);
+                return end;
+            }
+
+            function rebuildWatchPanel() {
+                var panel = document.getElementById("watch-panel");
+                var list = document.getElementById("watch-list");
+                if (!activeWatchTypes().length) {
                     panel.style.display = "none";
                     list.innerHTML = "";
                     return;
                 }
                 panel.style.display = "flex";
                 list.innerHTML = "";
-                labels.forEach(function (label) {
+                if (!watchEntries.length) {
+                    var empty = document.createElement("div");
+                    empty.className = "watch-empty";
+                    empty.textContent = "No watches entered. The watch bullet stays silent until one is added.";
+                    list.appendChild(empty);
+                }
+                watchEntries.forEach(function (entry, idx) {
+                    var row = document.createElement("div");
+                    row.className = "fillin-row watch-row";
+
+                    var typeSel = document.createElement("select");
+                    typeSel.className = "watch-type";
+                    typeSel.setAttribute("aria-label", "Watch " + (idx + 1) + " type");
+                    currentIncludedWatches.forEach(function (ps) {
+                        var opt = document.createElement("option");
+                        opt.value = ps;
+                        opt.textContent = ps === "TO.A" ? "Tornado Watch" : "Svr Tstm Watch";
+                        if (ps === entry.phenSig) opt.selected = true;
+                        typeSel.appendChild(opt);
+                    });
+                    typeSel.addEventListener("change", function () {
+                        entry.phenSig = typeSel.value;
+                        doRender();
+                        saveState();
+                    });
+
+                    var etn = document.createElement("input");
+                    etn.type = "number";
+                    etn.min = "1";
+                    etn.max = "9999";
+                    etn.className = "fillin-input watch-etn";
+                    etn.value = entry.etn;
+                    etn.setAttribute("aria-label", "Watch " + (idx + 1) + " number");
+                    etn.addEventListener("input", function () {
+                        entry.etn = etn.value;
+                        doRender();
+                        saveState();
+                    });
+
+                    var exp = document.createElement("input");
+                    exp.type = "text";
+                    exp.className = "fillin-input watch-expire";
+                    exp.placeholder = "HHMM";
+                    exp.maxLength = 5;
+                    exp.value = entry.expire;
+                    exp.setAttribute("aria-label", "Watch " + (idx + 1) + " expiration, local clock time");
+                    exp.addEventListener("input", function () {
+                        entry.expire = exp.value;
+                        doRender();
+                        saveState();
+                    });
+
+                    var del = document.createElement("button");
+                    del.type = "button";
+                    del.className = "watch-del";
+                    del.textContent = "\u00d7";
+                    del.setAttribute("aria-label", "Remove watch " + (idx + 1));
+                    del.addEventListener("click", function () {
+                        watchEntries.splice(idx, 1);
+                        rebuildWatchPanel();
+                        doRender();
+                        saveState();
+                    });
+
+                    row.appendChild(typeSel);
+                    row.appendChild(etn);
+                    row.appendChild(exp);
+                    row.appendChild(del);
+                    list.appendChild(row);
+                });
+            }
+
+            function rebuildFillInPanel(slots) {
+                var panel = document.getElementById("fillin-panel");
+                var list = document.getElementById("fillin-list");
+                if (slots.length === 0) {
+                    panel.style.display = "none";
+                    list.innerHTML = "";
+                    return;
+                }
+                panel.style.display = "flex";
+                list.innerHTML = "";
+                slots.forEach(function (slot, idx) {
                     var row = document.createElement("div");
                     row.className = "fillin-row";
 
+                    var inputId = "fillin-input-" + idx;
                     var lab = document.createElement("label");
                     lab.className = "fillin-label";
-                    lab.textContent = label;
-                    lab.title = label;
+                    lab.textContent = slot.display;
+                    lab.title = slot.display;
+                    lab.setAttribute("for", inputId);
 
                     var input = document.createElement("input");
                     input.type = "text";
+                    input.id = inputId;
                     input.className = "fillin-input";
-                    input.placeholder = label;
-                    input.value = fillInValues[label] || "";
+                    input.placeholder = slot.display;
+                    input.value = fillInValues[slot.key] || "";
                     input.addEventListener("input", function () {
-                        fillInValues[label] = input.value;
+                        fillInValues[slot.key] = input.value;
                         applyFillInsAndFormat();
                     });
 
@@ -1590,15 +2083,14 @@
             }
 
             function applyFillInsAndFormat() {
-                var out = lastRawOutput;
-
-                Object.keys(fillInValues).forEach(function (label) {
-                    var val = fillInValues[label];
-                    if (!val) return;
-                    var escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                    var re = new RegExp("!\\*\\*\\s*" + escaped + "\\s*\\*\\*!", "g");
-                    out = out.replace(re, val);
-                });
+                var counts = {};
+                var out = lastRawOutput.replace(new RegExp(FILLIN_RE.source, "g"),
+                    function (match, label) {
+                        if (isErrorPlaceholder(label)) return match;
+                        var ordinal = counts[label] || 0;
+                        counts[label] = ordinal + 1;
+                        return fillInValues[fillInKey(label, ordinal)] || match;
+                    });
 
                 var allCaps = document.getElementById("allcaps-cb").checked;
                 var wrap = document.getElementById("wrap-cb").checked;
@@ -1658,22 +2150,58 @@
                         return;
                     }
 
+                    var srcSpec = AREA_SOURCES[currentAreaSource] || AREA_SOURCES.COUNTY;
+                    if (srcSpec.file && !extraGeojson[currentAreaSource]) {
+                        document.getElementById("output").textContent = "Loading " + srcSpec.nouns + "...";
+                        ensureAreaSourceLoaded(currentAreaSource).then(doRender).catch(function (e) {
+                            setStatus("Could not load " + srcSpec.nouns + ": " + (e.message || e), true);
+                        });
+                        return;
+                    }
+
+                    var hatchSource = activeHatchSource();
+
+                    // Puerto Rico, Guam and Samoa have no forecast-zone geometry here (their
+                    // basemap inset has no verified transform), so those offices fall back to
+                    // counties and the C-format UGC they used before zones were bundled.
+                    // Marine gets no such fallback: county names inside a marine product are
+                    // exactly the wrong answer.
+                    var zoneFellBack = false;
+                    if (currentAreaSource === "ZONE" && (!hatchSource || !hatchSource.features.length)) {
+                        hatchSource = visibleCounties;
+                        srcSpec = AREA_SOURCES.COUNTY;
+                        zoneFellBack = true;
+                    }
+
+                    var wholeAreas = (selectionMode === "areas");
                     var hits = [];
-                    if (currentRing && visibleCounties) {
-                        hits = WarngenIntersect.findIntersectingFeatures(currentRing, visibleCounties);
+                    if (wholeAreas && hatchSource) {
+                        hits = hatchSource.features.filter(function (f) {
+                            return selectedAreaKeys[featureAreaKey(f)];
+                        });
+                    } else if (currentRing && hatchSource) {
+                        hits = WarngenIntersect.findIntersectingFeatures(currentRing, hatchSource);
                     }
 
                     hitLayer.clearLayers();
                     if (hits.length > 0) hitLayer.addData({ type: "FeatureCollection", features: hits });
 
                     document.getElementById("impacted-list").textContent = hits.length === 0
-                        ? "no intersection -- adjust polygon"
-                        : hits.map(function (f) { return f.properties.name + " " + f.properties.state; }).join(", ");
+                        ? (wholeAreas ? "none selected -- click " + srcSpec.nouns + " on the map"
+                                      : "no intersection -- adjust polygon")
+                        : hits.map(function (f) {
+                            return currentAreaSource === "COUNTY"
+                                ? f.properties.name + " " + f.properties.state
+                                : f.properties.name;
+                        }).join(", ");
 
-                    if (hits.length === 0 || !currentRing) {
-                        document.getElementById("output").textContent = currentRing
-                            ? "Polygon does not intersect any county. Adjust the polygon to cover at least one county."
-                            : "Draw a polygon on the map to render a bulletin.";
+                    if (hits.length === 0 || (!wholeAreas && !currentRing)) {
+                        document.getElementById("output").textContent = wholeAreas
+                            ? "Click " + srcSpec.nouns + " on the map to select them, then a bulletin renders here."
+                            : (currentRing
+                                ? "Polygon does not intersect any " + srcSpec.noun
+                                    + ". Adjust the polygon to cover at least one " + srcSpec.noun + "."
+                                : "Draw a polygon on the map to render a bulletin.");
                         rebuildFillInPanel([]);
                         return;
                     }
@@ -1683,12 +2211,22 @@
                     var areas = hits.map(function (feat) {
                         var area = WarngenContext.featureToArea(feat);
 
-                        area.partOfArea = WarngenIntersect.directionalSubdivision(currentRing, feat);
+                        area.partOfArea = wholeAreas
+                            ? []
+                            : WarngenIntersect.directionalSubdivision(currentRing, feat);
                         WarngenContext.applyCwaRegionOverride(area, siteId, currentProductId);
                         return area;
                     });
-                    var areaPoly = currentRing.map(function (p) { return { x: p[0], y: p[1] }; });
 
+                    var polyRing = wholeAreas ? hullOf(hits) : currentRing;
+                    if (!polyRing) {
+                        document.getElementById("output").textContent =
+                            "Selected areas have no usable outline.";
+                        return;
+                    }
+                    var areaPoly = polyRing.map(function (p) { return { x: p[0], y: p[1] }; });
+
+                    var effectiveRing = polyRing;
                     var motionToDeg = parseFloat(document.getElementById("motion-bearing").value) || 0;
                     var motionSpeed = parseFloat(document.getElementById("motion-speed").value) || 0;
                     var autoCentroid = document.getElementById("centroid-auto-cb").checked;
@@ -1699,8 +2237,8 @@
                     if (autoCentroid) {
 
                         stormPos = (motionSpeed > 0)
-                            ? WarngenCities.polygonRearPoint(currentRing, motionFromDeg)
-                            : WarngenCities.polygonCentroid(currentRing);
+                            ? WarngenCities.polygonRearPoint(effectiveRing, motionFromDeg)
+                            : WarngenCities.polygonCentroid(effectiveRing);
                         document.getElementById("centroid-lat").value = stormPos.lat.toFixed(3);
                         document.getElementById("centroid-lon").value = stormPos.lon.toFixed(3);
                     } else {
@@ -1722,7 +2260,7 @@
                         ? [WarngenCities.toClosestPoint(nearMajor.city, stormPos)]
                         : [];
 
-                    var inPoly = WarngenCities.citiesInPolygon(cityDB, currentRing);
+                    var inPoly = WarngenCities.citiesInPolygon(cityDB, effectiveRing);
                     inPoly.sort(function (a, b) { return b.pop - a.pop; });
                     var cityList = inPoly.slice(0, 8).map(function (c) {
                         return { name: c.name, partOfArea: [] };
@@ -1730,11 +2268,9 @@
 
                     var duration = parseInt(document.getElementById("duration-select").value, 10) || 30;
 
-                    var issuedRaw = document.getElementById("issued-input").value;
-                    var issuedDate = issuedRaw ? new Date(issuedRaw) : new Date();
-                    if (isNaN(issuedDate.getTime())) issuedDate = new Date();
+                    var issuedDate = getIssuedDate();
 
-                    var tzInfo = detectTimezoneCrossing(currentRing, siteId);
+                    var tzInfo = detectTimezoneCrossing(effectiveRing, siteId);
                     var localtimezone = tzInfo.primary || undefined;
                     var effectiveCrossTz = crossTz || tzInfo.crosses;
                     var secondtimezone;
@@ -1748,7 +2284,7 @@
                     }
 
                     var pcResult = WarngenCities.computePathCast(
-                        cityDB, currentRing, stormPos, motionFromDeg, motionSpeed,
+                        cityDB, effectiveRing, stormPos, motionFromDeg, motionSpeed,
                         issuedDate,
                         localtimezone || "CST",
                         { maxMinutes: duration }
@@ -1832,7 +2368,12 @@
                         phenomena: currentPhenomena || undefined,
                         cancelareas: cancelareas,
                         oldvtec: etn,
-                        ic: immediateCause
+                        ic: immediateCause,
+                        ugcFormat: srcSpec.ugc,
+                        awwSiteId: selectedAirport() ? selectedAirport().site : "",
+                        awwSiteName: selectedAirport() ? selectedAirport().name : "",
+                        includedWatches: currentIncludedWatches,
+                        watches: buildWatches(areas, localtimezone, tzInfo.primaryDstLess)
                     });
 
                     if (!isFollowupAction && areas.length) {
@@ -1870,6 +2411,9 @@
                     rebuildFillInPanel(labels);
                     applyFillInsAndFormat();
                     var dt = (performance.now() - t0).toFixed(1);
+                    if (zoneFellBack) {
+                        setStatus("No forecast zones bundled for this office -- hatching counties instead.", true);
+                    }
 
                     var allCaps = document.getElementById("allcaps-cb").checked;
                     var wrap = document.getElementById("wrap-cb").checked;
@@ -1891,6 +2435,43 @@
                     setStatus("Render failed: " + e.message, true);
                 }
             }
+
+            function syncSelectionModeUi() {
+                document.getElementById("mode-" + selectionMode).checked = true;
+                document.body.classList.toggle("mode-areas", selectionMode === "areas");
+                refreshAreaSelectionUi();
+            }
+
+            function setSelectionMode(mode) {
+                selectionMode = (mode === "areas") ? "areas" : "polygon";
+                syncSelectionModeUi();
+                doRender();
+                saveState();
+            }
+
+            document.getElementById("mode-polygon").addEventListener("change", function () {
+                setSelectionMode("polygon");
+            });
+            document.getElementById("mode-areas").addEventListener("change", function () {
+                setSelectionMode("areas");
+            });
+            document.getElementById("clear-areas").addEventListener("click", function () {
+                clearAreaSelection();
+                doRender();
+                saveState();
+            });
+
+            document.getElementById("watch-add").addEventListener("click", function () {
+                var types = activeWatchTypes();
+                watchEntries.push({
+                    phenSig: types[0] || currentIncludedWatches[0] || "TO.A",
+                    etn: "",
+                    expire: ""
+                });
+                rebuildWatchPanel();
+                doRender();
+                saveState();
+            });
 
             document.getElementById("allcaps-cb").addEventListener("change", applyFillInsAndFormat);
             document.getElementById("wrap-cb").addEventListener("change", applyFillInsAndFormat);
@@ -2454,6 +3035,7 @@
                 loadXmlConfigs("legacy"),
                 loadXmlConfigs("modern"),
                 loadCounties(),
+                loadAirports(),
                 loadCities(),
                 loadHighways(),
                 loadHighwayAnchors(),
@@ -2467,7 +3049,25 @@
                 if (saved) {
                     applyFormState(saved.form);
                     savedBullets = saved.bullets && saved.bullets.length ? saved.bullets : null;
-                    if (saved.fillIns) fillInValues = saved.fillIns;
+                    if (saved.fillIns) {
+                        fillInValues = {};
+                        Object.keys(saved.fillIns).forEach(function (k) {
+                            var key = k.indexOf(FILLIN_SEP) === -1 ? fillInKey(k, 0) : k;
+                            fillInValues[key] = saved.fillIns[k];
+                        });
+                    }
+                    if (saved.selectionMode === "areas" || saved.selectionMode === "polygon") {
+                        selectionMode = saved.selectionMode;
+                    }
+                    if (saved.selectedAreaKeys) {
+                        selectedAreaKeys = {};
+                        saved.selectedAreaKeys.forEach(function (k) { if (k.indexOf(":") > 0) selectedAreaKeys[k] = true; });
+                    }
+                    if (saved.watchEntries && saved.watchEntries.length) {
+                        watchEntries = saved.watchEntries.map(function (w) {
+                            return { phenSig: w.phenSig || "TO.A", etn: w.etn || "", expire: w.expire || "" };
+                        });
+                    }
                     if (saved.followupBaseline && saved.followupBaseline.areas) {
                         followupBaseline = saved.followupBaseline;
                     }
@@ -2476,7 +3076,8 @@
 
                 updateFormattingControlState();
 
-                applyCwaFilter(document.getElementById("office-select").value);
+                applyCwaFilter(document.getElementById("office-select").value, true);
+                syncSelectionModeUi();
 
                 var issuedInput = document.getElementById("issued-input");
                 if (!issuedInput.value) {
@@ -2507,13 +3108,19 @@
                     autoResolveCwaFromPolygon();
                     doRender();
                     setStatus("Restored previous session. Draw a new polygon or Clear to start fresh.", false);
+                } else if (selectionMode === "areas" && selectedAreaCount() > 0) {
+                    doRender();
+                    setStatus("Restored previous session -- " + selectedAreaCount()
+                        + " areas selected. Clear to start fresh.", false);
                 } else {
                     setStatus("Successfully loaded " + countyGeojson.features.length + " US counties ("
                         + (visibleCounties ? visibleCounties.features.length : 0)
                         + " in current CWA), "
                         + cityDBAll.length + " US cities ("
                         + cityDB.length + " in current CWA), and bullet config. "
-                        + "Click the 'Draw Polygon' button to begin.", false);
+                        + (selectionMode === "areas"
+                            ? "Click areas on the map to begin."
+                            : "Click the 'Draw Polygon' button to begin."), false);
                 }
 
                 document.addEventListener("input", queueSave);

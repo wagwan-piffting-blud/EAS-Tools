@@ -270,6 +270,10 @@
 
         _isUsDst:        isUsDst,
         _effectiveZone:  effectiveZone,
-        _formatDate:     formatDate
+        _formatDate:     formatDate,
+        _zoneOffsetMinutes: function (tz, utcDate, dstLess) {
+            var off = TZ_OFFSETS[effectiveZone(tz || "UTC", utcDate, dstLess)];
+            return off === undefined ? 0 : off;
+        }
     };
 }));

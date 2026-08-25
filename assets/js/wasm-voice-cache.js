@@ -2,7 +2,7 @@
     var DB_NAME = 'eas-wasm-voice-cache';
     var STORE = 'files';
     var DB_VERSION = 1;
-    var CACHE_VERSION = 'v1';
+    var CACHE_VERSION = 'v2';
     var HEAD_TIMEOUT_MS = 8000;
 
     var dbPromise = null;

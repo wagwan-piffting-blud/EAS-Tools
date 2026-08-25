@@ -184,17 +184,20 @@
             "lawEnforcementCTA"
         ];
 
-        var includedWatches = [];
-        var watches = [];
+        var includedWatches = (opts.includedWatches || []).slice();
+        var watches = (opts.watches || []).map(toWatch);
 
-        var ugcline = UGC.build(areas, expire, "C");
+        var awwSiteId = opts.awwSiteId || "";
+        var awwSiteName = opts.awwSiteName || "";
+        var ugcFormat = opts.ugcFormat || "C";
+        var ugcline = UGC.build(areas, expire, ugcFormat);
 
         // Followup state. cancelareas are the areas that were in the original warning but have
         // dropped out of the current polygon; they get their own UGC line and VTEC segment.
         // null rather than [] when nothing was dropped: the templates gate their CAN segment on
         // #if(${cancelareas}), and an empty list would still emit a segment with an empty UGC.
         var cancelareas = (opts.cancelareas && opts.cancelareas.length) ? opts.cancelareas : null;
-        var ugclinecan  = cancelareas ? UGC.build(cancelareas, expire, "C") : "";
+        var ugclinecan  = cancelareas ? UGC.build(cancelareas, expire, ugcFormat) : "";
         var phenomena   = opts.phenomena || PRODUCT_PHENOMENA[productId] || "SV";
         var significance = opts.significance || "W";
 
@@ -249,6 +252,8 @@
             stationary:             stationary,
 
             bullets:        bullets,
+            awwSiteId:      awwSiteId,
+            awwSiteName:    awwSiteName,
             includedWatches: includedWatches,
             watches:        watches,
 
@@ -283,6 +288,21 @@
         PR: { area: "Municipio",   areas: "Municipios" }
     };
 
+    function toWatch(w) {
+        var end = (w.endTime instanceof Date) ? w.endTime : new Date(w.endTime);
+        return {
+            phenSig:     w.phenSig,
+            etn:         String(w.etn == null ? "" : w.etn),
+            state:       w.state || null,
+            partOfState: (w.partOfState || []).slice(),
+            marineArea:  w.marineArea || null,
+            endTime:     end,
+            startTime:   w.startTime ? new Date(w.startTime) : null,
+            getPhenSig:  function () { return this.phenSig; },
+            getEndTime:  function () { return this.endTime; }
+        };
+    }
+
     function featureToArea(feature) {
         var p = feature.properties || {};
 
@@ -290,7 +310,9 @@
         var countyFips = rawFips.length >= 3 ? rawFips.slice(-3) : rawFips;
 
         var state = p.state || p.stateabbr;
-        var notation = COUNTY_NOTATION_OVERRIDES[state] || { area: "County", areas: "Counties" };
+        var notation = p.marine
+            ? { area: "", areas: "" }
+            : (COUNTY_NOTATION_OVERRIDES[state] || { area: "County", areas: "Counties" });
 
         return {
             name:               p.name,

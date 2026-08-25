@@ -117,6 +117,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletText="****LANDSPOUT/WATERSPOUT SECTION****...(CHOOSE UP TO 1) " bulletType="title"/>
   <bullet bulletName="sightedSpout" bulletText="Landspouts sighted" bulletGroup="lSpout" parseString="LANDSPOUT...OBSERVED"/>
   <bullet bulletName="possibleSpout" bulletText="Landspouts possible - need a wind or hail threat with this option" bulletGroup="lSpout" parseString="LANDSPOUT...POSSIBLE"/>
+  <bullet bulletName="coldAirFunnel" bulletText="Cold air funnels possible" bulletGroup="lSpout" parseString="PRODUCING FUNNEL CLOUDS"/>
   <bullet bulletName="sightedWSpout" bulletText="Waterspouts sighted" bulletGroup="lSpout" parseString="WATERSPOUT...OBSERVED"/>
   <bullet bulletName="possibleWSpout" bulletText="Waterspouts possible - need a wind or hail threat with this option" bulletGroup="lSpout" parseString="WATERSPOUT...POSSIBLE"/>
   <bullet bulletText="************ LOCATIONS IMPACTED  **************" bulletType="title"/>
@@ -161,6 +162,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletText="****LANDSPOUT/WATERSPOUT SECTION****...(CHOOSE UP TO 1) " bulletType="title"/>
   <bullet bulletName="sightedSpout" bulletText="Landspouts sighted" bulletGroup="lSpout" parseString="LANDSPOUT...OBSERVED"/>
   <bullet bulletName="possibleSpout" bulletText="Landspouts possible - need a wind or hail threat with this option" bulletGroup="lSpout" parseString="LANDSPOUT...POSSIBLE"/>
+  <bullet bulletName="coldAirFunnel" bulletText="Cold air funnels possible" bulletGroup="lSpout" parseString="PRODUCING FUNNEL CLOUDS"/>
   <bullet bulletName="sightedWSpout" bulletText="Waterspouts sighted" bulletGroup="lSpout" parseString="WATERSPOUT...OBSERVED"/>
   <bullet bulletName="possibleWSpout" bulletText="Waterspouts possible - need a wind or hail threat with this option" bulletGroup="lSpout" parseString="WATERSPOUT...POSSIBLE"/>
   <bullet bulletText="************ LOCATIONS IMPACTED  **************" bulletType="title"/>

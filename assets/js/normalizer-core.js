@@ -64,7 +64,7 @@
     }
 
     function isProductLine(text) {
-        return /^[A-Z][A-Z /()\-]+(?:WARNING|WATCH|ADVISORY|STATEMENT|EMERGENCY|OUTLOOK)$/.test(
+        return /^[A-Z][A-Z /()\-]+(?:WARNING|WATCH|ADVISORY|STATEMENT|EMERGENCY|OUTLOOK|FORECAST)$/.test(
             text.trim().toUpperCase()
         );
     }
@@ -73,6 +73,35 @@
         return /^\d{3,4}\s+[AP]M\s+[A-Z]{2,4}\s+\w{3}\s+\w{3}\s+\d{1,2}\s+\d{4}$/i.test(
             text.trim()
         );
+    }
+
+    function isWmoHeaderLine(text) {
+        return /^[A-Z]{4}\d{2}\s+[A-Z]{4}\s+\d{6}(?:\s+[A-Z]{3})?$/.test(text.trim());
+    }
+
+    function isAwipsIdLine(text) {
+        return /^[A-Z]{3}[A-Z0-9]{3}$/.test(text.trim());
+    }
+
+    function isUgcLine(text) {
+        const stripped = text.trim();
+        return /^[A-Z0-9>-]+-$/.test(stripped) && /\d{3}/.test(stripped);
+    }
+
+    function isVtecLine(text) {
+        const stripped = text.trim();
+        return (
+            /^\/[A-Z0-9]\.[A-Z]{3}\.[A-Z]{4}\.[A-Z]{2}\.[A-Z]\.\d{4}\.\d{6}T\d{4}Z-\d{6}T\d{4}Z\/$/.test(stripped) ||
+            /^\/[A-Z0-9]{5}\.[0-9NU]\.[A-Z]{2}\.(?:\d{6}T\d{4}Z\.){3}[A-Z]{2}\/$/.test(stripped)
+        );
+    }
+
+    function isAreaNameListLine(text) {
+        const stripped = text.trim();
+        if (!stripped.endsWith("-") || stripped.includes("...")) return false;
+        const parts = stripped.slice(0, -1).split("-");
+        if (!parts.length) return false;
+        return parts.every((p) => /^[A-Za-z][A-Za-z0-9.'\u2019/ ]*$/.test(p.trim()));
     }
 
     function titleish(phrase) {
@@ -279,11 +308,38 @@
 
         const trimmed = lines.slice(start);
         const out = [];
+        let inUgcBlock = false;
+        let sawIssuedTime = false;
+        let prevWasWmo = false;
         for (const line of trimmed) {
             const stripped = line.trim();
             if (stripped === "&&" || stripped === "$$") break;
             if (/^(LAT\.\.\.LON|TIME\.\.\.MOT\.\.\.LOC|TIME\.\.\.)/.test(stripped)) break;
             if (/^[A-Z]{2,}(?:\/[A-Z]{2,})+$/.test(stripped)) break;
+
+            if (stripped) {
+                if (isWmoHeaderLine(stripped)) {
+                    prevWasWmo = true;
+                    continue;
+                }
+                if (prevWasWmo && isAwipsIdLine(stripped)) {
+                    prevWasWmo = false;
+                    continue;
+                }
+                prevWasWmo = false;
+
+                if (isUgcLine(stripped) || isVtecLine(stripped)) {
+                    inUgcBlock = true;
+                    continue;
+                }
+                if (inUgcBlock && isAreaNameListLine(stripped)) continue;
+                if (isHeaderTime(stripped)) {
+                    if (sawIssuedTime) continue;
+                    sawIssuedTime = true;
+                }
+                inUgcBlock = false;
+            }
+
             out.push(line);
         }
         return out;

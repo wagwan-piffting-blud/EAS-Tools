@@ -139,6 +139,32 @@ async function fetchAndStore() {
     const data = await response.json();
     processSameCodes(data);
 
+    window.zoneCounty = {};
+    try {
+        const zcResponse = await fetch('assets/E2T/include/zone-county.json');
+        window.zoneCounty = await zcResponse.json();
+    } catch (e) {
+        console.error('Error loading zone-county crosswalk:', e);
+    }
+
+    window.marineSame = {};
+    try {
+        const msResponse = await fetch('assets/E2T/include/marine-same.json');
+        const msData = await msResponse.json();
+        window.marineSame = (msData && msData.prefixes) || {};
+    } catch (e) {
+        console.error('Error loading marine SAME prefixes:', e);
+    }
+
+    window.vtecSame = {};
+    try {
+        const vsResponse = await fetch('assets/E2T/include/vtec-same.json');
+        const vsData = await vsResponse.json();
+        window.vtecSame = (vsData && vsData.map) || {};
+    } catch (e) {
+        console.error('Error loading VTEC to SAME map:', e);
+    }
+
     window.canadaCounty = {};
     try {
         const caResponse = await fetch('assets/E2T/include/same-ca.json');
@@ -1828,7 +1854,7 @@ async function fetchAndStore() {
         }
 
         if (selectedBackend.toLowerCase().includes("spfy") || /Speechify/i.test(window.ttsVoice) || parseSpfyVoiceId(window.ttsVoice) !== null) {
-            document.getElementById('shouldBitcrushSpeechifyContainer').style.display = 'block';
+            document.getElementById('shouldBitcrushSpeechifyContainer').style.display = 'inline-block';
         }
 
         else {
@@ -1945,15 +1971,18 @@ async function fetchAndStore() {
         }
         tone = parseInt(att.value);
         var usesCustomHeader = (window.useCustom && window.mode === "header");
+        var customHeaderValue = rawinput.value;
 
-        if (!rawinput.value && usesCustomHeader) {
-            alert("ZCZC header cannot be empty!");
-            return;
-        }
-
-        else if (!checkZCZCIsValid(rawinput.value) && usesCustomHeader) {
-            alert("Invalid ZCZC header format!");
-            return;
+        if (usesCustomHeader) {
+            const resolved = resolveHeaderInput(rawinput.value);
+            if (!resolved.ok) {
+                alert(resolved.error);
+                return;
+            }
+            customHeaderValue = resolved.header;
+            if (resolved.notes) {
+                resolved.notes.forEach(function (n, i) { addStatus(n, i ? "ERROR" : undefined); });
+            }
         }
 
         const useOverrideTZ = (document.getElementById('useOverrideTZ')?.value || '').trim();
@@ -1965,7 +1994,7 @@ async function fetchAndStore() {
         }
 
         const allowCustomAudio = window.announcementType === "custom";
-        await create_alert_async(usesCustomHeader ? rawinput.value : header, useOverrideTZ, { allowCustomAudio }).catch((error) => {
+        await create_alert_async(usesCustomHeader ? customHeaderValue : header, useOverrideTZ, { allowCustomAudio }).catch((error) => {
             console.error("Error generating alert:", error);
             addStatus("Error generating alert: " + error.message, "ERROR");
             throw error;
@@ -1979,7 +2008,7 @@ async function fetchAndStore() {
 
         saveb.style.display = "inline-block";
         addStatus("EAS Generated! Samples: " + samples.length.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (showTime ? timeTaken : ""));
-        addStatus("Generated header: <br class=\"mobileBreak\"><pre class=\"generatedHeader\">" + ((window.useCustom && window.mode === "header") ? rawinput.value : header) + "</pre>");
+        addStatus("Generated header: <br class=\"mobileBreak\"><pre class=\"generatedHeader\">" + (usesCustomHeader ? customHeaderValue : header) + "</pre>");
 
         const playbackElement = audioPlayback ?? (() => {
             const el = document.createElement("audio");
@@ -2814,6 +2843,192 @@ async function fetchAndStore() {
     };
 
     window.noaaProductToFips = noaaProductToFips;
+
+    const VTEC_RE = /\/([OTEX])\.(NEW|CON|EXT|EXA|EXB|UPG|CAN|EXP|COR|ROU)\.([A-Z]{4})\.([A-Z]{2})\.([A-Z])\.(\d{4})\.(\d{6}T\d{4}Z)-(\d{6}T\d{4}Z)\//;
+
+    function vtecTime(s) {
+        if (!s || s === "000000T0000Z") return null;
+        const m = /^(\d{2})(\d{2})(\d{2})T(\d{2})(\d{2})Z$/.exec(s);
+        if (!m) return null;
+        return new Date(Date.UTC(2000 + parseInt(m[1], 10), parseInt(m[2], 10) - 1,
+            parseInt(m[3], 10), parseInt(m[4], 10), parseInt(m[5], 10)));
+    }
+
+    const UGC_SCAN = /[A-Z]{2}[CZ]\d{3}(?:[->]\d{3})*(?:-[A-Z]{2}[CZ]\d{3}(?:[->]\d{3})*|-\d{3}(?:>\d{3})?)*-\d{6}-/;
+
+    function extractUgcBlock(text) {
+        const lines = String(text || "").replace(/\r/g, "").split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            const head = lines[i].trim();
+            if (!/^[A-Z]{2}[CZ]\d{3}/.test(head) || head.charAt(head.length - 1) !== "-") continue;
+            let block = head;
+            let j = i + 1;
+            while (!/\d{6}-$/.test(block) && j < lines.length && /^[\dA-Z>-]+-$/.test(lines[j].trim())) {
+                block += lines[j].trim();
+                j++;
+            }
+            if (/\d{6}-$/.test(block)) return block;
+        }
+        const flat = UGC_SCAN.exec(String(text || "").replace(/\s+/g, ""));
+        return flat ? flat[0] : "";
+    }
+
+    function expandUgc(block) {
+        const body = block.replace(/\d{6}-$/, "");
+        const out = [];
+        let st = null;
+        let fmt = null;
+        body.split("-").filter(Boolean).forEach(function (tok) {
+            let t = tok;
+            const head = /^([A-Z]{2})([CZ])(.*)$/.exec(t);
+            if (head) { st = head[1]; fmt = head[2]; t = head[3]; }
+            if (!st || !t) return;
+            const range = /^(\d{3})>(\d{3})$/.exec(t);
+            if (range) {
+                for (let n = parseInt(range[1], 10); n <= parseInt(range[2], 10); n++) {
+                    out.push({ state: st, fmt: fmt, code: String(n).padStart(3, "0") });
+                }
+            } else if (/^\d{3}$/.test(t)) {
+                out.push({ state: st, fmt: fmt, code: t });
+            }
+        });
+        return out;
+    }
+
+    function ugcToSameFips(entries) {
+        const stateByAbbr = {};
+        const stateMap = window.state || {};
+        Object.keys(stateMap).forEach(function (f) {
+            stateByAbbr[String(stateMap[f]).toUpperCase()] = f;
+        });
+        const marineSame = window.marineSame || {};
+        const county = window.county || {};
+        const fips = [];
+        const unmapped = [];
+        let marine = 0;
+        entries.forEach(function (e) {
+            if (e.fmt === "Z" && marineSame[e.state]) {
+                const ss = marineSame[e.state];
+                fips.push("0" + ss + e.code);
+                marine++;
+                return;
+            }
+            if (e.fmt === "C") {
+                const sf = stateByAbbr[e.state];
+                if (sf) fips.push("0" + sf + e.code);
+                else unmapped.push(e.state + "C" + e.code);
+                return;
+            }
+            const key = e.state + "Z" + e.code;
+            const list = (window.zoneCounty || {})[key];
+            if (list && list.length) list.forEach(function (f) { fips.push(f); });
+            else unmapped.push(key);
+        });
+        const named = fips.filter(function (f) {
+            const ss = f.slice(1, 3);
+            return county[ss] && county[ss][f.slice(3)];
+        });
+        return {
+            fips: Array.from(new Set(fips)),
+            unmapped: unmapped,
+            marine: marine,
+            unnamed: fips.length - named.length
+        };
+    }
+
+    function snapPurge(minutes) {
+        if (!(minutes > 0)) return { hr: 0, min: 15 };
+        if (minutes <= 45) return { hr: 0, min: Math.max(15, Math.ceil(minutes / 15) * 15) };
+        if (minutes <= 360) {
+            const step = Math.ceil(minutes / 30) * 30;
+            return { hr: Math.floor(step / 60), min: step % 60 };
+        }
+        return { hr: Math.min(99, Math.ceil(minutes / 60)), min: 0 };
+    }
+
+    function parseAwipsProduct(text) {
+        const raw = String(text || "");
+        const vm = VTEC_RE.exec(raw.replace(/\s+/g, ""));
+        if (!vm) return { ok: false, error: "No P-VTEC string found. Expected something like /O.NEW.KEPZ.DS.W.0001.260820T1657Z-260820T1730Z/" };
+
+        const phenSig = vm[4] + "." + vm[5];
+        const eventCode = ((window.vtecSame || {})[phenSig]) || null;
+        if (!eventCode) return { ok: false, error: "No SAME event code is defined for VTEC " + phenSig + "." };
+
+        const block = extractUgcBlock(raw);
+        if (!block) return { ok: false, error: "No UGC line found above the VTEC string." };
+
+        const resolved = ugcToSameFips(expandUgc(block));
+        if (!resolved.fips.length) {
+            return { ok: false, error: "Could not resolve any UGC area to a SAME FIPS code." };
+        }
+
+        const start = vtecTime(vm[7]);
+        const end = vtecTime(vm[8]);
+        const minutes = (start && end) ? Math.round((end.getTime() - start.getTime()) / 60000) : 0;
+
+        return {
+            ok: true,
+            eventCode: eventCode,
+            phenSig: phenSig,
+            office: vm[3],
+            productClass: vm[1],
+            action: vm[2],
+            etn: vm[6],
+            fips: resolved.fips,
+            unmapped: resolved.unmapped,
+            marine: resolved.marine,
+            unnamed: resolved.unnamed,
+            start: start,
+            purge: snapPurge(minutes),
+            durationMinutes: minutes,
+            senderId: (vm[3] + "/NWS").slice(0, 8)
+        };
+    }
+
+    function awipsToZczc(p) {
+        const originator = /^[KPT]/.test(p.office) ? "WXR" : "EAS";
+        const length = String(p.purge.hr).padStart(2, "0") + String(p.purge.min).padStart(2, "0");
+        return create_header_string(originator, p.eventCode, p.fips, length,
+            p.start || new Date(), p.senderId);
+    }
+
+    function resolveHeaderInput(raw) {
+        const text = String(raw || "").trim();
+        if (!text) return { ok: false, error: "Header cannot be empty!" };
+
+        if (/^ZCZC/i.test(text)) {
+            if (!checkZCZCIsValid(text)) return { ok: false, error: "Invalid ZCZC header format!" };
+            return { ok: true, header: text };
+        }
+
+        const parsed = parseAwipsProduct(text);
+        if (!parsed.ok) return { ok: false, error: parsed.error };
+
+        const header = awipsToZczc(parsed);
+        if (!checkZCZCIsValid(header)) {
+            return { ok: false, error: "Converted header failed validation: " + header };
+        }
+
+        const notes = ["Converted " + parsed.phenSig + " from " + parsed.office
+            + " to " + parsed.eventCode + " over " + parsed.fips.length + " FIPS."];
+        if (parsed.unmapped.length) {
+            notes.push("Skipped " + parsed.unmapped.length + " unresolvable UGC area(s): "
+                + parsed.unmapped.slice(0, 8).join(", "));
+        }
+        if (parsed.marine) {
+            notes.push("Resolved " + parsed.marine + " marine zone(s) to marine SAME codes.");
+        }
+        if (parsed.unnamed) {
+            notes.push(parsed.unnamed + " code(s) are not named in the bundled SAME table; "
+                + "they follow the NWS numbering convention but were not cross-checked.");
+        }
+        return { ok: true, header: header, notes: notes };
+    }
+
+    window.parseAwipsProduct = parseAwipsProduct;
+    window.resolveHeaderInput = resolveHeaderInput;
+
 
     if (window.EASBridge) {
         function sendEncoderData() {

@@ -204,6 +204,12 @@
 	#set($spoutImpact = "Waterspouts can easily overturn boats and create locally hazardous waters.")
 	#set($spoutReport = " ${capable}producing a waterspout over Lake !**NAME**!")
 #end
+#if($bullets.contains("coldAirFunnel"))
+	#set($spoutHazard = "funnel clouds")
+	#set($capable = "capable of ")
+	#set($spoutImpact = "Funnel clouds are usually harmless, but can briefly touch down and produce wind gusts over 50 mph.")
+	#set($spoutReport = " ${capable}producing funnel clouds")
+#end
 ##################################################################################
 ## Logic to put together the threats based on Wind...Hail and Landspout sections.
 ##################################################################################

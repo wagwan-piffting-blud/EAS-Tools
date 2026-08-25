@@ -1,5 +1,15 @@
 # EAS Tools Changelog
 
+2026-08-25:
+
+- Fixed a large number of WarnGen bugs and anachronisms in the templates raised by users of the tool. This commit specifically closes issues #64, #65, #66, #67, #68, #69, #70, and #73. Thank you to everyone who reported these issues and provided feedback on the WarnGen templates, especially GitHub user @curtis56239. Your feedback matters and helps improve the accuracy and reliability of the WarnGen tool for all users. If you notice any further issues or discrepancies in the WarnGen templates, please let me know so I can address them in future updates.
+
+- Add text width adjustment in the Text Crawl Generator. This allows users to adjust the width of the text in their crawls, which can be useful for fitting longer messages into a smaller space or for creating a specific visual effect. This is separate from kerning, which is still available as a separate option. The text width adjustment can be found with the other crawl options in the Text Crawl Generator, and it allows users to choose from a range of 0-200%, with 100% being "baseline/no change". This change provides users with more control over the appearance of their text crawls and allows for greater flexibility in designing their messages.
+
+- Allow AWIPS/VTEC product header strings to be converted to ZCZC strings. This closes issue #55. This allows users to convert AWIPS/VTEC product header strings (which are used in NWS products) into ZCZC strings (which are used in SAME messages). This can be useful for users who want to generate SAME messages based on AWIPS/VTEC product headers, or for users who want to convert existing AWIPS/VTEC product headers into ZCZC strings for use in their own projects.
+
+---
+
 2026-08-23:
 
 - Sorry for the recent lack of updates everyone, I've been busy with the Speechify project, trying to get CRS Mara and CRS Tom out the door. But now that both voices are available, I can get back to EAS Tools and start pushing out some updates again. This update is a big one to make up for said lack of updates, and it includes a number of new features and improvements as always. So, let's get into it!

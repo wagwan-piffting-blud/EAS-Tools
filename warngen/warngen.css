@@ -14,7 +14,7 @@ html, body {
 
 header {
     border-bottom: 1px solid #444;
-    padding: 12px 20px;
+    padding: 6px 12px;
     background: #14171c;
 }
 
@@ -41,7 +41,7 @@ main {
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
-    padding-bottom: 12px;
+    padding: 6px 0;
     margin-left: 20px;
     margin-right: 20px;
 }
@@ -198,7 +198,7 @@ footer a {
     font-size: 10px;
     font-style: italic;
     margin-left: auto;
-    max-width: 420px;
+    max-width: 600px;
 }
 
 .secondary-btn {
@@ -612,6 +612,7 @@ header h1 .credits-link {
     border: 1px solid #3c3836;
     border-radius: 3px;
 }
+
 header h1 .credits-link:hover {
     color: #fe8019;
     border-color: #fe8019;
@@ -665,4 +666,100 @@ header h1 .credits-link:hover {
         flex: 0 0 auto;
         min-height: 60vh;
     }
+}
+
+.watch-row {
+    gap: 6px;
+}
+
+.watch-type {
+    flex: 0 0 42%;
+    background: #0d0f12;
+    color: #e8e8e8;
+    border: 1px solid #4a3828;
+    padding: 3px 4px;
+    font-family: inherit;
+    font-size: 12px;
+    min-width: 0;
+}
+
+.watch-etn {
+    flex: 0 0 22%;
+}
+
+.watch-expire {
+    flex: 0 0 22%;
+}
+
+.watch-del {
+    flex: 0 0 auto;
+    background: #2a1f15;
+    color: #fabd2f;
+    border: 1px solid #4a3828;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1;
+    padding: 3px 7px;
+}
+
+.watch-del:hover,
+.watch-del:focus {
+    background: #3a2b1c;
+    outline: none;
+}
+
+.watch-actions {
+    flex: 0 0 auto;
+    padding: 0 14px 10px 14px;
+}
+
+#watch-add {
+    background: #2a1f15;
+    color: #fabd2f;
+    border: 1px solid #4a3828;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 4px 9px;
+}
+
+#watch-add:hover,
+#watch-add:focus {
+    background: #3a2b1c;
+    outline: none;
+}
+
+#watch-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px 14px 4px 14px;
+    font-size: 12px;
+}
+
+.watch-empty {
+    color: #8a7050;
+    font-size: 11px;
+    font-style: italic;
+}
+
+.mini-btn {
+    background: #2a1f15;
+    color: #fabd2f;
+    border: 1px solid #4a3828;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 2px 8px;
+}
+
+.mini-btn:hover,
+.mini-btn:focus {
+    background: #3a2b1c;
+    outline: none;
+}
+
+/* In whole-area mode the map is a picker, so make the areas read as clickable. */
+body.mode-areas .leaflet-interactive {
+    cursor: pointer;
 }

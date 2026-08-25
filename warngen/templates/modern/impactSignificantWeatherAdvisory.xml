@@ -97,7 +97,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletName="amateurRadio" bulletText="Amateur Radio Operators Reported" bulletGroup="advBasis" parseString="SOURCE...Amateur radio"/>
   <bullet bulletText="******* THREAT (CHOOSE UP TO 1 EACH WIND/HAIL) ******" bulletType="title"/>
   <bullet bulletName="wind30" bulletText="Winds 30 mph or greater" bulletGroup="windThreat" parseString="30 MPH"/>
-  <bullet bulletName="wind40" bulletText="Strong winds 40 mph or greater" bulletGroup="windThreat" parseString="40 MPH"/>
+  <bullet bulletName="wind40" bulletText="Strong winds 40 mph or greater" bulletGroup="windThreat" bulletDefault="true" parseString="40 MPH"/>
   <bullet bulletName="wind50" bulletText="Strong winds to 50 mph" bulletGroup="windThreat" parseString="50 MPH"/>
   <bullet bulletName="wind55" bulletText="Strong winds 50 to 55 mph" bulletGroup="windThreat" parseString="55 MPH"/>
   <bullet bulletName="peaHail" bulletText="Pea size hail" bulletGroup="hailThreat" parseString="PEA SIZE HAIL"/>
@@ -139,7 +139,7 @@ turned on unless the corresponding .vm file is turned on in a given template's .
   <bullet bulletName="amateurRadio" bulletText="Amateur Radio Operators Reported" bulletGroup="advBasis" parseString="SOURCE...Amateur radio"/>
   <bullet bulletText="******* THREAT (CHOOSE UP TO 1 EACH WIND/HAIL) ******" bulletType="title"/>
   <bullet bulletName="wind30" bulletText="Winds 30 mph or greater" bulletGroup="windThreat" parseString="30 MPH"/>
-  <bullet bulletName="wind40" bulletText="Strong winds 40 mph or greater" bulletGroup="windThreat" parseString="40 MPH"/>
+  <bullet bulletName="wind40" bulletText="Strong winds 40 mph or greater" bulletGroup="windThreat" bulletDefault="true" parseString="40 MPH"/>
   <bullet bulletName="wind50" bulletText="Strong winds to 50 mph" bulletGroup="windThreat" parseString="50 MPH"/>
   <bullet bulletName="wind55" bulletText="Strong winds 50 to 55 mph" bulletGroup="windThreat" parseString="55 MPH"/>
   <bullet bulletName="peaHail" bulletText="Pea size hail" bulletGroup="hailThreat" parseString="PEA SIZE HAIL"/>
