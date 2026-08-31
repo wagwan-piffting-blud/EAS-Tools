@@ -41,11 +41,11 @@
       "prefix": "crsmara",
       "large": false,
       "dir": "en-US/crsmara",
-      "totalBytes": 134229904,
+      "totalBytes": 134229892,
       "files": [
         {
           "name": "crsmara.vin",
-          "bytes": 39425094,
+          "bytes": 39425082,
           "parts": [
             "crsmara.vin"
           ]
@@ -74,11 +74,11 @@
       "prefix": "crstom",
       "large": true,
       "dir": "en-US/crstom",
-      "totalBytes": 160237002,
+      "totalBytes": 160236990,
       "files": [
         {
           "name": "crstom.vin",
-          "bytes": 59211464,
+          "bytes": 59211452,
           "parts": [
             "crstom.vin"
           ]

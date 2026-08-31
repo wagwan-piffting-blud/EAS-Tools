@@ -14,6 +14,8 @@ The delay can be anywhere from 0 to 30 seconds (specified in milliseconds), and 
 
 - Add auto-record toggle as well as a "notify on alert received" toggle to the Decoder tool. The auto-record toggle allows users to determine whether to automatically start recording when an alert is received, while the "notify on alert received" toggle allows users to receive the sounds of a BC370CRS weather radio when an alert is received. This change provides users with more control over how they receive and respond to alerts, allowing them to customize their experience based on their preferences and needs. Credits to user [jacklefucksnetwork](https://www.youtube.com/channel/UCxdYMkg8HS1CrFy7k3GtwTg) in the GWES Discord for the very clean sounding BC370CRS weather radio sound effects! The decoder has been slightly restructured looks-wise to accommodate these new toggles, and localStorage settings have been added to remember the user's preferences for these toggles across sessions.
 
+- Update spfy WASM voices to version 2026.08.31.
+
 ---
 
 2026-08-25:
