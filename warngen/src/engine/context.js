@@ -115,19 +115,19 @@
 
         var defaultAreas = [
             {
-                name: "Douglas", fips: "055", state: "NE", stateabbr: "NE",
+                name: "Douglas", fips: "31055", state: "NE", stateabbr: "NE",
                 state_zone: "055", parentRegion: "Nebraska",
                 partOfArea: [], partOfParentRegion: ["Central"],
                 areaNotation: "County", areasNotation: "Counties", points: []
             },
             {
-                name: "Sarpy", fips: "153", state: "NE", stateabbr: "NE",
+                name: "Sarpy", fips: "31153", state: "NE", stateabbr: "NE",
                 state_zone: "153", parentRegion: "Nebraska",
                 partOfArea: [], partOfParentRegion: ["Central"],
                 areaNotation: "County", areasNotation: "Counties", points: []
             },
             {
-                name: "Washington", fips: "177", state: "NE", stateabbr: "NE",
+                name: "Washington", fips: "31177", state: "NE", stateabbr: "NE",
                 state_zone: "177", parentRegion: "Nebraska",
                 partOfArea: [], partOfParentRegion: ["Central"],
                 areaNotation: "County", areasNotation: "Counties", points: []
@@ -288,6 +288,25 @@
         PR: { area: "Municipio",   areas: "Municipios" }
     };
 
+    /**
+     * Census gives independent cities a county code of 500 or higher: the 38 Virginia
+     * cities, Baltimore, St. Louis and Carson City. Texas is excluded because its county
+     * codes run past 500 without any of them being a city, which is the same carve-out the
+     * AWIPS headline macros make.
+     */
+    function isIndependentCity(countyFips, state) {
+        if (state === "TX") return false;
+        var n = parseInt(countyFips, 10);
+        return !isNaN(n) && n >= 500;
+    }
+
+    // The templates gate the "The City of..." wording on the name containing "City of",
+    // so Carson City -- already a city name -- has to stay as it is.
+    function independentCityName(name) {
+        if (!name) return name;
+        return /\bcity\b/i.test(name) ? name : "City of " + name;
+    }
+
     function toWatch(w) {
         var end = (w.endTime instanceof Date) ? w.endTime : new Date(w.endTime);
         return {
@@ -310,13 +329,21 @@
         var countyFips = rawFips.length >= 3 ? rawFips.slice(-3) : rawFips;
 
         var state = p.state || p.stateabbr;
-        var notation = p.marine
+
+        // County features carry the full SSCCC code. The headline macros slice off the state
+        // digits themselves to spot independent cities, so hand them the whole thing rather
+        // than the three-digit tail; UGC.build takes the tail on its own.
+        var isCounty = !p.marine && !p.zone;
+        var fips = (isCounty && rawFips.length === 5) ? rawFips : countyFips;
+        var indepCity = isCounty && isIndependentCity(countyFips, state);
+
+        var notation = (p.marine || indepCity)
             ? { area: "", areas: "" }
             : (COUNTY_NOTATION_OVERRIDES[state] || { area: "County", areas: "Counties" });
 
         return {
-            name:               p.name,
-            fips:               countyFips,
+            name:               indepCity ? independentCityName(p.name) : p.name,
+            fips:               fips,
             state:              state,
             stateabbr:          p.stateabbr || p.state,
             state_zone:         countyFips,

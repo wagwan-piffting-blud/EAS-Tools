@@ -203,6 +203,17 @@ button[disabled] {
     border-color: #3a3a3a;
 }
 
+/* The rule above sets an explicit background and colour on every field, which wins
+   over the browser's own disabled rendering, so a disabled field has to say so here. */
+select:disabled,
+input:disabled,
+textarea:disabled {
+    background-color: #3a3a3a;
+    color: var(--color-border-light);
+    cursor: not-allowed;
+    border-color: #3a3a3a;
+}
+
 /* ID-level CSS */
 #faq-link {
     background: linear-gradient(270deg, #ff0000, #ff7f00, #ffff00, #00ff00, #5b5bf1, #7612bd, #8b00ff, #ff0000);
@@ -1758,6 +1769,15 @@ button[disabled] {
         background-color: #d0d0d0;
         color: #777777;
         cursor: not-allowed;
+    }
+
+    select:disabled,
+    input:disabled,
+    textarea:disabled {
+        background-color: #e4e4e4;
+        color: #777777;
+        cursor: not-allowed;
+        border-color: #c4c4c4;
     }
 
     [data-splice-persist] {

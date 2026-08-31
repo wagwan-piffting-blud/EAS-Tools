@@ -45,6 +45,17 @@
         out = out.replace(/\$\{(\w+)\.equalsIgnoreCase\("([^"]+)"\)\}/g, function (_m, v, s) {
             return "$" + v + ".toUpperCase() == \"" + s.toUpperCase() + "\"";
         });
+
+        // Java Velocity compares operands of different classes by their string
+        // representations, so #if($isFIPS == "true") is true for the boolean true.
+        // velocityjs uses JS ==, where true == "true" is false. Quoting the reference
+        // forces the same string comparison Java does, and leaves a variable that already
+        // holds "true"/"false" -- which is how most of the config flags are written --
+        // behaving exactly as before.
+        out = out.replace(
+            /(^|[^"\w])(\$\{[A-Za-z_][\w.]*\}|\$[A-Za-z_][\w.]*)(\s*[!=]=\s*)("(?:true|false)")/g,
+            function (_m, pre, ref, op, lit) { return pre + '"' + ref + '"' + op + lit; });
+
         return out;
     }
 

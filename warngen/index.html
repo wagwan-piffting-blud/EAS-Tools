@@ -1822,16 +1822,31 @@
                 return (lead ? lead + " " : "") + "___" + (tail ? " " + tail : "");
             }
 
+            // A labelled blank names the value it wants, so every occurrence of it in one
+            // product is the same value -- a dam break repeats the dam name in four
+            // sentences and the forecaster should type it once. Only anonymous blanks are
+            // counted off separately, since nothing but their position tells them apart.
+            function fillInOrdinal(label, counts) {
+                if (label) return 0;
+                var ordinal = counts[label] || 0;
+                counts[label] = ordinal + 1;
+                return ordinal;
+            }
+
             function extractFillIns(text) {
                 var re = new RegExp(FILLIN_RE.source, "g");
                 var counts = {};
+                var seenNamed = {};
                 var slots = [];
                 var m;
                 while ((m = re.exec(text)) !== null) {
                     var label = m[1];
                     if (isErrorPlaceholder(label)) continue;
-                    var ordinal = counts[label] || 0;
-                    counts[label] = ordinal + 1;
+                    var ordinal = fillInOrdinal(label, counts);
+                    if (label) {
+                        if (seenNamed[label]) continue;
+                        seenNamed[label] = true;
+                    }
                     var display = label;
                     if (!display) {
                         display = fillInHint(text, m.index, m.index + m[0].length) || "(blank)";
@@ -2087,8 +2102,7 @@
                 var out = lastRawOutput.replace(new RegExp(FILLIN_RE.source, "g"),
                     function (match, label) {
                         if (isErrorPlaceholder(label)) return match;
-                        var ordinal = counts[label] || 0;
-                        counts[label] = ordinal + 1;
+                        var ordinal = fillInOrdinal(label, counts);
                         return fillInValues[fillInKey(label, ordinal)] || match;
                     });
 

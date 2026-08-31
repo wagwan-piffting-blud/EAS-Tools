@@ -718,6 +718,7 @@ async function fetchAndStore() {
 
         const clearBtn = document.querySelector('[data-decoder-clear-stream-url]');
         if (clearBtn) clearBtn.style.display = "inline-block";
+        saveDecoderSettings(window.streamUrl);
 
         setMeterSupported(false);
 
@@ -1430,6 +1431,7 @@ async function fetchAndStore() {
             if (clearStreamURLButton) {
                 clearStreamURLButton.style.display = "inline-block";
             }
+            saveDecoderSettings(url);
             const audio = document.createElement("audio");
             audio.crossOrigin = "anonymous";
             audio.src = url;
@@ -1914,6 +1916,15 @@ async function fetchAndStore() {
             micContainer.hidden = mics.length === 0;
         }
         sel.disabled = mics.length === 0;
+        const savedDevice = readDecoderSettings().device;
+        if (savedDevice) {
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === savedDevice) {
+                    sel.value = savedDevice;
+                    break;
+                }
+            }
+        }
         if (window.EASBridge) {
             const deviceList = mics.map(mic => ({ deviceId: mic.deviceId, label: mic.label || 'Microphone' }));
             window.EASBridge.send('decoder:devices', { devices: deviceList });
@@ -1935,6 +1946,7 @@ async function fetchAndStore() {
 
     async function stopDecode(resetEndec = true) {
         _bridgeLevelPeak = 0;
+        stopWeatherRadioAlarm();
         if (window.EASBridge) window.EASBridge.send('decoder:level', { db: METER_DB_MIN });
         flushPendingDecodeTail();
         finalizeActiveSameProduct();
@@ -1974,9 +1986,203 @@ async function fetchAndStore() {
     }
     populateMicrophones();
 
+    const DECODER_SETTINGS_KEY = "eas-tools-decoder-settings";
+    const DECODER_TOGGLE_IDS = ["decoder-loopback", "decoder-auto-record", "decoder-alarm-beep"];
+
+    function readDecoderSettings() {
+        try {
+            const raw = localStorage.getItem(DECODER_SETTINGS_KEY);
+            return raw ? (JSON.parse(raw) || {}) : {};
+        } catch (error) {
+            console.warn("Unable to read saved decoder settings:", error);
+            return {};
+        }
+    }
+
+    // window.streamUrl is live state, not a preference: every stream failure, stop and
+    // teardown path nulls it, and it starts null on a fresh load. Mirroring it here would
+    // erase the remembered URL on the next save. The stored copy only moves when a stream
+    // actually starts or when the forecaster clears it, so pass streamUrlOverride at those
+    // two points and nowhere else.
+    function saveDecoderSettings(streamUrlOverride) {
+        try {
+            const previous = readDecoderSettings();
+            const settings = {};
+            for (let i = 0; i < DECODER_TOGGLE_IDS.length; i++) {
+                const toggle = document.getElementById(DECODER_TOGGLE_IDS[i]);
+                if (toggle) settings[DECODER_TOGGLE_IDS[i]] = !!toggle.checked;
+            }
+            const deviceSelect = document.getElementById("device");
+            if (deviceSelect && deviceSelect.value) settings.device = deviceSelect.value;
+            const streamUrl = (streamUrlOverride === undefined)
+                ? previous.streamUrl
+                : streamUrlOverride;
+            if (streamUrl) settings.streamUrl = streamUrl;
+            localStorage.setItem(DECODER_SETTINGS_KEY, JSON.stringify(settings));
+        } catch (error) {
+            console.warn("Unable to save decoder settings:", error);
+        }
+    }
+
+    function rememberedStreamUrl() {
+        const saved = readDecoderSettings().streamUrl;
+        return (typeof saved === "string" && saved) ? saved : null;
+    }
+
+    function applyDecoderSettings() {
+        const saved = readDecoderSettings();
+        for (let i = 0; i < DECODER_TOGGLE_IDS.length; i++) {
+            const id = DECODER_TOGGLE_IDS[i];
+            const toggle = document.getElementById(id);
+            if (!toggle || saved[id] == null) continue;
+            if (toggle.checked === !!saved[id]) continue;
+            toggle.checked = !!saved[id];
+            toggle.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        if (saved.streamUrl && !window.streamUrl) {
+            window.streamUrl = saved.streamUrl;
+            const clearBtn = document.querySelector("[data-decoder-clear-stream-url]");
+            if (clearBtn) clearBtn.style.display = "inline-block";
+        }
+        return saved;
+    }
+
     function isLoopbackEnabled() {
         const loopbackToggle = document.getElementById("decoder-loopback");
         return !!(loopbackToggle && loopbackToggle.checked);
+    }
+
+    function isAutoRecordEnabled() {
+        const autoRecordToggle = document.getElementById("decoder-auto-record");
+        return !autoRecordToggle || autoRecordToggle.checked;
+    }
+
+    function isAlarmBeepEnabled() {
+        const alarmToggle = document.getElementById("decoder-alarm-beep");
+        return !!(alarmToggle && alarmToggle.checked);
+    }
+
+    const ALARM_SOUND_FILES = {
+        Warning: "assets/bc370crs_warn.wav",
+        Watch: "assets/bc370crs_watch.wav",
+        Advisory: "assets/bc370crs_adv.wav",
+        Statement: "assets/bc370crs_adv.wav",
+        Information: "assets/bc370crs_adv.wav"
+    };
+
+    const ALARM_FADE_SECONDS = 0.06;
+    const ALARM_GAIN = 1.8;
+    const alarmSoundCache = new Map();
+    let alarmSourceNode = null;
+    let alarmGainNode = null;
+    let alarmPlaybackToken = 0;
+    let alarmActive = false;
+
+    function alertTextForSeverity(parsedHeader) {
+        if (!parsedHeader || !parsedHeader.rawHeader) {
+            return "";
+        }
+        try {
+            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const cleanHeader = parsedHeader.rawHeader.trim()
+                .replace(window.EASREGEX, "ZCZC-$1-$2-$3+$4-$5-$6-");
+            return E2T(cleanHeader, null, false, userTimezone) || "";
+        } catch (error) {
+            return "";
+        }
+    }
+
+    function alertSeverity(easText) {
+        const text = easText || "";
+        if (text.match(/(Warning|Emergency|Immediate)/i) && !text.match(/(Demo)/i)) return "Warning";
+        if (text.match(/(Watch)/i)) return "Watch";
+        if (text.match(/(Advisory)/i)) return "Advisory";
+        if (text.match(/(Statement)/i)) return "Statement";
+        return "Information";
+    }
+
+    function loadAlarmSound(url) {
+        if (alarmSoundCache.has(url)) {
+            return alarmSoundCache.get(url);
+        }
+        const pending = fetch(url)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+                return response.arrayBuffer();
+            })
+            .then((data) => decodeContext.decodeAudioData(data))
+            .catch((error) => {
+                console.warn("Unable to load the weather radio alarm " + url + ":", error);
+                alarmSoundCache.delete(url);
+                return null;
+            });
+        alarmSoundCache.set(url, pending);
+        return pending;
+    }
+
+    function preloadAlarmSounds() {
+        const seen = new Set(Object.values(ALARM_SOUND_FILES));
+        seen.forEach((url) => { loadAlarmSound(url); });
+    }
+
+    function startWeatherRadioAlarm(severity) {
+        if (alarmActive || !isAlarmBeepEnabled()) {
+            return;
+        }
+        alarmActive = true;
+        const token = ++alarmPlaybackToken;
+        const url = ALARM_SOUND_FILES[severity] || ALARM_SOUND_FILES.Information;
+        try { decodeContext.resume(); } catch (error) { }
+
+        loadAlarmSound(url).then((buffer) => {
+            if (token !== alarmPlaybackToken) {
+                return;
+            }
+            if (!buffer || !isAlarmBeepEnabled()) {
+                alarmActive = false;
+                return;
+            }
+            const start = decodeContext.currentTime;
+            const seconds = buffer.duration;
+            const gain = decodeContext.createGain();
+            gain.gain.setValueAtTime(ALARM_GAIN, start);
+            if (seconds < buffer.duration) {
+                gain.gain.setValueAtTime(ALARM_GAIN, start + seconds - ALARM_FADE_SECONDS);
+                gain.gain.linearRampToValueAtTime(0, start + seconds);
+            }
+            const source = decodeContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(gain);
+            gain.connect(decodeContext.destination);
+            source.onended = () => {
+                try { gain.disconnect(); } catch (error) { }
+                if (token === alarmPlaybackToken) {
+                    alarmSourceNode = null;
+                    alarmGainNode = null;
+                    alarmActive = false;
+                }
+            };
+            alarmSourceNode = source;
+            alarmGainNode = gain;
+            source.start(start);
+            source.stop(start + seconds);
+        });
+    }
+
+    function stopWeatherRadioAlarm() {
+        alarmPlaybackToken++;
+        alarmActive = false;
+        if (alarmSourceNode) {
+            try { alarmSourceNode.stop(); } catch (error) { }
+            try { alarmSourceNode.disconnect(); } catch (error) { }
+            alarmSourceNode = null;
+        }
+        if (alarmGainNode) {
+            try { alarmGainNode.disconnect(); } catch (error) { }
+            alarmGainNode = null;
+        }
     }
 
     function ensureStreamMonitorGain() {
@@ -3320,18 +3526,11 @@ async function fetchAndStore() {
                                     const parsedHeader = parseHeader(currentMsg, product.id);
                                     if (parsedHeader && !parsedHeader.eom) {
                                         product.alerts.push(parsedHeader);
+                                        const needsSeverity = !!window.EASBridge || isAlarmBeepEnabled();
+                                        const easText = needsSeverity ? alertTextForSeverity(parsedHeader) : '';
+                                        const severity = alertSeverity(easText);
                                         if (window.EASBridge) {
                                             const alertName = events[parsedHeader.event] || parsedHeader.event || '';
-                                            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                                            const cleanHeader = parsedHeader.rawHeader.trim().replace(window.EASREGEX, 'ZCZC-$1-$2-$3+$4-$5-$6-');
-                                            let easText = '';
-                                            try { easText = E2T(cleanHeader, null, false, userTimezone); } catch(e) {}
-                                            let severity = 'Information';
-                                            if (easText.match(/(Warning|Emergency|Immediate)/i) && !easText.match(/(Demo)/i)) severity = 'Warning';
-                                            else if (easText.match(/(Watch)/i)) severity = 'Watch';
-                                            else if (easText.match(/(Advisory)/i)) severity = 'Advisory';
-                                            else if (easText.match(/(Statement)/i)) severity = 'Statement';
-                                            else if (easText.match(/(Information|Test|Demo)/i)) severity = 'Information';
                                             const issueTime = parsedHeader.issueTime;
                                             const expirationTime = typeof getExpirationTime === 'function' ? getExpirationTime(issueTime, parsedHeader.alertTime) : null;
                                             window.EASBridge.send('decoder:header', {
@@ -3356,6 +3555,7 @@ async function fetchAndStore() {
                                         container.appendChild(document.createElement("span")).innerHTML = "&emsp;&emsp;";
                                         container.appendChild(view);
                                         currentMsgFastPathHandled = true;
+                                        startWeatherRadioAlarm(severity);
                                     }
                                 }
                             }
@@ -3548,6 +3748,12 @@ async function fetchAndStore() {
     }
 
     function handleAutoRecordingTriggers() {
+        if (currentMsg.length >= 4 && currentMsg.slice(-8).toUpperCase().includes("NNNN")) {
+            stopWeatherRadioAlarm();
+        }
+        if (!isAutoRecordEnabled()) {
+            return;
+        }
         if (!autoRecordingTriggered && currentMsg.length >= 4) {
             const prefix = currentMsg.slice(0, 4).toUpperCase();
             if (prefix === "ZCZC") {
@@ -3709,16 +3915,8 @@ async function fetchAndStore() {
 
         if (window.EASBridge) {
             const alertName = events[parsedHeader.event] || parsedHeader.event || '';
-            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            const cleanHeader = parsedHeader.rawHeader.trim().replace(window.EASREGEX, 'ZCZC-$1-$2-$3+$4-$5-$6-');
-            let easText = '';
-            try { easText = E2T(cleanHeader, null, false, userTimezone); } catch(e) {}
-            let severity = 'Information';
-            if (easText.match(/(Warning|Emergency|Immediate)/i) && !easText.match(/(Demo)/i)) severity = 'Warning';
-            else if (easText.match(/(Watch)/i)) severity = 'Watch';
-            else if (easText.match(/(Advisory)/i)) severity = 'Advisory';
-            else if (easText.match(/(Statement)/i)) severity = 'Statement';
-            else if (easText.match(/(Information|Test|Demo)/i)) severity = 'Information';
+            const easText = alertTextForSeverity(parsedHeader);
+            const severity = alertSeverity(easText);
             const issueTime = parsedHeader.issueTime;
             const expirationTime = typeof getExpirationTime === 'function' ? getExpirationTime(issueTime, parsedHeader.alertTime) : null;
             window.EASBridge.send('decoder:header', {
@@ -4357,6 +4555,9 @@ async function fetchAndStore() {
         streamToggle.addEventListener('click', async function () {
             if (!streamToggleActive) {
                 if (!window.streamUrl) {
+                    window.streamUrl = rememberedStreamUrl();
+                }
+                if (!window.streamUrl) {
                     const streamUrl = prompt("Enter the URL of the DIRECT audio stream (YouTube NOT supported!):");
                     if (!streamUrl) {
                         return;
@@ -4485,6 +4686,29 @@ async function fetchAndStore() {
         });
     }
 
+    const alarmBeepToggle = document.getElementById('decoder-alarm-beep');
+    if (alarmBeepToggle) {
+        alarmBeepToggle.addEventListener('change', function () {
+            if (this.checked) {
+                preloadAlarmSounds();
+            } else {
+                stopWeatherRadioAlarm();
+            }
+        });
+        if (alarmBeepToggle.checked) {
+            preloadAlarmSounds();
+        }
+    }
+
+    const autoRecordToggle = document.getElementById('decoder-auto-record');
+    if (autoRecordToggle) {
+        autoRecordToggle.addEventListener('change', function () {
+            if (!this.checked && autoRecordingEngaged) {
+                stopAutoRecording(false);
+            }
+        });
+    }
+
     const recordToggle = document.querySelector('[data-decoder-record-toggle]');
     if (recordToggle) {
         recordToggle.addEventListener('click', function () {
@@ -4503,8 +4727,17 @@ async function fetchAndStore() {
         clearStreamURLButton.addEventListener('click', function () {
             window.streamUrl = null;
             clearStreamURLButton.style.display = "none";
+            saveDecoderSettings(null);
         });
     }
+
+    for (let i = 0; i < DECODER_TOGGLE_IDS.length; i++) {
+        const toggle = document.getElementById(DECODER_TOGGLE_IDS[i]);
+        if (toggle) toggle.addEventListener('change', function () { saveDecoderSettings(); });
+    }
+    if (sel) sel.addEventListener('change', function () { saveDecoderSettings(); });
+
+    applyDecoderSettings();
 
     const rawHeaderButton = document.querySelector('[data-decoder-load-raw]');
     if (rawHeaderButton) {

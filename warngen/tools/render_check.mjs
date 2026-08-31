@@ -121,7 +121,7 @@ if (saveDir) fs.mkdirSync(saveDir, { recursive: true });
 
 /** One county of the mock context's three, standing in for a partial cancellation. */
 const CANCEL_AREA = {
-    name: 'Washington', fips: '177', state: 'NE', stateabbr: 'NE', state_zone: '177',
+    name: 'Washington', fips: '31177', state: 'NE', stateabbr: 'NE', state_zone: '177',
     parentRegion: 'Nebraska', partOfArea: [], partOfParentRegion: ['Central'],
     areaNotation: 'County', areasNotation: 'Counties', points: []
 };

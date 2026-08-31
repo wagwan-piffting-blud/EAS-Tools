@@ -91,11 +91,7 @@
                     <button type="button" data-decoder-load-raw>Load/Analyze Raw ZCZC Header</button>
                     <button type="button" data-decoder-record-toggle disabled>Start Recording (alerts toggle this automatically)</button>
                     <button type="button" data-decoder-clear disabled>Clear Logs</button>
-                </span>
-                <span class="right-align">
                     <button type="button" data-decoder-clear-stream-url style="display: none;">Clear Stream URL</button>
-                    <label for="decoder-loopback">Play back audio source?</label>
-                    <input type="checkbox" id="decoder-loopback" name="decoder-loopback">
                 </span>
                 <br>
                 <div class="level-meter" role="meter" aria-label="Input level" aria-valuemin="0" aria-valuemax="1"
@@ -119,6 +115,20 @@
                         </div>
                     </div>
                 </div>
+                <div id="decoder-options">
+                    <span><b>Decoder Options:</b></span>
+                    <br>
+                    <br>
+                    <label for="decoder-loopback">Play back audio source?</label>
+                    <input type="checkbox" id="decoder-loopback" name="decoder-loopback">
+                    <br>
+                    <label for="decoder-auto-record">Auto-record decoded alerts?</label>
+                    <input type="checkbox" id="decoder-auto-record" name="decoder-auto-record" checked>
+                    <br>
+                    <label for="decoder-alarm-beep">Beep on alert received?</label>
+                    <input type="checkbox" id="decoder-alarm-beep" name="decoder-alarm-beep">
+                </div>
+                <br>
                 <hr>
                 <div id="sync" role="status" aria-live="polite" aria-atomic="true">STATUS: WAITING...</div>
                 <span id="signal-status" class="visually-hidden" aria-live="polite"></span>
@@ -345,10 +355,27 @@
                         <input type="number" id="vmify-custom-intensity" name="vmify-custom-intensity" min="0" max="3" step="0.01" value="1">
                     </div>
                 </div>
-                <div id="eomDelayContainer" style="display: none;">
+                <div id="silenceTimingContainer" role="group" aria-labelledby="silenceTimingHeading">
                     <br>
-                    <label for="eomDelay">Extra Delay Before EOMs (0-30000 ms., added after the announcement audio and on top of the standard 1 second EOM lead-in):</label>
-                    <input type="number" id="eomDelay" name="eomDelay" min="0" max="30000" step="50" value="0">
+                    <strong id="silenceTimingHeading">Silence Timing (0-30000 ms. each; defaults come from the selected ENDEC):</strong>
+                    <br>
+                    <label for="silenceUniform">Use the same value for all silences:</label>
+                    <input type="checkbox" id="silenceUniform" name="silenceUniform">
+                    <br>
+                    <label for="silencePreTone">Before the header tones:</label>
+                    <input type="number" id="silencePreTone" name="silencePreTone" min="0" max="30000" step="50" value="1000">
+                    <br>
+                    <label for="silenceHeadersToAttention">Between the header tones and the attention signal:</label>
+                    <input type="number" id="silenceHeadersToAttention" name="silenceHeadersToAttention" min="0" max="30000" step="50" value="1000">
+                    <br>
+                    <label for="silenceAttentionToMessage">Between the attention signal and the voice message (if any):</label>
+                    <input type="number" id="silenceAttentionToMessage" name="silenceAttentionToMessage" min="0" max="30000" step="50" value="1000">
+                    <br>
+                    <label for="silenceMessageToEom">Between the voice message (if any) and the EOM tones:</label>
+                    <input type="number" id="silenceMessageToEom" name="silenceMessageToEom" min="0" max="30000" step="50" value="1000">
+                    <br>
+                    <label for="silenceEomToEnd">Between the EOM tones and the end of the audio:</label>
+                    <input type="number" id="silenceEomToEnd" name="silenceEomToEnd" min="0" max="30000" step="50" value="1000">
                 </div>
                 <hr>
                 <div class="control-panel">

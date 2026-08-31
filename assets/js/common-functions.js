@@ -37,6 +37,12 @@ function freezeBurstList(list) {
     return Object.freeze(list.map((item) => Object.freeze(item)));
 }
 
+export const DEFAULT_PRE_TONE_GAP_MS = 1000;
+export const DEFAULT_PRE_MESSAGE_GAP_MS = 1000;
+export const DEFAULT_EOM_LEAD_GAP_MS = 1000;
+export const DEFAULT_EOM_TAIL_GAP_MS = 1000;
+export const SILENCE_GAP_MAX_MS = 30000;
+
 const ENDEC_MODE_PROFILE_SOURCE = {
     DEFAULT: {
         label: "None (Default)/EASyCAP",
@@ -78,7 +84,9 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         label: "National Weather Service - Console Replacement System (CRS, 1998-2016)",
         signature: { tail: "00", lead: "none", burstGapMs: 1000 },
         betweenGapMs: 1000,
-        afterGapMs: 1000,
+        afterGapMs: 4000,
+        preMessageGapMs: 1500,
+        eomLeadGapMs: 2000,
         sampleRate: 11025,
         headerBursts: [{ prefix: "", suffix: "\x00\x00\x00" }, { prefix: "", suffix: "\x00\x00\x00" }, { prefix: "", suffix: "\x00\x00\x00" }],
         eomBursts: [{ prefix: "\x00", suffix: "\x00" }, { prefix: "\x00", suffix: "\x00" }, { prefix: "\x00", suffix: "\x00" }]
@@ -144,6 +152,15 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         sampleRate: 5000,
         headerBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }],
         eomBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }]
+    },
+    XFINITY: {
+        label: "Xfinity X1 (Comcast)",
+        signature: { tail: "none", lead: "none", burstGapMs: 1500 },
+        betweenGapMs: 1500,
+        afterGapMs: 1000,
+        sampleRate: 44100,
+        headerBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }],
+        eomBursts: [{ prefix: "", suffix: "" }, { prefix: "", suffix: "" }, { prefix: "", suffix: "" }]
     }
 };
 
@@ -161,6 +178,10 @@ export const ENDEC_MODE_PROFILES = Object.freeze(
                 signature: Object.freeze(profile.signature),
                 betweenGapMs: profile.betweenGapMs,
                 afterGapMs: profile.afterGapMs,
+                preToneGapMs: Number.isFinite(profile.preToneGapMs) ? profile.preToneGapMs : DEFAULT_PRE_TONE_GAP_MS,
+                preMessageGapMs: Number.isFinite(profile.preMessageGapMs) ? profile.preMessageGapMs : DEFAULT_PRE_MESSAGE_GAP_MS,
+                eomLeadGapMs: Number.isFinite(profile.eomLeadGapMs) ? profile.eomLeadGapMs : DEFAULT_EOM_LEAD_GAP_MS,
+                eomTailGapMs: Number.isFinite(profile.eomTailGapMs) ? profile.eomTailGapMs : DEFAULT_EOM_TAIL_GAP_MS,
                 sampleRate: profile.sampleRate,
                 relayPop: profile.relayPop ? Object.freeze({ ...profile.relayPop }) : null,
                 headerBursts: freezeBurstList(profile.headerBursts),

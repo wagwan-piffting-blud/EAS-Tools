@@ -1,8 +1,24 @@
 # EAS Tools Changelog
 
+2026-08-31:
+
+- Add more customizability to the Encoder, specifically relating to delay timings between various aspects of the alert audio. Specifically, this change allows users to independently, or collectively, adjust the delays between:
+
+  - Between the beginning of the audio and the start of the SAME tones
+  - Between the header tones and the attention signal
+  - Between the attention signal and the voice message (if any)
+  - Between the voice message (if any) and the EOM tones
+  - Between the EOM tones and the end of the audio
+
+The delay can be anywhere from 0 to 30 seconds (specified in milliseconds), and can be adjusted in increments of 50 milliseconds. This change provides users with more control over the timing of their generated alerts, allowing them to create alerts that sound more natural and realistic. If you have any feedback or suggestions for further improvements to the Encoder's delay settings, please let me know so I can consider them for future updates.
+
+- Add auto-record toggle as well as a "notify on alert received" toggle to the Decoder tool. The auto-record toggle allows users to determine whether to automatically start recording when an alert is received, while the "notify on alert received" toggle allows users to receive the sounds of a BC370CRS weather radio when an alert is received. This change provides users with more control over how they receive and respond to alerts, allowing them to customize their experience based on their preferences and needs. Credits to user [jacklefucksnetwork](https://www.youtube.com/channel/UCxdYMkg8HS1CrFy7k3GtwTg) in the GWES Discord for the very clean sounding BC370CRS weather radio sound effects! The decoder has been slightly restructured looks-wise to accommodate these new toggles, and localStorage settings have been added to remember the user's preferences for these toggles across sessions.
+
+---
+
 2026-08-25:
 
-- Fixed a large number of WarnGen bugs and anachronisms in the templates raised by users of the tool. This commit specifically closes issues #64, #65, #66, #67, #68, #69, #70, and #73. Thank you to everyone who reported these issues and provided feedback on the WarnGen templates, especially GitHub user @curtis56239. Your feedback matters and helps improve the accuracy and reliability of the WarnGen tool for all users. If you notice any further issues or discrepancies in the WarnGen templates, please let me know so I can address them in future updates.
+- Fixed a large number of WarnGen bugs and anachronisms in the templates raised by users of the tool. Thank you to everyone who reported these issues and provided feedback on the WarnGen templates. Your feedback matters and helps improve the accuracy and reliability of the WarnGen tool for all users. If you notice any further issues or discrepancies in the WarnGen templates, please let me know so I can address them in future updates.
 
 - Add text width adjustment in the Text Crawl Generator. This allows users to adjust the width of the text in their crawls, which can be useful for fitting longer messages into a smaller space or for creating a specific visual effect. This is separate from kerning, which is still available as a separate option. The text width adjustment can be found with the other crawl options in the Text Crawl Generator, and it allows users to choose from a range of 0-200%, with 100% being "baseline/no change". This change provides users with more control over the appearance of their text crawls and allows for greater flexibility in designing their messages.
 

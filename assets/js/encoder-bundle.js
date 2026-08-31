@@ -749,6 +749,56 @@ async function fetchAndStore() {
         return Math.round(SAMPLE_RATE * (ms / 1000));
     }
 
+    const SILENCE_GAP_FIELDS = {
+        preTone: { input: "silencePreTone", profile: "preToneGapMs", fallback: 1000 },
+        headersToAttention: { input: "silenceHeadersToAttention", profile: "afterGapMs", fallback: 1000 },
+        attentionToMessage: { input: "silenceAttentionToMessage", profile: "preMessageGapMs", fallback: 1000 },
+        messageToEom: { input: "silenceMessageToEom", profile: "eomLeadGapMs", fallback: 1000 },
+        eomToEnd: { input: "silenceEomToEnd", profile: "eomTailGapMs", fallback: 1000 }
+    };
+    const SILENCE_GAP_KEYS = Object.keys(SILENCE_GAP_FIELDS);
+    const SILENCE_GAP_MAX_MILLISECONDS = 30000;
+    let activeSilenceGaps = null;
+
+    function clampSilenceMs(value, fallback) {
+        const ms = parseFloat(value);
+        if (!Number.isFinite(ms) || ms < 0) { return fallback; }
+        return Math.min(ms, SILENCE_GAP_MAX_MILLISECONDS);
+    }
+
+    function profileSilenceMs(profile, key) {
+        const spec = SILENCE_GAP_FIELDS[key];
+        const value = profile ? profile[spec.profile] : undefined;
+        return Number.isFinite(value) ? value : spec.fallback;
+    }
+
+    function isUniformSilenceEnabled() {
+        const toggle = document.getElementById("silenceUniform");
+        return !!(toggle && toggle.checked);
+    }
+
+    function getSilenceGapsMs(mode) {
+        const profile = getEndecModeProfile(mode || getOverallEndecMode());
+        const gaps = {};
+        for (let i = 0; i < SILENCE_GAP_KEYS.length; i++) {
+            const key = SILENCE_GAP_KEYS[i];
+            const fallback = profileSilenceMs(profile, key);
+            const input = document.getElementById(SILENCE_GAP_FIELDS[key].input);
+            gaps[key] = input ? clampSilenceMs(input.value, fallback) : fallback;
+        }
+        if (isUniformSilenceEnabled()) {
+            for (let i = 1; i < SILENCE_GAP_KEYS.length; i++) {
+                gaps[SILENCE_GAP_KEYS[i]] = gaps.preTone;
+            }
+        }
+        return gaps;
+    }
+
+    function silenceSamples(key) {
+        const gaps = activeSilenceGaps || getSilenceGapsMs();
+        return samplesFromMs(gaps[key]);
+    }
+
     const LEGACY_DIGITAL_MODE = "DIGITAL_LEGACY";
     const LEGACY_DIGITAL_LABEL = "SAGE 3644/DIGITAL (Legacy)";
     const SAME_PREAMBLE = "\xAB".repeat(16);
@@ -868,7 +918,7 @@ async function fetchAndStore() {
         const isLegacyDigital = (mode === LEGACY_DIGITAL_MODE);
         const profile = isLegacyDigital ? null : getEndecModeProfile(mode);
         const between = samplesFromMs(isLegacyDigital ? 1000 : profile.betweenGapMs);
-        const after = samplesFromMs(isLegacyDigital ? 1000 : profile.afterGapMs);
+        const after = silenceSamples("headersToAttention");
         const relayPop = (mode === "TRILITHIC_POP") ? profile.relayPop : null;
         emitTxBurstsFromStrings(txStrings, between, after, relayPop);
     }
@@ -877,12 +927,11 @@ async function fetchAndStore() {
         const mode = getOverallEndecMode();
         const isLegacyDigital = (mode === LEGACY_DIGITAL_MODE);
         const profile = isLegacyDigital ? null : getEndecModeProfile(mode);
-        const oneSecondSamples = samplesFromMs(1000);
-        generate_silence(oneSecondSamples);
+        generate_silence(silenceSamples("messageToEom"));
         const txStrings = buildEomTxStrings(mode);
         const between = samplesFromMs(isLegacyDigital ? 1000 : profile.betweenGapMs);
         const relayPop = (mode === "TRILITHIC_POP") ? profile.relayPop : null;
-        emitTxBurstsFromStrings(txStrings, between, oneSecondSamples, relayPop);
+        emitTxBurstsFromStrings(txStrings, between, silenceSamples("eomToEnd"), relayPop);
     }
 
     var pelmorexTonePromise = null;
@@ -1220,7 +1269,7 @@ async function fetchAndStore() {
 
                             const normalizedPcm = normalizeTtsPcm(pcm, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
 
-                            generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+                            generate_silence(silenceSamples("attentionToMessage"));
 
                             if (/Speechify/i.test(window.ttsVoice) && document.getElementById('shouldBitcrushSpeechify').checked) {
                                 const bitcrushed = await bitcrushSpeechifyPcm(normalizedPcm, SAMPLE_RATE);
@@ -1233,8 +1282,6 @@ async function fetchAndStore() {
                             else {
                                 appendPcmToSamples(normalizedPcm);
                             }
-
-                            generate_silence(Math.floor(SAMPLE_RATE * 0.25));
 
                             safeResolve();
                         }).catch((error) => {
@@ -1273,9 +1320,8 @@ async function fetchAndStore() {
                         getAudioFromPage(xhr.response).then((pcmRaw) => {
                             if (pcmRaw !== null) {
                                 const normalizedPcm = normalizeTtsPcm(pcmRaw, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
-                                generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+                                generate_silence(silenceSamples("attentionToMessage"));
                                 appendPcmToSamples(normalizedPcm);
-                                generate_silence(Math.floor(SAMPLE_RATE * 0.25));
                                 safeResolve();
                             }
 
@@ -1310,16 +1356,6 @@ async function fetchAndStore() {
         });
     }
 
-    const EOM_DELAY_MAX_MILLISECONDS = 30000;
-
-    function getEomDelayMilliseconds() {
-        const delayInput = document.getElementById("eomDelay");
-        if (!delayInput) { return 0; }
-        const delay = parseFloat(delayInput.value);
-        if (!Number.isFinite(delay) || delay <= 0) { return 0; }
-        return Math.min(delay, EOM_DELAY_MAX_MILLISECONDS);
-    }
-
     async function create_alert_async(header, useOverrideTZ, { allowCustomAudio = false } = {}) {
         document.getElementById("generate").disabled = true;
         document.getElementById("save").disabled = true;
@@ -1331,6 +1367,9 @@ async function fetchAndStore() {
             await ensureRelayPopReady(profile.relayPop);
         }
 
+        activeSilenceGaps = getSilenceGapsMs(endecMode);
+        generate_silence(silenceSamples("preTone"));
+
         if (tone !== null) {
             switch (tone.toString()) {
                 case "0":
@@ -1339,9 +1378,6 @@ async function fetchAndStore() {
                     break;
                 case "1":
                     create_header_tones(header);
-                    if(endecMode === "NWS_CRS") {
-                        generate_silence(Math.floor(SAMPLE_RATE * 1));
-                    }
                     create_nwr_tone();
                     break;
                 case "2":
@@ -1359,9 +1395,8 @@ async function fetchAndStore() {
 
         const appendAnnouncement = (pcmRaw) => {
             const pcm = normalizeTtsPcm(pcmRaw, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
-            generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+            generate_silence(silenceSamples("attentionToMessage"));
             appendPcmToSamples(pcm);
-            generate_silence(Math.floor(SAMPLE_RATE * 0.25));
         };
 
         const selectedVoiceRaw = (window.ttsVoice || '').trim();
@@ -1440,9 +1475,8 @@ async function fetchAndStore() {
                                 const bitcrushedPcm = bitcrushed.sampleRate === SAMPLE_RATE
                                     ? bitcrushed.pcm
                                     : resamplePcmSinc(bitcrushed.pcm, bitcrushed.sampleRate, SAMPLE_RATE);
-                                generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+                                generate_silence(silenceSamples("attentionToMessage"));
                                 appendPcmToSamples(bitcrushedPcm);
-                                generate_silence(Math.floor(SAMPLE_RATE * 0.25));
                             } else {
                                 appendAnnouncement(resampled);
                             }
@@ -1537,22 +1571,12 @@ async function fetchAndStore() {
                     const vmifyIntensity = vmifyIntensityEl ? parseFloat(vmifyIntensityEl.value) : 1;
                     pcm = vmifyPcm(pcm, SAMPLE_RATE, { intensity: Number.isFinite(vmifyIntensity) ? vmifyIntensity : 1 });
                 }
-                generate_silence(Math.floor(SAMPLE_RATE * 0.25));
+                generate_silence(silenceSamples("attentionToMessage"));
                 appendPcmToSamples(pcm);
-                generate_silence(Math.floor(SAMPLE_RATE * 0.25));
             }
             else {
                 addStatus("You must select a custom audio file when using Custom Audio! There will instead be silence.", "ERROR");
                 generate_silence(Math.floor(SAMPLE_RATE * 1));
-            }
-        }
-
-        const hasAnnouncement = window.announcementType === "tts" || (allowCustomAudio && window.announcementType === "custom");
-        if (hasAnnouncement && tone !== null && tone.toString() !== "2") {
-            const eomDelayMilliseconds = getEomDelayMilliseconds();
-            if (eomDelayMilliseconds > 0) {
-                generate_silence(Math.floor(SAMPLE_RATE * (eomDelayMilliseconds / 1000)));
-                addStatus("Waited " + (eomDelayMilliseconds / 1000) + " second" + (eomDelayMilliseconds === 1000 ? "" : "s") + " after the announcement before the EOMs.");
             }
         }
 
@@ -1562,12 +1586,10 @@ async function fetchAndStore() {
                     create_eom_tones();
                     break;
                 case "1":
-                    if(endecMode === "NWS_CRS") {
-                        generate_silence(Math.floor(SAMPLE_RATE * 1));
-                    }
                     create_eom_tones();
                     break;
                 case "2":
+                    generate_silence(silenceSamples("eomToEnd"));
                     break;
                 case "3":
                     create_eom_tones();
@@ -1576,6 +1598,10 @@ async function fetchAndStore() {
                     create_eom_tones();
                     break;
             }
+        }
+
+        else {
+            generate_silence(silenceSamples("eomToEnd"));
         }
 
         const endecRate = getEndecModeProfile(endecMode).sampleRate;
@@ -1944,7 +1970,12 @@ async function fetchAndStore() {
             'endecResample': endecResample,
             'enable-vmify-custom': document.getElementById('enable-vmify-custom')?.checked || false,
             'vmify-custom-intensity': document.getElementById('vmify-custom-intensity')?.value || '1',
-            'eomDelay': document.getElementById('eomDelay')?.value || '0'
+            'silenceUniform': document.getElementById('silenceUniform')?.checked || false,
+            'silencePreTone': document.getElementById('silencePreTone')?.value ?? '1000',
+            'silenceHeadersToAttention': document.getElementById('silenceHeadersToAttention')?.value ?? '1000',
+            'silenceAttentionToMessage': document.getElementById('silenceAttentionToMessage')?.value ?? '1000',
+            'silenceMessageToEom': document.getElementById('silenceMessageToEom')?.value ?? '1000',
+            'silenceEomToEnd': document.getElementById('silenceEomToEnd')?.value ?? '1000'
         }));
 
         samples = [];
@@ -2559,11 +2590,14 @@ async function fetchAndStore() {
 
     await getVoiceList();
 
+    const restoredSettingIds = new Set();
+
     if (!headerParam) {
         localStorage.getItem("eas-tools-encoder-settings") && (() => {
             try {
                 const savedSettings = JSON.parse(localStorage.getItem("eas-tools-encoder-settings"));
                 for (const [key, value] of Object.entries(savedSettings)) {
+                    restoredSettingIds.add(key);
                     if (key === 'locs' && Array.isArray(value)) {
                         locations.length = 0;
                         value.forEach(loc => locations.push(loc));
@@ -2599,6 +2633,9 @@ async function fetchAndStore() {
 
         addStatus("Loaded saved encoder settings!");
     }
+
+    applyProfileSilenceDefaults(
+        document.getElementById("overallEndecMode").value, restoredSettingIds);
 
     encoderModeSelect.addEventListener("change", function () {
         window.mode = encoderModeSelect.value;
@@ -2698,28 +2735,49 @@ async function fetchAndStore() {
         }
     });
 
-    const eomDelayContainer = document.getElementById("eomDelayContainer");
-    const eomDelayInput = document.getElementById("eomDelay");
+    const silenceUniformToggle = document.getElementById("silenceUniform");
 
-    const syncEomDelayUi = () => {
-        if (!eomDelayContainer) return;
-        const announcesAudio = announcementTypeSelect.value === "tts" || announcementTypeSelect.value === "custom";
-        const emitsEom = currentAttentionTone.value !== "2";
-        eomDelayContainer.style.display = (announcesAudio && emitsEom) ? "block" : "none";
-    };
+    function silenceInput(key) {
+        return document.getElementById(SILENCE_GAP_FIELDS[key].input);
+    }
 
-    announcementTypeSelect.addEventListener("change", syncEomDelayUi);
-    currentAttentionTone.addEventListener("change", syncEomDelayUi);
+    function syncSilenceUniformUi() {
+        const uniform = isUniformSilenceEnabled();
+        for (let i = 1; i < SILENCE_GAP_KEYS.length; i++) {
+            const input = silenceInput(SILENCE_GAP_KEYS[i]);
+            if (!input) continue;
+            input.disabled = uniform;
+            const label = document.querySelector('label[for="' + input.id + '"]');
+            if (label) label.classList.toggle("disabled", uniform);
+        }
+    }
 
-    if (eomDelayInput) {
-        eomDelayInput.addEventListener("change", () => {
-            const delay = parseFloat(eomDelayInput.value);
-            if (!Number.isFinite(delay) || delay < 0) {
-                eomDelayInput.value = "0";
-            } else if (delay > EOM_DELAY_MAX_MILLISECONDS) {
-                eomDelayInput.value = EOM_DELAY_MAX_MILLISECONDS.toString();
+    function applyProfileSilenceDefaults(mode, skipKeys) {
+        const profile = getEndecModeProfile(mode);
+        for (let i = 0; i < SILENCE_GAP_KEYS.length; i++) {
+            const key = SILENCE_GAP_KEYS[i];
+            const input = silenceInput(key);
+            if (!input || (skipKeys && skipKeys.has(input.id))) continue;
+            input.value = profileSilenceMs(profile, key).toString();
+        }
+    }
+
+    for (let i = 0; i < SILENCE_GAP_KEYS.length; i++) {
+        const input = silenceInput(SILENCE_GAP_KEYS[i]);
+        if (!input) continue;
+        input.addEventListener("change", () => {
+            const raw = parseFloat(input.value);
+            if (!Number.isFinite(raw) || raw < 0) {
+                input.value = "0";
+            } else if (raw > SILENCE_GAP_MAX_MILLISECONDS) {
+                input.value = SILENCE_GAP_MAX_MILLISECONDS.toString();
             }
         });
+    }
+
+    if (silenceUniformToggle) {
+        silenceUniformToggle.addEventListener("change", syncSilenceUniformUi);
+        syncSilenceUniformUi();
     }
 
     const endecModeSelect = document.getElementById("overallEndecMode");
@@ -2727,6 +2785,10 @@ async function fetchAndStore() {
     let endecModeInitializing = true;
 
     endecModeSelect.addEventListener("change", function () {
+        if (!endecModeInitializing) {
+            applyProfileSilenceDefaults(endecModeSelect.value);
+        }
+
         if (endecModeSelect.value.includes("NWS")) {
             tone = 1;
 
@@ -3174,7 +3236,13 @@ async function fetchAndStore() {
                 if (params.bitcrushSpeechify != null && el('shouldBitcrushSpeechify')) el('shouldBitcrushSpeechify').checked = params.bitcrushSpeechify;
                 if (params.vmifyCustom != null && el('enable-vmify-custom')) { el('enable-vmify-custom').checked = params.vmifyCustom; el('enable-vmify-custom').dispatchEvent(new Event('change')); }
                 if (params.vmifyCustomIntensity != null && el('vmify-custom-intensity')) el('vmify-custom-intensity').value = params.vmifyCustomIntensity.toString();
-                if (params.eomDelay != null && el('eomDelay')) el('eomDelay').value = params.eomDelay.toString();
+                if (params.eomDelay != null && el('silenceMessageToEom')) {
+                    el('silenceMessageToEom').value = (1000 + Number(params.eomDelay)).toString();
+                }
+                if (params.silenceUniform != null && el('silenceUniform')) { el('silenceUniform').checked = params.silenceUniform; el('silenceUniform').dispatchEvent(new Event('change')); }
+                for (const silenceId of ['silencePreTone', 'silenceHeadersToAttention', 'silenceAttentionToMessage', 'silenceMessageToEom', 'silenceEomToEnd']) {
+                    if (params[silenceId] != null && el(silenceId)) el(silenceId).value = params[silenceId].toString();
+                }
 
                 if (params.fipsMode && el('fipsMode')) {
                     el('fipsMode').value = params.fipsMode;

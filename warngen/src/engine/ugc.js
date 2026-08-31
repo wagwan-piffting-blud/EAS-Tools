@@ -55,7 +55,9 @@
         for (var i = 0; i < areas.length; i++) {
             var a = areas[i];
             var st = String(a.state).toUpperCase();
-            var fips = parseInt(a.fips, 10);
+            // County areas carry the full SSCCC code for the headline macros; the UGC line
+            // only ever wants the three-digit tail.
+            var fips = parseInt(String(a.fips).slice(-3), 10);
             if (isNaN(fips)) continue;
             if (!byState[st]) {
                 byState[st] = [];
