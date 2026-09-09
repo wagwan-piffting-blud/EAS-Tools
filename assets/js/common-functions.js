@@ -244,6 +244,7 @@ export const NANO_TTS_WORKER_URL = new URL('./text2wav-worker.js', import.meta.u
 export const SPFY_WORKER_URL = new URL('./spfy-worker.js', import.meta.url);
 export const SPFY_MANIFEST_URL = new URL('../wasm_tts_voices/spfy/voices/manifest.json', import.meta.url);
 export const ACU_WORKER_URL = new URL('./acu-worker.js', import.meta.url);
+export const ESPEAK_WORKER_URL = new URL('./espeak-worker.js', import.meta.url);
 
 export function resamplePcm(pcm, fromRate, toRate) {
     if (!pcm) return new Float32Array(0);
@@ -765,7 +766,13 @@ export function createWasmVoiceWorkerEngine(config = {}) {
         if (!state.worker || !state.ready || state.currentJob || !state.queue.length) return;
         const job = state.queue.shift();
         state.currentJob = job;
-        state.worker.postMessage({ type: 'synth', text: job.text, voice: job.voice || null });
+        state.worker.postMessage({
+            type: 'synth',
+            text: job.text,
+            voice: job.voice || null,
+            rate: job.rate ?? null,
+            pitch: job.pitch ?? null,
+        });
     };
 
     const handleMessage = (event) => {
@@ -835,7 +842,14 @@ export function createWasmVoiceWorkerEngine(config = {}) {
         if (typeof opts.onProgress === 'function') onProgress = opts.onProgress;
         ensureWorker();
         return new Promise((resolve, reject) => {
-            state.queue.push({ text, resolve, reject, voice: opts.voice || null });
+            state.queue.push({
+                text,
+                resolve,
+                reject,
+                voice: opts.voice || null,
+                rate: opts.rate ?? null,
+                pitch: opts.pitch ?? null,
+            });
             pump();
         });
     };
@@ -872,6 +886,342 @@ export function getAcuEngine() {
         });
     }
     return __acuEngine;
+}
+
+export const ESPEAK_DEFAULT_VOICE = 'en-us';
+
+export const ESPEAK_VOICES = Object.freeze([
+    { id: 'en-us', label: 'English (US)' },
+    { id: 'en-us+m3', label: 'English (US), male 3' },
+    { id: 'en-us+f2', label: 'English (US), female 2' },
+    { id: 'en-us+whisper', label: 'English (US), whisper' },
+    { id: 'en-us+croak', label: 'English (US), croak' },
+    { id: 'en-us+klatt', label: 'English (US), Klatt formant' },
+    { id: 'en', label: 'English (UK)' },
+    { id: 'es-419', label: 'Spanish (Latin America)' },
+    { id: 'fr', label: 'French' },
+]);
+
+const ESPEAK_VOICE_IDS = new Set(ESPEAK_VOICES.map(voice => voice.id));
+
+export function parseEspeakVoiceId(value) {
+    const normalized = ('' + (value || '')).trim().toLowerCase();
+    if (normalized === 'espeak') return ESPEAK_DEFAULT_VOICE;
+    if (!normalized.startsWith('espeak:')) return null;
+    const id = normalized.slice(7);
+    if (!id) return ESPEAK_DEFAULT_VOICE;
+    return ESPEAK_VOICE_IDS.has(id) ? id : ESPEAK_DEFAULT_VOICE;
+}
+
+export function espeakRateFromSlider(value) {
+    const slider = Number(value);
+    if (!Number.isFinite(slider) || slider === 0) return 175;
+    return Math.round(slider < 0 ? 175 + slider * 9.5 : 175 + slider * 27.5);
+}
+
+export function espeakPitchFromSlider(value) {
+    const slider = Number(value);
+    if (!Number.isFinite(slider) || slider === 0) return 50;
+    return Math.round(slider < 0 ? 50 + slider * 5 : 50 + slider * 4.9);
+}
+
+let __espeakEngine = null;
+export function getEspeakEngine() {
+    if (!__espeakEngine) {
+        __espeakEngine = createWasmVoiceWorkerEngine({
+            workerUrl: ESPEAK_WORKER_URL,
+            readyStatus: 'eSpeak NG ready.',
+        });
+    }
+    return __espeakEngine;
+}
+
+export function bindSliderNumberPair(config = {}) {
+    const { sliderId, numberId, resetId = null, defaultValue = 0 } = config;
+
+    const slider = document.getElementById(sliderId);
+    const number = document.getElementById(numberId);
+    if (!slider || !number) return null;
+
+    const min = Number(slider.min);
+    const max = Number(slider.max);
+    const fallback = Number.isFinite(Number(defaultValue)) ? Number(defaultValue) : 0;
+    let syncing = false;
+
+    const clamp = (value) => Math.min(max, Math.max(min, Math.round(value)));
+
+    const mirrorToNumber = () => {
+        if (syncing) return;
+        number.value = slider.value;
+    };
+
+    const commit = (value) => {
+        const next = String(clamp(value));
+        if (slider.value === next) return;
+        syncing = true;
+        slider.value = next;
+        slider.dispatchEvent(new Event('change', { bubbles: true }));
+        syncing = false;
+    };
+
+    for (const eventName of ['input', 'change']) {
+        slider.addEventListener(eventName, mirrorToNumber);
+    }
+
+    number.addEventListener('input', () => {
+        const raw = number.value;
+        if (raw === '' || raw === '-') return;
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed) || parsed < min || parsed > max) return;
+        commit(parsed);
+    });
+
+    number.addEventListener('change', () => {
+        const parsed = Number(number.value);
+        commit(Number.isFinite(parsed) && number.value !== '' ? parsed : fallback);
+        number.value = slider.value;
+    });
+
+    if (resetId) {
+        const reset = document.getElementById(resetId);
+        if (reset) {
+            reset.addEventListener('click', () => {
+                commit(fallback);
+                number.value = slider.value;
+            });
+        }
+    }
+
+    number.value = slider.value;
+    return { slider, number };
+}
+
+export const TTS_BACKEND_URL = 'https://wagspuzzle.space/tools/eas-tts/index.php?handler=toolkit';
+export const TTS_BACKEND_ASSET_BASE = 'https://wagspuzzle.space/tools/eas-tts/';
+
+export class TtsRequestError extends Error {
+    constructor(message, kind = 'request') {
+        super(message);
+        this.name = 'TtsRequestError';
+        this.kind = kind;
+    }
+}
+
+export function resolveVoiceBackend(voiceBackendMap, voiceId) {
+    if (!voiceBackendMap || !voiceId) return 'Unknown';
+    const backend = Object.keys(voiceBackendMap)
+        .find(name => Array.isArray(voiceBackendMap[name]) && voiceBackendMap[name].includes(voiceId));
+    return backend || 'Unknown';
+}
+
+export function backendSupportsProsody(backend) {
+    const normalized = ('' + (backend || '')).toLowerCase();
+    return normalized.includes('bal') || normalized.includes('vt');
+}
+
+export function backendSupportsVolumeBoost(backend) {
+    return ('' + (backend || '')).toLowerCase().includes('vt');
+}
+
+function prosodyNumber(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sapiScale(value) {
+    return Math.min(10, Math.max(-10, Math.round(prosodyNumber(value))));
+}
+
+function vtSpeedPitchScale(value) {
+    return Math.min(200, Math.max(0, Math.round(prosodyNumber(value) * 10 + 100)));
+}
+
+function vtVolumeScale(value) {
+    const slider = prosodyNumber(value);
+    const scaled = slider < 0 ? 100 + slider * 9.9 : 100 + slider * 40;
+    return Math.min(500, Math.max(1, Math.round(scaled)));
+}
+
+function balVolumeScale(value) {
+    const slider = prosodyNumber(value);
+    const scaled = slider < 0 ? 100 + slider * 9.9 : 100;
+    return Math.min(100, Math.max(1, Math.round(scaled)));
+}
+
+export const TTS_PROSODY_SCALES = Object.freeze({
+    sapi: sapiScale,
+    vtSpeedPitch: vtSpeedPitchScale,
+    vtVolume: vtVolumeScale,
+    balVolume: balVolumeScale,
+});
+
+export function ttsVolumeGain(backend, volume) {
+    const slider = prosodyNumber(volume);
+    if (slider === 0) return 1;
+    if (!backendSupportsProsody(backend)) return 1;
+    const scaled = backendSupportsVolumeBoost(backend) ? vtVolumeScale(slider) : balVolumeScale(slider);
+    return scaled / 100;
+}
+
+export function readTtsProsodyControls(suffix = '') {
+    const read = (id) => {
+        const element = document.getElementById(id + suffix);
+        return element ? element.value : '0';
+    };
+    return {
+        rate: read('ttsRate'),
+        pitch: read('ttsPitch'),
+        volume: read('ttsVolume'),
+    };
+}
+
+export function applyTtsProsodyMarkup(text, backend, prosody = {}) {
+    const normalized = ('' + (backend || '')).toLowerCase();
+    const isBal = normalized.includes('bal');
+    const isVt = normalized.includes('vt');
+    if (!isBal && !isVt) return text;
+
+    const rate = prosodyNumber(prosody.rate);
+    const pitch = prosodyNumber(prosody.pitch);
+    const volume = prosodyNumber(prosody.volume);
+
+    let out = text;
+    if (isBal) {
+        if (rate !== 0) out = `<rate absspeed="${sapiScale(rate)}">${out}</rate>`;
+        if (pitch !== 0) out = `<pitch absmiddle="${sapiScale(pitch)}">${out}</pitch>`;
+        const balVolume = balVolumeScale(volume);
+        if (volume !== 0 && balVolume !== 100) out = `<volume level="${balVolume}">${out}</volume>`;
+        return out;
+    }
+
+    if (rate !== 0) out = `<vtml_speed value="${vtSpeedPitchScale(rate)}">${out}</vtml_speed>`;
+    if (pitch !== 0) out = `<vtml_pitch value="${vtSpeedPitchScale(pitch)}">${out}</vtml_pitch>`;
+    const vtVolume = vtVolumeScale(volume);
+    if (volume !== 0 && vtVolume !== 100) out = `<vtml_volume value="${vtVolume}">${out}</vtml_volume>`;
+    return out;
+}
+
+function ttsPayloadToArrayBuffer(payload) {
+    if (payload instanceof ArrayBuffer) return Promise.resolve(payload);
+    if (payload instanceof Blob) return payload.arrayBuffer();
+    if (typeof payload !== 'string') {
+        return Promise.reject(new TtsRequestError('Unsupported payload type', 'decode'));
+    }
+
+    const withoutPrefix = payload.replace(/^data:audio\/[\w.+-]+;base64,/, '');
+    const bytesFrom = (source, mask) => {
+        const buffer = new ArrayBuffer(source.length);
+        const bytes = new Uint8Array(buffer);
+        for (let i = 0; i < source.length; i++) {
+            bytes[i] = mask ? source.charCodeAt(i) & 0xff : source.charCodeAt(i);
+        }
+        return buffer;
+    };
+
+    try {
+        return Promise.resolve(bytesFrom(atob(withoutPrefix.replace(/\s/g, '')), false));
+    } catch (error) {
+        try {
+            return Promise.resolve(bytesFrom(withoutPrefix, true));
+        } catch {
+            return Promise.reject(new TtsRequestError('Could not read the audio payload', 'decode'));
+        }
+    }
+}
+
+async function decodeTtsArrayBuffer(arrayBuffer) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    try {
+        const decode = audioContext.decodeAudioData.bind(audioContext);
+        return await (decode.length > 1
+            ? new Promise((resolve, reject) => decode(arrayBuffer, resolve, reject))
+            : decode(arrayBuffer));
+    } finally {
+        if (typeof audioContext.close === 'function') {
+            audioContext.close().catch(() => { });
+        }
+    }
+}
+
+async function ttsAudioFromHtmlResponse(response) {
+    const responseText = new TextDecoder('utf-8').decode(response);
+    const jsonMatch = responseText.match(/<span id="jsonErrorMsg">(.*)</i);
+    if (jsonMatch && jsonMatch[1]) {
+        const cleaned = jsonMatch[1].replace(/.*Exact error: (.*)/, '$1');
+        throw new TtsRequestError(cleaned !== '' ? cleaned : jsonMatch[1], 'server');
+    }
+
+    const audioMatch = responseText.match(/id="downloadlink"><a href="(.*)" download/i);
+    if (!audioMatch || !audioMatch[1]) {
+        throw new TtsRequestError('No audio found in the response', 'empty');
+    }
+
+    const audioResponse = await fetch(TTS_BACKEND_ASSET_BASE + audioMatch[1]);
+    return decodeTtsArrayBuffer(await audioResponse.arrayBuffer());
+}
+
+export function fetchRemoteTtsAudio({ text, voice, overrideTZ = 'UTC', backend = '', prosody = null } = {}) {
+    const spoken = prosody ? applyTtsProsodyMarkup(text, backend, prosody) : text;
+
+    const params = new URLSearchParams();
+    params.append('text', spoken);
+    params.append('voice', voice);
+    params.append('useOverrideTZ', overrideTZ ?? 'UTC');
+
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', TTS_BACKEND_URL, true);
+        xhr.responseType = 'arraybuffer';
+        xhr.setRequestHeader('Accept', '*/*');
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        const succeed = (buffer) => {
+            if (!buffer) {
+                reject(new TtsRequestError('The response contained no audio', 'empty'));
+                return;
+            }
+            resolve({ pcm: buffer.getChannelData(0), sampleRate: buffer.sampleRate });
+        };
+
+        const fail = (error) => {
+            reject(error instanceof TtsRequestError
+                ? error
+                : new TtsRequestError((error && error.message) || 'TTS request failed', 'decode'));
+        };
+
+        xhr.onload = () => {
+            const contentType = xhr.getResponseHeader('Content-Type') || '';
+
+            if (xhr.status >= 200 && xhr.status < 300 && contentType.startsWith('audio/wav')) {
+                if (typeof window.updateTTSRequestsCounter === 'function') {
+                    window.updateTTSRequestsCounter();
+                }
+                ttsPayloadToArrayBuffer(xhr.response ?? xhr.responseText)
+                    .then(decodeTtsArrayBuffer)
+                    .then(succeed)
+                    .catch(fail);
+                return;
+            }
+
+            if (contentType.startsWith('application/json')) {
+                let message = 'The TTS service returned an error';
+                try {
+                    const parsed = JSON.parse(new TextDecoder('utf-8').decode(xhr.response));
+                    if (parsed && parsed.error) message = parsed.error;
+                } catch { /* keep the generic message */ }
+                reject(new TtsRequestError(message, 'server'));
+                return;
+            }
+
+            ttsAudioFromHtmlResponse(xhr.response).then(succeed).catch(fail);
+        };
+
+        xhr.onerror = () => {
+            reject(new TtsRequestError(`Network error: ${xhr.status} ${xhr.statusText}`, 'network'));
+        };
+
+        xhr.send(params.toString());
+    });
 }
 
 export function createTtsTextEditor(config = {}) {
@@ -1212,3 +1562,17 @@ export async function populateSpfyVoiceList(config = {}) {
 
     return true;
 }
+
+let __numberWheelGuardInstalled = false;
+export function installNumberInputWheelGuard() {
+    if (__numberWheelGuardInstalled || typeof document === 'undefined') return;
+    __numberWheelGuardInstalled = true;
+    document.addEventListener('wheel', () => {
+        const active = document.activeElement;
+        if (active && active.tagName === 'INPUT' && active.type === 'number') {
+            active.blur();
+        }
+    }, { passive: true, capture: true });
+}
+
+installNumberInputWheelGuard();

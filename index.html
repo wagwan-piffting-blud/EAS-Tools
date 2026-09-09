@@ -301,18 +301,40 @@
                             <option value="nanotts">[NanoTTS] WebAssembly (local) Voice #2 (faster, but less natural)</option>
                             <option value="" data-spfy-voice-slot disabled>[Speechify] Loading voice list...</option>
                             <option value="acuvoice">[AcuVoice] WebAssembly (local) AcuVoice - Roger (~160 MB one-time download)</option>
+                            <option value="espeak:en-us">[eSpeak] eSpeak NG (local) - English (US) (~1.3 MB one-time download)</option>
+                            <option value="espeak:en-us+m3">[eSpeak] eSpeak NG (local) - English (US), Male 3</option>
+                            <option value="espeak:en-us+f2">[eSpeak] eSpeak NG (local) - English (US), Female 2</option>
+                            <option value="espeak:en-us+whisper">[eSpeak] eSpeak NG (local) - English (US), Whisper</option>
+                            <option value="espeak:en-us+croak">[eSpeak] eSpeak NG (local) - English (US), Croak</option>
+                            <option value="espeak:en-us+klatt">[eSpeak] eSpeak NG (local) - English (US), Klatt formant</option>
+                            <option value="espeak:en">[eSpeak] eSpeak NG (local) - English (UK)</option>
+                            <option value="espeak:es-419">[eSpeak] eSpeak NG (local) - Spanish (Latin America)</option>
+                            <option value="espeak:fr">[eSpeak] eSpeak NG (local) - French</option>
                         </select>
                         <br>
                         <br>
                         <div id="ttsRatePitchControls">
-                            <label for="ttsRate">Speech Speed: <span id="ttsRateValue">0</span></label>
+                            <label for="ttsRate">Speech Speed:</label>
                             <input type="range" id="ttsRate" name="ttsRate" min="-10" max="10" value="0" step="1">
+                            <label for="ttsRateNumber" class="visually-hidden">Speech speed value, minus ten to ten</label>
+                            <input type="number" class="slider-number" id="ttsRateNumber" name="ttsRateNumber" min="-10" max="10" value="0" step="1">
                             <button type="button" id="ttsRateReset">Reset</button>
                             <br>
                             <br>
-                            <label for="ttsPitch">Speech Pitch: <span id="ttsPitchValue">0</span></label>
+                            <label for="ttsPitch">Speech Pitch:</label>
                             <input type="range" id="ttsPitch" name="ttsPitch" min="-10" max="10" value="0" step="1">
+                            <label for="ttsPitchNumber" class="visually-hidden">Speech pitch value, minus ten to ten</label>
+                            <input type="number" class="slider-number" id="ttsPitchNumber" name="ttsPitchNumber" min="-10" max="10" value="0" step="1">
                             <button type="button" id="ttsPitchReset">Reset</button>
+                            <div id="ttsVolumeRow">
+                                <br>
+                                <label for="ttsVolume">Speech Volume:</label>
+                                <input type="range" id="ttsVolume" name="ttsVolume" min="-10" max="10" value="0" step="1">
+                                <label for="ttsVolumeNumber" class="visually-hidden">Speech volume value, minus ten to ten</label>
+                                <input type="number" class="slider-number" id="ttsVolumeNumber" name="ttsVolumeNumber" min="-10" max="10" value="0" step="1">
+                                <button type="button" id="ttsVolumeReset">Reset</button>
+                                <p id="ttsVolumeNote" class="inline-note" hidden>Balabolka voices can only be made quieter than normal, so positive volume has no effect on them. VoiceText voices can go up to five times normal.</p>
+                            </div>
                         </div>
                         <div id="shouldBitcrushSpeechifyContainer" style="display: none;">
                             <label for="shouldBitcrushSpeechify">"VM-Sounding" Speechify Output:</label>
@@ -484,6 +506,7 @@
                         <button type="button" id="crawlGetAndSetWH">Get/Set</button>
                         <br>
                     </div>
+                    <p id="crawlPremadeLockNote" class="inline-note" hidden>The selected pre-made background sets the greyed-out values below. Change Background Mode to set them yourself.</p>
                     <label for="crawlWidth">Crawl Width (pixels, 0-3840):</label>
                     <input type="number" id="crawlWidth" min="0" max="3840" value="800">
                     <br>
@@ -571,15 +594,33 @@
                 </div>
                 <hr>
                 <div class="control-panel" style="position: sticky; top: 0; padding-top: 10px; padding-bottom: 10px; z-index: 10;">
-                    <button type="button" id="startCrawl">Start Crawl</button>
-                    <button type="button" id="pauseCrawl" disabled>Pause Crawl</button>
+                    <button type="button" id="pauseCrawl" disabled>Unpause Crawl</button>
                     <button type="button" id="prevFrame" disabled>Previous Frame</button>
                     <button type="button" id="nextFrame" disabled>Next Frame</button>
                     <button type="button" id="stopCrawl" disabled>Stop/Reset Crawl</button>
                     <button type="button" id="exportCrawlGIF" disabled>Export as GIF</button>
-                    <button type="button" id="exportCrawlVideo" disabled>Export as video (.webm)</button>
+                    <button type="button" id="exportCrawlVideo" disabled>Export as Video</button>
+                    <span class="crawl-export-options">
+                        <label for="crawlExportGifFps">GIF FPS:</label>
+                        <select id="crawlExportGifFps" aria-label="GIF export frame rate">
+                            <option value="20">20</option>
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                        </select>
+                        <label for="crawlExportVideoFps">Video FPS:</label>
+                        <select id="crawlExportVideoFps" aria-label="Video export frame rate">
+                            <option value="24">24</option>
+                            <option value="30">30</option>
+                            <option value="60" selected>60</option>
+                        </select>
+                        <label for="crawlExportVideoFormat">Video Format:</label>
+                        <select id="crawlExportVideoFormat" aria-label="Video export container format">
+                            <option value="auto" selected>Auto (MP4 preferred)</option>
+                            <option value="mp4">MP4 (H.264)</option>
+                            <option value="webm">WebM (VP9/VP8)</option>
+                        </select>
+                    </span>
                     <button type="button" id="copyCrawlText" disabled>Copy Crawl Text to Clipboard</button>
-                    <button type="button" id="destroyCrawl" disabled>Destroy Crawl Instance</button>
                     <button type="button" id="saveUserPreset">Save Currently Selected Preset</button>
                     <button type="button" id="loadUserPreset">Load Currently Selected Preset</button>
                     <button type="button" id="exportUserPreset">Export Preset to File (.json)</button>
@@ -661,17 +702,39 @@
                                 <option value="nanotts">[NanoTTS] WebAssembly (local) Voice #2 (faster, but less natural)</option>
                                 <option value="" data-spfy-voice-slot disabled>[Speechify] Loading voice list...</option>
                                 <option value="acuvoice">[AcuVoice] WebAssembly (local) AcuVoice - Roger (~160 MB one-time download)</option>
+                                <option value="espeak:en-us">[eSpeak] eSpeak NG (local) - English (US) (~1.3 MB one-time download)</option>
+                                <option value="espeak:en-us+m3">[eSpeak] eSpeak NG (local) - English (US), Male 3</option>
+                                <option value="espeak:en-us+f2">[eSpeak] eSpeak NG (local) - English (US), Female 2</option>
+                                <option value="espeak:en-us+whisper">[eSpeak] eSpeak NG (local) - English (US), Whisper</option>
+                                <option value="espeak:en-us+croak">[eSpeak] eSpeak NG (local) - English (US), Croak</option>
+                                <option value="espeak:en-us+klatt">[eSpeak] eSpeak NG (local) - English (US), Klatt formant</option>
+                                <option value="espeak:en">[eSpeak] eSpeak NG (local) - English (UK)</option>
+                                <option value="espeak:es-419">[eSpeak] eSpeak NG (local) - Spanish (Latin America)</option>
+                                <option value="espeak:fr">[eSpeak] eSpeak NG (local) - French</option>
                             </select>
                             <div id="ttsRatePitchControls2">
                                 <br>
-                                <label for="ttsRate2">Speech Speed: <span id="ttsRateValue2">0</span></label>
+                                <label for="ttsRate2">Speech Speed:</label>
                                 <input type="range" id="ttsRate2" name="ttsRate2" min="-10" max="10" value="0" step="1">
+                                <label for="ttsRate2Number" class="visually-hidden">Speech speed value, minus ten to ten</label>
+                                <input type="number" class="slider-number" id="ttsRate2Number" name="ttsRate2Number" min="-10" max="10" value="0" step="1">
                                 <button type="button" id="ttsRateReset2">Reset</button>
                                 <br>
                                 <br>
-                                <label for="ttsPitch2">Speech Pitch: <span id="ttsPitchValue2">0</span></label>
+                                <label for="ttsPitch2">Speech Pitch:</label>
                                 <input type="range" id="ttsPitch2" name="ttsPitch2" min="-10" max="10" value="0" step="1">
+                                <label for="ttsPitch2Number" class="visually-hidden">Speech pitch value, minus ten to ten</label>
+                                <input type="number" class="slider-number" id="ttsPitch2Number" name="ttsPitch2Number" min="-10" max="10" value="0" step="1">
                                 <button type="button" id="ttsPitchReset2">Reset</button>
+                                <div id="ttsVolume2Row">
+                                    <br>
+                                    <label for="ttsVolume2">Speech Volume:</label>
+                                    <input type="range" id="ttsVolume2" name="ttsVolume2" min="-10" max="10" value="0" step="1">
+                                    <label for="ttsVolume2Number" class="visually-hidden">Speech volume value, minus ten to ten</label>
+                                    <input type="number" class="slider-number" id="ttsVolume2Number" name="ttsVolume2Number" min="-10" max="10" value="0" step="1">
+                                    <button type="button" id="ttsVolume2Reset">Reset</button>
+                                    <p id="ttsVolume2Note" class="inline-note" hidden>Balabolka voices can only be made quieter than normal, so positive volume has no effect on them. VoiceText voices can go up to five times normal.</p>
+                                </div>
                             </div>
                             <div id="shouldBitcrushSpeechifyContainer2" style="display: none;">
                                 <br>
@@ -1067,7 +1130,7 @@
                         module: 'assets/js/encoder-bundle.js',
                     },
                     crawl: {
-                        scripts: [...CODEMIRROR_SCRIPTS, 'assets/js/gif.js', 'assets/js/canvas-capture.js'],
+                        scripts: [...CODEMIRROR_SCRIPTS],
                         module: 'assets/js/crawl-bundle.js',
                     },
                     splicer: {

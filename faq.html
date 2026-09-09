@@ -98,7 +98,7 @@
                 </section>
                 <section>
                     <h3>Is EAS Tools free to use?</h3>
-                    <p>Yes, EAS Tools is completely free (as in beer AND speech) to use. It is an open-source project available on <a href="https://github.com/wagwan-piffting-blud/EAS-Tools" target="_blank" rel="noopener noreferrer nofollow">GitHub</a>, licensed under the GNU GPL 3, a widely used free software license that allows for redistribution and modification with proper attribution. This entire website is also hosted proudly on GitHub Pages. Download the source code, modify it as you see fit, and contribute to the project if you'd like, especially if you know your way around HTML/CSS/JavaScript comfortably! Heck, you can even run a copy of the ENTIRE site locally, so long as you're comfortable with the command line and have the necessary tools installed. The only thing that relies on an outside internet connection is Web TTS. That's it!</p>
+                    <p>Yes, EAS Tools is completely free (as in beer AND speech) to use. It is an open-source project available on <a href="https://github.com/wagwan-piffting-blud/EAS-Tools" target="_blank" rel="noopener noreferrer nofollow">GitHub</a>, licensed under the GNU GPL 3, a widely used free software license that allows for redistribution and modification with proper attribution. This entire website is also hosted proudly with Hetzner (used to be GitHub Pages). Download the source code, modify it as you see fit, and contribute to the project if you'd like, especially if you know your way around HTML/CSS/JavaScript comfortably! Heck, you can even run a copy of the ENTIRE site locally, so long as you're comfortable with the command line and have the necessary tools installed. The only thing that relies on an outside internet connection is Web TTS. That's it!</p>
                 </section>
                 <section>
                     <h3>What technologies does EAS Tools use?</h3>
@@ -231,15 +231,14 @@
                 </section>
                 <section>
                     <h3>Tool: Text Crawl Generator</h3>
-                    <p>The Text Crawl Generator tool allows you to create scrolling text crawls that can be used in conjunction with EAS alert audio. Note, however, you must generate the audio and crawl separately and combine them using an outside tool like <a href="https://ffmpeg.org/" target="_blank" rel="noopener noreferrer nofollow">ffmpeg</a> or a standard video editor, you can NOT combine them with this tool alone. You can customize pretty much any aspect of the crawl that is generated to fit your needs or scenario.</p>
+                    <p>The Text Crawl Generator tool allows you to create scrolling text crawls that can be used in conjunction with EAS alert audio. Crawls export as GIF or as video (MP4 with H.264 by default, or WebM; transparent backgrounds always export as WebM with VP9 alpha). Exports are rendered frame by frame at a fixed frame rate rather than recorded in real time, so the finished file is identical on any device; a slower device simply takes longer. Note, however, you must generate the audio and crawl separately and combine them using an outside tool like <a href="https://ffmpeg.org/" target="_blank" rel="noopener noreferrer nofollow">ffmpeg</a> or a standard video editor, you can NOT combine them with this tool alone. You can customize pretty much any aspect of the crawl that is generated to fit your needs or scenario.</p>
                     <p>To use the Text Crawl Generator tool, follow these steps:</p>
                     <ol>
                         <li>Select a crawl text source. You can choose to enter your own text, or use a SAME header. SAME headers pull the alert text using a JavaScript module called <a href="https://github.com/wagwan-piffting-blud/E2T-NG" target="_blank" rel="noopener noreferrer nofollow">E2T-NG</a>.</li>
                         <li>If you chose "Custom Text", enter your desired crawl text in the provided text area. If you chose "Generate from EAS Header", enter a valid SAME header in the input field.</li>
                         <li>The following aspects of the crawl can be customized for maximum effect: Speed (how fast the crawl scrolls), "VDS Mode" (see <a href="https://www.youtube.com/watch?v=W3r1ZnIkYx8" target="_blank" rel="noopener noreferrer nofollow">here</a> for an example of VDS Mode in action in a real alert, specifically noting how the letters "pop up" like a typewriter), font size/family/style (bold/italic/bold italic, or normal), crawl width/height/inset (how far the text is inset from the edges), top left location (if you need the crawl to be dynamically located on a custom screen, for example), restart delay (how long to wait before restarting the crawl), and export repetitions (how many times to repeat the crawl in exports, the live display loops infinitely), text color, background mode (select from "Solid, Transparent, Custom Image, or from a pre-defined image library included with EAS Tools), and finally, text outline color/width/join style. Whew!</li>
-                        <li>Click the "Start Crawl" button to create the text crawl.</li>
-                        <li>Wait for the crawl to be generated. Once complete, a preview of the text crawl will be displayed below the button controls.</li>
-                        <li>Click "Pause Crawl" to pause the text crawl in place. Use the "Previous Frame" or "Next Frame" controls to go frame-by-frame. Click "Stop/Reset" to reset the crawl position to the start. Click "Export as GIF" or "Export as video (.webm)" to save your crawl to a file, GIF and WebM are supported. You can also click "Copy to Clipboard" to copy the crawl text to your clipboard (especially helpful for E2T crawl text).</li>
+                        <li>There is no button to press to build the crawl. It is created for you as soon as the tool opens, it sits paused on the first frame, and every setting above takes effect the moment you change it.</li>
+                        <li>Click "Unpause Crawl" to set the crawl scrolling, and "Pause Crawl" to freeze it in place again. Use the "Previous Frame" or "Next Frame" controls to go frame-by-frame. Click "Stop/Reset" to rewind the crawl to the start and hold it there. Click "Export as GIF" or "Export as Video" to save your crawl to a file. You can also click "Copy to Clipboard" to copy the crawl text to your clipboard (especially helpful for E2T crawl text).</li>
                         <li>(optional) Click "Clear Logs" to clear the log section.</li>
                     </ol>
                     <p>The generated text crawl can then be used in conjunction with EAS alerts or for other purposes as needed.</p>
@@ -322,7 +321,7 @@
                     <p>If you're interested in learning more about the EAS/SAME, making authentic-looking and sounding alerts, editors for audio/video/screens, TTS, or other related topics to EAS Tools, here are some resources that you may find helpful:</p>
                     <h4>General EAS/SAME Resources</h4>
                     <ul>
-                        <li><a href="https://www.fcc.gov/emergency-alert-system/" target="_blank" rel="noopener noreferrer nofollow">FCC - Emergency Alert System (EAS)</a>: The official FCC page on the Emergency Alert System, providing information on how it works, regulations, and more.</li>
+                        <li><a href="https://www.fcc.gov/Alerting/EAS" target="_blank" rel="noopener noreferrer nofollow">FCC - Emergency Alert System (EAS)</a>: The official FCC page on the Emergency Alert System, providing information on how it works, regulations, and more.</li>
                         <li><a href="https://www.weather.gov/nwr/" target="_blank" rel="noopener noreferrer nofollow">NOAA Weather Radio (NWR)</a>: The official NOAA Weather Radio page, offering information on weather alerts, radio stations, and how to receive alerts.</li>
                         <li><a href="https://en.wikipedia.org/wiki/Specific_Area_Message_Encoding" target="_blank" rel="noopener noreferrer nofollow">Wikipedia - Specific Area Message Encoding (SAME)</a>: A comprehensive overview of the SAME protocol, including its structure, usage, and applications.</li>
                         <li><a href="https://globaleas.org/" target="_blank" rel="noopener noreferrer nofollow">Global Weather and EAS Society</a>: An online Discord server dedicated to the discussion and sharing of information related to the EAS and weather.</li>
@@ -363,10 +362,13 @@
                     </ul>
                     <p>Do you have a resource to share and want to contribute to this section of the FAQ/Docs? <a href="mailto:contact@wagspuzzle.space">Let me know and I will add your resource!</a></p>
                 </section>
-                <br>
-                <br>
-                <br>
                 <section id="conclusion"></section>
+                    <h2>Page last updated: September 5th, 2026</h2>
+                    <br>
+                    <br>
+                    <br>
+                    <br>
+                    <br>
                     <p>...You made it! Congratulations on reaching the end of the FAQ/Docs. Have a cookie! 🍪</p>
                     <button onclick="location.href='index.html'">Back to EAS Tools</button>
                 </section>

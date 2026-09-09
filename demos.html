@@ -76,6 +76,13 @@
             return `assets/demo_files/${encodedFileName}`;
         }
 
+        function setPlayButtonState(button, playing) {
+            if (!button) return;
+            const voiceName = button.dataset.voiceName || 'this voice';
+            button.textContent = playing ? 'Stop Demo' : 'Play Demo';
+            button.setAttribute('aria-label', `${playing ? 'Stop' : 'Play'} demo for ${voiceName}`);
+        }
+
         function audioHandler(playButton, audioSrc) {
             let audioInstance = null;
 
@@ -84,7 +91,7 @@
                     activeAudio = null;
                     activeButton = null;
                 }
-                playButton.textContent = 'Play Demo';
+                setPlayButtonState(playButton, false);
             }
 
             function ensureAudio() {
@@ -118,16 +125,14 @@
                 if (activeAudio && activeAudio !== audio) {
                     activeAudio.pause();
                     activeAudio.currentTime = 0;
-                    if (activeButton) {
-                        activeButton.textContent = 'Play Demo';
-                    }
+                    setPlayButtonState(activeButton, false);
                     activeAudio = null;
                     activeButton = null;
                 }
 
                 try {
                     await audio.play();
-                    playButton.textContent = 'Stop Demo';
+                    setPlayButtonState(playButton, true);
                     activeAudio = audio;
                     activeButton = playButton;
                 } catch (error) {
@@ -161,14 +166,14 @@
 
             catch (error) {
                 console.error('Error fetching voice list:', error);
-                //JSON Fallback data - needs to be updated manually when voices change
+                // JSON Fallback data - needs to be updated manually when voices change
                 const fallbackData = {
                     "voices": {
                         "paul": "[VT] Current NWS Paul",
                         "james": "[VT] James",
                         "julie": "[VT] Julie",
                         "kate": "[VT] Kate",
-                        "VW Violeta": "[BAL] NWS Violeta (Spanish, SAPI 5)",
+                        "VW Violeta": "[VT] NWS Violeta (Spanish)",
                         "RealSpeak Tom": "[BAL] RealSpeak Tom",
                         "ScanSoft Tom": "[BAL] ScanSoft Tom",
                         "AcuVoice Roger": "[BAL] AcuVoice Roger",
@@ -188,21 +193,21 @@
                         "DECTalkVariableVal": "[DT] DECTalk Variable Val (identical to DECTalk Paul v1 unless pitch is modified)",
                         "FestvoxKal": "[FEST] Festvox Kal",
                         "FestvoxKalMonotone": "[FEST] Festvox Kal - Monotone",
-                        "Loquendo Dave": "[BAL] Loquendo Dave",
+                        "Loquendo Dave": "[LTTS] Loquendo Dave",
                         "Loquendo Allison": "[BAL] Loquendo Allison",
                         "Cepstral Allison": "[CEP6] Cepstral Allison",
                         "Cepstral David": "[CEP6] Cepstral David",
                         "Cepstral Jean-Pierre": "[CEP6] Cepstral Jean-Pierre (Canadian French)",
                         "Cepstral William": "[CEP6] Cepstral William",
                         "EMNet": "[EMNet] EMNet (use ZCZC EAS string as text!)",
-                        "Speechify Tom": "[BAL/SPFY] Speechify Tom (takes longest time overall)",
-                        "Speechify Jill": "[BAL/SPFY] Speechify Jill (takes longest time overall)",
-                        "Speechify AIMara": "[BAL/SPFY] Speechify FAKE/AI Mara v1 (clear, made with AI, takes longest time overall)",
-                        "Speechify AIMara2": "[BAL/SPFY] Speechify FAKE/AI Mara v2 (radio quality, made with AI, takes longest time overall)",
-                        "Speechify AICraig": "[BAL/SPFY] Speechify FAKE/AI Craig (clear, made with AI, takes longest time overall)",
-                        "Speechify Felix": "[BAL/SPFY] Speechify Felix (Canadian French, takes longest time overall)",
-                        "Speechify Javier": "[BAL/SPFY] Speechify Javier (Spanish, takes longest time overall)",
-                        "Speechify Paulina": "[BAL/SPFY] Speechify Paulina (Spanish, takes longest time overall)",
+                        "Speechify Tom": "[BAL] Speechify Tom",
+                        "Speechify Jill": "[BAL] Speechify Jill",
+                        "Speechify CRS Mara": "[BAL] Speechify CRS Mara (partially made with AI)",
+                        "Speechify CRS Tom": "[BAL] Speechify CRS Tom (partially made with AI)",
+                        "Speechify AICraig": "[BAL] Speechify FAKE/AI Craig (clear, made with AI)",
+                        "Speechify Felix": "[BAL] Speechify Felix (Canadian French)",
+                        "Speechify Javier": "[BAL] Speechify Javier (Spanish)",
+                        "Speechify Paulina": "[BAL] Speechify Paulina (Spanish)",
                         "VE_American_English_Ava_22kHz": "[BAL] Nuance Ava (Weatheradio Canada)",
                         "VE_American_English_Tom_22kHz": "[BAL] Nuance Tom (Weatheradio Canada)",
                         "VE_Canadian_French_Chantal_22kHz": "[BAL] Nuance Chantal (Weatheradio Canada - French)",
@@ -213,68 +218,67 @@
             }
         }
 
+        const LOCAL_VOICES_FIRST = [
+            { label: '[WASM] WebAssembly (local) Voice', demoName: 'WASM' },
+            { label: '[NanoTTS] NanoTTS (local) Voice', demoName: 'NanoTTS' },
+            { label: '[eSpeak] eSpeak NG (local) - English (US)', demoName: 'eSpeak English US' },
+            { label: '[eSpeak] eSpeak NG (local) - English (US), Male 3', demoName: 'eSpeak English US Male 3' },
+            { label: '[eSpeak] eSpeak NG (local) - English (US), Female 2', demoName: 'eSpeak English US Female 2' },
+            { label: '[eSpeak] eSpeak NG (local) - English (US), Whisper', demoName: 'eSpeak English US Whisper' },
+            { label: '[eSpeak] eSpeak NG (local) - English (US), Croak', demoName: 'eSpeak English US Croak' },
+            { label: '[eSpeak] eSpeak NG (local) - English (US), Klatt formant', demoName: 'eSpeak English US Klatt' },
+            { label: '[eSpeak] eSpeak NG (local) - English (UK)', demoName: 'eSpeak English UK' },
+            { label: '[eSpeak] eSpeak NG (local) - Spanish (Latin America)', demoName: 'eSpeak Spanish' },
+            { label: '[eSpeak] eSpeak NG (local) - French', demoName: 'eSpeak French' },
+        ];
+
+        const LOCAL_VOICES_LAST = [
+            { label: '[EMNet] EMNet (uses ZCZC string as input)', demoName: 'EMNet' },
+        ];
+
+        function createVoiceRow({ label, demoName }) {
+            const listItem = document.createElement('li');
+            const playButton = document.createElement('button');
+            const voiceLabel = document.createElement('span');
+
+            const demoSrc = getDemoAudioSrc(label, demoName);
+            voiceLabel.textContent = label;
+            playButton.dataset.voiceName = label;
+            playButton.dataset.demoSrc = demoSrc;
+            setPlayButtonState(playButton, false);
+            playButton.onclick = audioHandler(playButton, demoSrc);
+
+            listItem.appendChild(playButton);
+            listItem.appendChild(document.createTextNode(' '));
+            listItem.appendChild(voiceLabel);
+            return listItem;
+        }
+
         function populateVoiceList(data) {
             const voiceList = document.getElementById('voice-list');
 
             try {
-                if (data.voices) {
-                    document.getElementById('voice-count').textContent = Object.keys(data.voices).length + 2;
-                    const wasmListItem = document.createElement('li');
-                    const wasmPlayButton = document.createElement('button');
-                    wasmPlayButton.textContent = 'Play Demo';
-                    const wasmVoiceLabel = document.createElement('span');
-                    wasmVoiceLabel.textContent = '[WASM] WebAssembly (local) Voice';
-                    wasmListItem.appendChild(wasmPlayButton);
-                    wasmListItem.appendChild(document.createTextNode(' '));
-                    wasmListItem.appendChild(wasmVoiceLabel);
-                    const wasmAudioSrc = getDemoAudioSrc(wasmVoiceLabel.textContent, 'WASM');
-                    wasmPlayButton.onclick = audioHandler(wasmPlayButton, wasmAudioSrc);
-                    voiceList.appendChild(wasmListItem);
-
-                    const nanottsListItem = document.createElement('li');
-                    const nanottsPlayButton = document.createElement('button');
-                    nanottsPlayButton.textContent = 'Play Demo';
-                    const nanottsVoiceLabel = document.createElement('span');
-                    nanottsVoiceLabel.textContent = '[NanoTTS] NanoTTS (local) Voice';
-                    nanottsListItem.appendChild(nanottsPlayButton);
-                    nanottsListItem.appendChild(document.createTextNode(' '));
-                    nanottsListItem.appendChild(nanottsVoiceLabel);
-                    const nanottsAudioSrc = getDemoAudioSrc(nanottsVoiceLabel.textContent, 'NanoTTS');
-                    nanottsPlayButton.onclick = audioHandler(nanottsPlayButton, nanottsAudioSrc);
-                    voiceList.appendChild(nanottsListItem);
-
-                    for (const [voiceName, voiceDesc] of Object.entries(data.voices)) {
-                        if (voiceName.includes('EMNet')) {
-                            continue;
-                        }
-                        const listItem = document.createElement('li');
-                        const playButton = document.createElement('button');
-                        playButton.textContent = 'Play Demo';
-                        const voiceLabel = document.createElement('span');
-                        voiceLabel.textContent = voiceDesc;
-                        listItem.appendChild(playButton);
-                        listItem.appendChild(document.createTextNode(' '));
-                        listItem.appendChild(voiceLabel);
-                        const audioSrc = getDemoAudioSrc(voiceDesc);
-                        playButton.onclick = audioHandler(playButton, audioSrc);
-                        voiceList.appendChild(listItem);
-                    }
-                    const emnetListItem = document.createElement('li');
-                    const emnetPlayButton = document.createElement('button');
-                    emnetPlayButton.textContent = 'Play Demo';
-                    const emnetVoiceLabel = document.createElement('span');
-                    emnetVoiceLabel.textContent = '[EMNet] EMNet (uses ZCZC string as input)';
-                    emnetListItem.appendChild(emnetPlayButton);
-                    emnetListItem.appendChild(document.createTextNode(' '));
-                    emnetListItem.appendChild(emnetVoiceLabel);
-                    const emnetAudioSrc = getDemoAudioSrc(emnetVoiceLabel.textContent, 'EMNet');
-                    emnetPlayButton.onclick = audioHandler(emnetPlayButton, emnetAudioSrc);
-                    voiceList.appendChild(emnetListItem);
+                if (!data || !data.voices) {
+                    return;
                 }
+
+                const rows = [
+                    ...LOCAL_VOICES_FIRST,
+                    ...Object.entries(data.voices)
+                        .filter(([voiceName]) => !voiceName.includes('EMNet'))
+                        .map(([, voiceDesc]) => ({ label: voiceDesc, demoName: null })),
+                    ...LOCAL_VOICES_LAST,
+                ];
+
+                for (const row of rows) {
+                    voiceList.appendChild(createVoiceRow(row));
+                }
+
+                document.getElementById('voice-count').textContent = rows.length;
             }
 
             catch (error) {
-                console.error('Error fetching voice list:', error);
+                console.error('Error populating voice list:', error);
             }
         }
 

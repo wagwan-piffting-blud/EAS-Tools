@@ -1,4 +1,4 @@
-import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME, PIPER_DEFAULT_VOICE_ID as PIPER_VOICE, resamplePcm, resamplePcmSinc, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId } from './common-functions.js';
+import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME, PIPER_DEFAULT_VOICE_ID as PIPER_VOICE, resamplePcm, resamplePcmSinc, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost } from './common-functions.js';
 
 (async function () {
     let splicerTextEditor = null;
@@ -2385,6 +2385,16 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (mode === 'acuvoice') {
             return getAcuEngine().synth(text, { reportStatus: piperReportStatus, onProgress: wasmVoiceProgress });
         }
+        const espeakVoice = parseEspeakVoiceId(mode);
+        if (espeakVoice !== null) {
+            return getEspeakEngine().synth(text, {
+                reportStatus: piperReportStatus,
+                onProgress: wasmVoiceProgress,
+                voice: espeakVoice,
+                rate: espeakRateFromSlider(document.getElementById('ttsRate2')?.value || '0'),
+                pitch: espeakPitchFromSlider(document.getElementById('ttsPitch2')?.value || '0'),
+            });
+        }
         const target = state.sampleRate || 44100;
         const pcm = await getPiperPcm(text, target, { ensureLoaded: ensurePiper, reportStatus: piperReportStatus });
         if (!pcm) throw new Error('TTS service unavailable');
@@ -2430,33 +2440,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const checkZCZCIsValid = (header) => {
         const zczcPattern = window.EASREGEX;
         return zczcPattern.test(header.trim());
-    };
-
-    const getAudioFromPage = async (response) => {
-        const decoder = new TextDecoder("utf-8");
-        const responseText = decoder.decode(response);
-        const audioMatch = responseText.match(/id="downloadlink"><a href="(.*)" download/i);
-        const jsonMatch = responseText.match(/<span id="jsonErrorMsg">(.*)</i);
-
-        if (jsonMatch && jsonMatch[1]) {
-            const cleanMatch = jsonMatch[1].replace(/.*Exact error: (.*)/, "$1");
-            const errorMsg = cleanMatch !== '' ? cleanMatch : jsonMatch[1];
-            throw new Error(errorMsg);
-        }
-
-        if (audioMatch && audioMatch[1]) {
-            const audioSrc = audioMatch[1];
-            const audioResponse = await fetch("https://wagspuzzle.space/tools/eas-tts/" + audioSrc);
-            const audioArrayBuffer = await audioResponse.arrayBuffer();
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            try {
-                return await audioContext.decodeAudioData(audioArrayBuffer);
-            } finally {
-                audioContext.close().catch(() => { });
-            }
-        }
-
-        return null;
     };
 
     const bitcrushSpeechifyPcm = async (pcm, sampleRate) => {
@@ -2626,155 +2609,21 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
     };
 
-    const fetchRemoteTtsAudio = ({ text, voiceId, overrideTZ }) => {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            const url = "https://wagspuzzle.space/tools/eas-tts/index.php?handler=toolkit";
-
-            const ttsRate = document.getElementById("ttsRate2")?.value || "0";
-            const ttsPitch = document.getElementById("ttsPitch2")?.value || "0";
-            const voiceBackend = voiceBackendMap[Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(voiceId))] ? Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(voiceId)) : "Unknown";
-
-            let oldTtsText = text;
-
-            if (voiceBackend.toLowerCase().includes("bal") && (ttsRate !== "0" || ttsPitch !== "0")) {
-                if (ttsRate !== "0") {
-                    text = `<rate absspeed="${ttsRate}">${text}</rate>`;
-                }
-                if (ttsPitch !== "0") {
-                    text = `<pitch absmiddle="${ttsPitch}">${text}</pitch>`;
-                }
-            }
-
-            else if (voiceBackend.toLowerCase().includes("vt") && (ttsRate !== "0" || ttsPitch !== "0")) {
-                const vtValue = (value) => {
-                    const parsed = Number(value);
-                    if (!Number.isFinite(parsed)) { return 100; }
-                    const scaled = Math.round((parsed * 10) + 100);
-                    return Math.min(200, Math.max(0, scaled));
-                };
-                if (ttsRate !== "0") {
-                    text = `<vtml_speed value="${vtValue(ttsRate)}">${text}</vtml_speed>`;
-                }
-                if (ttsPitch !== "0") {
-                    text = `<vtml_pitch value="${vtValue(ttsPitch)}">${text}</vtml_pitch>`;
-                }
-            }
-
-            const params = new URLSearchParams();
-
-            params.append("text", voiceId === "EMNet" ? text : text);
-            params.append("voice", voiceId);
-            params.append("useOverrideTZ", overrideTZ ?? "UTC");
-
-            xhr.open("POST", url, true);
-            xhr.responseType = "arraybuffer";
-            xhr.setRequestHeader("Accept", "*/*");
-            xhr.setRequestHeader("User-Agent", "EAS-Tools/wagwan-piffting-blud.github.io");
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-
-            const toArrayBuffer = (payload) => {
-                if (payload instanceof ArrayBuffer) return Promise.resolve(payload);
-                if (payload instanceof Blob) return payload.arrayBuffer();
-                if (typeof payload === "string") {
-                    const withoutPrefix = payload.replace(/^data:audio\/[\w.+-]+;base64,/, "");
-                    const candidate = withoutPrefix.replace(/\s/g, "");
-                    return new Promise((resolvePayload, rejectPayload) => {
-                        try {
-                            const binary = atob(candidate);
-                            const buffer = new ArrayBuffer(binary.length);
-                            const bytes = new Uint8Array(buffer);
-                            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                            resolvePayload(buffer);
-                        } catch {
-                            try {
-                                const buffer = new ArrayBuffer(withoutPrefix.length);
-                                const bytes = new Uint8Array(buffer);
-                                for (let i = 0; i < withoutPrefix.length; i++) {
-                                    bytes[i] = withoutPrefix.charCodeAt(i) & 0xff;
-                                }
-                                resolvePayload(buffer);
-                            } catch (err) {
-                                rejectPayload(err);
-                            }
-                        }
-                    });
-                }
-                return Promise.reject(new TypeError("Unsupported payload type"));
-            };
-
-            xhr.onload = function () {
-                const contentType = xhr.getResponseHeader("Content-Type") || "";
-                const finishWithError = (err) => reject(err || new Error("TTS fetch failed"));
-
-                if (xhr.status >= 200 && xhr.status < 300 && contentType.startsWith("audio/wav")) {
-                    window.updateTTSRequestsCounter();
-                    const rawPayload = xhr.response ?? xhr.responseText;
-                    toArrayBuffer(rawPayload).then((arrayBuffer) => {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        const decode = audioContext.decodeAudioData.bind(audioContext);
-                        const decodePromise = decode.length > 1
-                            ? new Promise((resolveDecode, rejectDecode) => decode(arrayBuffer, resolveDecode, rejectDecode))
-                            : decode(arrayBuffer);
-
-                        decodePromise.then(async (buffer) => {
-                            if (typeof audioContext.close === "function") {
-                                audioContext.close().catch(() => { });
-                            }
-
-                            const sourcePcm = buffer.getChannelData(0);
-                            const shouldBitcrushSpeechify = shouldBitcrushSpeechifyCheckbox?.checked === true && /Speechify/i.test(voiceId || "");
-                            if (shouldBitcrushSpeechify) {
-                                const crushed = await bitcrushSpeechifyPcm(sourcePcm, buffer.sampleRate);
-                                resolve({ pcm: crushed.pcm, sampleRate: crushed.sampleRate });
-                            } else {
-                                resolve({ pcm: sourcePcm, sampleRate: buffer.sampleRate });
-                            }
-                        }).catch((error) => {
-                            if (typeof audioContext.close === "function") {
-                                audioContext.close().catch(() => { });
-                            }
-                            finishWithError(error);
-                        });
-                    }).catch(finishWithError);
-                } else if (contentType.startsWith("application/json")) {
-                    try {
-                        const decoder = new TextDecoder("utf-8");
-                        const responseJSON = JSON.parse(decoder.decode(xhr.response));
-                        finishWithError(new Error(responseJSON.error || "TTS JSON error"));
-                    } catch (error) {
-                        finishWithError(error);
-                    }
-                } else {
-                    try {
-                        getAudioFromPage(xhr.response).then(async (buffer) => {
-                            if (buffer) {
-                                const sourcePcm = buffer.getChannelData(0);
-                                const shouldBitcrushSpeechify = shouldBitcrushSpeechifyCheckbox?.checked === true && /Speechify/i.test(voiceId || "");
-                                if (shouldBitcrushSpeechify) {
-                                    const crushed = await bitcrushSpeechifyPcm(sourcePcm, buffer.sampleRate);
-                                    resolve({ pcm: crushed.pcm, sampleRate: crushed.sampleRate });
-                                    return;
-                                }
-                                resolve({ pcm: sourcePcm, sampleRate: buffer.sampleRate });
-                            } else {
-                                finishWithError(new Error("No audio found in response"));
-                            }
-                        }).catch(finishWithError);
-                    } catch (error) {
-                        finishWithError(error);
-                    }
-                }
-            };
-
-            xhr.onerror = function () {
-                reject(new Error(`Network error: ${xhr.status} ${xhr.statusText}`));
-            };
-
-            xhr.send(params.toString());
-
-            text = oldTtsText ?? text;
+    const requestRemoteTtsAudio = async ({ text, voiceId, overrideTZ }) => {
+        const result = await fetchRemoteTtsAudio({
+            text,
+            voice: voiceId,
+            overrideTZ,
+            backend: resolveVoiceBackend(voiceBackendMap, voiceId),
+            prosody: readTtsProsodyControls("2"),
         });
+
+        if (shouldBitcrushSpeechifyCheckbox?.checked === true && /Speechify/i.test(voiceId || "")) {
+            const crushed = await bitcrushSpeechifyPcm(result.pcm, result.sampleRate);
+            return { pcm: crushed.pcm, sampleRate: crushed.sampleRate };
+        }
+
+        return result;
     };
 
     const bindEvents = () => {
@@ -3164,7 +3013,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             ttsButton.disabled = true;
             if (ttsStatus) ttsStatus.textContent = 'Generating...';
             try {
-                if (normalizedVoice === 'wasm' || normalizedVoice === 'nanotts' || parseSpfyVoiceId(normalizedVoice) !== null || normalizedVoice === 'acuvoice') {
+                if (normalizedVoice === 'wasm' || normalizedVoice === 'nanotts' || parseSpfyVoiceId(normalizedVoice) !== null || normalizedVoice === 'acuvoice' || parseEspeakVoiceId(normalizedVoice) !== null) {
                     const valid = await validateMarkupAndText(voiceBackendMap, selectedVoiceValue, text);
                     if (!valid) {
                         if (ttsStatus) ttsStatus.textContent = 'Text contains invalid phonemes or markup for this backend.';
@@ -3217,7 +3066,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                         if (ttsStatus) ttsStatus.textContent = 'Text contains invalid phonemes or markup for this backend.';
                         return;
                     }
-                    const result = await fetchRemoteTtsAudio({ text, voiceId: selectedVoiceValue, overrideTZ: tz });
+                    const result = await requestRemoteTtsAudio({ text, voiceId: selectedVoiceValue, overrideTZ: tz });
                     if (result?.pcm?.length) {
                         addSegment(result.pcm, result.sampleRate, 'TTS', text);
                         if (ttsStatus) ttsStatus.textContent = `Added ${(result.pcm.length / (result.sampleRate || state.sampleRate)).toFixed(2)}s of audio.`;
@@ -5408,36 +5257,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         spliceLoudnessInput.addEventListener('input', () => debounceLoudnessInput());
     }
 
-    const ttsRate = document.getElementById("ttsRate2");
-    const ttsRateReset = document.getElementById("ttsRateReset2");
-    ttsRateReset.addEventListener("click", function () {
-        ttsRate.value = "0";
-        ttsRate.dispatchEvent(new Event('change'));
-    });
-    const ttsPitch = document.getElementById("ttsPitch2");
-    const ttsPitchReset = document.getElementById("ttsPitchReset2");
-    ttsPitchReset.addEventListener("click", function () {
-        ttsPitch.value = "0";
-        ttsPitch.dispatchEvent(new Event('change'));
-    });
-
-    const syncTtsSlider = (element, spanId) => {
-        const valueSpan = document.getElementById(spanId);
-        valueSpan.textContent = element.value;
-    };
-
-    ["input", "change"].forEach((evtName) => {
-        ttsRate.addEventListener(evtName, function () {
-            syncTtsSlider(ttsRate, "ttsRateValue2");
-        });
-
-        ttsPitch.addEventListener(evtName, function () {
-            syncTtsSlider(ttsPitch, "ttsPitchValue2");
-        });
-    });
+    bindSliderNumberPair({ sliderId: "ttsRate2", numberId: "ttsRate2Number", resetId: "ttsRateReset2" });
+    bindSliderNumberPair({ sliderId: "ttsPitch2", numberId: "ttsPitch2Number", resetId: "ttsPitchReset2" });
+    bindSliderNumberPair({ sliderId: "ttsVolume2", numberId: "ttsVolume2Number", resetId: "ttsVolume2Reset" });
 
     voiceSelect.addEventListener('change', () => {
-        const voiceBackend = Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(voiceSelect.value));
+        const voiceBackend = resolveVoiceBackend(voiceBackendMap, voiceSelect.value);
         const ttsControls = document.getElementById('ttsRatePitchControls2');
 
         if (/Speechify/i.test(voiceSelect.value) || parseSpfyVoiceId(voiceSelect.value) !== null) {
@@ -5446,11 +5271,18 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             shouldBitcrushSpeechifyDiv.style.display = 'none';
         }
 
-        if (voiceBackend === 'VT' || voiceBackend === 'BAL') {
+        const supportsProsody = backendSupportsProsody(voiceBackend);
+
+        if (supportsProsody || parseEspeakVoiceId(voiceSelect.value) !== null) {
             ttsControls.style.display = 'block';
         } else {
             ttsControls.style.display = 'none';
         }
+
+        const ttsVolumeRow = document.getElementById('ttsVolume2Row');
+        const ttsVolumeNote = document.getElementById('ttsVolume2Note');
+        if (ttsVolumeRow) ttsVolumeRow.hidden = !supportsProsody;
+        if (ttsVolumeNote) ttsVolumeNote.hidden = !supportsProsody || backendSupportsVolumeBoost(voiceBackend);
     });
 
     const changeEvent = new Event('change');

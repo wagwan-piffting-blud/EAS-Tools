@@ -670,18 +670,55 @@
                     + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
             }
 
+            function mapColor(name) {
+                return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            }
+
+            function drawShapeOptions() {
+                return {
+                    color: mapColor("--wg-map-draw-stroke"),
+                    weight: 3,
+                    fillColor: mapColor("--wg-map-draw-fill"),
+                    fillOpacity: 0.4
+                };
+            }
+
+            function countyStyle() {
+                return {
+                    color: mapColor("--wg-map-county-stroke"),
+                    weight: 1,
+                    fillColor: mapColor("--wg-map-county-fill"),
+                    fillOpacity: 0.3
+                };
+            }
+
+            function hitStyle() {
+                return {
+                    color: mapColor("--wg-map-hit-stroke"),
+                    weight: 2,
+                    fillColor: mapColor("--wg-map-hit-fill"),
+                    fillOpacity: 0.5
+                };
+            }
+
+            function hatchStyle(strokeVar, fillVar) {
+                return function () {
+                    return {
+                        color: mapColor(strokeVar),
+                        weight: 1,
+                        fillColor: mapColor(fillVar),
+                        fillOpacity: 0.15
+                    };
+                };
+            }
+
             function restorePolygon(savedRing) {
                 if (!savedRing || savedRing.length < 3) return;
 
                 var latlngs = savedRing.slice(0, -1).map(function (p) {
                     return [p[1], p[0]];
                 });
-                var poly = L.polygon(latlngs, {
-                    color: "#fb4934",
-                    weight: 3,
-                    fillColor: "#fb493422",
-                    fillOpacity: 0.4
-                });
+                var poly = L.polygon(latlngs, drawShapeOptions());
                 drawLayer.clearLayers();
                 drawLayer.addLayer(poly);
                 currentPolygon = poly;
@@ -1458,9 +1495,9 @@
 
             var ALL_US_BOUNDS = L.latLngBounds([12, -130], [49, -66]);
 
-            function hatchLayerOptions(color, fill) {
+            function hatchLayerOptions(strokeVar, fillVar) {
                 return {
-                    style: { color: color, weight: 1, fillColor: fill, fillOpacity: 0.15 },
+                    style: hatchStyle(strokeVar, fillVar),
                     onEachFeature: function (feature, layer) {
                         var p = feature.properties;
                         layer.bindTooltip(p.name + " (" + p.state + "Z" + p.fips + ")", { sticky: true });
@@ -1469,16 +1506,11 @@
                 };
             }
 
-            var marineLayer = L.geoJSON(null, hatchLayerOptions("#458588", "#83a59822")).addTo(map);
-            var zoneLayer = L.geoJSON(null, hatchLayerOptions("#8f7a3f", "#d5b06022")).addTo(map);
+            var marineLayer = L.geoJSON(null, hatchLayerOptions("--wg-map-marine-stroke", "--wg-map-marine-fill")).addTo(map);
+            var zoneLayer = L.geoJSON(null, hatchLayerOptions("--wg-map-zone-stroke", "--wg-map-zone-fill")).addTo(map);
 
             var countyLayer = L.geoJSON(null, {
-                style: {
-                    color: "#666",
-                    weight: 1,
-                    fillColor: "#1f242b",
-                    fillOpacity: 0.3
-                },
+                style: countyStyle,
                 onEachFeature: function (feature, layer) {
                     layer.bindTooltip(
                         feature.properties.name + " " + feature.properties.state,
@@ -1493,12 +1525,7 @@
             }).addTo(map);
 
             var hitLayer = L.geoJSON(null, {
-                style: {
-                    color: "#f0c674",
-                    weight: 2,
-                    fillColor: "#f0c67455",
-                    fillOpacity: 0.5
-                }
+                style: hitStyle
             }).addTo(map);
 
             var drawLayer = new L.FeatureGroup();
@@ -1545,12 +1572,7 @@
                     polygon: {
                         allowIntersection: false,
                         showArea: false,
-                        shapeOptions: {
-                            color: "#fb4934",
-                            weight: 3,
-                            fillColor: "#fb493422",
-                            fillOpacity: 0.4
-                        }
+                        shapeOptions: drawShapeOptions()
                     },
                     polyline: false,
                     circle: false,
@@ -1566,6 +1588,24 @@
             map.addControl(drawControl);
 
             var polygonDrawer = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
+
+            function applyMapTheme() {
+                marineLayer.setStyle(hatchStyle("--wg-map-marine-stroke", "--wg-map-marine-fill"));
+                zoneLayer.setStyle(hatchStyle("--wg-map-zone-stroke", "--wg-map-zone-fill"));
+                countyLayer.setStyle(countyStyle);
+                hitLayer.setStyle(hitStyle);
+
+                var shape = drawShapeOptions();
+                if (currentPolygon) currentPolygon.setStyle(shape);
+                if (drawControl.options.draw.polygon) drawControl.options.draw.polygon.shapeOptions = shape;
+                if (polygonDrawer.setOptions) polygonDrawer.setOptions({ shapeOptions: shape });
+            }
+
+            if (window.matchMedia) {
+                var wgSchemeQuery = window.matchMedia("(prefers-color-scheme: light)");
+                if (wgSchemeQuery.addEventListener) wgSchemeQuery.addEventListener("change", applyMapTheme);
+                else if (wgSchemeQuery.addListener) wgSchemeQuery.addListener(applyMapTheme);
+            }
 
             document.getElementById("start-draw-btn").addEventListener("click", function () {
                 polygonDrawer.enable();

@@ -1,0 +1,474 @@
+{
+  "generatedBy": "tools/build-espeak-data.mjs",
+  "source": "C:/Program Files/eSpeak NG/espeak-ng-data",
+  "espeakNg": "1.52.0",
+  "note": "Derived from the upstream drop in this directory. espeak-ng.js, espeak-ng.data, espeak-wasm-driver.js, la.json and manifest.json are untouched; espeak-ng.wasm is shared.",
+  "artifacts": {
+    "espeak-ng.eas.data": {
+      "bytes": 990251,
+      "sha256": "4d65d6f1476f24bb506d9f52b7e731b606a788c35ac76ba2ff5bf84577408dca"
+    },
+    "espeak-ng.eas.js": {
+      "bytes": 77331,
+      "sha256": "e9b28040fd006bad87197254d482cc97751826e9e6b2f6d8cc9e97630f0f26d7"
+    }
+  },
+  "contents": [
+    {
+      "path": "/espeak-ng-data/intonations",
+      "bytes": 2312
+    },
+    {
+      "path": "/espeak-ng-data/phondata",
+      "bytes": 554740
+    },
+    {
+      "path": "/espeak-ng-data/phonindex",
+      "bytes": 43316
+    },
+    {
+      "path": "/espeak-ng-data/phontab",
+      "bytes": 58652
+    },
+    {
+      "path": "/espeak-ng-data/en_dict",
+      "bytes": 168204
+    },
+    {
+      "path": "/espeak-ng-data/es_dict",
+      "bytes": 49285
+    },
+    {
+      "path": "/espeak-ng-data/fr_dict",
+      "bytes": 63727
+    },
+    {
+      "path": "/espeak-ng-data/lang/gmw/en",
+      "bytes": 148
+    },
+    {
+      "path": "/espeak-ng-data/lang/gmw/en-US",
+      "bytes": 272
+    },
+    {
+      "path": "/espeak-ng-data/lang/itc/la",
+      "bytes": 309
+    },
+    {
+      "path": "/espeak-ng-data/lang/roa/es",
+      "bytes": 67
+    },
+    {
+      "path": "/espeak-ng-data/lang/roa/es-419",
+      "bytes": 178
+    },
+    {
+      "path": "/espeak-ng-data/lang/roa/fr",
+      "bytes": 85
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/adam",
+      "bytes": 81
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Alex",
+      "bytes": 138
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Alicia",
+      "bytes": 474
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Andrea",
+      "bytes": 376
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Andy",
+      "bytes": 320
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/anika",
+      "bytes": 518
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/anikaRobot",
+      "bytes": 538
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Annie",
+      "bytes": 315
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/announcer",
+      "bytes": 317
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/antonio",
+      "bytes": 402
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/AnxiousAndy",
+      "bytes": 361
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/aunty",
+      "bytes": 358
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/belinda",
+      "bytes": 360
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/benjamin",
+      "bytes": 212
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/boris",
+      "bytes": 224
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/caleb",
+      "bytes": 62
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/croak",
+      "bytes": 104
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/david",
+      "bytes": 120
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Demonic",
+      "bytes": 3858
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Denis",
+      "bytes": 305
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Diogo",
+      "bytes": 401
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/ed",
+      "bytes": 303
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/edward",
+      "bytes": 161
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/edward2",
+      "bytes": 162
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/f1",
+      "bytes": 342
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/f2",
+      "bytes": 378
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/f3",
+      "bytes": 397
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/f4",
+      "bytes": 368
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/f5",
+      "bytes": 455
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/fast",
+      "bytes": 156
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Gene",
+      "bytes": 281
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Gene2",
+      "bytes": 283
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/grandma",
+      "bytes": 279
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/grandpa",
+      "bytes": 270
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/gustave",
+      "bytes": 270
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Henrique",
+      "bytes": 403
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Hugo",
+      "bytes": 400
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/iven",
+      "bytes": 274
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/iven2",
+      "bytes": 293
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/iven3",
+      "bytes": 275
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/iven4",
+      "bytes": 274
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Jacky",
+      "bytes": 267
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/john",
+      "bytes": 3186
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/kaukovalta",
+      "bytes": 361
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/klatt",
+      "bytes": 42
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/klatt2",
+      "bytes": 42
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/klatt3",
+      "bytes": 43
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/klatt4",
+      "bytes": 43
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/klatt5",
+      "bytes": 43
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/klatt6",
+      "bytes": 43
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Lee",
+      "bytes": 338
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/linda",
+      "bytes": 370
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/m1",
+      "bytes": 355
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/m2",
+      "bytes": 279
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/m3",
+      "bytes": 317
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/m4",
+      "bytes": 307
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/m5",
+      "bytes": 277
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/m6",
+      "bytes": 201
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/m7",
+      "bytes": 271
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/m8",
+      "bytes": 300
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/marcelo",
+      "bytes": 268
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Marco",
+      "bytes": 467
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Mario",
+      "bytes": 270
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/max",
+      "bytes": 225
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Michael",
+      "bytes": 270
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/michel",
+      "bytes": 404
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/miguel",
+      "bytes": 404
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Mike",
+      "bytes": 119
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Mr serious",
+      "bytes": 3193
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Nguyen",
+      "bytes": 296
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/norbert",
+      "bytes": 3189
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/pablo",
+      "bytes": 3194
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/paul",
+      "bytes": 300
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/pedro",
+      "bytes": 375
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/quincy",
+      "bytes": 354
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/RicishayMax",
+      "bytes": 249
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/RicishayMax2",
+      "bytes": 460
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/RicishayMax3",
+      "bytes": 460
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/rob",
+      "bytes": 265
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robert",
+      "bytes": 274
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robosoft",
+      "bytes": 477
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robosoft2",
+      "bytes": 480
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robosoft3",
+      "bytes": 481
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robosoft4",
+      "bytes": 472
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robosoft5",
+      "bytes": 470
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robosoft6",
+      "bytes": 302
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robosoft7",
+      "bytes": 435
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/robosoft8",
+      "bytes": 259
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/sandro",
+      "bytes": 555
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/shelby",
+      "bytes": 297
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/steph",
+      "bytes": 385
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/steph2",
+      "bytes": 388
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/steph3",
+      "bytes": 399
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Storm",
+      "bytes": 420
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/travis",
+      "bytes": 383
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/Tweaky",
+      "bytes": 3189
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/UniRobot",
+      "bytes": 417
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/victor",
+      "bytes": 268
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/whisper",
+      "bytes": 199
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/whisperf",
+      "bytes": 416
+    },
+    {
+      "path": "/espeak-ng-data/voices/!v/zac",
+      "bytes": 275
+    }
+  ]
+}

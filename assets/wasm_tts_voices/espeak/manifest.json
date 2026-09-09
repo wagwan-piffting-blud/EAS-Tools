@@ -1,0 +1,24 @@
+{
+  "upstream": {
+    "repo": "https://github.com/espeak-ng/espeak-ng",
+    "tag": "1.52.0",
+    "commit": "4870adfa25b1a32b4361592f1be8a40337c58d6c"
+  },
+  "emsdk": "6.0.6",
+  "emscripten": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.6 (ce75e06884093bcefb86a6b8fd56a5d62a4cc245)",
+  "mappingVersion": "0.1.0",
+  "toolchain": {
+    "cc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "autoconf": "autoconf (GNU Autoconf) 2.71",
+    "automake": "automake (GNU automake) 1.16.5",
+    "make": "GNU Make 4.3"
+  },
+  "artifacts": {
+    "espeak-ng.js":           { "sha256": "980112c4d3f929df1dd180bbc67a0407d15fb51c37fbd056c12659409566b9e1" },
+    "espeak-ng.wasm":         { "sha256": "c2f2b258ab6025b221714c8499962ef63e7f1e4c9aba3ec76e527fb27ed730fe" },
+    "espeak-ng.data":         { "sha256": "a853328ae79099a9dd5753a5e07f7585318872e98adf75f17d7b93f696a3de35" },
+    "espeak-wasm-driver.js":  { "sha256": "91d7b9fb9b858ba75256e28c3cd495eda0386c98c8a389516267dcecdc1789d2" },
+    "la.json":                { "sha256": "6b97140943d8a4dceff2bfc3ac287955d4200d077c2b1426d5aeaf8072eb703a" },
+    "LICENSE":                { "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986" }
+  }
+}

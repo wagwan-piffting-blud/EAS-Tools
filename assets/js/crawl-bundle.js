@@ -1,5 +1,6 @@
 import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
 import { E2T, allEndecModes, resourcesReady } from '../E2T/EAS2Text-NG.js';
+import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec } from './mediabunny/mediabunny.min.js';
 
 async function initCrawlEditor() {
     let crawlTextEditor = null;
@@ -158,6 +159,7 @@ async function initCrawlEditor() {
             { family: 'Arial Bold', file: 'arialbd.ttf', description: 'sans-serif font used on Bevelled scrolls' },
             { family: 'EAS-1CG Neue', file: 'eas-1cg-neue.otf', description: 'font used on Gorman Redlich EAS-1CG crawls' },
             { family: 'VDSwiss V1', file: 'vdswiss-v1.otf', description: 'sans-serif font used on VDS crawls (made by Gigabyte97)' },
+            { family: 'XBOB-4 8x13', file: 'BDF-8x13.ttf', description: 'bitmap font used on XBOB-4 crawls' },
             { family: 'User-Upload', file: 'user-upload.ttf', description: 'upload your own font to use!' }
         ];
         window.crawlFontsToLoad = fontsToLoad;
@@ -473,27 +475,6 @@ async function initCrawlEditor() {
         };
     }
 
-    // Source - https://stackoverflow.com/a/64656254
-    // Posted by Fennec, modified by community. See post 'Timeline' for change history
-    // Retrieved 2025-11-11, License - CC BY-SA 4.0
-    function getSupportedMimeTypes(media, types, codecs) {
-        const isSupported = MediaRecorder.isTypeSupported;
-        const supported = [];
-        types.forEach((type) => {
-            const mimeType = `${media}/${type}`;
-            codecs.forEach((codec) => [
-                `${mimeType};codecs=${codec}`,
-                `${mimeType};codecs=${codec.toUpperCase()}`,
-            ].forEach(variation => {
-                if (isSupported(variation))
-                    supported.push(variation);
-            }));
-            if (isSupported(mimeType))
-                supported.push(mimeType);
-        });
-        return supported;
-    };
-
     function clearContextFully(ctx, width, height) {
         if (!ctx) {
             return;
@@ -769,198 +750,192 @@ async function initCrawlEditor() {
         };
     })();
 
-    function exportAsGIF(canvas, filename) {
-        if (!window.crawlGenerator) {
-            alert('Please start the crawl before exporting.');
-            return;
+    const VIDEO_EXPORT_FPS_OPTIONS = [24, 30, 60];
+    const GIF_EXPORT_FPS_OPTIONS = [20, 25, 50];
+    const VIDEO_EXPORT_FORMAT_OPTIONS = ['auto', 'mp4', 'webm'];
+    const NATIVE_EXPORT_MAX_WIDTH = 1280;
+    const NATIVE_EXPORT_MAX_HEIGHT = 720;
+    const EXPORT_FRAMES_PER_YIELD = 8;
+
+    function isNativePlatform() {
+        return Boolean(window.Capacitor?.isNativePlatform?.());
+    }
+
+    function readExportSelect(id, allowed, fallback) {
+        const element = document.getElementById(id);
+        if (!element) return fallback;
+        const raw = element.value;
+        const numeric = Number(raw);
+        if (allowed.includes(numeric)) return numeric;
+        if (allowed.includes(raw)) return raw;
+        return fallback;
+    }
+
+    function yieldToBrowser() {
+        if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
+            return globalThis.scheduler.yield();
         }
+        return new Promise((resolve) => {
+            const channel = new MessageChannel();
+            channel.port1.onmessage = () => {
+                channel.port1.close();
+                resolve();
+            };
+            channel.port2.postMessage(null);
+        });
+    }
 
-        addStatus('Exporting crawl as GIF... Please wait.');
-        const startTime = performance.now();
-        const generator = window.crawlGenerator;
-
-        const isNative = Boolean(window.Capacitor?.isNativePlatform?.());
-
-        const NATIVE_MAX_W = 1280;
-        const NATIVE_MAX_H = 720;
-
-        function chooseGifDimensions(srcW, srcH) {
-            if (!isNative) return { w: srcW, h: srcH };
-
-            const scale = Math.min(1, NATIVE_MAX_W / srcW, NATIVE_MAX_H / srcH);
-            return { w: Math.max(1, Math.round(srcW * scale)), h: Math.max(1, Math.round(srcH * scale)) };
+    function setExportProgressPrefix(label) {
+        const labelEl = document.querySelector('label[for="crawlExportProgress"]');
+        const pctSpan = document.getElementById('crawlExportProgressLabel');
+        if (!labelEl || !pctSpan || typeof label !== 'string') return;
+        const firstTextNode = Array.from(labelEl.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
+        if (firstTextNode) {
+            firstTextNode.textContent = `${label}: `;
+        } else {
+            labelEl.insertBefore(document.createTextNode(`${label}: `), pctSpan);
         }
+    }
 
-        function createNoopProgress() { return () => { }; }
+    function formatEtaSeconds(seconds) {
+        const total = Math.max(0, Math.round(seconds));
+        if (total < 60) return `${total}s`;
+        const minutes = Math.floor(total / 60);
+        const rest = total % 60;
+        if (minutes < 60) return `${minutes}m ${String(rest).padStart(2, '0')}s`;
+        const hours = Math.floor(minutes / 60);
+        return `${hours}h ${String(minutes % 60).padStart(2, '0')}m`;
+    }
 
-        function safeCreateProgress(label, increment = 0.001) {
-            const reporter = createExportProgressReporter(label, increment);
-            return (typeof reporter === 'function') ? reporter : createNoopProgress();
-        }
-
-        function setProgressLabelPrefix(label) {
-            const labelEl = document.querySelector('label[for="crawlExportProgress"]');
-            const pctSpan = document.getElementById('crawlExportProgressLabel');
-            if (!labelEl || !pctSpan || typeof label !== 'string') return;
-
-            const nodes = Array.from(labelEl.childNodes);
-            const firstTextNode = nodes.find(n => n.nodeType === Node.TEXT_NODE);
-            if (firstTextNode) {
-                firstTextNode.textContent = `${label}: `;
-            } else {
-                labelEl.insertBefore(document.createTextNode(`${label}: `), pctSpan);
+    function createExportEtaTracker(label, totalFrames) {
+        const startedAt = performance.now();
+        let lastUpdate = 0;
+        return (framesDone) => {
+            const now = performance.now();
+            if (now - lastUpdate < 1000) return;
+            lastUpdate = now;
+            const elapsed = (now - startedAt) / 1000;
+            if (elapsed < 2 || framesDone <= 0) {
+                setExportProgressPrefix(label);
+                return;
             }
-        }
-
-        async function yieldToUI() {
-            await new Promise(requestAnimationFrame);
-        }
-
-        let tearDownCaptureCanvas = () => { };
-        const captureCanvas = document.createElement('canvas');
-
-        const dims = chooseGifDimensions(canvas.width, canvas.height);
-        captureCanvas.width = dims.w;
-        captureCanvas.height = dims.h;
-
-        captureCanvas.style.position = 'fixed';
-        captureCanvas.style.pointerEvents = 'none';
-        captureCanvas.style.opacity = '0';
-        captureCanvas.style.left = '-10000px';
-        captureCanvas.style.top = '-10000px';
-        document.body.appendChild(captureCanvas);
-
-        tearDownCaptureCanvas = () => {
-            if (captureCanvas && captureCanvas.parentNode) {
-                captureCanvas.parentNode.removeChild(captureCanvas);
-            }
+            const remaining = (totalFrames - framesDone) * (elapsed / framesDone);
+            setExportProgressPrefix(`${label} (about ${formatEtaSeconds(remaining)} left)`);
         };
+    }
 
-        const captureCtx = captureCanvas.getContext('2d', { willReadFrequently: true });
+    function resolveWorkerUrl(relativePath) {
+        return new URL(relativePath, import.meta.url);
+    }
+
+    function toEvenExportDimension(value) {
+        const rounded = Math.round(value);
+        return Math.max(2, rounded - (rounded % 2));
+    }
+
+    function createCrawlFrameSource(generator, sourceCanvas, options = {}) {
+        const fps = Number(options.fps) > 0 ? Number(options.fps) : 60;
+        const frameDelayMs = 1000 / fps;
+        const maxWidth = Number(options.maxWidth) || 0;
+        const maxHeight = Number(options.maxHeight) || 0;
+        const fitScale = (maxWidth > 0 && maxHeight > 0)
+            ? Math.min(1, maxWidth / sourceCanvas.width, maxHeight / sourceCanvas.height)
+            : 1;
+        const width = toEvenExportDimension(sourceCanvas.width * fitScale);
+        const height = toEvenExportDimension(sourceCanvas.height * fitScale);
+        const scaleX = width / sourceCanvas.width;
+        const scaleY = height / sourceCanvas.height;
+        const scale = Math.min(scaleX, scaleY);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.position = 'fixed';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.opacity = '0';
+        canvas.style.left = '-10000px';
+        canvas.style.top = '-10000px';
+        document.body.appendChild(canvas);
+        const ctx = options.readPixels
+            ? canvas.getContext('2d', { willReadFrequently: true })
+            : canvas.getContext('2d');
 
         const text = generator.text || '';
+        const lines = text.split('\n');
         const fontSize = Number(generator.fontSize) || 24;
         const textColor = generator.textColor || '#FFFFFF';
-        const lines = text.split('\n');
-        const useVdsMode = Boolean(generator.vdsMode);
+        const useVdsMode = Boolean(generator.vdsMode) && !options.ignoreVds;
         const fontStyle = generator.fontStyle || 'normal';
         const fontFamily = generator.fontFamily || 'Arial';
         const sanitizedFontFamily = /[^a-zA-Z0-9_-]/.test(fontFamily)
             ? `"${fontFamily.replace(/(["\\])/g, '\\$1')}"`
             : fontFamily;
-
-        const scaleX = captureCanvas.width / canvas.width;
-        const scaleY = captureCanvas.height / canvas.height;
-        const scale = Math.min(scaleX, scaleY);
-        const scaledFontSize = Math.max(8, Math.round(fontSize * scale));
+        const scaledFontSize = scale === 1 ? fontSize : Math.max(8, Math.round(fontSize * scale));
         const font = `${fontStyle} ${scaledFontSize}px ${sanitizedFontFamily}`;
-        const lineHeight = scaledFontSize + Math.round(10 * scale);
+        const lineHeight = scaledFontSize + (scale === 1 ? 10 : Math.round(10 * scale));
 
-        captureCtx.font = font;
-        captureCtx.textAlign = useVdsMode ? 'left' : 'center';
-        captureCtx.textBaseline = 'middle';
-        captureCtx.lineJoin = generator.outlineJoin || 'round';
+        ctx.font = font;
+        ctx.textAlign = useVdsMode ? 'left' : 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = generator.outlineJoin || 'round';
 
         const kerningPercent = Number(generator.kerningPercent) || 0;
         if (kerningPercent) {
-            const kerningPx = (kerningPercent / 100) * scaledFontSize;
-            captureCtx.letterSpacing = `${kerningPx}px`;
+            ctx.letterSpacing = `${(kerningPercent / 100) * scaledFontSize}px`;
         }
 
         const outlineWidth = Number(generator.outlineWidth);
-        const scaledOutlineWidth = Number.isFinite(outlineWidth) ? Math.max(1, Math.round(outlineWidth * scale)) : undefined;
+        const scaledOutlineWidth = Number.isFinite(outlineWidth)
+            ? (scale === 1 ? outlineWidth : Math.max(1, Math.round(outlineWidth * scale)))
+            : undefined;
         const textScaleX = normalizeTextScale(generator.textWidthPercent);
-        const renderText = createTextRenderer(captureCtx, generator.outlineColor, scaledOutlineWidth, textScaleX);
-
-        const vdsState = useVdsMode ? createVdsExportState(captureCtx, lines, textScaleX) : null;
+        const renderText = createTextRenderer(ctx, generator.outlineColor, scaledOutlineWidth, textScaleX);
+        const vdsState = useVdsMode ? createVdsExportState(ctx, lines, textScaleX) : null;
 
         const maxLineWidth = lines.reduce((maxWidth, line) => {
-            const width = measureScaledWidth(captureCtx, line, textScaleX);
-            return width > maxWidth ? width : maxWidth;
+            const lineWidth = measureScaledWidth(ctx, line, textScaleX);
+            return lineWidth > maxWidth ? lineWidth : maxWidth;
         }, 0);
-
         const translation = (typeof generator._computeTopLeftTranslation === 'function')
             ? generator._computeTopLeftTranslation(maxLineWidth, lines.length)
             : { x: 0, y: 0 };
-
-        const translationX = Number.isFinite(translation.x) ? translation.x * scaleX : 0;
-        const translationY = Number.isFinite(translation.y) ? translation.y * scaleY : 0;
+        const rawTranslationX = Number.isFinite(translation.x) ? translation.x : 0;
+        const translationX = rawTranslationX * scaleX;
+        const translationY = (Number.isFinite(translation.y) ? translation.y : 0) * scaleY;
 
         const bounds = (typeof generator._computeCrawlBounds === 'function')
             ? generator._computeCrawlBounds(maxLineWidth)
             : null;
-
-        const insetRaw = bounds ? bounds.inset : 0;
-        const inset = Math.max(0, Math.round(insetRaw * scaleX));
-
+        const inset = Math.max(0, Math.round((bounds ? bounds.inset : 0) * scaleX));
         const halfLineWidth = maxLineWidth / 2;
-        const startOffsetFallback = canvas.width + halfLineWidth;
-        const endOffsetFallback = -halfLineWidth;
-        const startOffset = bounds && Number.isFinite(bounds.start) ? bounds.start : startOffsetFallback;
-        const endOffset = bounds && Number.isFinite(bounds.end) ? bounds.end : endOffsetFallback;
-
-        const adjustedStartOffset = (startOffset - (Number.isFinite(translation.x) ? translation.x : 0)) * scaleX;
-        const adjustedEndOffset = (endOffset - (Number.isFinite(translation.x) ? translation.x : 0)) * scaleX;
-        const travelDistance = adjustedStartOffset - adjustedEndOffset || captureCanvas.width;
-
-        const recordedMsPerFrame = Number(generator.msPerFrame);
-        const fallbackMsPerFrame = TARGET_FRAME_MS;
-        const targetMsPerFrame = (Number.isFinite(recordedMsPerFrame) && recordedMsPerFrame > 0)
-            ? recordedMsPerFrame
-            : fallbackMsPerFrame;
-
-        const MIN_GIF_DELAY = 20;
-        const frameDelay = Math.max(MIN_GIF_DELAY, Math.round(targetMsPerFrame));
+        const startOffset = bounds && Number.isFinite(bounds.start) ? bounds.start : sourceCanvas.width + halfLineWidth;
+        const endOffset = bounds && Number.isFinite(bounds.end) ? bounds.end : -halfLineWidth;
+        const adjustedStartOffset = (startOffset - rawTranslationX) * scaleX;
+        const adjustedEndOffset = (endOffset - rawTranslationX) * scaleX;
+        const travelDistance = adjustedStartOffset - adjustedEndOffset || width;
 
         const speedPerSecond = getGeneratorSpeedPerSecond(generator);
         const pxPerSecond = Math.max(0.5, Math.abs(speedPerSecond));
-        const pxPerFrameMagnitude = (pxPerSecond * (frameDelay / 1000)) * scaleX;
+        const pxPerFrameMagnitude = (pxPerSecond / fps) * scaleX;
         const pxPerFrameSigned = speedPerSecond >= 0 ? pxPerFrameMagnitude : -pxPerFrameMagnitude;
 
         const defaultVdsDelay = (Number.isFinite(generator.vdsBaseDelayFrames) && generator.vdsBaseDelayFrames > 0)
             ? generator.vdsBaseDelayFrames
             : DEFAULT_VDS_BASE_DELAY;
-
-        const vdsDelay = useVdsMode && typeof generator.getEffectiveVdsDelay === 'function'
-            ? generator.getEffectiveVdsDelay(pxPerFrameMagnitude)
+        const vdsDelayAt60 = useVdsMode && typeof generator.getEffectiveVdsDelay === 'function'
+            ? generator.getEffectiveVdsDelay(pxPerSecond / TARGET_FRAMES_PER_SECOND)
             : defaultVdsDelay;
+        const vdsDelay = Math.max(1, Math.round(vdsDelayAt60 * (fps / TARGET_FRAMES_PER_SECOND)));
 
-        let framesNeeded = Math.max(1, Math.ceil(travelDistance / Math.max(pxPerFrameMagnitude, 0.01)));
-
+        const framesNeeded = Math.max(1, Math.ceil(travelDistance / Math.max(pxPerFrameMagnitude, 0.01)));
+        const restartDelayMs = Number(generator.crawlRestartDelay);
+        const restartDelayFrames = (Number.isFinite(restartDelayMs) && restartDelayMs > 0)
+            ? Math.max(1, Math.round(restartDelayMs / frameDelayMs))
+            : 0;
         const rawRepetitionInput = (typeof generator.crawlRepetitions !== 'undefined')
             ? Number(generator.crawlRepetitions)
             : Number(generator.repetitions);
-
         const repetitions = Math.max(1, Math.min(10, Math.round(rawRepetitionInput || 0)));
-        const gifRepeat = repetitions <= 1 ? -1 : repetitions - 1;
-
-        const gifWorkers = isNative ? 1 : 5;
-
-        const gif = new GIF({
-            workers: gifWorkers,
-            quality: 4,
-            repeat: gifRepeat
-        });
-
-        let userCancelledGifExport = false;
-        const gifCancelToken = crawlExportController.createToken(() => {
-            userCancelledGifExport = true;
-            if (gif && typeof gif.abort === 'function') {
-                gif.abort();
-            } else {
-                crawlExportController.clear(gifCancelToken);
-                addStatus('GIF export canceled.', 'WARN');
-            }
-        });
-
-        const clipWidth = captureCanvas.width - inset * 2;
-        const shouldClip = inset > 0 && clipWidth > 0;
-
-        const restartDelayMs = Number(generator.crawlRestartDelay);
-        const restartDelayFrames = (Number.isFinite(restartDelayMs) && restartDelayMs > 0)
-            ? Math.max(1, Math.round(restartDelayMs / frameDelay))
-            : 0;
-
         const framesPerCycle = framesNeeded + restartDelayFrames;
         let totalFrames = framesPerCycle * repetitions;
 
@@ -969,358 +944,18 @@ async function initCrawlEditor() {
         const dasdecRotationDelay = dasdecBackground && Number.isFinite(dasdecBackground.rotationDelayMs)
             ? dasdecBackground.rotationDelayMs
             : null;
-
         const dasdecRepetitionOverride = dasdecBackground && Number.isFinite(dasdecBackground.repetitions)
             ? Math.max(1, Math.min(10, Math.round(dasdecBackground.repetitions)))
             : repetitions;
-
         const dasdecTotalDisplays = (dasdecPages && dasdecPages.length && dasdecRotationDelay)
             ? Math.max(1, Number(dasdecBackground.totalDisplays) || (dasdecRepetitionOverride * dasdecPages.length))
             : 0;
-
         const dasdecFramesPerPage = dasdecRotationDelay
-            ? Math.max(1, Math.round(dasdecRotationDelay / frameDelay))
+            ? Math.max(1, Math.round(dasdecRotationDelay / frameDelayMs))
             : null;
-
         const getDasdecPageForFrame = (dasdecPages && dasdecFramesPerPage)
             ? (frameIndex) => {
-                const displayIndex = Math.min(
-                    dasdecTotalDisplays - 1,
-                    Math.floor(frameIndex / dasdecFramesPerPage)
-                );
-                return dasdecPages[displayIndex % dasdecPages.length];
-            }
-            : null;
-
-        if (getDasdecPageForFrame) {
-            totalFrames = dasdecTotalDisplays * dasdecFramesPerPage;
-        }
-
-        const captureProgressPortion = 0.5;
-        const reportCaptureProgress = safeCreateProgress('GIF export');
-        const reportSaveProgress = safeCreateProgress('GIF save');
-
-        let showTime = localStorage["showTime"];
-
-        const clearFrame = (frameIndex = 0) => {
-            captureCtx.save();
-            captureCtx.setTransform(1, 0, 0, 1, 0, 0);
-            captureCtx.globalAlpha = 1;
-            captureCtx.globalCompositeOperation = 'copy';
-
-            let drewCustomBackground = false;
-            if (getDasdecPageForFrame) {
-                const dasdecPage = getDasdecPageForFrame(frameIndex);
-                if (dasdecPage) {
-                    captureCtx.drawImage(dasdecPage, 0, 0, captureCanvas.width, captureCanvas.height);
-                    drewCustomBackground = true;
-                }
-            }
-            if (!drewCustomBackground) {
-                drawGeneratorBackground(captureCtx, generator, captureCanvas.width, captureCanvas.height);
-            }
-
-            captureCtx.restore();
-            captureCtx.globalCompositeOperation = 'source-over';
-        };
-
-        const drawFrame = (offsetX, frameIndex) => {
-            clearFrame(frameIndex);
-            captureCtx.fillStyle = textColor;
-            captureCtx.font = font;
-
-            const translatedOffsetX = offsetX + translationX;
-            const centerY = captureCanvas.height / 2 + translationY;
-
-            if (shouldClip) {
-                captureCtx.save();
-                captureCtx.beginPath();
-                captureCtx.rect(inset, 0, clipWidth, captureCanvas.height);
-                captureCtx.clip();
-            }
-
-            if (useVdsMode) {
-                updateVdsExportState(
-                    vdsState,
-                    translatedOffsetX,
-                    Math.max(0, captureCanvas.width - inset * 2),
-                    vdsDelay,
-                    inset
-                );
-                drawVdsExportFrame(
-                    captureCtx,
-                    vdsState,
-                    translatedOffsetX,
-                    centerY,
-                    scaledFontSize,
-                    renderText
-                );
-            } else {
-                lines.forEach((line, index) => {
-                    const verticalOffset = index - (lines.length - 1) / 2;
-                    const y = centerY + verticalOffset * lineHeight;
-                    renderText(line, translatedOffsetX, y);
-                });
-            }
-
-            if (shouldClip) {
-                captureCtx.restore();
-            }
-        };
-
-        resetVdsExportState(vdsState);
-        let offsetX = adjustedStartOffset;
-        let delayFramesRemaining = 0;
-
-        setProgressLabelPrefix('GIF export');
-        reportCaptureProgress(0);
-
-        (async () => {
-            try {
-                for (let i = 0; i < totalFrames; i++) {
-                    if (userCancelledGifExport || crawlExportController.isCancelled(gifCancelToken)) {
-                        throw new Error('CANCELLED');
-                    }
-
-                    drawFrame(offsetX, i);
-
-                    gif.addFrame(captureCanvas, { delay: frameDelay, copy: true });
-
-                    reportCaptureProgress(((i + 1) / totalFrames) * captureProgressPortion);
-
-                    if (isNative && (i % 10 === 0)) {
-                        await yieldToUI();
-                    }
-
-                    if (delayFramesRemaining > 0) {
-                        delayFramesRemaining--;
-                        if (delayFramesRemaining === 0) {
-                            offsetX = adjustedStartOffset;
-                            resetVdsExportState(vdsState);
-                        }
-                        continue;
-                    }
-
-                    offsetX -= pxPerFrameSigned;
-
-                    if ((pxPerFrameSigned >= 0 && offsetX < adjustedEndOffset) ||
-                        (pxPerFrameSigned < 0 && offsetX > adjustedEndOffset)) {
-                        if (restartDelayFrames > 0) {
-                            offsetX = adjustedEndOffset;
-                            delayFramesRemaining = restartDelayFrames;
-                        } else {
-                            offsetX = adjustedStartOffset;
-                            resetVdsExportState(vdsState);
-                        }
-                    }
-                }
-
-                gif.on('progress', function (progress) {
-                    const clampedProgress = Math.max(0, Math.min(0.999, progress));
-                    const remainingPortion = 1 - captureProgressPortion;
-                    reportCaptureProgress(captureProgressPortion + clampedProgress * remainingPortion);
-                });
-
-                gif.on('abort', function () {
-                    const wasUserCancelled = userCancelledGifExport || crawlExportController.isCancelled(gifCancelToken);
-                    crawlExportController.clear(gifCancelToken);
-                    tearDownCaptureCanvas();
-                    try { gif.frames.length = 0; gif.imageParts.length = 0; } catch(_) {}
-                    addStatus(
-                        wasUserCancelled ? 'GIF export canceled.' : 'GIF export aborted unexpectedly.',
-                        wasUserCancelled ? 'WARN' : 'ERROR'
-                    );
-                });
-
-                gif.on('finished', async function (blob) {
-                    try {
-                        const wasCancelled = crawlExportController.isCancelled(gifCancelToken);
-                        if (wasCancelled) {
-                            crawlExportController.clear(gifCancelToken);
-                            tearDownCaptureCanvas();
-                            return;
-                        }
-
-                        setProgressLabelPrefix('GIF save');
-                        reportSaveProgress(0);
-
-                        await saveFile(filename, blob, 'image/gif', {
-                            onProgress: (ratio) => reportSaveProgress(ratio),
-                            isCancelled: () => crawlExportController.isCancelled(gifCancelToken),
-                        });
-
-                        crawlExportController.clear(gifCancelToken);
-                        reportSaveProgress(1);
-
-                        addStatus(
-                            'Crawl exported successfully!' +
-                            (showTime ? ` (Took: ${((performance.now() - startTime) / 1000).toFixed(2)} seconds)` : ''),
-                            'SUCCESS'
-                        );
-                    } catch (e) {
-                        const cancelled = String(e?.message || e).includes('CANCELLED') ||
-                            crawlExportController.isCancelled(gifCancelToken);
-
-                        crawlExportController.clear(gifCancelToken);
-
-                        if (cancelled) {
-                            addStatus('GIF export canceled during save.', 'WARN');
-                        } else {
-                            console.error('GIF save failed:', e);
-                            addStatus(`GIF save failed: ${e?.message || e}`, 'ERROR');
-                        }
-                    } finally {
-                        tearDownCaptureCanvas();
-                        try { gif.frames.length = 0; gif.imageParts.length = 0; } catch(_) {}
-                    }
-                });
-
-                gif.render();
-            } catch (e) {
-                const cancelled = String(e?.message || e).includes('CANCELLED') ||
-                    userCancelledGifExport ||
-                    crawlExportController.isCancelled(gifCancelToken);
-
-                crawlExportController.clear(gifCancelToken);
-                tearDownCaptureCanvas();
-
-                if (cancelled) {
-                    addStatus('GIF export canceled.', 'WARN');
-                } else {
-                    console.error('GIF export failed:', e);
-                    addStatus(`GIF export failed: ${e?.message || e}`, 'ERROR');
-                }
-            }
-        })();
-    }
-
-    async function exportAsWebM(canvas, filename) {
-        if (!window.crawlGenerator) {
-            alert('Please start the crawl before exporting.');
-            return;
-        }
-
-        addStatus('Exporting crawl as video... Please wait.');
-        const startTime = performance.now();
-
-        const generator = window.crawlGenerator;
-        let tearDownCaptureCanvas = () => { };
-        const captureCanvas = document.createElement('canvas');
-        captureCanvas.width = canvas.width;
-        captureCanvas.height = canvas.height;
-        captureCanvas.style.position = 'fixed';
-        captureCanvas.style.pointerEvents = 'none';
-        captureCanvas.style.opacity = '0';
-        captureCanvas.style.left = '-10000px';
-        captureCanvas.style.top = '-10000px';
-        document.body.appendChild(captureCanvas);
-        tearDownCaptureCanvas = () => {
-            if (captureCanvas && captureCanvas.parentNode) {
-                captureCanvas.parentNode.removeChild(captureCanvas);
-            }
-        };
-        const captureCtx = captureCanvas.getContext('2d');
-
-        const text = generator.text || '';
-        const fontSize = Number(generator.fontSize) || 24;
-        const textColor = generator.textColor || '#FFFFFF';
-        const lines = text.split('\n');
-        const useVdsMode = Boolean(generator.vdsMode);
-        const fontStyle = generator.fontStyle || 'normal';
-        const fontFamily = generator.fontFamily || 'Arial';
-        const sanitizedFontFamily = /[^a-zA-Z0-9_-]/.test(fontFamily)
-            ? `"${fontFamily.replace(/(["\\])/g, '\\$1')}"`
-            : fontFamily;
-        const font = `${fontStyle} ${fontSize}px ${sanitizedFontFamily}`;
-        const lineHeight = fontSize + 10;
-
-        captureCtx.font = font;
-        captureCtx.textAlign = useVdsMode ? 'left' : 'center';
-        captureCtx.textBaseline = 'middle';
-        captureCtx.lineJoin = generator.outlineJoin || 'round';
-
-        const kerningPercent = Number(generator.kerningPercent) || 0;
-        if (kerningPercent) {
-            const kerningPx = (kerningPercent / 100) * fontSize;
-            captureCtx.letterSpacing = `${kerningPx}px`;
-        }
-
-        const textScaleX = normalizeTextScale(generator.textWidthPercent);
-        const renderText = createTextRenderer(captureCtx, generator.outlineColor, generator.outlineWidth, textScaleX);
-        const vdsState = useVdsMode ? createVdsExportState(captureCtx, lines, textScaleX) : null;
-
-        const maxLineWidth = lines.reduce((maxWidth, line) => {
-            const width = measureScaledWidth(captureCtx, line, textScaleX);
-            return width > maxWidth ? width : maxWidth;
-        }, 0);
-        const translation = (typeof generator._computeTopLeftTranslation === 'function')
-            ? generator._computeTopLeftTranslation(maxLineWidth, lines.length)
-            : { x: 0, y: 0 };
-        const translationX = Number.isFinite(translation.x) ? translation.x : 0;
-        const translationY = Number.isFinite(translation.y) ? translation.y : 0;
-
-        const bounds = typeof generator._computeCrawlBounds === 'function'
-            ? generator._computeCrawlBounds(maxLineWidth)
-            : null;
-        const inset = bounds ? bounds.inset : 0;
-        const halfLineWidth = maxLineWidth / 2;
-        const startOffsetFallback = canvas.width + halfLineWidth;
-        const endOffsetFallback = -halfLineWidth;
-        const startOffset = bounds && Number.isFinite(bounds.start) ? bounds.start : startOffsetFallback;
-        const endOffset = bounds && Number.isFinite(bounds.end) ? bounds.end : endOffsetFallback;
-        const adjustedStartOffset = startOffset - translationX;
-        const adjustedEndOffset = endOffset - translationX;
-        const travelDistance = adjustedStartOffset - adjustedEndOffset || canvas.width;
-
-        const recordedMsPerFrame = Number(generator.msPerFrame);
-        const fallbackMsPerFrame = TARGET_FRAME_MS;
-        const targetMsPerFrame = (Number.isFinite(recordedMsPerFrame) && recordedMsPerFrame > 0)
-            ? recordedMsPerFrame
-            : fallbackMsPerFrame;
-        const MAX_CAPTURE_FPS = 60;
-        const captureFrameDelay = 1000 / MAX_CAPTURE_FPS;
-        const frameDelay = Math.max(1, Math.max(targetMsPerFrame, captureFrameDelay));
-        const speedPerSecond = getGeneratorSpeedPerSecond(generator);
-        const pxPerSecond = Math.max(0.5, Math.abs(speedPerSecond));
-        const pxPerFrameMagnitude = pxPerSecond * (frameDelay / 1000);
-        const pxPerFrameSigned = speedPerSecond >= 0 ? pxPerFrameMagnitude : -pxPerFrameMagnitude;
-        const defaultVdsDelay = (Number.isFinite(generator.vdsBaseDelayFrames) && generator.vdsBaseDelayFrames > 0)
-            ? generator.vdsBaseDelayFrames
-            : DEFAULT_VDS_BASE_DELAY;
-        const vdsDelay = useVdsMode && typeof generator.getEffectiveVdsDelay === 'function'
-            ? generator.getEffectiveVdsDelay(pxPerFrameMagnitude)
-            : defaultVdsDelay;
-        let framesNeeded = Math.max(1, Math.ceil(travelDistance / Math.max(pxPerFrameMagnitude, 0.01)));
-        const restartDelayMs = Number(generator.crawlRestartDelay);
-        const restartDelayFrames = (Number.isFinite(restartDelayMs) && restartDelayMs > 0)
-            ? Math.max(1, Math.round(restartDelayMs / frameDelay))
-            : 0;
-        const rawRepetitionInput = (typeof generator.crawlRepetitions !== 'undefined')
-            ? Number(generator.crawlRepetitions)
-            : Number(generator.repetitions);
-        const repetitions = Math.max(1, Math.min(10, Math.round(rawRepetitionInput || 0)));
-        const framesPerCycle = framesNeeded + restartDelayFrames;
-        let totalFrames = framesPerCycle * repetitions;
-        const dasdecBackground = window.__dasdecBackground;
-        const dasdecPages = dasdecBackground && Array.isArray(dasdecBackground.pages) ? dasdecBackground.pages : null;
-        const dasdecRotationDelay = dasdecBackground && Number.isFinite(dasdecBackground.rotationDelayMs)
-            ? dasdecBackground.rotationDelayMs
-            : null;
-        const dasdecRepetitionOverride = dasdecBackground && Number.isFinite(dasdecBackground.repetitions)
-            ? Math.max(1, Math.min(10, Math.round(dasdecBackground.repetitions)))
-            : repetitions;
-        const dasdecTotalDisplays = dasdecPages && dasdecPages.length && dasdecRotationDelay
-            ? Math.max(1, Number(dasdecBackground.totalDisplays) || (dasdecRepetitionOverride * dasdecPages.length))
-            : 0;
-        const dasdecFramesPerPage = dasdecRotationDelay
-            ? Math.max(1, Math.round(dasdecRotationDelay / frameDelay))
-            : null;
-        const getDasdecPageForFrame = dasdecPages && dasdecFramesPerPage
-            ? (frameIndex) => {
-                const displayIndex = Math.min(
-                    dasdecTotalDisplays - 1,
-                    Math.floor(frameIndex / dasdecFramesPerPage)
-                );
+                const displayIndex = Math.min(dasdecTotalDisplays - 1, Math.floor(frameIndex / dasdecFramesPerPage));
                 return dasdecPages[displayIndex % dasdecPages.length];
             }
             : null;
@@ -1328,812 +963,68 @@ async function initCrawlEditor() {
             totalFrames = dasdecTotalDisplays * dasdecFramesPerPage;
         }
 
-        const clipWidth = captureCanvas.width - inset * 2;
-        const shouldClip = inset > 0 && clipWidth > 0;
-        let delayFramesRemaining = 0;
-        let reportProgress = createExportProgressReporter('WebM export');
-        const encodeProgressPortion = Math.min(0.1, 1 / Math.max(1, totalFrames));
-        const captureProgressPortion = Math.max(0, 1 - encodeProgressPortion);
-
-        let showTime = localStorage["showTime"];
         const isTransparentBackground = Boolean(
             generator._transparentBg ||
             (typeof generator._isTransparentColor === 'function' && generator._isTransparentColor(generator.bgColor))
         );
         const hasGeneratorMedia = Boolean(generator.bgVideo || generator.bgImage);
+        const transparentOutput = Boolean(options.transparent) && isTransparentBackground && !hasGeneratorMedia && !getDasdecPageForFrame;
         const shouldDrawGeneratorBackground = !isTransparentBackground || hasGeneratorMedia;
-        const wantsTransparentOutput = isTransparentBackground && !hasGeneratorMedia && !getDasdecPageForFrame;
 
-        const clearFrameOpaque = (frameIndex = 0) => {
-            captureCtx.save();
-            captureCtx.setTransform(1, 0, 0, 1, 0, 0);
-            captureCtx.globalAlpha = 1;
-            captureCtx.globalCompositeOperation = 'source-over';
-            captureCtx.fillStyle = '#000000';
-            captureCtx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
-            let drewCustomBackground = false;
-            if (getDasdecPageForFrame) {
-                const dasdecPage = getDasdecPageForFrame(frameIndex);
-                if (dasdecPage) {
-                    captureCtx.drawImage(dasdecPage, 0, 0, captureCanvas.width, captureCanvas.height);
-                    drewCustomBackground = true;
-                }
-            }
-            if (!drewCustomBackground && shouldDrawGeneratorBackground) {
-                drawGeneratorBackground(captureCtx, generator, captureCanvas.width, captureCanvas.height);
-            }
-            captureCtx.restore();
-            captureCtx.globalCompositeOperation = 'source-over';
-        };
+        const clipWidth = width - inset * 2;
+        const shouldClip = inset > 0 && clipWidth > 0;
 
-        const clearFrameTransparent = (frameIndex = 0) => {
-            captureCtx.save();
-            captureCtx.setTransform(1, 0, 0, 1, 0, 0);
-            captureCtx.globalAlpha = 1;
-            captureCtx.globalCompositeOperation = 'copy';
-            captureCtx.fillStyle = 'rgba(0, 0, 0, 0)';
-            captureCtx.fillRect(0, 0, captureCanvas.width, captureCanvas.height);
-            let drewCustomBackground = false;
-            if (getDasdecPageForFrame) {
-                const dasdecPage = getDasdecPageForFrame(frameIndex);
-                if (dasdecPage) {
-                    captureCtx.drawImage(dasdecPage, 0, 0, captureCanvas.width, captureCanvas.height);
-                    drewCustomBackground = true;
-                }
-            }
-            if (!drewCustomBackground && shouldDrawGeneratorBackground) {
-                drawGeneratorBackground(captureCtx, generator, captureCanvas.width, captureCanvas.height);
-            }
-            captureCtx.restore();
-            captureCtx.globalCompositeOperation = 'source-over';
-        };
-
-        const drawFrameWithClear = (offsetX, frameIndex, clearFn) => {
-            clearFn(frameIndex);
-            captureCtx.fillStyle = textColor;
-            captureCtx.font = font;
-
-            const translatedOffsetX = offsetX + translationX;
-            const centerY = captureCanvas.height / 2 + translationY;
-
-            if (shouldClip) {
-                captureCtx.save();
-                captureCtx.beginPath();
-                captureCtx.rect(inset, 0, clipWidth, captureCanvas.height);
-                captureCtx.clip();
-            }
-
-            if (useVdsMode) {
-                updateVdsExportState(
-                    vdsState,
-                    translatedOffsetX,
-                    Math.max(0, captureCanvas.width - inset * 2),
-                    vdsDelay,
-                    inset
-                );
-                drawVdsExportFrame(
-                    captureCtx,
-                    vdsState,
-                    translatedOffsetX,
-                    centerY,
-                    fontSize,
-                    renderText
-                );
+        const clearFrame = (frameIndex) => {
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.globalAlpha = 1;
+            if (transparentOutput) {
+                ctx.globalCompositeOperation = 'copy';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0)';
             } else {
-                lines.forEach((line, index) => {
-                    const verticalOffset = index - (lines.length - 1) / 2;
-                    const y = centerY + verticalOffset * lineHeight;
-                    renderText(line, translatedOffsetX, y);
-                });
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = '#000000';
             }
-
-            if (shouldClip) {
-                captureCtx.restore();
+            ctx.fillRect(0, 0, width, height);
+            let drewCustomBackground = false;
+            if (getDasdecPageForFrame) {
+                const dasdecPage = getDasdecPageForFrame(frameIndex);
+                if (dasdecPage) {
+                    ctx.drawImage(dasdecPage, 0, 0, width, height);
+                    drewCustomBackground = true;
+                }
             }
+            if (!drewCustomBackground && shouldDrawGeneratorBackground) {
+                drawGeneratorBackground(ctx, generator, width, height);
+            }
+            ctx.restore();
+            ctx.globalCompositeOperation = 'source-over';
         };
 
-        const drawFrame = (offsetX, frameIndex) => drawFrameWithClear(offsetX, frameIndex, clearFrameOpaque);
-        const drawFrameTransparent = (offsetX, frameIndex) => drawFrameWithClear(offsetX, frameIndex, clearFrameTransparent);
-
-        const captureFps = Math.max(1, Math.min(120, Math.round(1000 / frameDelay)));
-        const estimatedBitrate = Math.floor(captureCanvas.width * captureCanvas.height * captureFps * 0.3);
-        const videoBitsPerSecond = Math.max(2_000_000, Math.min(25_000_000, estimatedBitrate));
-        const normalizedQuality = Math.max(0, Math.min(1, (videoBitsPerSecond - 2_000_000) / 23_000_000));
-        const MIN_CAPTURE_QUALITY = 0.6;
-        const MAX_CAPTURE_QUALITY = 0.95;
-        const captureQuality = Math.max(
-            MIN_CAPTURE_QUALITY,
-            Math.min(MAX_CAPTURE_QUALITY, MIN_CAPTURE_QUALITY + normalizedQuality * (MAX_CAPTURE_QUALITY - MIN_CAPTURE_QUALITY))
-        );
-        const downloadName = (typeof filename === 'string' && filename.toLowerCase().endsWith('.webm'))
-            ? filename.slice(0, -5)
-            : filename || 'crawl';
-        const canUseWebCodecs = wantsTransparentOutput
-            && typeof VideoEncoder === 'function'
-            && typeof VideoFrame === 'function';
-        const canUseMediaRecorder = wantsTransparentOutput &&
-            typeof MediaRecorder === 'function' &&
-            typeof captureCanvas.captureStream === 'function';
-
-        const getWebCodecsConfig = async () => {
-            if (!canUseWebCodecs || typeof VideoEncoder.isConfigSupported !== 'function') {
-                return null;
-            }
-            const baseConfig = {
-                codec: 'vp09.00.10.08',
-                width: captureCanvas.width,
-                height: captureCanvas.height,
-                bitrate: videoBitsPerSecond,
-                framerate: captureFps,
-                alpha: 'keep',
-                hardwareAcceleration: 'prefer-hardware'
-            };
-            try {
-                const support = await VideoEncoder.isConfigSupported(baseConfig);
-                if (support && support.supported) {
-                    const resolved = support.config || baseConfig;
-                    if (resolved.alpha && resolved.alpha !== 'keep') {
-                        return null;
-                    }
-                    resolved.alpha = 'keep';
-                    return resolved;
-                }
-            } catch (error) { /* ignore */ }
-            return null;
-        };
-
-        const createWebMMuxer = (options) => {
-            const codec = options && options.codec ? options.codec : 'vp09.00.10.08';
-            const codecId = codec.startsWith('vp08') ? 'V_VP8' : 'V_VP9';
-            const codecName = codecId === 'V_VP8' ? 'VP8' : 'VP9';
-            const trackNumberByte = 0x81;
-            const maxClusterDurationMs = 5000;
-            const chunks = [];
-            const encodeString = (value) => {
-                const str = String(value || '');
-                const bytes = new Uint8Array(str.length);
-                for (let i = 0; i < str.length; i++) {
-                    bytes[i] = str.charCodeAt(i) & 0xff;
-                }
-                return bytes;
-            };
-            const encodeUint = (value) => {
-                let val = Math.max(0, Math.floor(Number(value) || 0));
-                const bytes = [];
-                do {
-                    bytes.unshift(val & 0xff);
-                    val = Math.floor(val / 256);
-                } while (val > 0);
-                return new Uint8Array(bytes);
-            };
-            const encodeId = (id) => {
-                let val = Number(id);
-                const bytes = [];
-                while (val > 0) {
-                    bytes.unshift(val & 0xff);
-                    val = Math.floor(val / 256);
-                }
-                return new Uint8Array(bytes.length ? bytes : [0]);
-            };
-            const encodeVint = (value) => {
-                const val = Math.max(0, Math.floor(Number(value) || 0));
-                if (val < 0x7f) {
-                    return new Uint8Array([0x80 | val]);
-                }
-                if (val < 0x3fff) {
-                    return new Uint8Array([0x40 | (val >> 8), val & 0xff]);
-                }
-                if (val < 0x1fffff) {
-                    return new Uint8Array([0x20 | (val >> 16), (val >> 8) & 0xff, val & 0xff]);
-                }
-                if (val < 0x0fffffff) {
-                    return new Uint8Array([0x10 | (val >> 24), (val >> 16) & 0xff, (val >> 8) & 0xff, val & 0xff]);
-                }
-                return new Uint8Array([
-                    0x08 | ((val / 4294967296) & 0x07),
-                    (val >> 24) & 0xff,
-                    (val >> 16) & 0xff,
-                    (val >> 8) & 0xff,
-                    val & 0xff
-                ]);
-            };
-            const concatBuffers = (buffers) => {
-                const total = buffers.reduce((sum, buf) => sum + buf.length, 0);
-                const out = new Uint8Array(total);
-                let offset = 0;
-                buffers.forEach((buf) => {
-                    out.set(buf, offset);
-                    offset += buf.length;
-                });
-                return out;
-            };
-            const makeElement = (id, data) => {
-                let payload;
-                if (Array.isArray(data)) {
-                    payload = concatBuffers(data);
-                } else if (data instanceof Uint8Array) {
-                    payload = data;
-                } else if (typeof data === 'string') {
-                    payload = encodeString(data);
-                } else if (typeof data === 'number') {
-                    payload = encodeUint(data);
-                } else {
-                    payload = new Uint8Array();
-                }
-                return concatBuffers([encodeId(id), encodeVint(payload.length), payload]);
-            };
-            const makeSimpleBlock = (timecode, isKeyframe, frameData) => {
-                const payload = new Uint8Array(4 + frameData.length);
-                payload[0] = trackNumberByte;
-                payload[1] = (timecode >> 8) & 0xff;
-                payload[2] = timecode & 0xff;
-                payload[3] = isKeyframe ? 0x80 : 0x00;
-                payload.set(frameData, 4);
-                return makeElement(0xa3, payload);
-            };
-
-            const ebmlHeader = makeElement(0x1a45dfa3, [
-                makeElement(0x4286, 1),
-                makeElement(0x42f7, 1),
-                makeElement(0x42f2, 4),
-                makeElement(0x42f3, 8),
-                makeElement(0x4282, 'webm'),
-                makeElement(0x4287, 2),
-                makeElement(0x4285, 2)
-            ]);
-
-            const segmentHeader = concatBuffers([encodeId(0x18538067), new Uint8Array([0xff])]);
-            const info = makeElement(0x1549a966, [
-                makeElement(0x2ad7b1, 1000000),
-                makeElement(0x4d80, 'eas-tools'),
-                makeElement(0x5741, 'eas-tools')
-            ]);
-            const videoElements = [
-                makeElement(0xb0, captureCanvas.width),
-                makeElement(0xba, captureCanvas.height),
-                makeElement(0x53c0, 1)
-            ];
-            const trackEntry = makeElement(0xae, [
-                makeElement(0xd7, 1),
-                makeElement(0x73c5, 1),
-                makeElement(0x9c, 0),
-                makeElement(0x22b59c, 'und'),
-                makeElement(0x86, codecId),
-                makeElement(0x258688, codecName),
-                makeElement(0x83, 1),
-                makeElement(0xe0, videoElements)
-            ]);
-            const tracks = makeElement(0x1654ae6b, [trackEntry]);
-
-            chunks.push(ebmlHeader, segmentHeader, info, tracks);
-
-            let clusterStartMs = null;
-            let clusterBlocks = [];
-
-            const flushCluster = () => {
-                if (!clusterBlocks.length || clusterStartMs === null) {
-                    return;
-                }
-                const clusterTimecode = makeElement(0xe7, clusterStartMs);
-                const clusterData = concatBuffers([clusterTimecode, ...clusterBlocks]);
-                const cluster = makeElement(0x1f43b675, clusterData);
-                chunks.push(cluster);
-                clusterBlocks = [];
-                clusterStartMs = null;
-            };
-
-            return {
-                addChunk(chunk, fallbackDurationMs) {
-                    const timestampMs = Math.round((chunk.timestamp || 0) / 1000);
-                    const durationMs = chunk.duration
-                        ? Math.round(chunk.duration / 1000)
-                        : Math.max(1, Math.round(Number(fallbackDurationMs) || 1));
-                    if (clusterStartMs === null) {
-                        clusterStartMs = timestampMs;
-                    }
-                    let timecode = timestampMs - clusterStartMs;
-                    if (timecode < 0 || timecode > 32767 || timecode >= maxClusterDurationMs) {
-                        flushCluster();
-                        clusterStartMs = timestampMs;
-                        timecode = 0;
-                    }
-                    const frameData = new Uint8Array(chunk.byteLength);
-                    chunk.copyTo(frameData);
-                    clusterBlocks.push(makeSimpleBlock(timecode, chunk.type === 'key', frameData));
-                    if (timecode + durationMs >= maxClusterDurationMs) {
-                        flushCluster();
-                    }
-                },
-                finalize() {
-                    flushCluster();
-                    return new Blob(chunks, { type: 'video/webm' });
-                }
-            };
-        };
-
-        const exportWithWebCodecs = async (forcedConfig) => {
-            if (!canUseWebCodecs) {
-                return false;
-            }
-            const config = forcedConfig || await getWebCodecsConfig();
-            if (!config) {
-                return false;
-            }
-            let captureCancelled = false;
-            const webmCancelToken = crawlExportController.createToken(() => {
-                captureCancelled = true;
-            });
-            let encoder;
-            let encodeError = null;
-            try {
-                const muxer = createWebMMuxer({ codec: config.codec });
-                encoder = new VideoEncoder({
-                    output: (chunk) => {
-                        muxer.addChunk(chunk, frameDelay);
-                    },
-                    error: (error) => {
-                        encodeError = error;
-                    }
-                });
-                encoder.configure(config);
-
-                resetVdsExportState(vdsState);
-                let offsetX = adjustedStartOffset;
-                let delayFramesRemaining = 0;
-                const keyframeInterval = Math.max(1, Math.round(captureFps));
-                const FRAMES_PER_YIELD = Math.max(10, Math.round(240 / Math.max(1, captureFps)));
-                const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
-
-                reportProgress(0);
-
-                for (let i = 0; i < totalFrames; i++) {
-                    if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-                        captureCancelled = true;
-                        break;
-                    }
-                    drawFrameTransparent(offsetX, i);
-                    const timestampUs = Math.round(i * frameDelay * 1000);
-                    const frame = new VideoFrame(captureCanvas, { timestamp: timestampUs, alpha: 'keep' });
-                    encoder.encode(frame, { keyFrame: i % keyframeInterval === 0 });
-                    frame.close();
-                    reportProgress((i + 1) / totalFrames);
-                    if (encodeError) {
-                        throw encodeError;
-                    }
-
-                    if (delayFramesRemaining > 0) {
-                        delayFramesRemaining--;
-                        if (delayFramesRemaining === 0) {
-                            offsetX = adjustedStartOffset;
-                            resetVdsExportState(vdsState);
-                        }
-                    } else {
-                        offsetX -= pxPerFrameSigned;
-                        if ((pxPerFrameSigned >= 0 && offsetX < adjustedEndOffset) ||
-                            (pxPerFrameSigned < 0 && offsetX > adjustedEndOffset)) {
-                            if (restartDelayFrames > 0) {
-                                offsetX = adjustedEndOffset;
-                                delayFramesRemaining = restartDelayFrames;
-                            } else {
-                                offsetX = adjustedStartOffset;
-                                resetVdsExportState(vdsState);
-                            }
-                        }
-                    }
-
-                    if ((i + 1) % FRAMES_PER_YIELD === 0) {
-                        await yieldToBrowser();
-                        if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-                            captureCancelled = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-                    crawlExportController.clear(webmCancelToken);
-                    addStatus('WebM export canceled.', 'WARN');
-                    return true;
-                }
-
-                await encoder.flush();
-                if (encodeError) {
-                    throw encodeError;
-                }
-
-                const exportedBlob = muxer.finalize();
-                if (!exportedBlob) {
-                    crawlExportController.clear(webmCancelToken);
-                    addStatus('No frames recorded for WebM export.', 'WARN');
-                    return true;
-                }
-
-                reportProgress = createExportProgressReporter('WebM save');
-                reportProgress(0);
-
-                await saveFile(filename || `${downloadName}.webm`, exportedBlob, 'video/webm', {
-                    onProgress: (ratio) => reportProgress(ratio),
-                    isCancelled: () => crawlExportController.isCancelled(webmCancelToken),
-                });
-
-                crawlExportController.clear(webmCancelToken);
-                reportProgress(1);
-                addStatus(
-                    'Crawl exported successfully!' +
-                    (showTime ? ` (Took: ${((performance.now() - startTime) / 1000).toFixed(2)} seconds)` : ''),
-                    'SUCCESS'
-                );
-                return true;
-            } catch (error) {
-                const cancelled = captureCancelled || crawlExportController.isCancelled(webmCancelToken);
-                crawlExportController.clear(webmCancelToken);
-                if (cancelled) {
-                    addStatus('WebM export canceled.', 'WARN');
-                } else {
-                    console.error('WebCodecs WebM export failed:', error);
-                    addStatus(`WebM export failed: ${error?.message || error}`, 'ERROR');
-                }
-                return true;
-            } finally {
-                try {
-                    if (encoder && encoder.state !== 'closed') {
-                        encoder.close();
-                    }
-                } catch (cleanupError) { /* ignore */ }
-                tearDownCaptureCanvas();
-            }
-        };
-
-        const exportWithMediaRecorder = async () => {
-            let recorder;
-            let stream;
-            const chunks = [];
-            let captureCancelled = false;
-            let stopped = false;
-            const webmCancelToken = crawlExportController.createToken(() => {
-                captureCancelled = true;
-                if (recorder && recorder.state === 'recording') {
-                    try {
-                        recorder.stop();
-                    } catch (stopError) { /* ignore */ }
-                }
-            });
-
-            try {
-                let supportedTypes = (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function')
-                    ? getSupportedMimeTypes('video', ['webm'], ['vp9', 'vp8'])
-                    : [];
-                if (!supportedTypes.length && typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
-                    supportedTypes = getSupportedMimeTypes('video', ['mp4'], ['avc1', 'h264']);
-                }
-
-                stream = captureCanvas.captureStream(captureFps);
-
-                const mimeTypesToTry = supportedTypes.length
-                    ? [supportedTypes[0]]
-                    : ['video/mp4', undefined];
-                let recorderCreated = false;
-                for (const tryMime of mimeTypesToTry) {
-                    try {
-                        const opts = {};
-                        if (tryMime) opts.mimeType = tryMime;
-                        if (Number.isFinite(videoBitsPerSecond)) opts.videoBitsPerSecond = videoBitsPerSecond;
-                        recorder = new MediaRecorder(stream, opts);
-                        recorderCreated = true;
-                        break;
-                    } catch (e) { /* ignore */ }
-                }
-                if (!recorderCreated) {
-                    throw new Error('Could not create MediaRecorder with any supported format');
-                }
-
-                recorder.ondataavailable = (event) => {
-                    if (event.data && event.data.size) {
-                        chunks.push(event.data);
-                    }
-                };
-
-                const recorderStopped = new Promise((resolve) => {
-                    recorder.onstop = () => {
-                        stopped = true;
-                        resolve();
-                    };
-                    recorder.onerror = () => {
-                        stopped = true;
-                        resolve();
-                    };
-                });
-
-                recorder.start();
-
-                resetVdsExportState(vdsState);
-                let offsetX = adjustedStartOffset;
-                let delayFramesRemaining = 0;
-                const captureStartTime = performance.now();
-                reportProgress(0);
-
-                for (let i = 0; i < totalFrames; i++) {
-                    if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-                        captureCancelled = true;
-                        break;
-                    }
-
-                    drawFrameTransparent(offsetX, i);
-                    reportProgress((i + 1) / totalFrames);
-
-                    if (delayFramesRemaining > 0) {
-                        delayFramesRemaining--;
-                        if (delayFramesRemaining === 0) {
-                            offsetX = adjustedStartOffset;
-                            resetVdsExportState(vdsState);
-                        }
-                    } else {
-                        offsetX -= pxPerFrameSigned;
-                        if ((pxPerFrameSigned >= 0 && offsetX < adjustedEndOffset) ||
-                            (pxPerFrameSigned < 0 && offsetX > adjustedEndOffset)) {
-                            if (restartDelayFrames > 0) {
-                                offsetX = adjustedEndOffset;
-                                delayFramesRemaining = restartDelayFrames;
-                            } else {
-                                offsetX = adjustedStartOffset;
-                                resetVdsExportState(vdsState);
-                            }
-                        }
-                    }
-
-                    const targetTime = captureStartTime + (i + 1) * frameDelay;
-                    const waitTime = Math.max(0, targetTime - performance.now());
-                    if (waitTime > 0) {
-                        await new Promise((resolve) => setTimeout(resolve, waitTime));
-                    }
-                }
-
-                if (recorder.state === 'recording') {
-                    recorder.stop();
-                }
-
-                await recorderStopped;
-
-                if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-                    crawlExportController.clear(webmCancelToken);
-                    addStatus('WebM export canceled.', 'WARN');
-                    return true;
-                }
-
-                let mimeType = recorder.mimeType || (supportedTypes[0] || '');
-                if (!mimeType) {
-                    const isApple = /Apple|Safari/i.test(navigator.userAgent) && !/Chrome|CriOS/i.test(navigator.userAgent);
-                    mimeType = isApple ? 'video/mp4' : 'video/webm';
-                }
-                const isMp4 = mimeType.includes('mp4');
-                const exportedBlob = chunks.length ? new Blob(chunks, { type: mimeType }) : null;
-
-                if (!exportedBlob) {
-                    crawlExportController.clear(webmCancelToken);
-                    addStatus('No frames recorded for video export.', 'WARN');
-                    return true;
-                }
-
-                reportProgress = createExportProgressReporter('Video save');
-                reportProgress(0);
-
-                const ext = isMp4 ? '.mp4' : '.webm';
-                await saveFile(filename || `${downloadName}${ext}`, exportedBlob, mimeType, {
-                    onProgress: (ratio) => reportProgress(ratio),
-                    isCancelled: () => crawlExportController.isCancelled(webmCancelToken),
-                });
-
-                crawlExportController.clear(webmCancelToken);
-                reportProgress(1);
-                addStatus(
-                    'Crawl exported successfully!' +
-                    (showTime ? ` (Took: ${((performance.now() - startTime) / 1000).toFixed(2)} seconds)` : ''),
-                    'SUCCESS'
-                );
-                return true;
-            } catch (error) {
-                if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-                    crawlExportController.clear(webmCancelToken);
-                    addStatus('WebM export canceled.', 'WARN');
-                    return true;
-                }
-                console.error('MediaRecorder export failed:', error);
-                crawlExportController.clear(webmCancelToken);
-                addStatus(`Video export failed: ${error?.message || error}`, 'ERROR');
-                return true;
-            } finally {
-                if (!stopped && recorder && recorder.state === 'recording') {
-                    try {
-                        recorder.stop();
-                    } catch (stopError) { /* ignore */ }
-                }
-                if (stream && typeof stream.getTracks === 'function') {
-                    stream.getTracks().forEach((track) => track.stop());
-                }
-                tearDownCaptureCanvas();
-            }
-        };
-
-        if (wantsTransparentOutput) {
-            const config = await getWebCodecsConfig();
-            if (!config) {
-                tearDownCaptureCanvas();
-                addStatus('Transparent WebM export requires WebCodecs with VP9 alpha support in this browser.', 'ERROR');
-                return;
-            }
-            const handled = await exportWithWebCodecs(config);
-            if (handled) {
-                return;
-            }
-            tearDownCaptureCanvas();
-            addStatus('Transparent WebM export failed: WebCodecs encoder unavailable.', 'ERROR');
-            return;
-        }
-
-        if (typeof MediaRecorder === 'function' && typeof captureCanvas.captureStream === 'function') {
-            const handled = await exportWithMediaRecorder();
-            if (handled) {
-                return;
-            }
-        }
-
-        if (typeof CCapture !== 'function') {
-            addStatus('Video export unavailable: no supported recording method found.', 'ERROR');
-            tearDownCaptureCanvas();
-            return;
-        }
-
-        const canvasCaptureLib = (window.CanvasCaptureLib && window.CanvasCaptureLib.CanvasCapture)
-            || window.CanvasCapture;
-        const cleanupAndFail = (message) => {
-            if (typeof tearDownCaptureCanvas === 'function') {
-                tearDownCaptureCanvas();
-            }
-            addStatus(message, 'ERROR');
-        };
-        if (!canvasCaptureLib || typeof canvasCaptureLib.init !== 'function') {
-            cleanupAndFail('WebM export unavailable: missing CanvasCapture.');
-            return;
-        }
-
-        try {
-            if (typeof canvasCaptureLib.dispose === 'function') {
-                canvasCaptureLib.dispose();
-            }
-        } catch (disposeError) {
-            console.warn('CanvasCapture dispose failed:', disposeError);
-        }
-
-        try {
-            canvasCaptureLib.init(captureCanvas, {
-                showRecDot: false,
-                showAlerts: false,
-                showDialogs: false,
-                verbose: false
-            });
-        } catch (initError) {
-            console.error('Failed to initialize CanvasCapture:', initError);
-            cleanupAndFail('Failed to initialize WebM capture.');
-            return;
-        }
-
-        let captureCancelled = false;
-        const webmCancelToken = crawlExportController.createToken(() => {
-            captureCancelled = true;
-        });
-
-        let exportedBlob = null;
-        let exportedFilename = `${downloadName || 'crawl'}.webm`;
-        let captureError = null;
-        let exportProgress = 0;
-        let exportProgressTimer = null;
-        let totalExportSteps = totalFrames;
-        let currentCaptureProgress = 0;
-        const applyProgress = () => {
-            const capturePortion = (totalFrames > 0 ? currentCaptureProgress / totalFrames : 1) * captureProgressPortion;
-            const exportPortion = exportProgress * (1 - captureProgressPortion);
-            reportProgress(Math.min(0.99, capturePortion + exportPortion));
-        };
-        const applyExportProgress = (value) => {
-            const nextValue = Math.max(exportProgress, Math.min(0.999, value));
-            if (nextValue <= exportProgress) {
-                return;
-            }
-            exportProgress = nextValue;
-            applyProgress();
-        };
-        const startExportProgressSmoothing = () => {
-            if (exportProgressTimer || captureCancelled) {
-                return;
-            }
-            exportProgressTimer = setInterval(() => {
-                if (captureCancelled) {
-                    clearInterval(exportProgressTimer);
-                    exportProgressTimer = null;
-                    return;
-                }
-                if (exportProgress >= 0.99) {
-                    return;
-                }
-                applyExportProgress(Math.min(0.99, exportProgress + 0.01));
-            }, 250);
-        };
-        const clearExportProgressSmoothing = () => {
-            if (exportProgressTimer) {
-                clearInterval(exportProgressTimer);
-                exportProgressTimer = null;
-            }
-        };
-
-        let captureHandle;
-        try {
-            captureHandle = canvasCaptureLib.beginVideoRecord({
-                format: canvasCaptureLib.WEBM || 'webm',
-                name: downloadName || 'crawl',
-                fps: captureFps,
-                quality: captureQuality,
-                onExportProgress: (progress) => {
-                    applyExportProgress(progress);
-                },
-                onExport: (blob, filenameHint) => {
-                    if (captureCancelled) {
-                        return;
-                    }
-                    exportedBlob = blob;
-                    exportedFilename = filenameHint || `${downloadName || 'crawl'}.webm`;
-                },
-                onError: (error) => {
-                    captureError = error;
-                    console.error('CanvasCapture export error:', error);
-                }
-            });
-        } catch (beginError) {
-            console.error('Failed to start CanvasCapture recording:', beginError);
-            crawlExportController.clear(webmCancelToken);
-            cleanupAndFail('Failed to start WebM recording.');
-            canvasCaptureLib.dispose();
-            return;
-        }
-
-        if (!captureHandle) {
-            crawlExportController.clear(webmCancelToken);
-            cleanupAndFail('Failed to start WebM recording.');
-            canvasCaptureLib.dispose();
-            return;
-        }
-
-        resetVdsExportState(vdsState);
         let offsetX = adjustedStartOffset;
-        const FRAMES_PER_YIELD = Math.max(5, Math.round(180 / Math.max(1, captureFps)));
-        const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
-        for (let i = 0; i < totalFrames; i++) {
-            if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-                captureCancelled = true;
-                break;
-            }
-            drawFrame(offsetX, i);
-            try {
-                canvasCaptureLib.recordFrame(captureHandle);
-            } catch (recordError) {
-                console.error('Failed to record frame:', recordError);
-                captureError = recordError;
-                captureCancelled = true;
-                break;
-            }
-            currentCaptureProgress = i + 1;
-            applyProgress();
+        let delayFramesRemaining = 0;
+        let nextIndex = 0;
 
+        const reset = () => {
+            offsetX = adjustedStartOffset;
+            delayFramesRemaining = 0;
+            nextIndex = 0;
+            resetVdsExportState(vdsState);
+        };
+
+        const advance = () => {
             if (delayFramesRemaining > 0) {
                 delayFramesRemaining--;
                 if (delayFramesRemaining === 0) {
                     offsetX = adjustedStartOffset;
                     resetVdsExportState(vdsState);
                 }
-                continue;
+                return;
             }
-
             offsetX -= pxPerFrameSigned;
-            if ((pxPerFrameSigned >= 0 && offsetX < adjustedEndOffset) || (pxPerFrameSigned < 0 && offsetX > adjustedEndOffset)) {
+            const passedEnd = (pxPerFrameSigned >= 0 && offsetX < adjustedEndOffset) ||
+                (pxPerFrameSigned < 0 && offsetX > adjustedEndOffset);
+            if (passedEnd) {
                 if (restartDelayFrames > 0) {
                     offsetX = adjustedEndOffset;
                     delayFramesRemaining = restartDelayFrames;
@@ -2142,86 +1033,558 @@ async function initCrawlEditor() {
                     resetVdsExportState(vdsState);
                 }
             }
+        };
 
-            if ((i + 1) % FRAMES_PER_YIELD === 0) {
-                await yieldToBrowser();
-                if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-                    captureCancelled = true;
-                    break;
+        const paint = (frameIndex) => {
+            clearFrame(frameIndex);
+            ctx.fillStyle = textColor;
+            ctx.font = font;
+            const translatedOffsetX = offsetX + translationX;
+            const centerY = height / 2 + translationY;
+
+            if (shouldClip) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(inset, 0, clipWidth, height);
+                ctx.clip();
+            }
+            if (useVdsMode) {
+                updateVdsExportState(vdsState, translatedOffsetX, Math.max(0, width - inset * 2), vdsDelay, inset);
+                drawVdsExportFrame(ctx, vdsState, translatedOffsetX, centerY, scaledFontSize, renderText);
+            } else {
+                lines.forEach((line, index) => {
+                    const verticalOffset = index - (lines.length - 1) / 2;
+                    renderText(line, translatedOffsetX, centerY + verticalOffset * lineHeight);
+                });
+            }
+            if (shouldClip) {
+                ctx.restore();
+            }
+        };
+
+        const drawFrame = (frameIndex) => {
+            if (frameIndex !== nextIndex) {
+                throw new Error(`Frames must be drawn in order (expected ${nextIndex}, got ${frameIndex})`);
+            }
+            paint(frameIndex);
+            advance();
+            nextIndex++;
+        };
+
+        const renderAt = (frameIndex) => {
+            reset();
+            for (let i = 0; i < frameIndex; i++) advance();
+            paint(frameIndex);
+            reset();
+        };
+
+        const destroy = () => {
+            if (canvas.parentNode) {
+                canvas.parentNode.removeChild(canvas);
+            }
+        };
+
+        reset();
+
+        return {
+            canvas,
+            ctx,
+            width,
+            height,
+            fps,
+            frameDelayMs,
+            totalFrames,
+            framesPerCycle,
+            repetitions,
+            transparentOutput,
+            dasdecPageCount: dasdecPages ? dasdecPages.length : 0,
+            dasdecFramesPerPage: dasdecFramesPerPage || 0,
+            drawFrame,
+            renderAt,
+            reset,
+            destroy
+        };
+    }
+
+    function createGifWorkerPool(count) {
+        const workers = [];
+        const pending = new Map();
+        let nextId = 1;
+        let paletteResolver = null;
+
+        for (let i = 0; i < count; i++) {
+            const worker = new Worker(resolveWorkerUrl('./crawl-gif-worker.js'), { type: 'module' });
+            worker.busy = 0;
+            worker.onmessage = (event) => {
+                const msg = event.data || {};
+                if (msg.type === 'palette' && paletteResolver) {
+                    paletteResolver.resolve(msg);
+                    paletteResolver = null;
+                    worker.busy--;
+                    return;
                 }
-            }
-        }
-        currentCaptureProgress = totalFrames;
-        applyProgress();
-
-        try {
-            startExportProgressSmoothing();
-            await canvasCaptureLib.stopRecord(captureHandle);
-        } catch (stopError) {
-            if (!captureCancelled) {
-                captureError = captureError || stopError;
-                console.error('CanvasCapture stop error:', stopError);
-            }
-        } finally {
-            clearExportProgressSmoothing();
-            if (!captureError && !captureCancelled) {
-                applyExportProgress(1);
-            }
-            try {
-                canvasCaptureLib.dispose();
-            } catch (cleanupError) {
-                console.warn('CanvasCapture cleanup failed:', cleanupError);
-            }
-            tearDownCaptureCanvas();
+                const entry = pending.get(msg.id);
+                if (!entry) return;
+                pending.delete(msg.id);
+                worker.busy--;
+                if (msg.type === 'fatal') {
+                    entry.reject(new Error(msg.error || 'GIF worker failed'));
+                } else {
+                    entry.resolve(msg);
+                }
+            };
+            worker.onerror = (event) => {
+                const error = new Error(event.message || 'GIF worker crashed');
+                pending.forEach((entry) => entry.reject(error));
+                pending.clear();
+                if (paletteResolver) {
+                    paletteResolver.reject(error);
+                    paletteResolver = null;
+                }
+            };
+            workers.push(worker);
         }
 
-        if (captureCancelled || crawlExportController.isCancelled(webmCancelToken)) {
-            crawlExportController.clear(webmCancelToken);
-            addStatus('WebM export canceled.', 'WARN');
+        const pickWorker = () => workers.reduce((best, w) => (w.busy < best.busy ? w : best), workers[0]);
+
+        return {
+            size: workers.length,
+            buildPalette(buffers, width, height, transparent) {
+                const worker = pickWorker();
+                worker.busy++;
+                return new Promise((resolve, reject) => {
+                    paletteResolver = { resolve, reject };
+                    worker.postMessage({ type: 'palette', buffers, width, height, transparent }, buffers);
+                });
+            },
+            encodeChunk(payload) {
+                const worker = pickWorker();
+                const id = nextId++;
+                worker.busy++;
+                return new Promise((resolve, reject) => {
+                    pending.set(id, { resolve, reject });
+                    worker.postMessage({ type: 'chunk', id, ...payload }, payload.frames);
+                });
+            },
+            terminate() {
+                workers.forEach((w) => { try { w.terminate(); } catch (_) { } });
+                pending.clear();
+            }
+        };
+    }
+
+    async function exportAsGIF(canvas, filename) {
+        if (!window.crawlGenerator) {
+            addStatus('The crawl is still loading. Try the export again in a moment.', 'WARN');
             return;
         }
 
-        if (captureError) {
-            crawlExportController.clear(webmCancelToken);
-            cleanupAndFail('Failed to export crawl as WebM.');
-            return;
-        }
+        addStatus('Exporting crawl as GIF... Please wait.');
+        const startTime = performance.now();
+        const showTime = localStorage["showTime"];
+        const generator = window.crawlGenerator;
+        const native = isNativePlatform();
+        const fps = readExportSelect('crawlExportGifFps', GIF_EXPORT_FPS_OPTIONS, 50);
+        const sourceOptions = {
+            fps,
+            transparent: true,
+            readPixels: true,
+            maxWidth: native ? NATIVE_EXPORT_MAX_WIDTH : 0,
+            maxHeight: native ? NATIVE_EXPORT_MAX_HEIGHT : 0
+        };
 
-        if (!exportedBlob) {
-            crawlExportController.clear(webmCancelToken);
-            addStatus('No frames recorded for WebM export.', 'WARN');
-            return;
-        }
+        let cancelled = false;
+        const token = crawlExportController.createToken(() => { cancelled = true; });
+        const isCancelled = () => cancelled || crawlExportController.isCancelled(token);
 
-        reportProgress = createExportProgressReporter('WebM save');
+        const frameSource = createCrawlFrameSource(generator, canvas, sourceOptions);
+        const { width, height, totalFrames, transparentOutput } = frameSource;
+        const workerCount = native ? 1 : Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+        const pool = createGifWorkerPool(workerCount);
+        let paletteSource = null;
 
+        const reportProgress = createExportProgressReporter('GIF export');
+        const updateEta = createExportEtaTracker('GIF export', totalFrames);
         reportProgress(0);
 
-        try {
-            await saveFile(filename || exportedFilename, exportedBlob, 'video/webm', {
-                onProgress: (ratio) => reportProgress(ratio),
-                isCancelled: () => crawlExportController.isCancelled(webmCancelToken),
-            });
+        const cleanup = () => {
+            pool.terminate();
+            frameSource.destroy();
+            if (paletteSource) paletteSource.destroy();
+        };
 
-            crawlExportController.clear(webmCancelToken);
-            reportProgress(1);
+        try {
+            paletteSource = createCrawlFrameSource(generator, canvas, { ...sourceOptions, ignoreVds: true });
+            const sampleIndices = new Set([0, Math.floor(Math.max(1, paletteSource.framesPerCycle) / 2)]);
+            for (let page = 0; page < Math.min(4, paletteSource.dasdecPageCount); page++) {
+                sampleIndices.add(Math.min(totalFrames - 1, page * paletteSource.dasdecFramesPerPage));
+            }
+            const sampleBuffers = [];
+            sampleIndices.forEach((index) => {
+                paletteSource.renderAt(index);
+                sampleBuffers.push(paletteSource.ctx.getImageData(0, 0, width, height).data.buffer);
+            });
+            paletteSource.destroy();
+            paletteSource = null;
+
+            const paletteResult = await pool.buildPalette(sampleBuffers, width, height, transparentOutput);
+            if (isCancelled()) throw new Error('CANCELLED');
+            const palette = paletteResult.palette;
+            const format = paletteResult.format;
+            let transparentIndex = -1;
+            if (transparentOutput) {
+                transparentIndex = palette.findIndex((color) => color.length > 3 && color[3] === 0);
+            }
+            const useTransparency = transparentIndex >= 0;
+
+            const delay = Math.round(1000 / fps);
+            const repeat = frameSource.repetitions <= 1 ? -1 : frameSource.repetitions - 1;
+            const frameBytes = width * height * 4;
+            const memoryBudget = native ? 48 * 1024 * 1024 : 192 * 1024 * 1024;
+            const maxInFlightChunks = pool.size * 2;
+            const maxInFlightFrames = Math.max(maxInFlightChunks, Math.floor(memoryBudget / frameBytes));
+            const chunkSize = Math.max(1, Math.min(16, Math.floor(maxInFlightFrames / maxInFlightChunks)));
+
+            const chunkResults = [];
+            const inFlight = new Set();
+            let framesDone = 0;
+            let workerError = null;
+
+            const waitForSlot = async () => {
+                while (inFlight.size >= maxInFlightChunks && !workerError) {
+                    await Promise.race(inFlight);
+                }
+                if (workerError) throw workerError;
+            };
+
+            for (let chunkStart = 0, chunkIndex = 0; chunkStart < totalFrames; chunkStart += chunkSize, chunkIndex++) {
+                if (isCancelled()) throw new Error('CANCELLED');
+                await waitForSlot();
+                const frames = [];
+                const chunkEnd = Math.min(totalFrames, chunkStart + chunkSize);
+                for (let i = chunkStart; i < chunkEnd; i++) {
+                    frameSource.drawFrame(i);
+                    frames.push(frameSource.ctx.getImageData(0, 0, width, height).data.buffer);
+                }
+                const slot = chunkIndex;
+                const job = pool.encodeChunk({
+                    frames,
+                    width,
+                    height,
+                    palette,
+                    format,
+                    delay,
+                    repeat,
+                    first: chunkStart === 0,
+                    transparent: useTransparency,
+                    transparentIndex: useTransparency ? transparentIndex : 0
+                }).then((result) => {
+                    chunkResults[slot] = new Uint8Array(result.buffer);
+                    framesDone += result.frames;
+                    reportProgress(framesDone / totalFrames);
+                    updateEta(framesDone);
+                }).catch((error) => {
+                    workerError = workerError || error;
+                }).finally(() => {
+                    inFlight.delete(job);
+                });
+                inFlight.add(job);
+                await yieldToBrowser();
+            }
+
+            await Promise.all(Array.from(inFlight));
+            if (workerError) throw workerError;
+            if (isCancelled()) throw new Error('CANCELLED');
+
+            const totalBytes = chunkResults.reduce((sum, part) => sum + part.length, 0) + 1;
+            const out = new Uint8Array(totalBytes);
+            let cursor = 0;
+            chunkResults.forEach((part) => {
+                out.set(part, cursor);
+                cursor += part.length;
+            });
+            out[cursor] = 0x3B;
+            chunkResults.length = 0;
+            const blob = new Blob([out], { type: 'image/gif' });
+
+            const reportSaveProgress = createExportProgressReporter('GIF save');
+            reportSaveProgress(0);
+            await saveFile(filename, blob, 'image/gif', {
+                onProgress: (ratio) => reportSaveProgress(ratio),
+                isCancelled,
+            });
+            crawlExportController.clear(token);
+            reportSaveProgress(1);
             addStatus(
                 'Crawl exported successfully!' +
                 (showTime ? ` (Took: ${((performance.now() - startTime) / 1000).toFixed(2)} seconds)` : ''),
                 'SUCCESS'
             );
-        } catch (e) {
-            const cancelled = String(e?.message || e).includes('CANCELLED') ||
-                crawlExportController.isCancelled(webmCancelToken);
-
-            crawlExportController.clear(webmCancelToken);
-
-            if (cancelled) {
-                addStatus('WebM export canceled during save.', 'WARN');
+        } catch (error) {
+            const wasCancelled = isCancelled() || String(error?.message || error).includes('CANCELLED');
+            crawlExportController.clear(token);
+            if (wasCancelled) {
+                addStatus('GIF export canceled.', 'WARN');
             } else {
-                console.error('WebM save failed:', e);
-                addStatus(`WebM save failed: ${e?.message || e}`, 'ERROR');
+                console.error('GIF export failed:', error);
+                addStatus(`GIF export failed: ${error?.message || error}`, 'ERROR');
             }
+        } finally {
+            cleanup();
+        }
+    }
+
+    function computeVideoBitrate(width, height, fps) {
+        const estimated = Math.floor(width * height * fps * 0.3);
+        return Math.max(2_000_000, Math.min(25_000_000, estimated));
+    }
+
+    async function encodeVideoWithMediabunny(frameSource, { codec, container, bitrate, isCancelled, reportProgress, updateEta }) {
+        const { canvas, fps, totalFrames, transparentOutput } = frameSource;
+        const format = container === 'mp4'
+            ? new Mp4OutputFormat({ fastStart: 'in-memory' })
+            : new WebMOutputFormat();
+        const output = new Output({ format, target: new BufferTarget() });
+        const source = new CanvasSource(canvas, {
+            codec,
+            bitrate,
+            keyFrameInterval: 1,
+            alpha: transparentOutput ? 'keep' : 'discard',
+            latencyMode: 'quality'
+        });
+        output.addVideoTrack(source, { frameRate: fps });
+        await output.start();
+
+        try {
+            for (let i = 0; i < totalFrames; i++) {
+                if (isCancelled()) {
+                    await output.cancel();
+                    return null;
+                }
+                frameSource.drawFrame(i);
+                await source.add(i / fps, 1 / fps);
+                reportProgress((i + 1) / totalFrames);
+                updateEta(i + 1);
+                if ((i + 1) % EXPORT_FRAMES_PER_YIELD === 0) {
+                    await yieldToBrowser();
+                }
+            }
+            source.close();
+            await output.finalize();
+        } catch (error) {
+            try { await output.cancel(); } catch (_) { }
+            throw error;
+        }
+
+        const buffer = output.target.buffer;
+        if (!buffer || !buffer.byteLength) {
+            return null;
+        }
+        return new Blob([buffer], { type: container === 'mp4' ? 'video/mp4' : 'video/webm' });
+    }
+
+    function encodeVideoWithSoftwareH264(frameSource, { bitrate, isCancelled, reportProgress, updateEta }) {
+        const { ctx, width, height, fps, totalFrames } = frameSource;
+        const MAX_IN_FLIGHT = 3;
+
+        return new Promise((resolve, reject) => {
+            const worker = new Worker(resolveWorkerUrl('./crawl-h264-worker.js'));
+            let inFlight = 0;
+            let nextFrame = 0;
+            let finished = false;
+            let finishRequested = false;
+            let slotWaiter = null;
+
+            const fail = (error) => {
+                if (finished) return;
+                finished = true;
+                worker.terminate();
+                reject(error);
+            };
+
+            const requestFinish = () => {
+                if (finishRequested || finished) return;
+                finishRequested = true;
+                worker.postMessage({ type: 'finish' });
+            };
+
+            const pump = async () => {
+                try {
+                    while (nextFrame < totalFrames) {
+                        if (isCancelled()) {
+                            finished = true;
+                            worker.terminate();
+                            resolve(null);
+                            return;
+                        }
+                        if (inFlight >= MAX_IN_FLIGHT) {
+                            await new Promise((r) => { slotWaiter = r; });
+                            continue;
+                        }
+                        const index = nextFrame++;
+                        frameSource.drawFrame(index);
+                        const buffer = ctx.getImageData(0, 0, width, height).data.buffer;
+                        inFlight++;
+                        worker.postMessage({ type: 'frame', index, buffer }, [buffer]);
+                        if ((index + 1) % EXPORT_FRAMES_PER_YIELD === 0) {
+                            await yieldToBrowser();
+                        }
+                    }
+                    if (inFlight === 0) {
+                        requestFinish();
+                    }
+                } catch (error) {
+                    fail(error);
+                }
+            };
+
+            worker.onerror = (event) => fail(new Error(event.message || 'H.264 worker crashed'));
+            worker.onmessage = (event) => {
+                const msg = event.data || {};
+                if (msg.type === 'ready') {
+                    pump();
+                } else if (msg.type === 'frameDone') {
+                    inFlight--;
+                    reportProgress((msg.index + 1) / totalFrames);
+                    updateEta(msg.index + 1);
+                    if (slotWaiter) {
+                        const r = slotWaiter;
+                        slotWaiter = null;
+                        r();
+                    } else if (nextFrame >= totalFrames && inFlight === 0) {
+                        requestFinish();
+                    }
+                } else if (msg.type === 'done') {
+                    finished = true;
+                    worker.terminate();
+                    resolve(new Blob([msg.buffer], { type: 'video/mp4' }));
+                } else if (msg.type === 'fatal') {
+                    fail(new Error(msg.error || 'H.264 encoder failed'));
+                }
+            };
+
+            worker.postMessage({
+                type: 'init',
+                width,
+                height,
+                fps,
+                kbps: Math.round(bitrate / 1000),
+                speed: 5
+            });
+        });
+    }
+
+    async function exportAsVideo(canvas) {
+        if (!window.crawlGenerator) {
+            addStatus('The crawl is still loading. Try the export again in a moment.', 'WARN');
+            return;
+        }
+
+        addStatus('Exporting crawl as video... Please wait.');
+        const startTime = performance.now();
+        const showTime = localStorage["showTime"];
+        const generator = window.crawlGenerator;
+        const native = isNativePlatform();
+        const fps = readExportSelect('crawlExportVideoFps', VIDEO_EXPORT_FPS_OPTIONS, 60);
+        const requestedFormat = readExportSelect('crawlExportVideoFormat', VIDEO_EXPORT_FORMAT_OPTIONS, 'auto');
+        const hasWebCodecs = typeof VideoEncoder === 'function' && typeof VideoFrame === 'function';
+
+        let cancelled = false;
+        const token = crawlExportController.createToken(() => { cancelled = true; });
+        const isCancelled = () => cancelled || crawlExportController.isCancelled(token);
+
+        const baseOptions = {
+            fps,
+            transparent: true,
+            maxWidth: native ? 1920 : 0,
+            maxHeight: native ? 1080 : 0
+        };
+        let frameSource = createCrawlFrameSource(generator, canvas, baseOptions);
+
+        try {
+            const { width, height, transparentOutput } = frameSource;
+            const bitrate = computeVideoBitrate(width, height, fps);
+
+            let codec = null;
+            if (hasWebCodecs) {
+                const candidates = transparentOutput
+                    ? ['vp9']
+                    : requestedFormat === 'mp4'
+                        ? ['avc']
+                        : requestedFormat === 'webm'
+                            ? ['vp9', 'vp8']
+                            : ['avc', 'vp9', 'vp8'];
+                try {
+                    codec = await getFirstEncodableVideoCodec(candidates, { width, height, bitrate });
+                } catch (probeError) {
+                    console.warn('Video codec probe failed:', probeError);
+                    codec = null;
+                }
+            }
+
+            if (transparentOutput && !codec) {
+                addStatus('Transparent video export requires WebCodecs with VP9 support in this browser.', 'ERROR');
+                crawlExportController.clear(token);
+                return;
+            }
+            if (transparentOutput && requestedFormat === 'mp4') {
+                addStatus('Transparent backgrounds are exported as WebM (VP9 with alpha); MP4 cannot carry transparency.', 'WARN');
+            }
+
+            let container = codec === 'avc' ? 'mp4' : 'webm';
+            let blob = null;
+            const reportProgress = createExportProgressReporter('Video export');
+            const updateEta = createExportEtaTracker('Video export', frameSource.totalFrames);
+            reportProgress(0);
+
+            if (codec) {
+                blob = await encodeVideoWithMediabunny(frameSource, {
+                    codec, container, bitrate, isCancelled, reportProgress, updateEta
+                });
+            } else {
+                if (requestedFormat === 'webm') {
+                    addStatus('WebM encoding is not available in this browser; using the software H.264 encoder (MP4) instead.', 'WARN');
+                } else {
+                    addStatus('This browser lacks WebCodecs; using the software H.264 encoder (slower, MP4 only).', 'WARN');
+                }
+                container = 'mp4';
+                frameSource.destroy();
+                frameSource = createCrawlFrameSource(generator, canvas, { ...baseOptions, readPixels: true });
+                blob = await encodeVideoWithSoftwareH264(frameSource, {
+                    bitrate, isCancelled, reportProgress, updateEta
+                });
+            }
+
+            if (isCancelled() || !blob) {
+                crawlExportController.clear(token);
+                addStatus(isCancelled() ? 'Video export canceled.' : 'No frames recorded for video export.', 'WARN');
+                return;
+            }
+
+            const reportSaveProgress = createExportProgressReporter('Video save');
+            reportSaveProgress(0);
+            await saveFile(`crawl.${container}`, blob, container === 'mp4' ? 'video/mp4' : 'video/webm', {
+                onProgress: (ratio) => reportSaveProgress(ratio),
+                isCancelled,
+            });
+            crawlExportController.clear(token);
+            reportSaveProgress(1);
+            addStatus(
+                'Crawl exported successfully!' +
+                (showTime ? ` (Took: ${((performance.now() - startTime) / 1000).toFixed(2)} seconds)` : ''),
+                'SUCCESS'
+            );
+        } catch (error) {
+            const wasCancelled = isCancelled() || String(error?.message || error).includes('CANCELLED');
+            crawlExportController.clear(token);
+            if (wasCancelled) {
+                addStatus('Video export canceled.', 'WARN');
+            } else {
+                console.error('Video export failed:', error);
+                addStatus(`Video export failed: ${error?.message || error}`, 'ERROR');
+            }
+        } finally {
+            frameSource.destroy();
         }
     }
 
@@ -3080,7 +2443,6 @@ async function initCrawlEditor() {
             const exportAsGIFButton = document.getElementById('exportCrawlGIF');
             const exportAsVideoButton = document.getElementById('exportCrawlVideo');
             const copyCrawlTextButton = document.getElementById('copyCrawlText');
-            const destroyInstanceButton = document.getElementById('destroyCrawl');
             const nextFrameButton = document.getElementById('nextFrame');
             const prevFrameButton = document.getElementById('prevFrame');
 
@@ -3089,7 +2451,6 @@ async function initCrawlEditor() {
             exportAsGIFButton.disabled = disabled;
             exportAsVideoButton.disabled = disabled;
             copyCrawlTextButton.disabled = disabled;
-            destroyInstanceButton.disabled = disabled;
             nextFrameButton.disabled = disabled;
             prevFrameButton.disabled = disabled;
         }
@@ -3155,17 +2516,6 @@ async function initCrawlEditor() {
             }
         }
 
-        destroy() {
-            this.isAnimating = false;
-            this.lastTimestamp = null;
-            this._restartDelayRemaining = 0;
-            this._detachResponsiveViewportListener();
-            this.container.removeChild(this.canvas);
-            this.canvas = null;
-            this.ctx = null;
-            this._updateButtons(true);
-        }
-
         animate(timestamp) {
             if (!this.isAnimating) return;
 
@@ -3191,14 +2541,29 @@ async function initCrawlEditor() {
         }
     }
 
+    function toEvenDimension(value) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? Math.round(parsed / 2) * 2 : null;
+    }
+
     function getRequestedCrawlDimensions() {
         const widthInput = document.getElementById('crawlWidth');
         const heightInput = document.getElementById('crawlHeight');
-        const width = widthInput ? Math.round(Number(widthInput.value) / 2) * 2 : null;
-        const height = heightInput ? Math.round(Number(heightInput.value) / 2) * 2 : null;
-        widthInput.value = String(width);
-        heightInput.value = String(height);
-        return { width, height };
+        return {
+            width: widthInput ? toEvenDimension(widthInput.value) : null,
+            height: heightInput ? toEvenDimension(heightInput.value) : null,
+        };
+    }
+
+    function commitCrawlDimensionInputs() {
+        for (const id of ['crawlWidth', 'crawlHeight']) {
+            const input = document.getElementById(id);
+            if (!input) continue;
+            const even = toEvenDimension(input.value);
+            if (even === null) continue;
+            const next = String(even);
+            if (input.value !== next) input.value = next;
+        }
     }
 
     function applyCrawlSizeToGenerator(generator = window.crawlGenerator) {
@@ -3297,27 +2662,66 @@ async function initCrawlEditor() {
         return null;
     }
 
+    const PREMADE_LOCKABLE_INPUT_IDS = Object.freeze([
+        'crawlWidth', 'crawlHeight', 'crawlInset', 'crawlTopLeftPixelX', 'crawlTopLeftPixelY'
+    ]);
+    const premadeControlledInputIds = new Set();
+
+    function clearPremadeInputLocks() {
+        premadeControlledInputIds.clear();
+        syncPremadeInputLocks();
+    }
+
+    function syncPremadeInputLocks() {
+        const modeSelect = document.getElementById('crawlBackgroundMode');
+        const premadeActive = !!modeSelect && modeSelect.value === 'premade';
+        let lockedAny = false;
+
+        for (const id of PREMADE_LOCKABLE_INPUT_IDS) {
+            const input = document.getElementById(id);
+            if (!input) continue;
+            const locked = premadeActive && premadeControlledInputIds.has(id);
+            input.disabled = locked;
+            if (locked) {
+                input.setAttribute('title', 'Set by the selected pre-made background.');
+                lockedAny = true;
+            } else {
+                input.removeAttribute('title');
+            }
+        }
+
+        const note = document.getElementById('crawlPremadeLockNote');
+        if (note) {
+            note.hidden = !lockedAny;
+        }
+    }
+
     function updateCrawlControlsFromAsset(meta = {}, options = {}) {
         const generator = options.generator || window.crawlGenerator;
         const { width, height, inset, topLeft } = meta;
+        const controlled = options.premade ? premadeControlledInputIds : null;
         let sizeAvailable = false;
 
         if (Number.isFinite(width) && width > 0) {
             setNumericInputValue('crawlWidth', width, { allowZero: false });
+            if (controlled) controlled.add('crawlWidth');
             sizeAvailable = true;
         }
 
         if (Number.isFinite(height) && height > 0) {
             setNumericInputValue('crawlHeight', height, { allowZero: false });
+            if (controlled) controlled.add('crawlHeight');
             sizeAvailable = true;
         }
 
         if (sizeAvailable) {
+            commitCrawlDimensionInputs();
             applyCrawlSizeToGenerator(generator);
         }
 
         if (Number.isFinite(inset)) {
             setNumericInputValue('crawlInset', inset, { allowZero: true });
+            if (controlled) controlled.add('crawlInset');
             if (generator) {
                 generator.setCrawlInset(inset);
             }
@@ -3326,16 +2730,22 @@ async function initCrawlEditor() {
         if (topLeft && typeof topLeft === 'object') {
             if (Number.isFinite(topLeft.x)) {
                 setNumericInputValue('crawlTopLeftPixelX', topLeft.x, { allowZero: true });
+                if (controlled) controlled.add('crawlTopLeftPixelX');
                 if (generator) {
                     generator.setTopLeftOffsetX(topLeft.x);
                 }
             }
             if (Number.isFinite(topLeft.y)) {
                 setNumericInputValue('crawlTopLeftPixelY', topLeft.y, { allowZero: true });
+                if (controlled) controlled.add('crawlTopLeftPixelY');
                 if (generator) {
                     generator.setTopLeftOffsetY(topLeft.y);
                 }
             }
+        }
+
+        if (controlled) {
+            syncPremadeInputLocks();
         }
 
         return sizeAvailable;
@@ -3346,7 +2756,11 @@ async function initCrawlEditor() {
         const premadeSelect = document.getElementById('crawlBackgroundPremadeSelect');
         if (!premadeSelect) return;
         const descriptor = parseBackgroundSelectionValue(premadeSelect.value);
-        if (!descriptor) return;
+        if (!descriptor) {
+            clearPremadeInputLocks();
+            return;
+        }
+        clearPremadeInputLocks();
         const requestId = ++premadeSizingRequestToken;
         let initialTopLeft;
         if (descriptor.source === 'easyplus_gray') {
@@ -3371,7 +2785,7 @@ async function initCrawlEditor() {
                 width: DASDEC_RENDER_DIMENSIONS.width,
                 height: DASDEC_RENDER_DIMENSIONS.height,
                 topLeft: initialTopLeft
-            });
+            }, { premade: true });
             return;
         }
 
@@ -3380,11 +2794,11 @@ async function initCrawlEditor() {
                 width: EAS_1CG_RENDER_DIMENSIONS.width,
                 height: EAS_1CG_RENDER_DIMENSIONS.height,
                 topLeft: initialTopLeft
-            });
+            }, { premade: true });
             return;
         }
 
-        updateCrawlControlsFromAsset({ topLeft: initialTopLeft });
+        updateCrawlControlsFromAsset({ topLeft: initialTopLeft }, { premade: true });
         const media = await loadMediaElementFromSource(descriptor.type, descriptor.source);
         if (!media || requestId !== premadeSizingRequestToken) {
             return;
@@ -3396,7 +2810,7 @@ async function initCrawlEditor() {
         const width = media.naturalWidth;
         const height = media.naturalHeight;
         const topLeft = getPremadeTopLeft(descriptor.source);
-        updateCrawlControlsFromAsset({ width, height, topLeft });
+        updateCrawlControlsFromAsset({ width, height, topLeft }, { premade: true });
     }
 
     function mapEasyplusOriginatorToFullName(originator) {
@@ -3412,12 +2826,11 @@ async function initCrawlEditor() {
 
     function mapEasyplusEventCodeToFullName(eventCode) {
         const eventCodeMap = window.events || {};
-        const regex = /^national emergency/gi;
         const source = (eventCode && eventCodeMap[eventCode]) ? eventCodeMap[eventCode] : eventCode;
         if (typeof source !== 'string') {
             return '';
         }
-        return source.replace(regex, "Emergency");
+        return source;
     }
 
     function splitTextIntoLines(text, maxWidth, ctx) {
@@ -4103,7 +3516,7 @@ async function initCrawlEditor() {
         }
     }
 
-    let crawlPaused = false;
+    let crawlPaused = true;
 
     function setPauseButtonState(paused) {
         crawlPaused = Boolean(paused);
@@ -4127,68 +3540,188 @@ async function initCrawlEditor() {
         }
     }
 
-    document.getElementById('startCrawl').addEventListener('click', async () => {
-        const crawlDisplay = document.getElementById('crawlDisplay');
-        const text = document.getElementById('crawlText').value;
-        const rawHeader = document.getElementById('crawlRawHeader').value;
-        const speed = document.getElementById('crawlSpeed').value;
-        const fontSize = document.getElementById('crawlFontSize').value;
-        const textColor = document.getElementById('crawlTextColor').value;
-        let bgColor = document.getElementById('crawlBgColor').value;
-        const crawlMode = document.getElementById('crawlMode').value;
-        const useLocalTZ = document.getElementById('crawlUseLocalTZ').checked;
-        const useOverrideTZ = document.getElementById('crawlUseOverrideTZ').value;
-        const endecMode = document.getElementById('endecMode').value;
-        const useVDSMode = document.getElementById('crawlUseVDSMode').checked;
-        const vdsFrameDelay = document.getElementById('vdsFrameDelay').value;
-        const parsedVdsDelay = Number(vdsFrameDelay);
-        const normalizedVdsDelay = Number.isFinite(parsedVdsDelay) && parsedVdsDelay > 0 ? parsedVdsDelay : DEFAULT_VDS_BASE_DELAY;
-        const fontFamily = document.getElementById('crawlFontFamily') ? document.getElementById('crawlFontFamily').value : 'Arial';
-        const fontStyle = document.getElementById('crawlFontStyle') ? document.getElementById('crawlFontStyle').value : 'normal';
-        const outlineColor = document.getElementById('crawlOutlineColor').value;
-        const outlineWidth = document.getElementById('crawlOutlineWidth').value;
-        const outlineJoin = document.getElementById('crawlOutlineJoin').value;
-        const crawlWidth = document.getElementById('crawlWidth').value;
-        const crawlHeight = document.getElementById('crawlHeight').value;
-        const crawlInset = document.getElementById('crawlInset').value;
-        const crawlRestartDelay = document.getElementById('crawlRestartDelay').value;
-        const crawlBackgroundMode = document.getElementById('crawlBackgroundMode').value;
-        const crawlBackgroundPremade = document.getElementById('crawlBackgroundPremadeSelect').value;
-        const easyplusOriginator = document.getElementById('easyplusOriginator').value;
-        const easyplusEventCode = document.getElementById('easyplusEventCode').value;
-        let crawlTopLeftOffsetX = document.getElementById('crawlTopLeftPixelX').value;
-        let crawlTopLeftOffsetY = document.getElementById('crawlTopLeftPixelY').value;
-        const repetitions = document.getElementById('crawlRepetitions').value;
-        const crawlKerning = document.getElementById('crawlKerning').value;
-        const crawlTextWidth = document.getElementById('crawlTextWidth').value;
+    let crawlApplyToken = 0;
+    let crawlApplyTimer = null;
+    let crawlApplyRunning = null;
+    let crawlBootstrapped = false;
+    const crawlAssetCache = {
+        fontKey: null,
+        fontFamily: null,
+        backgroundKey: null,
+        backgroundAssets: null,
+        headerKey: null,
+        headerText: null
+    };
 
-        if (crawlBackgroundMode === 'transparent') {
-            bgColor = 'transparent';
+    function crawlFileToken(inputId) {
+        const input = document.getElementById(inputId);
+        const file = input && input.files ? input.files[0] : null;
+        return file ? `${file.name}:${file.size}:${file.lastModified}` : '';
+    }
+
+    function readCrawlControls() {
+        const value = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value : '';
+        };
+        const checked = (id) => {
+            const el = document.getElementById(id);
+            return el ? Boolean(el.checked) : false;
+        };
+        const crawlBackgroundMode = value('crawlBackgroundMode');
+        const crawlMode = value('crawlMode');
+        const rawHeader = value('crawlRawHeader');
+        return {
+            text: value('crawlText'),
+            speed: value('crawlSpeed'),
+            fontSize: value('crawlFontSize'),
+            textColor: value('crawlTextColor'),
+            bgColor: crawlBackgroundMode === 'transparent' ? 'transparent' : value('crawlBgColor'),
+            crawlMode,
+            rawHeader: crawlMode === 'header' ? rawHeader : '',
+            useLocalTZ: checked('crawlUseLocalTZ'),
+            useOverrideTZ: value('crawlUseOverrideTZ'),
+            endecMode: value('endecMode'),
+            useVDSMode: checked('crawlUseVDSMode'),
+            vdsFrameDelay: value('vdsFrameDelay'),
+            fontFamily: value('crawlFontFamily') || 'Arial',
+            fontStyle: value('crawlFontStyle') || 'normal',
+            outlineColor: value('crawlOutlineColor'),
+            outlineWidth: value('crawlOutlineWidth'),
+            outlineJoin: value('crawlOutlineJoin'),
+            crawlWidth: value('crawlWidth'),
+            crawlHeight: value('crawlHeight'),
+            crawlInset: value('crawlInset'),
+            crawlRestartDelay: value('crawlRestartDelay'),
+            crawlBackgroundMode,
+            crawlBackgroundPremade: value('crawlBackgroundPremadeSelect'),
+            easyplusOriginator: value('easyplusOriginator'),
+            easyplusEventCode: value('easyplusEventCode'),
+            crawlTopLeftOffsetX: value('crawlTopLeftPixelX'),
+            crawlTopLeftOffsetY: value('crawlTopLeftPixelY'),
+            repetitions: value('crawlRepetitions'),
+            crawlKerning: value('crawlKerning'),
+            crawlTextWidth: value('crawlTextWidth')
+        };
+    }
+
+    async function resolveCrawlFontForApply(controls) {
+        const key = `${controls.fontFamily}|${crawlFileToken('crawlCustomFontFile')}`;
+        if (crawlAssetCache.fontKey === key && crawlAssetCache.fontFamily) {
+            return crawlAssetCache.fontFamily;
         }
-
-        let resolvedFontFamily = fontFamily;
+        const previousKey = crawlAssetCache.fontKey;
         try {
-            resolvedFontFamily = await resolveCrawlFontFamily(fontFamily);
+            const resolved = await resolveCrawlFontFamily(controls.fontFamily);
+            crawlAssetCache.fontKey = key;
+            crawlAssetCache.fontFamily = resolved;
+            return resolved;
         } catch (err) {
-            if (fontFamily === USER_UPLOAD_FONT_FAMILY) {
-                alert('Please select a valid custom font file (.ttf or .otf) before starting the crawl.');
-                return;
+            crawlAssetCache.fontKey = key;
+            if (controls.fontFamily === USER_UPLOAD_FONT_FAMILY && previousKey !== key) {
+                addStatus('Choose a .ttf or .otf file to use the User-Upload font. Keeping the current font until you do.', 'WARN');
             }
+            return crawlAssetCache.fontFamily || 'Arial';
         }
+    }
 
+    function crawlBackgroundCacheKey(controls) {
+        const descriptor = controls.crawlBackgroundMode === 'premade'
+            ? parseBackgroundSelectionValue(controls.crawlBackgroundPremade)
+            : null;
+        const source = descriptor ? descriptor.source : '';
+        const usesCrawlText = source === 'dasdec' || source === 'eas_1cg';
+        return [
+            controls.crawlBackgroundMode,
+            controls.crawlBackgroundPremade,
+            crawlFileToken('crawlBackgroundImageFile'),
+            controls.easyplusOriginator,
+            controls.easyplusEventCode,
+            usesCrawlText ? `${controls.crawlMode}:${controls.rawHeader}:${controls.text}` : ''
+        ].join('|');
+    }
+
+    async function loadCrawlBackgroundForApply(controls) {
+        const key = crawlBackgroundCacheKey(controls);
+        if (crawlAssetCache.backgroundKey === key && crawlAssetCache.backgroundAssets) {
+            return crawlAssetCache.backgroundAssets;
+        }
+        const assets = await loadCrawlBackgroundAssets(controls.crawlBackgroundMode);
+        crawlAssetCache.backgroundKey = key;
+        crawlAssetCache.backgroundAssets = assets;
+        return assets;
+    }
+
+    async function resolveCrawlTextForApply(controls) {
+        if (controls.crawlMode !== 'header') {
+            return controls.text || '';
+        }
+        if (!controls.rawHeader || !controls.rawHeader.trim()) {
+            return null;
+        }
+        const key = [controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.endecMode].join('|');
+        if (crawlAssetCache.headerKey === key) {
+            return crawlAssetCache.headerText;
+        }
+        let readable = null;
+        try {
+            readable = await header_to_readable(controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.endecMode);
+        } catch (err) {
+            readable = null;
+        }
+        const warn = readable === null && crawlAssetCache.headerKey !== key;
+        crawlAssetCache.headerKey = key;
+        crawlAssetCache.headerText = readable;
+        if (warn) {
+            addStatus('That is not a valid EAS header yet, so the crawl text is unchanged.', 'WARN');
+        }
+        return readable;
+    }
+
+    function syncDasdecRepetitions(value) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed) || parsed < 1 || parsed > 10) return;
+        const repetitions = Math.round(parsed);
+        const dasdec = window.__dasdecBackground;
+        if (dasdec && Array.isArray(dasdec.pages) && dasdec.pages.length) {
+            dasdec.repetitions = repetitions;
+            dasdec.totalDisplays = repetitions * dasdec.pages.length;
+        }
+    }
+
+    function persistCrawlSettings(controls) {
+        try {
+            localStorage.setItem(localStorageKey, JSON.stringify(controls));
+        } catch (err) {
+            console.error('Could not save crawl settings:', err);
+        }
+    }
+
+    async function applyCrawlSettings() {
+        const crawlDisplay = document.getElementById('crawlDisplay');
+        if (!crawlDisplay) return;
+
+        const token = ++crawlApplyToken;
+        const controls = readCrawlControls();
+
+        const resolvedFontFamily = await resolveCrawlFontForApply(controls);
         await ensureFontsReady();
-        await document.fonts.load(`${fontStyle} ${fontSize}px "${resolvedFontFamily}"`);
+        try {
+            await document.fonts.load(`${controls.fontStyle} ${controls.fontSize}px "${resolvedFontFamily}"`);
+        } catch (err) { }
+        const backgroundAssets = await loadCrawlBackgroundForApply(controls);
+        const resolvedText = await resolveCrawlTextForApply(controls);
 
-        const backgroundAssets = await loadCrawlBackgroundAssets(crawlBackgroundMode);
+        if (token !== crawlApplyToken) return;
+
         const isNewGenerator = !window.crawlGenerator;
-
         if (isNewGenerator) {
             window.crawlGenerator = new TextCrawlGenerator(crawlDisplay);
         }
-
         const generator = window.crawlGenerator;
+
         let appliedAutoSizing = false;
-        if (crawlBackgroundMode === 'premade') {
+        if (controls.crawlBackgroundMode === 'premade') {
             const autoMeta = {
                 width: backgroundAssets.width,
                 height: backgroundAssets.height,
@@ -4197,112 +3730,150 @@ async function initCrawlEditor() {
             if (Number.isFinite(backgroundAssets.inset)) {
                 autoMeta.inset = backgroundAssets.inset;
             }
-            appliedAutoSizing = updateCrawlControlsFromAsset(autoMeta, { generator });
+            appliedAutoSizing = updateCrawlControlsFromAsset(autoMeta, { generator, premade: true });
         }
 
-        const topLeftXInput = document.getElementById('crawlTopLeftPixelX');
-        const topLeftYInput = document.getElementById('crawlTopLeftPixelY');
-        if (topLeftXInput && topLeftXInput.value !== undefined) {
-            crawlTopLeftOffsetX = topLeftXInput.value;
-        }
-        if (topLeftYInput && topLeftYInput.value !== undefined) {
-            crawlTopLeftOffsetY = topLeftYInput.value;
-        }
+        ['crawlTopLeftPixelX', 'crawlTopLeftPixelY', 'crawlInset', 'crawlWidth', 'crawlHeight'].forEach((id) => {
+            const input = document.getElementById(id);
+            if (!input || input.value === undefined) return;
+            if (id === 'crawlTopLeftPixelX') controls.crawlTopLeftOffsetX = input.value;
+            else if (id === 'crawlTopLeftPixelY') controls.crawlTopLeftOffsetY = input.value;
+            else if (id === 'crawlInset') controls.crawlInset = input.value;
+            else if (id === 'crawlWidth') controls.crawlWidth = input.value;
+            else controls.crawlHeight = input.value;
+        });
 
-        const settings = {
-            text,
-            speed,
-            fontSize,
-            textColor,
-            bgColor,
-            crawlMode,
-            rawHeader: rawHeader && crawlMode === 'header' ? rawHeader : '',
-            useLocalTZ,
-            useOverrideTZ,
-            endecMode,
-            useVDSMode,
-            vdsFrameDelay,
-            fontFamily,
-            fontStyle,
-            outlineColor,
-            outlineWidth,
-            outlineJoin,
-            crawlWidth,
-            crawlHeight,
-            crawlInset,
-            crawlRestartDelay,
-            crawlBackgroundMode,
-            crawlBackgroundPremade,
-            easyplusOriginator,
-            easyplusEventCode,
-            crawlTopLeftOffsetX,
-            crawlTopLeftOffsetY,
-            repetitions,
-            crawlKerning,
-            crawlTextWidth
-        };
-
-        localStorage.setItem(localStorageKey, JSON.stringify(settings));
+        persistCrawlSettings(controls);
 
         if (!appliedAutoSizing) {
             applyCrawlSizeToGenerator(generator);
         }
 
-        applyBackgroundToGenerator(generator, crawlBackgroundMode, backgroundAssets);
+        applyBackgroundToGenerator(generator, controls.crawlBackgroundMode, backgroundAssets);
 
-        if (rawHeader && crawlMode === 'header') {
-            let readable = await header_to_readable(rawHeader, useLocalTZ, useOverrideTZ, endecMode);
-
-            if (readable !== null) {
-                generator.setText(readable);
-            }
-            else {
-                alert('Invalid EAS Header Format. Please check your input.');
-                return;
-            }
-        }
-
-        else {
-            if (isNewGenerator && (!text || text.trim() === '')) {
-                alert('Please enter crawl text or a valid EAS header.');
-                return;
-            }
-
-            generator.setText(text);
+        if (resolvedText !== null) {
+            generator.setText(resolvedText);
         }
 
         if (backgroundAssets.image) {
             generator.setBgColor('rgba(0,0,0,0)');
-            generator.setTopLeftOffsetX(crawlTopLeftOffsetX);
-            generator.setTopLeftOffsetY(crawlTopLeftOffsetY);
+            generator.setTopLeftOffsetX(controls.crawlTopLeftOffsetX);
+            generator.setTopLeftOffsetY(controls.crawlTopLeftOffsetY);
         }
-        generator.setSpeed(speed);
-        generator.setFontSize(fontSize);
-        generator.setTextColor(textColor);
-        generator.setBgColor(bgColor === 'transparent' ? 'rgba(0,0,0,0)' : bgColor);
+
+        const parsedVdsDelay = Number(controls.vdsFrameDelay);
+        generator.setSpeed(controls.speed);
+        generator.setFontSize(controls.fontSize);
+        generator.setTextColor(controls.textColor);
+        generator.setBgColor(controls.bgColor === 'transparent' ? 'rgba(0,0,0,0)' : controls.bgColor);
         generator.setFontFamily(resolvedFontFamily);
-        generator.setFontStyle(fontStyle);
-        generator.setOutlineColor(outlineColor);
-        generator.setOutlineWidth(outlineWidth);
-        generator.setOutlineJoin(outlineJoin);
-        generator.setCrawlInset(crawlInset);
-        generator.setCrawlRestartDelay(crawlRestartDelay);
-        generator.vdsBaseDelayFrames = normalizedVdsDelay;
-        generator.setVDSMode(useVDSMode);
-        generator.setRepetitions(repetitions);
-        generator.setKerning(crawlKerning);
-        generator.setTextWidth(crawlTextWidth);
-        setPauseButtonState(false);
-        resumeDasdecRotationState();
-        window.crawlGenerator._updateButtons(false);
-        generator.start();
+        generator.setFontStyle(controls.fontStyle);
+        generator.setOutlineColor(controls.outlineColor);
+        generator.setOutlineWidth(controls.outlineWidth);
+        generator.setOutlineJoin(controls.outlineJoin);
+        generator.setCrawlInset(controls.crawlInset);
+        generator.setCrawlRestartDelay(controls.crawlRestartDelay);
+        generator.vdsBaseDelayFrames = Number.isFinite(parsedVdsDelay) && parsedVdsDelay > 0
+            ? parsedVdsDelay
+            : DEFAULT_VDS_BASE_DELAY;
+        generator.setVDSMode(controls.useVDSMode);
+        generator.setRepetitions(controls.repetitions);
+        syncDasdecRepetitions(controls.repetitions);
+        generator.setKerning(controls.crawlKerning);
+        generator.setTextWidth(controls.crawlTextWidth);
+
+        if (isNewGenerator) {
+            generator._updateButtons(false);
+            generator.stop();
+            setPauseButtonState(true);
+            pauseDasdecRotationState();
+        } else if (crawlPaused) {
+            generator._renderFrame({ advance: false });
+        }
+    }
+
+    function runCrawlApply() {
+        crawlApplyRunning = (crawlApplyRunning || Promise.resolve())
+            .catch(() => { })
+            .then(() => applyCrawlSettings())
+            .catch((err) => {
+                console.error('Crawl settings could not be applied:', err);
+                addStatus(`Could not apply crawl settings: ${err?.message || err}`, 'ERROR');
+            });
+        return crawlApplyRunning;
+    }
+
+    function scheduleCrawlApply(delay = 200) {
+        if (crawlApplyTimer) {
+            clearTimeout(crawlApplyTimer);
+        }
+        crawlApplyTimer = setTimeout(() => {
+            crawlApplyTimer = null;
+            runCrawlApply();
+        }, delay);
+    }
+
+    async function flushCrawlApply() {
+        if (crawlApplyTimer) {
+            clearTimeout(crawlApplyTimer);
+            crawlApplyTimer = null;
+            runCrawlApply();
+        }
+        if (crawlApplyRunning) {
+            try {
+                await crawlApplyRunning;
+            } catch (err) { }
+        }
+    }
+
+    const CRAWL_LIVE_INPUT_IDS = [
+        'crawlText', 'crawlRawHeader', 'crawlSpeed', 'crawlFontSize', 'crawlTextColor',
+        'crawlBgColor', 'crawlMode', 'crawlUseLocalTZ', 'crawlUseOverrideTZ', 'endecMode',
+        'crawlUseVDSMode', 'vdsFrameDelay', 'crawlFontFamily', 'crawlCustomFontFile',
+        'crawlFontStyle', 'crawlOutlineColor', 'crawlOutlineWidth', 'crawlOutlineJoin',
+        'crawlWidth', 'crawlHeight', 'crawlInset', 'crawlTopLeftPixelX', 'crawlTopLeftPixelY',
+        'crawlKerning', 'crawlTextWidth', 'crawlRestartDelay', 'crawlRepetitions',
+        'crawlBackgroundMode', 'crawlBackgroundImageFile', 'crawlBackgroundPremadeSelect',
+        'easyplusOriginator', 'easyplusEventCode'
+    ];
+
+    CRAWL_LIVE_INPUT_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => scheduleCrawlApply());
+        el.addEventListener('change', () => scheduleCrawlApply());
     });
+
+    function attachCrawlEditorListener() {
+        const editor = window.crawlEditor;
+        if (!editor || editor.__liveApplyAttached) return;
+        editor.__liveApplyAttached = true;
+        editor.on('change', () => {
+            editor.save();
+            scheduleCrawlApply(300);
+        });
+    }
+
+    async function bootstrapCrawl() {
+        if (crawlBootstrapped) return;
+        crawlBootstrapped = true;
+        const modeInput = document.getElementById('crawlMode');
+        if (!modeInput || modeInput.value !== 'header') {
+            try {
+                await initCrawlEditor();
+            } catch (err) {
+                console.error('Could not initialize the crawl text editor:', err);
+            }
+        }
+        attachCrawlEditorListener();
+        await runCrawlApply();
+    }
 
     document.getElementById('stopCrawl').addEventListener('click', () => {
         if (!window.crawlGenerator) return;
-        stopDasdecRotationState();
+        pauseDasdecRotationState();
         window.crawlGenerator.stop();
-        setPauseButtonState(false);
+        setPauseButtonState(true);
     });
 
     document.getElementById('pauseCrawl').addEventListener('click', () => {
@@ -4329,22 +3900,16 @@ async function initCrawlEditor() {
         prevFrameButton.addEventListener('click', () => handleFrameStep(-1));
     }
 
-    document.getElementById('exportCrawlGIF').addEventListener('click', () => {
-        if (window.crawlGenerator) {
-            exportAsGIF(window.crawlGenerator.canvas, 'text_crawl.gif');
-        }
-        else {
-            alert('Please start the crawl before exporting.');
-        }
+    document.getElementById('exportCrawlGIF').addEventListener('click', async () => {
+        await flushCrawlApply();
+        if (!window.crawlGenerator) return;
+        exportAsGIF(window.crawlGenerator.canvas, 'text_crawl.gif');
     });
 
-    document.getElementById('exportCrawlVideo').addEventListener('click', () => {
-        if (window.crawlGenerator) {
-            exportAsWebM(window.crawlGenerator.canvas, null);
-        }
-        else {
-            alert('Please start the crawl before exporting.');
-        }
+    document.getElementById('exportCrawlVideo').addEventListener('click', async () => {
+        await flushCrawlApply();
+        if (!window.crawlGenerator) return;
+        exportAsVideo(window.crawlGenerator.canvas);
     });
 
     document.getElementById('crawlMode').addEventListener('change', (event) => {
@@ -4420,7 +3985,7 @@ async function initCrawlEditor() {
 
     document.getElementById('copyCrawlText').addEventListener('click', async () => {
         if (!window.crawlGenerator) {
-            alert('Please start the crawl before copying text.');
+            addStatus('The crawl is still loading. Try copying again in a moment.', 'WARN');
             return;
         }
 
@@ -4541,23 +4106,13 @@ async function initCrawlEditor() {
         else {
             bgColorInput.disabled = true;
         }
-    });
 
-    const destroyInstanceButton = document.getElementById('destroyCrawl');
-    if (destroyInstanceButton) {
-        destroyInstanceButton.addEventListener('click', () => {
-            stopDasdecRotationState();
-            if (window.crawlGenerator) {
-                window.crawlGenerator.destroy();
-                window.crawlGenerator = null;
-                setPauseButtonState(false);
-                addStatus('Crawl generator instance destroyed.');
-                destroyInstanceButton.disabled = true;
-            } else {
-                addStatus('No crawl generator instance to destroy.', 'WARNING');
-            }
-        });
-    }
+        if (mode !== 'premade') {
+            clearPremadeInputLocks();
+        } else {
+            syncPremadeInputLocks();
+        }
+    });
 
     const crawlBackgroundPremadeSelect = document.getElementById('crawlBackgroundPremadeSelect');
     if (crawlBackgroundPremadeSelect) {
@@ -4597,9 +4152,11 @@ async function initCrawlEditor() {
     ['crawlWidth', 'crawlHeight'].forEach((id) => {
         const input = document.getElementById(id);
         if (!input) return;
-        const handler = () => applyCrawlSizeToGenerator();
-        input.addEventListener('input', handler);
-        input.addEventListener('change', handler);
+        input.addEventListener('input', () => applyCrawlSizeToGenerator());
+        input.addEventListener('change', () => {
+            commitCrawlDimensionInputs();
+            applyCrawlSizeToGenerator();
+        });
     });
 
     function setCustomFontUploadVisibility(show) {
@@ -5050,7 +4607,8 @@ async function initCrawlEditor() {
         if (presetData) {
             const settings = JSON.parse(presetData);
             applySettingsToControls(settings, { showStatus: false });
-            alert(`Preset #${presetNumber} loaded! Please click "Start Crawl" to apply the preset.`);
+            scheduleCrawlApply(0);
+            alert(`Preset #${presetNumber} loaded!`);
         } else {
             alert(`No preset found for #${presetNumber}.`);
         }
@@ -5113,7 +4671,8 @@ async function initCrawlEditor() {
                     return;
                 }
                 applySettingsToControls(settings, { showStatus: false });
-                alert('Preset imported! Please click "Start Crawl" to apply the preset.');
+                scheduleCrawlApply(0);
+                alert('Preset imported!');
             };
             reader.onerror = () => {
                 alert('Could not read that file. Please try again.');
@@ -5125,8 +4684,11 @@ async function initCrawlEditor() {
     document.getElementById('crawlMode').addEventListener('change', async (event) => {
         if (event.target.value == 'custom' && !window.crawlEditor) {
             await initCrawlEditor();
+            attachCrawlEditorListener();
         }
     });
+
+    bootstrapCrawl();
 
     if (window.EASBridge) {
         const PREMADE_STATIC_SOURCES = new Set(['dasdec', 'eas_1cg']);
@@ -5255,11 +4817,8 @@ async function initCrawlEditor() {
                 setVal('crawlMode', 'custom');
                 setVal('crawlRepetitions', params.repetitions);
 
-                const startBtn = el('startCrawl');
-                if (startBtn) {
-                    startBtn.click();
-                    await new Promise(r => setTimeout(r, 1500));
-                }
+                scheduleCrawlApply(0);
+                await flushCrawlApply();
 
                 if (!window.crawlGenerator) {
                     window.EASBridge.send('crawl:exportComplete', {});
@@ -5307,7 +4866,7 @@ async function initCrawlEditor() {
                 if (format === 'gif') {
                     exportAsGIF(window.crawlGenerator.canvas, 'text_crawl.gif');
                 } else {
-                    exportAsWebM(window.crawlGenerator.canvas, null);
+                    exportAsVideo(window.crawlGenerator.canvas);
                 }
             } catch (err) {
                 console.error('[EASBridge] crawl:export error:', err);

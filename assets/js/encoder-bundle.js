@@ -1,4 +1,4 @@
-import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId } from './common-functions.js';
+import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain } from './common-functions.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -390,6 +390,8 @@ async function fetchAndStore() {
     });
 
     function dbToLin(db) { return Math.pow(10, db / 20); }
+
+    const TTS_TARGET_DB = 3;
 
     function normalizeTtsPcm(pcm, { targetDb = -3, maxGainDb = 24, softClip = true, softClipK = 1.5 } = {}) {
         if (!pcm || !pcm.length) return pcm;
@@ -1099,261 +1101,63 @@ async function fetchAndStore() {
         voiceListElement.dispatchEvent(new Event('change'));
     }
 
-    async function getAudioFromPage(response) {
-        const decoder = new TextDecoder("utf-8");
-        const responseText = decoder.decode(response);
-        const audioMatch = responseText.match(/id="downloadlink"><a href="(.*)" download/i);
-        const jsonMatch = responseText.match(/<span id="jsonErrorMsg">(.*)</i);
-
-        if (jsonMatch && jsonMatch[1]) {
-            var cleanMatch = jsonMatch[1].replace(/.*Exact error: (.*)/, "$1");
-            if (cleanMatch != '') {
-                addStatus("TTS Generation Error: " + cleanMatch, "ERROR");
-            }
-            else {
-                addStatus("TTS Generation Error: " + jsonMatch[1], "ERROR");
-            }
-            return null;
-        }
-
-        if (audioMatch && audioMatch[1]) {
-            const audioSrc = audioMatch[1];
-            const audioResponse = await fetch("https://wagspuzzle.space/tools/eas-tts/" + audioSrc);
-            const audioArrayBuffer = await audioResponse.arrayBuffer();
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const buffer = await audioContext.decodeAudioData(audioArrayBuffer);
-            return buffer;
-        }
-
-        return null;
-    }
-
     function checkZCZCIsValid(header) {
         const zczcPattern = /^ZCZC-([A-Z]{3})-([A-Z]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{0,8})-?$/;
         return zczcPattern.test(header);
     }
 
+    function ttsNormalizationTargetDb(backend, volume) {
+        const gain = ttsVolumeGain(backend, volume);
+        return gain === 1 ? TTS_TARGET_DB : TTS_TARGET_DB + 20 * Math.log10(gain);
+    }
+
     async function webTTSGenerate(useOverrideTZ, header) {
         addStatus("Generating TTS audio using web request, this may take a while...");
 
-        return new Promise((resolve) => {
-            let settled = false;
+        const voice = window.ttsVoice;
+        const requestText = voice === "EMNet" ? header : window.ttsText;
+        const backend = resolveVoiceBackend(voiceBackendMap, voice);
+        const prosody = readTtsProsodyControls("");
 
-            const safeResolve = () => {
-                if (!settled) {
-                    settled = true;
-                    resolve();
-                }
-            };
+        try {
+            const result = await fetchRemoteTtsAudio({
+                text: requestText,
+                voice,
+                overrideTZ: useOverrideTZ ?? "UTC",
+                backend,
+                prosody,
+            });
 
-            const finishWithSilence = () => {
-                generate_silence(Math.floor(SAMPLE_RATE * 1));
-                safeResolve();
-            };
+            const pcm = resamplePcm(result.pcm, result.sampleRate, SAMPLE_RATE);
+            const normalizedPcm = normalizeTtsPcm(pcm, {
+                targetDb: ttsNormalizationTargetDb(backend, prosody.volume),
+                maxGainDb: 24,
+                softClip: cl,
+                softClipK: 1.6,
+            });
 
-            const handleDecodeError = (error) => {
-                console.error("Error decoding TTS audio:", error);
-                addStatus("Error decoding TTS audio. There will instead be silence.", "ERROR");
-                finishWithSilence();
-            };
+            generate_silence(silenceSamples("attentionToMessage"));
 
-            const xhr = new XMLHttpRequest();
-            const url = "https://wagspuzzle.space/tools/eas-tts/index.php?handler=toolkit";
-
-            const ttsRate = document.getElementById("ttsRate")?.value || "0";
-            const ttsPitch = document.getElementById("ttsPitch")?.value || "0";
-            const voiceBackend = voiceBackendMap[Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(window.ttsVoice))] ? Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(window.ttsVoice)) : "Unknown";
-
-            if (voiceBackend.toLowerCase().includes("bal") && (ttsRate !== "0" || ttsPitch !== "0")) {
-                window.oldTtsText = window.ttsText;
-                if (ttsRate !== "0") {
-                    window.ttsText = `<rate absspeed="${ttsRate}">${window.ttsText}</rate>`;
-                }
-                if (ttsPitch !== "0") {
-                    window.ttsText = `<pitch absmiddle="${ttsPitch}">${window.ttsText}</pitch>`;
-                }
+            if (/Speechify/i.test(voice) && document.getElementById("shouldBitcrushSpeechify")?.checked) {
+                const bitcrushed = await bitcrushSpeechifyPcm(normalizedPcm, SAMPLE_RATE);
+                appendPcmToSamples(bitcrushed.sampleRate === SAMPLE_RATE
+                    ? bitcrushed.pcm
+                    : resamplePcmSinc(bitcrushed.pcm, bitcrushed.sampleRate, SAMPLE_RATE));
             }
 
-            else if (voiceBackend.toLowerCase().includes("vt") && (ttsRate !== "0" || ttsPitch !== "0")) {
-                window.oldTtsText = window.ttsText;
-                const vtValue = (value) => {
-                    const parsed = Number(value);
-                    if (!Number.isFinite(parsed)) { return 100; }
-                    const scaled = Math.round((parsed * 10) + 100);
-                    return Math.min(200, Math.max(0, scaled));
-                };
-                if (ttsRate !== "0") {
-                    window.ttsText = `<vtml_speed value="${vtValue(ttsRate)}">${window.ttsText}</vtml_speed>`;
-                }
-                if (ttsPitch !== "0") {
-                    window.ttsText = `<vtml_pitch value="${vtValue(ttsPitch)}">${window.ttsText}</vtml_pitch>`;
-                }
+            else {
+                appendPcmToSamples(normalizedPcm);
             }
+        }
 
-            const params = new URLSearchParams();
-            params.append("text", window.ttsVoice === "EMNet" ? header : window.ttsText);
-            params.append("voice", window.ttsVoice);
-            params.append("useOverrideTZ", useOverrideTZ ?? "UTC");
-
-            xhr.open("POST", url, true);
-            xhr.responseType = "arraybuffer";
-            xhr.setRequestHeader("Accept", "*/*");
-            xhr.setRequestHeader("User-Agent", "EAS-Tools/wagwan-piffting-blud.github.io");
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-
-            xhr.onload = function () {
-                if (xhr.status >= 200 && xhr.status < 300 && xhr.getResponseHeader("Content-Type") === "audio/wav") {
-                    window.updateTTSRequestsCounter();
-                    const rawPayload = xhr.response ?? xhr.responseText;
-
-                    const toArrayBuffer = (payload) => {
-                        if (payload instanceof ArrayBuffer) {
-                            return Promise.resolve(payload);
-                        }
-
-                        if (payload instanceof Blob) {
-                            return payload.arrayBuffer();
-                        }
-
-                        if (typeof payload === "string") {
-                            const withoutPrefix = payload.replace(/^data:audio\/[\w.+-]+;base64,/, "");
-                            const candidate = withoutPrefix.replace(/\s/g, "");
-
-                            return new Promise((resolvePayload, rejectPayload) => {
-                                try {
-                                    const binary = atob(candidate);
-                                    const buffer = new ArrayBuffer(binary.length);
-                                    const bytes = new Uint8Array(buffer);
-
-                                    for (let i = 0; i < binary.length; i++) {
-                                        bytes[i] = binary.charCodeAt(i);
-                                    }
-
-                                    resolvePayload(buffer);
-                                    return;
-                                } catch (error) {
-                                    try {
-                                        const buffer = new ArrayBuffer(withoutPrefix.length);
-                                        const bytes = new Uint8Array(buffer);
-
-                                        for (let i = 0; i < withoutPrefix.length; i++) {
-                                            bytes[i] = withoutPrefix.charCodeAt(i) & 0xff;
-                                        }
-
-                                        resolvePayload(buffer);
-                                        return;
-                                    }
-
-                                    catch (fallbackError) {
-                                        rejectPayload(error);
-                                    }
-                                }
-                            });
-                        }
-                        return Promise.reject(new TypeError("Unsupported payload type"));
-                    };
-
-                    toArrayBuffer(rawPayload).then((arrayBuffer) => {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        const decode = audioContext.decodeAudioData.bind(audioContext);
-                        const decodePromise = decode.length > 1
-                            ? new Promise((resolveDecode, rejectDecode) => decode(arrayBuffer, resolveDecode, rejectDecode))
-                            : decode(arrayBuffer);
-
-                        decodePromise.then(async (buffer) => {
-                            if (typeof audioContext.close === "function") {
-                                audioContext.close().catch(() => { });
-                            }
-
-                            const pcm = resamplePcm(buffer.getChannelData(0), buffer.sampleRate, SAMPLE_RATE);
-
-                            const normalizedPcm = normalizeTtsPcm(pcm, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
-
-                            generate_silence(silenceSamples("attentionToMessage"));
-
-                            if (/Speechify/i.test(window.ttsVoice) && document.getElementById('shouldBitcrushSpeechify').checked) {
-                                const bitcrushed = await bitcrushSpeechifyPcm(normalizedPcm, SAMPLE_RATE);
-                                const bitcrushedPcm = bitcrushed.sampleRate === SAMPLE_RATE
-                                    ? bitcrushed.pcm
-                                    : resamplePcmSinc(bitcrushed.pcm, bitcrushed.sampleRate, SAMPLE_RATE);
-                                appendPcmToSamples(bitcrushedPcm);
-                            }
-
-                            else {
-                                appendPcmToSamples(normalizedPcm);
-                            }
-
-                            safeResolve();
-                        }).catch((error) => {
-                            if (typeof audioContext.close === "function") {
-                                audioContext.close().catch(() => { });
-                            }
-                            handleDecodeError(error);
-                        });
-                    }).catch(handleDecodeError);
-                }
-
-                else if (xhr.getResponseHeader("Content-Type") === "application/json") {
-                    let responseJSON = {};
-
-                    try {
-                        const decoder = new TextDecoder("utf-8");
-                        responseJSON = JSON.parse(decoder.decode(xhr.response));
-                    }
-
-                    catch (error) {
-                        console.error("Failed to parse JSON response:", error);
-                    }
-
-                    console.error("Request failed with status:", xhr.status, xhr.response);
-                    addStatus("Error fetching TTS audio. The server said: '" + responseJSON.error + "'. There will instead be silence.", "ERROR");
-
-                    finishWithSilence();
-                }
-
-                else {
-                    console.error("Unexpected response type:", xhr.getResponseHeader("Content-Type"), xhr.response);
-
-                    addStatus("Unexpected response type while fetching TTS audio. Trying to fall back to getting audio or JSON error from page...", "WARN");
-
-                    try {
-                        getAudioFromPage(xhr.response).then((pcmRaw) => {
-                            if (pcmRaw !== null) {
-                                const normalizedPcm = normalizeTtsPcm(pcmRaw, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
-                                generate_silence(silenceSamples("attentionToMessage"));
-                                appendPcmToSamples(normalizedPcm);
-                                safeResolve();
-                            }
-
-                            else {
-                                addStatus("Failed to find audio in TTS HTML response. There will instead be silence.", "ERROR");
-                                finishWithSilence();
-                            }
-                        }).catch((error) => {
-                            console.error("Failed to get audio from page:", error);
-                            addStatus("Failed to get audio from page. There will instead be silence.", "ERROR");
-                            finishWithSilence();
-                        });
-                    }
-
-                    catch (error) {
-                        console.error("Failed to decode response:", error);
-                        addStatus("Failed to decode TTS HTML response. There will instead be silence.", "ERROR");
-                        finishWithSilence();
-                    }
-
-                }
-            };
-
-            xhr.onerror = function () {
-                console.error("Unhandled network error occurred.", xhr.status, xhr.statusText);
-                addStatus("Unhandled network error occurred while fetching TTS audio. There will instead be silence.", "ERROR");
-                finishWithSilence();
-            };
-
-            xhr.send(params.toString());
-            window.ttsText = window.oldTtsText || window.ttsText;
-        });
+        catch (error) {
+            console.error("Error fetching TTS audio:", error);
+            const detail = error && error.kind === "server"
+                ? `The server said: '${error.message}'. `
+                : (error && error.message ? `${error.message}. ` : "");
+            addStatus(`Error fetching TTS audio. ${detail}There will instead be silence.`, "ERROR");
+            generate_silence(Math.floor(SAMPLE_RATE * 1));
+        }
     }
 
     async function create_alert_async(header, useOverrideTZ, { allowCustomAudio = false } = {}) {
@@ -1487,6 +1291,43 @@ async function fetchAndStore() {
                     } catch (error) {
                         console.error(error);
                         addStatus(`${engineLabel} generation failed. There will instead be silence.`, "ERROR");
+                        generate_silence(Math.floor(SAMPLE_RATE * 1));
+                    }
+                }
+            }
+
+            else if (parseEspeakVoiceId(normalizedVoice) !== null) {
+                const announcementText = (window.ttsText || '').trim();
+                const espeakVoice = parseEspeakVoiceId(normalizedVoice);
+                if (!announcementText) {
+                    addStatus("eSpeak NG requires announcement text. There will instead be silence.", "ERROR");
+                    generate_silence(Math.floor(SAMPLE_RATE * 1));
+                } else {
+                    try {
+                        if (await validateMarkupAndText(voiceBackendMap, window.ttsVoice, window.ttsText || "") !== true) {
+                            addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This text will not be processed by the voice correctly. There will instead be silence. Try getting rid of ANY phoneme markups, if you're trying to use the WebAssembly voices.", "ERROR");
+                            document.getElementById("generate").disabled = false;
+                            document.getElementById("save").disabled = false;
+                            generate_silence(Math.floor(SAMPLE_RATE * 1));
+                            return;
+                        }
+                        const result = await getEspeakEngine().synth(announcementText, {
+                            reportStatus: piperReportStatus,
+                            onProgress: setVoiceDownloadProgress,
+                            voice: espeakVoice,
+                            rate: espeakRateFromSlider(document.getElementById("ttsRate")?.value || "0"),
+                            pitch: espeakPitchFromSlider(document.getElementById("ttsPitch")?.value || "0"),
+                        });
+                        if (result?.pcm?.length) {
+                            const resampled = resamplePcmSinc(result.pcm, result.sampleRate, SAMPLE_RATE);
+                            appendAnnouncement(resampled);
+                        } else {
+                            addStatus("eSpeak NG did not return audio. There will instead be silence.", "ERROR");
+                            generate_silence(Math.floor(SAMPLE_RATE * 1));
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        addStatus("eSpeak NG generation failed. There will instead be silence.", "ERROR");
                         generate_silence(Math.floor(SAMPLE_RATE * 1));
                     }
                 }
@@ -1854,7 +1695,7 @@ async function fetchAndStore() {
 
     function updateVoiceOptions(t) {
         const selectedVoice = t.value;
-        const selectedBackend = Object.keys(voiceBackendMap).find(backend => voiceBackendMap[backend].includes(selectedVoice)) || "Unknown";
+        const selectedBackend = resolveVoiceBackend(voiceBackendMap, selectedVoice);
         window.ttsVoice = (selectedVoice || '').trim();
         const overrideTZElements = document.getElementsByClassName('overrideTZ');
         const ttsRatePitchControls = document.getElementById('ttsRatePitchControls');
@@ -1871,13 +1712,20 @@ async function fetchAndStore() {
             }
         }
 
-        if (selectedBackend.toLowerCase().includes("bal") || selectedBackend.toLowerCase().includes("vt")) {
+        const supportsProsody = backendSupportsProsody(selectedBackend);
+
+        if (supportsProsody || parseEspeakVoiceId(window.ttsVoice) !== null) {
             ttsRatePitchControls.style.display = 'block';
         }
 
         else {
             ttsRatePitchControls.style.display = 'none';
         }
+
+        const ttsVolumeRow = document.getElementById('ttsVolumeRow');
+        const ttsVolumeNote = document.getElementById('ttsVolumeNote');
+        if (ttsVolumeRow) ttsVolumeRow.hidden = !supportsProsody;
+        if (ttsVolumeNote) ttsVolumeNote.hidden = !supportsProsody || backendSupportsVolumeBoost(selectedBackend);
 
         if (selectedBackend.toLowerCase().includes("spfy") || /Speechify/i.test(window.ttsVoice) || parseSpfyVoiceId(window.ttsVoice) !== null) {
             document.getElementById('shouldBitcrushSpeechifyContainer').style.display = 'inline-block';
@@ -1963,8 +1811,8 @@ async function fetchAndStore() {
             'useOverrideTZ': overrideTZ,
             'ttsText': ttsText,
             'ttsVoice': ttsVoice,
-            'ttsRate': ttsRate?.value || '0',
-            'ttsPitch': ttsPitch?.value || '0',
+            'ttsRate': document.getElementById("ttsRate")?.value || '0',
+            'ttsPitch': document.getElementById("ttsPitch")?.value || '0',
             'cheader': rawInput,
             'clip': clipSignal,
             'endecResample': endecResample,
@@ -2695,33 +2543,9 @@ async function fetchAndStore() {
         });
     }
 
-    const ttsRate = document.getElementById("ttsRate");
-    const ttsRateReset = document.getElementById("ttsRateReset");
-    ttsRateReset.addEventListener("click", function () {
-        ttsRate.value = "0";
-        ttsRate.dispatchEvent(new Event('change'));
-    });
-    const ttsPitch = document.getElementById("ttsPitch");
-    const ttsPitchReset = document.getElementById("ttsPitchReset");
-    ttsPitchReset.addEventListener("click", function () {
-        ttsPitch.value = "0";
-        ttsPitch.dispatchEvent(new Event('change'));
-    });
-
-    const syncTtsSlider = (element, spanId) => {
-        const valueSpan = document.getElementById(spanId);
-        valueSpan.textContent = element.value;
-    };
-
-    ["input", "change"].forEach((evtName) => {
-        ttsRate.addEventListener(evtName, function () {
-            syncTtsSlider(ttsRate, "ttsRateValue");
-        });
-
-        ttsPitch.addEventListener(evtName, function () {
-            syncTtsSlider(ttsPitch, "ttsPitchValue");
-        });
-    });
+    bindSliderNumberPair({ sliderId: "ttsRate", numberId: "ttsRateNumber", resetId: "ttsRateReset" });
+    bindSliderNumberPair({ sliderId: "ttsPitch", numberId: "ttsPitchNumber", resetId: "ttsPitchReset" });
+    bindSliderNumberPair({ sliderId: "ttsVolume", numberId: "ttsVolumeNumber", resetId: "ttsVolumeReset" });
 
     const attentionToneDiv = document.getElementById("tlenContainer");
     const currentAttentionTone = document.getElementById("att");

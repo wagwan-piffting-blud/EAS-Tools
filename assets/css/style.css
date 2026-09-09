@@ -148,6 +148,19 @@ a {
     color: #ff9a3c;
 }
 
+code {
+    background-color: var(--color-border);
+    color: var(--color-text);
+    font-family: "Hack", monospace;
+    font-size: 1rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+li {
+    margin-bottom: 1vh;
+}
+
 /* Pseudo-class and attribute CSS */
 section.ffm-app {
     font-family: "Hack", monospace !important;
@@ -203,8 +216,6 @@ button[disabled] {
     border-color: #3a3a3a;
 }
 
-/* The rule above sets an explicit background and colour on every field, which wins
-   over the browser's own disabled rendering, so a disabled field has to say so here. */
 select:disabled,
 input:disabled,
 textarea:disabled {
@@ -979,6 +990,24 @@ textarea:disabled {
 }
 
 /* Class-level CSS */
+.inline-note {
+    margin: 6px 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--color-orange);
+    background-color: var(--color-border);
+    color: var(--color-text);
+    font-size: 0.85rem;
+    max-width: 60ch;
+}
+
+.slider-number {
+    width: 4.5rem;
+    padding: 4px 6px;
+    text-align: center;
+    font-family: "Hack", monospace;
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
 
 .disabled {
     opacity: 0.65;
@@ -1052,6 +1081,20 @@ textarea:disabled {
 
 .crawl-export-progress__row progress {
     flex: 1 1 auto;
+}
+
+.crawl-export-options {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    margin: 4px 0;
+}
+
+.crawl-export-options select {
+    width: auto;
+    min-width: 0;
+    margin: 0;
 }
 
 .ttsText--editor {
@@ -1636,20 +1679,26 @@ textarea:disabled {
 }
 
 /* Light mode */
-@media screen and (max-width: 1079px) and (prefers-color-scheme: light) {
-    #splicer-panel .splice-storage {
-        background: #f0f0f0;
-        color: #1a1a1a;
-        border-top-color: #c0c0c0;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
-    }
-}
-
 @media (prefers-color-scheme: light) {
     * {
         --color-bg: #f5f5f5;
+        --color-border: #d0d0d0;
         --color-bg-darker: #a7a7a7;
         --color-text: #050505;
+    }
+
+    .copy-text {
+        background-color: var(--color-orange);
+        color: var(--color-text);
+    }
+
+    code {
+        background-color: var(--color-border);
+        color: var(--color-text);
+        font-family: "Hack", monospace;
+        font-size: 1rem;
+        padding: 2px 4px;
+        border-radius: 4px;
     }
 
     body {
@@ -1658,11 +1707,11 @@ textarea:disabled {
     }
 
     #encoder-panel a {
-        color: var(--color-orange);
+        color: var(--color-dark-orange);
     }
 
     a {
-        color: var(--color-orange);
+        color: var(--color-dark-orange);
     }
 
     a:visited {
@@ -1692,6 +1741,13 @@ textarea:disabled {
         background: var(--color-orange);
         color: var(--color-text);
         border-color: var(--color-orange);
+    }
+
+    #splicer-panel .splice-storage {
+        background: #f0f0f0;
+        color: #1a1a1a;
+        border-top-color: #c0c0c0;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
     }
 
     button {
