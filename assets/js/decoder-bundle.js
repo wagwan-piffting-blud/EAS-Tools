@@ -4922,6 +4922,26 @@ async function fetchAndStore() {
             }
         });
 
+        window.EASBridge.on('decoder:setAutoRecord', (params) => {
+            const autoRecordToggle = document.getElementById("decoder-auto-record");
+            if (autoRecordToggle) {
+                autoRecordToggle.checked = !!params?.enabled;
+                if (!autoRecordToggle.checked) stopAutoRecording();
+            }
+        });
+
+        window.EASBridge.on('decoder:setAlarmBeep', (params) => {
+            const alarmToggle = document.getElementById("decoder-alarm-beep");
+            if (alarmToggle) {
+                alarmToggle.checked = !!params?.enabled;
+                if (alarmToggle.checked) {
+                    preloadAlarmSounds();
+                } else {
+                    stopWeatherRadioAlarm();
+                }
+            }
+        });
+
         window.EASBridge.on('decoder:nativeStreamStart', (params) => {
             const sr = params?.sampleRate || 44100;
             nativeStreamActive = true;

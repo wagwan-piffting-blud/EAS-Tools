@@ -4810,12 +4810,18 @@ async function initCrawlEditor() {
                 setVal('crawlInset', params.inset);
                 setVal('crawlOutlineColor', params.outlineColor);
                 setVal('crawlOutlineWidth', params.outlineWidth);
+                setVal('crawlOutlineJoin', params.outlineJoin);
+                setVal('crawlKerning', params.kerning);
+                setVal('crawlTextWidth', params.textWidth);
                 setVal('crawlRestartDelay', params.restartDelay);
                 setVal('crawlBackgroundMode', params.bgMode || 'solid');
                 setChk('crawlUseVDSMode', params.vdsMode);
                 setVal('vdsFrameDelay', params.vdsFrameDelay);
                 setVal('crawlMode', 'custom');
                 setVal('crawlRepetitions', params.repetitions);
+                setVal('crawlExportGifFps', params.gifFps);
+                setVal('crawlExportVideoFps', params.videoFps);
+                setVal('crawlExportVideoFormat', params.videoFormat);
 
                 scheduleCrawlApply(0);
                 await flushCrawlApply();
@@ -4842,10 +4848,18 @@ async function initCrawlEditor() {
                 const progressLabel = document.getElementById('crawlExportProgressLabel');
                 let progressObserver = null;
                 if (progressBar) {
+                    const stageLabel = () => {
+                        const labelEl = document.querySelector('label[for="crawlExportProgress"]');
+                        if (!labelEl) return '';
+                        return labelEl.textContent
+                            .replace(/\s*\d+%\s*$/, '')
+                            .replace(/:\s*$/, '')
+                            .trim();
+                    };
                     progressObserver = new MutationObserver(() => {
                         const val = parseFloat(progressBar.value) || 0;
                         const max = parseFloat(progressBar.max) || 1;
-                        window.EASBridge.send('crawl:exportProgress', { progress: val / max });
+                        window.EASBridge.send('crawl:exportProgress', { progress: val / max, stage: stageLabel() });
                     });
                     progressObserver.observe(progressBar, { attributes: true });
                 }

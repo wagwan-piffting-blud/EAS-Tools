@@ -2961,7 +2961,12 @@ async function fetchAndStore() {
             const modeEl = document.getElementById('overallEndecMode');
             if (modeEl) {
                 for (const opt of modeEl.options) {
-                    modesArr.push({ value: opt.value, label: opt.textContent });
+                    const profile = getEndecModeProfile(opt.value);
+                    const gaps = {};
+                    for (let i = 0; i < SILENCE_GAP_KEYS.length; i++) {
+                        gaps[SILENCE_GAP_KEYS[i]] = profileSilenceMs(profile, SILENCE_GAP_KEYS[i]);
+                    }
+                    modesArr.push({ value: opt.value, label: opt.textContent, silenceGaps: gaps });
                 }
             }
             window.EASBridge.send('encoder:endecModesData', { modes: modesArr });
@@ -3057,6 +3062,7 @@ async function fetchAndStore() {
                 if (params.nativeTtsPitch != null) window._nativeTtsPitch = params.nativeTtsPitch;
                 if (params.ttsRate != null && el('ttsRate')) { el('ttsRate').value = params.ttsRate.toString(); el('ttsRate').dispatchEvent(new Event('input')); }
                 if (params.ttsPitch != null && el('ttsPitch')) { el('ttsPitch').value = params.ttsPitch.toString(); el('ttsPitch').dispatchEvent(new Event('input')); }
+                if (params.ttsVolume != null && el('ttsVolume')) { el('ttsVolume').value = params.ttsVolume.toString(); el('ttsVolume').dispatchEvent(new Event('input')); }
                 if (params.bitcrushSpeechify != null && el('shouldBitcrushSpeechify')) el('shouldBitcrushSpeechify').checked = params.bitcrushSpeechify;
                 if (params.vmifyCustom != null && el('enable-vmify-custom')) { el('enable-vmify-custom').checked = params.vmifyCustom; el('enable-vmify-custom').dispatchEvent(new Event('change')); }
                 if (params.vmifyCustomIntensity != null && el('vmify-custom-intensity')) el('vmify-custom-intensity').value = params.vmifyCustomIntensity.toString();

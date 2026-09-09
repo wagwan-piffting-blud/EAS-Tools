@@ -20,6 +20,8 @@
 
 - Update EASyPLUS pre-made background in the text crawl tool to disable the controls for sizing, which are specified by JavaScript and not are not user-customizable. This change ensures that the EASyPLUS background is displayed correctly and consistently, and locks out the controls so users do not mistakenly think they are changing something they cannot. If there is anything in the update I missed, I am sorry, but I believe this should cover the main changes and improvements made in this update. If you have any questions or feedback about these changes, please let me know so I can address them in even more future updates.
 
+- VERY MINOR extra update to prepare for mobile app version 3.5.0.
+
 ---
 
 2026-08-31:
