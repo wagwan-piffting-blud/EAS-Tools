@@ -848,6 +848,38 @@ export function parseHeader(header) {
     return serializeParsedHeader(parseHeaderCore(header));
 }
 
+// Structured counterpart to E2T() for callers that lay out their own screen instead of
+// consuming prose. The timezone correction is the same one humanizeEAS() applies, so the
+// times here always agree with the text E2T would have produced for the same header.
+export function parseHeaderDetailed(header, timezone_override=null, canadian_mode=false) {
+    const parsed = parseHeaderCore(header);
+    const startTime = reparseStartTimeInTimezone(parsed.startTime, timezone_override);
+    const endTime = new Date(startTime.getTime() + parsed.duration.hours * 3600000 + parsed.duration.minutes * 60000);
+
+    return {
+        originator: parsed.originator,
+        originatorName: lookupSame('ORGS', parsed.originator, canadian_mode) || parsed.originator,
+        eventCode: parsed.eventCode,
+        eventName: lookupSame('EVENTS', parsed.eventCode, canadian_mode) || parsed.eventCode,
+        locations: [...parsed.locations],
+        locationNames: parsed.locations.map((code) => ({
+            code,
+            subdivision: lookupResource(canadian_mode ? 'sameCA' : 'sameUS', 'SUBDIV', code.slice(0, 1)) ?? '',
+            name: lookupSame('SAME', code.slice(1, 6), canadian_mode) ?? `FIPS Code ${code}`
+        })),
+        durationHours: parsed.duration.hours,
+        durationMinutes: parsed.duration.minutes,
+        indefinite: parsed.duration.hours === 0 && parsed.duration.minutes === 0,
+        startTime,
+        endTime,
+        startTimeText: formatTime12(startTime),
+        endTimeText: formatTime12(endTime),
+        endDateText: formatMonDayYear(endTime, { shortMonth: true, upperMonth: true, includeYear: false }),
+        endsOnStartDay: isSameLocalDay(startTime, endTime),
+        senderId: parsed.senderid.trim()
+    };
+}
+
 export function parseHeaderJson(header) {
     return JSON.stringify(parseHeader(header));
 }

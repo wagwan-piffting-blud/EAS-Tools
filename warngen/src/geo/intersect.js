@@ -161,8 +161,11 @@
         var halfH = (countyMaxY - countyMinY) / 2;
         if (halfW <= 0 || halfH <= 0) return [];
 
-        var offsetX = (intersectCx - countyCx) / halfW;
-        var offsetY = (intersectCy - countyCy) / halfH;
+        return directionsFromOffset((intersectCx - countyCx) / halfW, (intersectCy - countyCy) / halfH,
+                                    quadrantThreshold, extremeThreshold);
+    }
+
+    function directionsFromOffset(offsetX, offsetY, quadrantThreshold, extremeThreshold) {
         var absX = Math.abs(offsetX);
         var absY = Math.abs(offsetY);
 
@@ -178,6 +181,35 @@
             dirs.unshift("EXTREME");
         }
         return dirs;
+    }
+
+    // Where a single point sits within an area, on the same bounding-box scale
+    // directionalSubdivision uses, so it names the part a warning there would print.
+    function pointSubdivision(point, feat, opts) {
+        opts = opts || {};
+        var quadrantThreshold = opts.quadrantThreshold || 0.33;
+        var extremeThreshold  = opts.extremeThreshold  || 0.70;
+        if (!feat.geometry) return [];
+
+        var polys = feat.geometry.type === "Polygon"
+            ? [feat.geometry.coordinates]
+            : feat.geometry.coordinates;
+
+        var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (var p = 0; p < polys.length; p++) {
+            var b = bbox(polys[p][0]);
+            if (b[2] - b[0] <= 0 || b[3] - b[1] <= 0) continue;
+            if (b[0] < minX) minX = b[0];
+            if (b[1] < minY) minY = b[1];
+            if (b[2] > maxX) maxX = b[2];
+            if (b[3] > maxY) maxY = b[3];
+        }
+        var halfW = (maxX - minX) / 2;
+        var halfH = (maxY - minY) / 2;
+        if (!(halfW > 0) || !(halfH > 0)) return [];
+
+        return directionsFromOffset((point[0] - (minX + maxX) / 2) / halfW, (point[1] - (minY + maxY) / 2) / halfH,
+                                    quadrantThreshold, extremeThreshold);
     }
 
     function findIntersectingFeatures(warningRing, geojson, minOverlap) {
@@ -237,6 +269,7 @@
         findFeatureContaining:    findFeatureContaining,
         overlapRatio:             overlapRatio,
         directionalSubdivision:   directionalSubdivision,
+        pointSubdivision:         pointSubdivision,
         ringsIntersect:           ringsIntersect,
         pointInRing:              pointInRing,
         bbox:                     bbox

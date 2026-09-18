@@ -1,0 +1,21 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+Sc4:Attack_time_(ms)="25" Knee_radius_(dB)="3" Makeup_gain_(dB)="3" Ratio_(1_n)="2.5" Release_time_(ms)="250" RMS_peak="0" Threshold_level_(dB)="-34"
+FilterCurve:f0="20" f1="30" f10="126.516" f11="144.2" f12="175.468" f13="199.994" f14="243.359" f15="277.376" f16="337.52" f17="384.698" f18="438.47" f19="533.544" f2="34.193" f20="608.122" f21="739.983" f22="843.416" f23="1026.296" f24="1169.75" f25="1333.256" f26="1622.348" f27="1849.118" f28="2250.065" f29="2564.576" f3="41.608" f30="3120.658" f31="3556.859" f32="4328.1" f33="4933.075" f34="5622.612" f35="6841.774" f36="7798.106" f37="9488.986" f38="10815.341" f39="13160.453" f4="47.423" f40="15000" f41="20000" f5="57.706" f6="65.772" f7="80.034" f8="91.221" f9="103.972" v0="-44.9864" v1="-44.9864" v10="-34.7078" v11="-35.6677" v12="-31.1754" v13="-27.8082" v14="-26.1445" v15="-23.4371" v16="-13.0422" v17="-5.6783" v18="-1.4734" v19="1.4208" v2="-43.8539" v20="2.9696" v21="5.3675" v22="6.7246" v23="9.6829" v24="11.5457" v25="12.9705" v26="12.723" v27="12.1524" v28="9.3166" v29="6.8785" v3="-42.1551" v30="2.0656" v31="-4.1435" v32="-11.2874" v33="-13.6769" v34="-13.3714" v35="-12.327" v36="-13.4595" v37="-15.1583" v38="-16.2908" v39="-26.386" v4="-41.0226" v40="-27.492" v41="-48" v5="-39.3238" v6="-38.1913" v7="-36.4925" v8="-35.36" v9="-34.2275" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline"
+High-passFilter:frequency="103" rolloff="dB12"
+Low-passFilter:frequency="5886" rolloff="dB24"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-12" type="SoftLimit"
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="1" Type="White"
+Low-passFilter:frequency="1600" rolloff="dB12"
+High-passFilter:frequency="140" rolloff="dB12"
+Amplify:Ratio="0.0216259"
+NewMonoTrack:
+Tone:Amplitude="6.229e-05" Frequency="60" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"

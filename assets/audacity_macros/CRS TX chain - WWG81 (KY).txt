@@ -1,0 +1,20 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+FilterCurve:f0="20" f1="30" f10="126.516" f11="144.2" f12="175.468" f13="199.994" f14="243.359" f15="277.376" f16="337.52" f17="384.698" f18="438.47" f19="533.544" f2="34.193" f20="608.122" f21="739.983" f22="843.416" f23="1026.296" f24="1169.75" f25="1333.256" f26="1622.348" f27="1849.118" f28="2250.065" f29="2564.576" f3="41.608" f30="3120.658" f31="3556.859" f32="4328.1" f33="4933.075" f34="5622.612" f35="6841.774" f36="7798.106" f37="9488.986" f38="10815.341" f39="13160.453" f4="47.423" f40="15000" f41="20000" f5="57.706" f6="65.772" f7="80.034" f8="91.221" f9="103.972" v0="-45.1814" v1="-45.1814" v10="-39.8519" v11="-38.1532" v12="-29.8924" v13="-28.7599" v14="-28.2326" v15="-19.3248" v16="-4.9859" v17="-1.0634" v18="-1.39" v19="-0.0495" v2="-44.0489" v20="1.116" v21="3.4788" v22="3.1635" v23="1.9054" v24="2.3434" v25="2.0869" v26="1.6637" v27="1.9141" v28="0.5801" v29="2.9469" v3="-42.3501" v30="4.9966" v31="1.2389" v32="-5.1236" v33="-9.3808" v34="-12.1301" v35="-11.5418" v36="-12.6743" v37="-14.3731" v38="-15.5056" v39="-17.2044" v4="-41.2176" v40="-18.3369" v41="-48" v5="-39.5188" v6="-38.3863" v7="-36.6875" v8="-35.555" v9="-34.4225" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline"
+High-passFilter:frequency="110" rolloff="dB12"
+Low-passFilter:frequency="7162" rolloff="dB24"
+Limiter:gain-L="0" gain-R="0" hold="3" makeup="No" thresh="-8" type="SoftLimit"
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="1" Type="White"
+Low-passFilter:frequency="4000" rolloff="dB24"
+High-passFilter:frequency="140" rolloff="dB12"
+Amplify:Ratio="0.0466398"
+NewMonoTrack:
+Tone:Amplitude="0.0001245" Frequency="60" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"

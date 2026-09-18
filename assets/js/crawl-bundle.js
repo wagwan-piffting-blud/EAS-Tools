@@ -1,5 +1,5 @@
 import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
-import { E2T, allEndecModes, resourcesReady } from '../E2T/EAS2Text-NG.js';
+import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady } from '../E2T/EAS2Text-NG.js';
 import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec } from './mediabunny/mediabunny.min.js';
 
 async function initCrawlEditor() {
@@ -113,7 +113,8 @@ async function initCrawlEditor() {
         'easyplus_gray': { topLeft: { x: 0, y: 720 } },
         'easyplus_gray_2plus': { topLeft: { x: 0, y: 820 } },
         'dasdec': { topLeft: { x: 9999, y: 9999 } },
-        'eas_1cg': { topLeft: { x: 9999, y: 9999 } }
+        'eas_1cg': { topLeft: { x: 9999, y: 9999 } },
+        'atari_800xl': { topLeft: { x: 9999, y: 9999 } }
     });
 
     const DASDEC_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
@@ -127,6 +128,28 @@ async function initCrawlEditor() {
     const EAS_1CG_ROWS = 8;
     const EAS_1CG_FONT_FAMILY = 'EAS-1CG Neue';
     const EAS_1CG_HEADER_LINE = '***EMERGENCY DETAILS Page 1***';
+
+    const ATARI_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
+    const ATARI_FONT_FAMILY = 'Atari 800XL';
+    const ATARI_HEADER_LINE = 'EMERGENCY ALERT SYSTEM';
+    const ATARI_COLUMNS = 24;
+    const ATARI_SAFE_WIDTH_RATIO = 0.85;
+    const ATARI_LINE_SPACING_RATIO = 0.0684;
+    const ATARI_EAS_LINE_Y_RATIO = 0.1175;
+    const ATARI_EVENT_CENTER_Y_RATIO = 0.3867;
+    const ATARI_LOCATION_CENTER_Y_RATIO = 0.6433;
+    const ATARI_SENDER_Y_RATIO = 0.8339;
+    const ATARI_BACKGROUND_COLOR = '#000000';
+    const ATARI_BROWN = '#A57E42';
+    const ATARI_WHITE = '#FFFFFF';
+    const ATARI_EVENT_COLORS = Object.freeze({
+        warning: '#FF2A10',
+        watch: '#FF8000',
+        advisory: '#02D306'
+    });
+    const ATARI_FLASH_INTERVAL_MS = 500;
+    const ATARI_GENERIC_AREA = 'YOUR AREA';
+    const ATARI_INDEFINITE = 'FURTHER NOTICE';
     const ALLOWED_CRAWL_BACKGROUND_MODES = new Set(['solid', 'transparent', 'image', 'premade']);
 
     function normalizeCrawlBackgroundMode(value) {
@@ -160,6 +183,7 @@ async function initCrawlEditor() {
             { family: 'EAS-1CG Neue', file: 'eas-1cg-neue.otf', description: 'font used on Gorman Redlich EAS-1CG crawls' },
             { family: 'VDSwiss V1', file: 'vdswiss-v1.otf', description: 'sans-serif font used on VDS crawls (made by Gigabyte97)' },
             { family: 'XBOB-4 8x13', file: 'BDF-8x13.ttf', description: 'bitmap font used on XBOB-4 crawls' },
+            { family: 'Atari 800XL', file: 'atari-800xl.ttf', description: 'Atari Classic font used on Atari 800XL override screens' },
             { family: 'User-Upload', file: 'user-upload.ttf', description: 'upload your own font to use!' }
         ];
         window.crawlFontsToLoad = fontsToLoad;
@@ -558,6 +582,101 @@ async function initCrawlEditor() {
         return Number.isFinite(raw) ? raw * TARGET_FRAMES_PER_SECOND : 0;
     }
 
+    function waitForBackgroundImageLoad(image) {
+        return new Promise((resolve) => {
+            if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+                resolve();
+                return;
+            }
+            image.addEventListener('load', resolve, { once: true });
+            image.addEventListener('error', resolve, { once: true });
+        });
+    }
+
+    function createPageRotationState(pages, delayMs, image) {
+        return {
+            timer: null,
+            delay: delayMs,
+            pages,
+            image,
+            index: 0,
+            paused: false,
+            destroyed: false,
+            stop() {
+                this.destroyed = true;
+                this.paused = true;
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+            },
+            pause() {
+                if (this.paused) {
+                    return;
+                }
+                this.paused = true;
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+            },
+            resume() {
+                if (this.destroyed) {
+                    return;
+                }
+                const wasPaused = this.paused;
+                this.paused = false;
+                if (wasPaused || !this.timer) {
+                    this._scheduleNext();
+                }
+            },
+            step(stepDelta) {
+                if (!Array.isArray(this.pages) || !this.pages.length) {
+                    return;
+                }
+                const len = this.pages.length;
+                if (len === 1) {
+                    this.index = 0;
+                    this.image.src = this.pages[0].src;
+                    return;
+                }
+                const delta = Number(stepDelta);
+                if (!Number.isFinite(delta)) {
+                    return;
+                }
+                const normalized = ((Math.trunc(delta) % len) + len) % len;
+                if (normalized === 0) {
+                    this._restartTimer();
+                    return;
+                }
+                this.index = (this.index + normalized) % len;
+                this.image.src = this.pages[this.index].src;
+                this._restartTimer();
+            },
+            _restartTimer() {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+                this._scheduleNext();
+            },
+            _scheduleNext() {
+                if (this.destroyed || this.paused || !Array.isArray(this.pages) || this.pages.length <= 1) {
+                    return;
+                }
+                this.timer = setTimeout(() => {
+                    if (this.destroyed || this.paused) {
+                        this.timer = null;
+                        return;
+                    }
+                    this.index = (this.index + 1) % this.pages.length;
+                    this.image.src = this.pages[this.index].src;
+                    this._scheduleNext();
+                }, this.delay);
+            }
+        };
+    }
+
     function getDasdecRotationState() {
         const state = window.__dasdecRotationState;
         return state && typeof state === 'object' ? state : null;
@@ -953,13 +1072,16 @@ async function initCrawlEditor() {
         const dasdecFramesPerPage = dasdecRotationDelay
             ? Math.max(1, Math.round(dasdecRotationDelay / frameDelayMs))
             : null;
+        const dasdecDrivesTotalFrames = Boolean(dasdecBackground && dasdecBackground.drivesTotalFrames);
         const getDasdecPageForFrame = (dasdecPages && dasdecFramesPerPage)
             ? (frameIndex) => {
-                const displayIndex = Math.min(dasdecTotalDisplays - 1, Math.floor(frameIndex / dasdecFramesPerPage));
+                const displayIndex = dasdecDrivesTotalFrames
+                    ? Math.min(dasdecTotalDisplays - 1, Math.floor(frameIndex / dasdecFramesPerPage))
+                    : Math.floor(frameIndex / dasdecFramesPerPage);
                 return dasdecPages[displayIndex % dasdecPages.length];
             }
             : null;
-        if (getDasdecPageForFrame) {
+        if (getDasdecPageForFrame && dasdecDrivesTotalFrames) {
             totalFrames = dasdecTotalDisplays * dasdecFramesPerPage;
         }
 
@@ -2086,6 +2208,14 @@ async function initCrawlEditor() {
             this._resetFrameHistory();
         }
 
+        clearTopLeftOffset() {
+            if (!this._topLeftActive) {
+                return;
+            }
+            this._topLeftActive = false;
+            this._resetFrameHistory();
+        }
+
         setRepetitions(count) {
             const parsed = Number(count);
             if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 10) {
@@ -2665,6 +2795,7 @@ async function initCrawlEditor() {
     const PREMADE_LOCKABLE_INPUT_IDS = Object.freeze([
         'crawlWidth', 'crawlHeight', 'crawlInset', 'crawlTopLeftPixelX', 'crawlTopLeftPixelY'
     ]);
+    const TOP_LEFT_INPUT_IDS = new Set(['crawlTopLeftPixelX', 'crawlTopLeftPixelY']);
     const premadeControlledInputIds = new Set();
 
     function clearPremadeInputLocks() {
@@ -2675,19 +2806,31 @@ async function initCrawlEditor() {
     function syncPremadeInputLocks() {
         const modeSelect = document.getElementById('crawlBackgroundMode');
         const premadeActive = !!modeSelect && modeSelect.value === 'premade';
+        const manualToggle = document.getElementById('crawlTopLeftManual');
+        const autoCentered = !premadeActive && !!manualToggle && !manualToggle.checked;
         let lockedAny = false;
 
         for (const id of PREMADE_LOCKABLE_INPUT_IDS) {
             const input = document.getElementById(id);
             if (!input) continue;
-            const locked = premadeActive && premadeControlledInputIds.has(id);
-            input.disabled = locked;
-            if (locked) {
+            const premadeLocked = premadeActive && premadeControlledInputIds.has(id);
+            const centeredLocked = autoCentered && TOP_LEFT_INPUT_IDS.has(id);
+            input.disabled = premadeLocked || centeredLocked;
+            if (premadeLocked) {
                 input.setAttribute('title', 'Set by the selected pre-made background.');
                 lockedAny = true;
+            } else if (centeredLocked) {
+                input.setAttribute('title', 'Tick "Position the crawl manually" to set this.');
             } else {
                 input.removeAttribute('title');
             }
+        }
+
+        if (manualToggle) {
+            manualToggle.disabled = premadeActive;
+            manualToggle.title = premadeActive
+                ? 'The selected pre-made background positions the crawl for you.'
+                : '';
         }
 
         const note = document.getElementById('crawlPremadeLockNote');
@@ -2793,6 +2936,15 @@ async function initCrawlEditor() {
             updateCrawlControlsFromAsset({
                 width: EAS_1CG_RENDER_DIMENSIONS.width,
                 height: EAS_1CG_RENDER_DIMENSIONS.height,
+                topLeft: initialTopLeft
+            }, { premade: true });
+            return;
+        }
+
+        if (descriptor.source === 'atari_800xl') {
+            updateCrawlControlsFromAsset({
+                width: ATARI_RENDER_DIMENSIONS.width,
+                height: ATARI_RENDER_DIMENSIONS.height,
                 topLeft: initialTopLeft
             }, { premade: true });
             return;
@@ -3251,6 +3403,284 @@ async function initCrawlEditor() {
         return img;
     }
 
+    function wrapMonospaceLines(text, columns) {
+        const source = String(text ?? '').replace(/\s+/g, ' ').trim();
+        if (!source) {
+            return [];
+        }
+
+        const lines = [];
+        let current = '';
+
+        source.split(' ').forEach((word) => {
+            let remaining = word;
+
+            while (remaining.length > columns) {
+                if (current) {
+                    lines.push(current);
+                    current = '';
+                }
+                lines.push(remaining.slice(0, columns));
+                remaining = remaining.slice(columns);
+            }
+
+            if (!remaining) {
+                return;
+            }
+
+            if (!current) {
+                current = remaining;
+            } else if ((current.length + remaining.length + 1) <= columns) {
+                current += ' ' + remaining;
+            } else {
+                lines.push(current);
+                current = remaining;
+            }
+        });
+
+        if (current) {
+            lines.push(current);
+        }
+
+        return lines;
+    }
+
+    function atariSeverityFor(eventName) {
+        const text = String(eventName || '');
+        if (/(Warning|Emergency|Immediate)/i.test(text) && !/Demo/i.test(text)) {
+            return 'warning';
+        }
+        if (/Watch/i.test(text)) {
+            return 'watch';
+        }
+        return 'advisory';
+    }
+
+    function atariEventText(eventName) {
+        return String(eventName || '')
+            .replace(/^(?:a|an|the)\s+/i, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toUpperCase();
+    }
+
+    const ATARI_AREA_SUFFIXES = Object.freeze({
+        county: { one: 'COUNTY', many: 'COUNTIES' },
+        parish: { one: 'PARISH', many: 'PARISHES' },
+        borough: { one: 'BOROUGH', many: 'BOROUGHS' }
+    });
+
+    function atariAreaText(locationNames) {
+        const entries = Array.isArray(locationNames) ? locationNames : [];
+        const seen = new Set();
+        const names = [];
+
+        for (const entry of entries) {
+            const code = entry && entry.code ? String(entry.code) : '';
+            if (code && seen.has(code)) {
+                continue;
+            }
+            if (code) {
+                seen.add(code);
+            }
+            const base = String((entry && entry.name) || '').replace(/,\s*[A-Za-z]{2}$/, '').trim();
+            if (!base) {
+                continue;
+            }
+            if (/^All of The United States$/i.test(base)) {
+                return ATARI_GENERIC_AREA;
+            }
+            const normalized = base.replace(/^State of\s+/i, 'All of ');
+            const subdivision = String((entry && entry.subdivision) || '').trim();
+            names.push(subdivision ? `${subdivision} ${normalized}` : normalized);
+        }
+
+        if (!names.length) {
+            return ATARI_GENERIC_AREA;
+        }
+
+        const suffixPattern = /\s(County|Parish|Borough)$/i;
+        const suffixKeys = new Set(names.map((name) => {
+            const match = name.match(suffixPattern);
+            return match ? match[1].toLowerCase() : '';
+        }));
+
+        let parts = names;
+        let suffix = '';
+        if (suffixKeys.size === 1 && !suffixKeys.has('')) {
+            const key = Array.from(suffixKeys)[0];
+            parts = names.map((name) => name.replace(suffixPattern, ''));
+            suffix = names.length > 1 ? ATARI_AREA_SUFFIXES[key].many : ATARI_AREA_SUFFIXES[key].one;
+        }
+
+        const joined = parts.length > 1
+            ? `${parts.slice(0, -1).join(', ')} AND ${parts[parts.length - 1]}`
+            : parts[0];
+
+        return (suffix ? `${joined} ${suffix}` : joined).toUpperCase();
+    }
+
+    function atariUntilText(detail) {
+        if (!detail || detail.indefinite) {
+            return ATARI_INDEFINITE;
+        }
+        const time = String(detail.endTimeText || '').replace(/^0/, '');
+        if (!time) {
+            return ATARI_INDEFINITE;
+        }
+        return detail.endsOnStartDay ? time : `${time} ${detail.endDateText}`;
+    }
+
+    async function formatAtari(rawHeader, e2tMode) {
+        const source = String(rawHeader ?? '').trim();
+
+        if (e2tMode === true) {
+            const overrideTzInput = document.getElementById('crawlUseOverrideTZ');
+            const timezoneOverride = overrideTzInput && overrideTzInput.value ? overrideTzInput.value : null;
+            try {
+                const detail = parseHeaderDetailed(source, timezoneOverride);
+                return {
+                    eventText: atariEventText(detail.eventName),
+                    severity: atariSeverityFor(detail.eventName),
+                    areaText: atariAreaText(detail.locationNames),
+                    untilText: atariUntilText(detail),
+                    senderText: String(detail.senderId || '').toUpperCase()
+                };
+            } catch (error) {
+                console.error('Failed to parse the EAS header for the Atari 800XL screen:', error);
+            }
+        }
+
+        const fallbackEvent = atariEventText(source);
+        return {
+            eventText: fallbackEvent,
+            severity: atariSeverityFor(fallbackEvent),
+            areaText: ATARI_GENERIC_AREA,
+            untilText: ATARI_INDEFINITE,
+            senderText: ''
+        };
+    }
+
+    function formatAtariScreenLines(model) {
+        const screen = model || {};
+        const lines = [ATARI_HEADER_LINE, ''];
+        wrapMonospaceLines(screen.eventText, ATARI_COLUMNS).forEach((line) => lines.push(line));
+        lines.push('');
+        wrapMonospaceLines(`FOR ${screen.areaText || ATARI_GENERIC_AREA}`, ATARI_COLUMNS).forEach((line) => lines.push(line));
+        lines.push(`UNTIL ${screen.untilText || ATARI_INDEFINITE}.`);
+        if (screen.senderText) {
+            lines.push('');
+            lines.push(screen.senderText);
+        }
+        return lines;
+    }
+
+    async function generateAtariScreenImage(model, options = {}) {
+        const screen = model || {};
+        const showEvent = options.showEvent !== false;
+        const canvas = document.createElement('canvas');
+        canvas.width = ATARI_RENDER_DIMENSIONS.width;
+        canvas.height = ATARI_RENDER_DIMENSIONS.height;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = ATARI_BACKGROUND_COLOR;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const sanitizedFontFamily = /[^a-zA-Z0-9_-]/.test(ATARI_FONT_FAMILY)
+            ? `"${ATARI_FONT_FAMILY.replace(/(["\\])/g, '\\$1')}"`
+            : ATARI_FONT_FAMILY;
+
+        await ensureFontsReady();
+
+        const safeWidth = canvas.width * ATARI_SAFE_WIDTH_RATIO;
+        const probeSize = 100;
+        const probeFont = `normal ${probeSize}px ${sanitizedFontFamily}`;
+        await document.fonts.load(probeFont);
+        ctx.font = probeFont;
+
+        const probeWidth = ctx.measureText('M'.repeat(ATARI_COLUMNS)).width;
+        const fontSize = probeWidth > 0
+            ? probeSize * (safeWidth / probeWidth)
+            : safeWidth / ATARI_COLUMNS;
+        const font = `normal ${fontSize}px ${sanitizedFontFamily}`;
+        await document.fonts.load(font);
+
+        ctx.font = font;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+
+        const centerX = canvas.width / 2;
+        const spacing = canvas.height * ATARI_LINE_SPACING_RATIO;
+
+        const drawSegments = (segments, y) => {
+            const widths = segments.map((segment) => ctx.measureText(segment.text).width);
+            const total = widths.reduce((sum, width) => sum + width, 0);
+            let x = centerX - total / 2;
+            segments.forEach((segment, index) => {
+                ctx.fillStyle = segment.color;
+                ctx.fillText(segment.text, x, y);
+                x += widths[index];
+            });
+        };
+
+        const drawBlock = (lines, centerY, color) => {
+            const top = centerY - ((lines.length - 1) * spacing) / 2;
+            lines.forEach((line, index) => {
+                drawSegments([{ text: line, color }], top + index * spacing);
+            });
+        };
+
+        drawSegments(
+            [{ text: ATARI_HEADER_LINE, color: ATARI_BROWN }],
+            canvas.height * ATARI_EAS_LINE_Y_RATIO
+        );
+
+        if (showEvent) {
+            const eventLines = wrapMonospaceLines(screen.eventText, ATARI_COLUMNS);
+            if (eventLines.length) {
+                const eventColor = ATARI_EVENT_COLORS[screen.severity] || ATARI_EVENT_COLORS.advisory;
+                drawBlock(eventLines, canvas.height * ATARI_EVENT_CENTER_Y_RATIO, eventColor);
+            }
+        }
+
+        const areaLines = wrapMonospaceLines(`FOR ${screen.areaText || ATARI_GENERIC_AREA}`, ATARI_COLUMNS);
+        const untilValue = screen.untilText || ATARI_INDEFINITE;
+        const blockLines = areaLines.length + 1;
+        const blockTop = (canvas.height * ATARI_LOCATION_CENTER_Y_RATIO) - ((blockLines - 1) * spacing) / 2;
+
+        areaLines.forEach((line, index) => {
+            drawSegments([{ text: line, color: ATARI_WHITE }], blockTop + index * spacing);
+        });
+
+        drawSegments([
+            { text: 'UNTIL ', color: ATARI_WHITE },
+            { text: `${untilValue}.`, color: ATARI_BROWN }
+        ], blockTop + areaLines.length * spacing);
+
+        if (screen.senderText) {
+            drawSegments(
+                [{ text: screen.senderText, color: ATARI_BROWN }],
+                canvas.height * ATARI_SENDER_Y_RATIO
+            );
+        }
+
+        const img = new Image();
+        img.width = canvas.width;
+        img.height = canvas.height;
+        img.src = canvas.toDataURL('image/png');
+
+        await new Promise((resolve) => {
+            if (img.complete && img.naturalWidth > 0) {
+                resolve();
+                return;
+            }
+            img.addEventListener('load', resolve, { once: true });
+            img.addEventListener('error', resolve, { once: true });
+        });
+
+        return img;
+    }
+
     async function loadCrawlBackgroundAssets(mode) {
         if (mode !== 'premade') {
             stopDasdecRotationState();
@@ -3362,108 +3792,21 @@ async function initCrawlEditor() {
                                 ? (baseMedia.naturalHeight || baseMedia.height || DASDEC_RENDER_DIMENSIONS.height)
                                 : DASDEC_RENDER_DIMENSIONS.height;
                             const rotatingImage = new Image();
-                            const waitForImageLoad = (image) => new Promise((resolve) => {
-                                if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-                                    resolve();
-                                    return;
-                                }
-                                image.addEventListener('load', resolve, { once: true });
-                                image.addEventListener('error', resolve, { once: true });
-                            });
                             rotatingImage.src = baseMedia.src;
-                            await waitForImageLoad(rotatingImage);
+                            await waitForBackgroundImageLoad(rotatingImage);
 
                             const dasdecBackgroundMeta = {
                                 pages: renderedPages,
                                 rotationDelayMs,
                                 repetitions,
                                 totalDisplays,
+                                drivesTotalFrames: true,
                                 width: baseWidth,
                                 height: baseHeight
                             };
                             window.__dasdecBackground = dasdecBackgroundMeta;
 
-                            const rotationState = {
-                                timer: null,
-                                delay: rotationDelayMs,
-                                pages: renderedPages,
-                                image: rotatingImage,
-                                index: 0,
-                                paused: false,
-                                destroyed: false,
-                                stop() {
-                                    this.destroyed = true;
-                                    this.paused = true;
-                                    if (this.timer) {
-                                        clearTimeout(this.timer);
-                                        this.timer = null;
-                                    }
-                                },
-                                pause() {
-                                    if (this.paused) {
-                                        return;
-                                    }
-                                    this.paused = true;
-                                    if (this.timer) {
-                                        clearTimeout(this.timer);
-                                        this.timer = null;
-                                    }
-                                },
-                                resume() {
-                                    if (this.destroyed) {
-                                        return;
-                                    }
-                                    const wasPaused = this.paused;
-                                    this.paused = false;
-                                    if (wasPaused || !this.timer) {
-                                        this._scheduleNext();
-                                    }
-                                },
-                                step(stepDelta) {
-                                    if (!Array.isArray(this.pages) || !this.pages.length) {
-                                        return;
-                                    }
-                                    const len = this.pages.length;
-                                    if (len === 1) {
-                                        this.index = 0;
-                                        this.image.src = this.pages[0].src;
-                                        return;
-                                    }
-                                    const delta = Number(stepDelta);
-                                    if (!Number.isFinite(delta)) {
-                                        return;
-                                    }
-                                    const normalized = ((Math.trunc(delta) % len) + len) % len;
-                                    if (normalized === 0) {
-                                        this._restartTimer();
-                                        return;
-                                    }
-                                    this.index = (this.index + normalized) % len;
-                                    this.image.src = this.pages[this.index].src;
-                                    this._restartTimer();
-                                },
-                                _restartTimer() {
-                                    if (this.timer) {
-                                        clearTimeout(this.timer);
-                                        this.timer = null;
-                                    }
-                                    this._scheduleNext();
-                                },
-                                _scheduleNext() {
-                                    if (this.destroyed || this.paused || !Array.isArray(this.pages) || this.pages.length <= 1) {
-                                        return;
-                                    }
-                                    this.timer = setTimeout(() => {
-                                        if (this.destroyed || this.paused) {
-                                            this.timer = null;
-                                            return;
-                                        }
-                                        this.index = (this.index + 1) % this.pages.length;
-                                        this.image.src = this.pages[this.index].src;
-                                        this._scheduleNext();
-                                    }, this.delay);
-                                }
-                            };
+                            const rotationState = createPageRotationState(renderedPages, rotationDelayMs, rotatingImage);
 
                             window.__dasdecRotationState = rotationState;
                             rotationState.resume();
@@ -3497,6 +3840,51 @@ async function initCrawlEditor() {
                                 source: descriptor.source
                             };
                         }
+                    }
+
+                    else if (descriptor.source === 'atari_800xl') {
+                        stopDasdecRotationState();
+                        window.__dasdecBackground = null;
+                        const crawlModeValue = document.getElementById('crawlMode').value;
+                        const rawHeader = crawlModeValue === 'header'
+                            ? document.getElementById('crawlRawHeader').value
+                            : document.getElementById('crawlText').value;
+                        const model = await formatAtari(rawHeader, crawlModeValue === 'header');
+                        const frames = (await Promise.all([
+                            generateAtariScreenImage(model, { showEvent: true }),
+                            generateAtariScreenImage(model, { showEvent: false })
+                        ])).filter(Boolean);
+
+                        if (frames.length) {
+                            const baseMedia = frames[0];
+                            const baseWidth = baseMedia.naturalWidth || baseMedia.width || ATARI_RENDER_DIMENSIONS.width;
+                            const baseHeight = baseMedia.naturalHeight || baseMedia.height || ATARI_RENDER_DIMENSIONS.height;
+                            const flashingImage = new Image();
+                            flashingImage.src = baseMedia.src;
+                            await waitForBackgroundImageLoad(flashingImage);
+
+                            window.__dasdecBackground = {
+                                pages: frames,
+                                rotationDelayMs: ATARI_FLASH_INTERVAL_MS,
+                                drivesTotalFrames: false,
+                                width: baseWidth,
+                                height: baseHeight
+                            };
+
+                            const rotationState = createPageRotationState(frames, ATARI_FLASH_INTERVAL_MS, flashingImage);
+                            window.__dasdecRotationState = rotationState;
+                            rotationState.resume();
+
+                            const topLeft = getPremadeTopLeft(descriptor.source);
+                            return {
+                                image: flashingImage,
+                                width: baseWidth,
+                                height: baseHeight,
+                                topLeft,
+                                source: descriptor.source
+                            };
+                        }
+                        window.__dasdecBackground = null;
                     }
                 }
             }
@@ -3599,6 +3987,7 @@ async function initCrawlEditor() {
             easyplusEventCode: value('easyplusEventCode'),
             crawlTopLeftOffsetX: value('crawlTopLeftPixelX'),
             crawlTopLeftOffsetY: value('crawlTopLeftPixelY'),
+            crawlTopLeftManual: checked('crawlTopLeftManual'),
             repetitions: value('crawlRepetitions'),
             crawlKerning: value('crawlKerning'),
             crawlTextWidth: value('crawlTextWidth')
@@ -3630,14 +4019,15 @@ async function initCrawlEditor() {
             ? parseBackgroundSelectionValue(controls.crawlBackgroundPremade)
             : null;
         const source = descriptor ? descriptor.source : '';
-        const usesCrawlText = source === 'dasdec' || source === 'eas_1cg';
+        const usesCrawlText = source === 'dasdec' || source === 'eas_1cg' || source === 'atari_800xl';
         return [
             controls.crawlBackgroundMode,
             controls.crawlBackgroundPremade,
             crawlFileToken('crawlBackgroundImageFile'),
             controls.easyplusOriginator,
             controls.easyplusEventCode,
-            usesCrawlText ? `${controls.crawlMode}:${controls.rawHeader}:${controls.text}` : ''
+            usesCrawlText ? `${controls.crawlMode}:${controls.rawHeader}:${controls.text}` : '',
+            usesCrawlText ? `${controls.useLocalTZ}:${controls.useOverrideTZ}` : ''
         ].join('|');
     }
 
@@ -3757,8 +4147,13 @@ async function initCrawlEditor() {
 
         if (backgroundAssets.image) {
             generator.setBgColor('rgba(0,0,0,0)');
+        }
+
+        if (controls.crawlBackgroundMode === 'premade' || controls.crawlTopLeftManual) {
             generator.setTopLeftOffsetX(controls.crawlTopLeftOffsetX);
             generator.setTopLeftOffsetY(controls.crawlTopLeftOffsetY);
+        } else {
+            generator.clearTopLeftOffset();
         }
 
         const parsedVdsDelay = Number(controls.vdsFrameDelay);
@@ -3831,7 +4226,8 @@ async function initCrawlEditor() {
         'crawlBgColor', 'crawlMode', 'crawlUseLocalTZ', 'crawlUseOverrideTZ', 'endecMode',
         'crawlUseVDSMode', 'vdsFrameDelay', 'crawlFontFamily', 'crawlCustomFontFile',
         'crawlFontStyle', 'crawlOutlineColor', 'crawlOutlineWidth', 'crawlOutlineJoin',
-        'crawlWidth', 'crawlHeight', 'crawlInset', 'crawlTopLeftPixelX', 'crawlTopLeftPixelY',
+        'crawlWidth', 'crawlHeight', 'crawlInset', 'crawlTopLeftManual',
+        'crawlTopLeftPixelX', 'crawlTopLeftPixelY',
         'crawlKerning', 'crawlTextWidth', 'crawlRestartDelay', 'crawlRepetitions',
         'crawlBackgroundMode', 'crawlBackgroundImageFile', 'crawlBackgroundPremadeSelect',
         'easyplusOriginator', 'easyplusEventCode'
@@ -4001,6 +4397,10 @@ async function initCrawlEditor() {
             && backgroundModeSelect.value === 'premade'
             && premadeSelect
             && premadeSelect.value.includes('eas_1cg');
+        const usingAtariBackground = backgroundModeSelect
+            && backgroundModeSelect.value === 'premade'
+            && premadeSelect
+            && premadeSelect.value.includes('atari_800xl');
 
         let textToCopy = window.crawlGenerator.getCrawlText() || '';
 
@@ -4047,6 +4447,26 @@ async function initCrawlEditor() {
             }
         }
 
+        else if (usingAtariBackground) {
+            const rawHeader = usingHeaderMode
+                ? document.getElementById('crawlRawHeader').value
+                : document.getElementById('crawlText').value;
+            if (usingHeaderMode && !rawHeader) {
+                alert('Please provide an EAS header before copying Atari 800XL text.');
+                return;
+            }
+            try {
+                const model = await formatAtari(rawHeader, usingHeaderMode);
+                const screenLines = formatAtariScreenLines(model);
+                if (screenLines.length) {
+                    textToCopy = screenLines.join('\n').trim();
+                }
+            } catch (error) {
+                console.error('Failed to format Atari 800XL text for copying:', error);
+                addStatus('Failed to format Atari 800XL text. Falling back to displayed crawl text.', 'WARN');
+            }
+        }
+
         try {
             await navigator.clipboard.writeText(textToCopy);
             if (usingHeaderMode && usingDasdecBackground) {
@@ -4055,6 +4475,10 @@ async function initCrawlEditor() {
 
             else if (usingHeaderMode && usingEas1cgBackground) {
                 addStatus('Formatted EAS-1CG text copied to clipboard!');
+            }
+
+            else if (usingAtariBackground) {
+                addStatus('Formatted Atari 800XL text copied to clipboard!');
             }
 
             else {
@@ -4122,6 +4546,14 @@ async function initCrawlEditor() {
                 requestPremadeBackgroundSizing();
             }
         });
+    }
+
+    const crawlTopLeftManualToggle = document.getElementById('crawlTopLeftManual');
+    if (crawlTopLeftManualToggle) {
+        crawlTopLeftManualToggle.addEventListener('change', () => {
+            syncPremadeInputLocks();
+        });
+        syncPremadeInputLocks();
     }
 
     const crawlGetAndSetButton = document.getElementById('crawlGetAndSetWH');
@@ -4310,6 +4742,17 @@ async function initCrawlEditor() {
                 normalized[domId] = normalized[legacyKey];
             }
         });
+        if (!Object.prototype.hasOwnProperty.call(normalized, 'crawlTopLeftManual')) {
+            const mode = normalizeCrawlBackgroundMode(normalized.crawlBackgroundMode);
+            const wasPositioned = (value) => {
+                const parsed = Number(value);
+                return Number.isFinite(parsed) && parsed !== 0;
+            };
+            normalized.crawlTopLeftManual = mode === 'image' || (mode !== 'premade' && (
+                wasPositioned(normalized.crawlTopLeftPixelX) ||
+                wasPositioned(normalized.crawlTopLeftPixelY)
+            ));
+        }
         return normalized;
     }
 
@@ -4851,10 +5294,10 @@ async function initCrawlEditor() {
                     const stageLabel = () => {
                         const labelEl = document.querySelector('label[for="crawlExportProgress"]');
                         if (!labelEl) return '';
-                        return labelEl.textContent
-                            .replace(/\s*\d+%\s*$/, '')
-                            .replace(/:\s*$/, '')
-                            .trim();
+                        const prefixNode = Array.from(labelEl.childNodes)
+                            .find((n) => n.nodeType === Node.TEXT_NODE);
+                        if (!prefixNode) return '';
+                        return prefixNode.textContent.replace(/:\s*$/, '').trim();
                     };
                     progressObserver = new MutationObserver(() => {
                         const val = parseFloat(progressBar.value) || 0;

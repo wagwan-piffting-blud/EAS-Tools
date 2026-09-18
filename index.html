@@ -125,8 +125,26 @@
                     <label for="decoder-auto-record">Auto-record decoded alerts?</label>
                     <input type="checkbox" id="decoder-auto-record" name="decoder-auto-record" checked>
                     <br>
-                    <label for="decoder-alarm-beep">Beep on alert received?</label>
+                    <label for="decoder-alarm-beep">Sound on alert received?</label>
                     <input type="checkbox" id="decoder-alarm-beep" name="decoder-alarm-beep">
+                    <br>
+                    <label for="decoder-alarm-beep-customization">Use custom sounds for alerts?</label>
+                    <input type="checkbox" id="decoder-alarm-beep-customization" name="decoder-alarm-beep-customization">
+                    <br>
+                </div>
+                <div id="decoder-custom-beep-files" style="display: none;">
+                    <label for="decoder-custom-beep-file1">Select custom file #1 for advisories/tests:</label>
+                    <input type="file" id="decoder-custom-beep-file1" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    <br>
+                    <label for="decoder-custom-beep-file2">Select custom file #2 for watches:</label>
+                    <input type="file" id="decoder-custom-beep-file2" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    <br>
+                    <label for="decoder-custom-beep-file3">Select custom file #3 for warnings:</label>
+                    <input type="file" id="decoder-custom-beep-file3" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    <br>
+                    <button type="button" id="decoder-custom-beep-clear">Clear Custom Files</button>
+                    <button type="button" id="decoder-custom-beep-save">Save Custom Files</button>
+                    <div id="decoder-custom-beep-status" role="status" aria-live="polite" aria-atomic="true"></div>
                 </div>
                 <br>
                 <hr>
@@ -257,6 +275,8 @@
                 <select id="att">
                     <option value="0" selected>EBS/Dual Frequency Attention Tone</option>
                     <option value="1">NWR Attention Tone (1050hz)</option>
+                    <option value="5">NWR Attention Tone (1050hz), followed by EBS/Dual Frequency Attention Tone</option>
+                    <option value="6">EBS/Dual Frequency Attention Tone, followed by NWR Attention Tone (1050hz)</option>
                     <option value="2">Pelmorex (Alert Ready - Canada) Attention Tone (NOTE: WILL NOT INCLUDE SAME HEADERS!)</option>
                     <option value="3">Buzzer (corrupted SAGE 1822 attention tone - LOUD!)</option>
                     <option value="4">No Attention Tone</option>
@@ -516,6 +536,9 @@
                     <label for="crawlInset">Crawl Inset (pixels, 0-500):</label>
                     <input type="number" id="crawlInset" min="0" max="500" value="0">
                     <br>
+                    <label for="crawlTopLeftManual">Position the crawl manually (otherwise it stays centered):</label>
+                    <input type="checkbox" id="crawlTopLeftManual">
+                    <br>
                     <span id="crawlTopLeftPixelLabel">Crawl Top-Left Location (X [left/right], Y [up/down]):</span>
                     <input type="number" id="crawlTopLeftPixelX" min="0" max="3840" value="0" aria-label="Crawl top-left X coordinate (pixels from left)">
                     <input type="number" id="crawlTopLeftPixelY" min="0" max="2160" value="0" aria-label="Crawl top-left Y coordinate (pixels from top)">
@@ -559,6 +582,7 @@
                             <option value="easyplus:easyplus_gray">EASyPLUS Gray</option>
                             <option value="dasdec:dasdec">DASDEC</option>
                             <option value="gorman:eas_1cg">Gorman Redlich EAS-1CG</option>
+                            <option value="atari:atari_800xl">Atari 800XL Override Screen</option>
                         </select>
                         <div id="easyplusSettings" style="display: none;">
                             <br>

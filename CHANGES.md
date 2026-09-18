@@ -1,5 +1,30 @@
 # EAS Tools Changelog
 
+2026-09-18:
+
+- Add the ability to use custom sounds for the "beep/sound on alert received" feature in the decoder tool. This allows users to select their own audio files to play when an alert is received, providing a more personalized experience. Most audio file types are supported. Files are saved on-device so they will persist across sessions, and the decoder will use the last selected file as the default for future alerts.
+
+- WarnGen is now accessible to visually impaired users who use screen readers. The WarnGen tool has been updated to include full keyboard controls and screen reader support, allowing users to navigate and interact with the tool using only their keyboard and screen reader software. This change improves accessibility for users with visual impairments, ensuring that they can use the WarnGen tool effectively and independently. The documentation has been updated to reflect this, as well as the keyboard controls for the tool. If you have any feedback or suggestions for improving the accessibility of the WarnGen tool, please let me know so I can consider them for future updates. Future updates are already planned in addition to the changes being pushed today. Thanks to [Max Baykowski](https://www.youtube.com/@maxbaykowski) for suggesting this change and providing direct, pre-release/beta feedback on the accessibility improvements.
+
+- Overhaul the decoder logic from the ground up. The decoder's core has been completely rewritten to improve performance, reliability, and accuracy when decoding alerts, using a copy of the decoding logic used by [SeaTTY](https://www.dxsoft.com/en/products/seatty/). This now means that alerts decode more frequently and correctly than ever before, and the logic used is much more sensitive to the AFSK data used in the SAME protocol. If you wish to see how the logic was implemented, you can view the source code for the WebAssembly module used in the decoder tool [here](https://github.com/wagwan-piffting-blud/seatty-same-wasm). Please let me know if you notice any issues with the new decoder logic, as I am always looking to improve it even further.
+
+- Add Atari 800XL screen to the Text Crawl Generator. This screen is now available as an option in the "Premade Backgrounds" dropdown menu, allowing users to select it for their text crawl projects. The Atari 800XL screen is a classic design that was used in many (mock) EAS alertsk and while never used (to my knowledge) in real EAS broadcasts, it is a fun and nostalgic option for users who want to create text crawls that resemble those seen on more retro YouTube channels like [The EAS Experience](https://www.youtube.com/@theEASexperience). Thanks to @jakescooty who suggested this new screen.
+
+- Add some new macros that Claude came up with at my request, on a whim. These macros are based on what it thinks the broadcast chain for the following stations sounds like:
+
+  - KGG68 (Texas)
+  - KHB33 (Texas)
+  - KJY96 (Oklahoma)
+  - KWO39 (Illinois)
+  - KXI76 (Georgia)
+  - WWG81 (Kentucky)
+  - WXJ45 (Colorado)
+  - WXL37 (New York)
+
+Let me know if these macros are any good, as I have not tested them personally. They may be good sounding macros, they may not be.
+
+---
+
 2026-09-08:
 
 - This is another VERY big update to EAS Tools, mainly because I combined a lot of smaller updates into one large update so it's easier for me to manage and track. The main focus of this update is on the Text Crawl Generator tool, which has been rebuilt from the ground up. The primary change is that the video/GIF result no longer depends on how fast your computer or phone happens to be. Exports used to be recorded, in real time, off the live preview, which meant the frame rate was whatever your display and machine averaged at the moment, and any hiccup while recording became a dropped or duplicated frame in the file. Both exports are now rendered frame by frame at a fixed frame rate you pick, and every frame is handed to the encoder with an exact timestamp, so a phone produces the same file as a desktop; it just takes longer to get there. The progress bar now also shows an estimated time remaining on web. As well, the crawl preview updates are now **live**, meaning changing a setting takes effect immediately. The "Start Crawl", "Destroy Crawl Instance" buttons have been removed as a direct result of this. The preview WINDOW remains for ease of use. **IMPORTANT NOTE FOR MOBILE APP USERS**: The mobile apps will receive the update automatically and _should_ work just fine, but note they will NOT have certain features still, like live preview updates and the time remaining on exports. These will be added, but need a full store update and approval to get them out, so for now, the mobile apps will just have the new frame-by-frame rendering and the other backend improvements.

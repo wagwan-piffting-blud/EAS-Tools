@@ -10,6 +10,10 @@ import {
 } from './common-functions.js';
 
 import { E2T } from '../E2T/EAS2Text-NG.js';
+import { loadSeattyWasm, createSeattySameDemod } from './seatty-same-wasm.js';
+import { SEATTY_EVENT_TONE, decodeBatches, readWavLayout, wavChannelChunks } from './seatty-worker.js';
+
+loadSeattyWasm();
 
 async function fetchAndStore() {
     function processSameCodes(usCodes, caCodes) {
@@ -219,10 +223,14 @@ async function fetchAndStore() {
         }
     });
 
-    const filter = decodeContext.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.value = 1822.9;
-    filter.Q.value = 3;
+    // The 1822.9 Hz bandpass no longer sits in the Web Audio graph. SeattySameDemod applies the
+    // same filter (its sameBandpass option) to the SAME path only, so the 1050 Hz detector gets
+    // unfiltered audio; this biquad cut 1050 Hz by about 11 dB.
+    // const filter = decodeContext.createBiquadFilter();
+    // filter.type = "bandpass";
+    // filter.frequency.value = 1822.9;
+    // filter.Q.value = 3;
+    const decodeInput = decodeContext.createGain();
 
     let micSource = null;
     let streamElement = null;
@@ -337,6 +345,8 @@ async function fetchAndStore() {
         }
     }
 
+    // Retired: the SAME path is bandpassed at the input rate inside SeattySameDemod (sameBandpass option).
+    /*
     class SoftwareBandpass {
         constructor(sr, freq, Q) {
             const w0 = 2 * Math.PI * freq / sr;
@@ -362,10 +372,11 @@ async function fetchAndStore() {
         }
         reset() { this.x1 = 0; this.x2 = 0; this.y1 = 0; this.y2 = 0; }
     }
+    */
 
     let iosFFmpeg = null;
     let iosStreamAbort = null;
-    let iosBandpass = null;
+    // let iosBandpass = null; (retired with the pre-decoder bandpass, see updateSampleRate)
     let nativeStreamActive = false;
     let iosLoopbackCtx = null;
     let iosLoopbackNode = null;
@@ -458,12 +469,13 @@ async function fetchAndStore() {
             || msg.includes("_ffmpeg");
     }
 
-    function ensureIOSBandpass() {
-        if (!iosBandpass) {
-            iosBandpass = new SoftwareBandpass(IOS_STREAM_DECODE_SR, 1822.9, 3);
-        }
-        return iosBandpass;
-    }
+    // Retired: the SAME path is bandpassed inside SeattySameDemod for every input path.
+    // function ensureIOSBandpass() {
+    //     if (!iosBandpass) {
+    //         iosBandpass = new SoftwareBandpass(IOS_STREAM_DECODE_SR, 1822.9, 3);
+    //     }
+    //     return iosBandpass;
+    // }
 
     async function ffmpegDecodeChunk(ff, rawBytes) {
         const inFile = "ios_in.dat";
@@ -511,8 +523,8 @@ async function fetchAndStore() {
         return new Float32Array(aligned.buffer);
     }
 
-    function feedDecoderFrames(filtered) {
-        const combined = concatFloat32(iosDecoderFrameRemainder, filtered);
+    function feedDecoderFrames(pcm) {
+        const combined = concatFloat32(iosDecoderFrameRemainder, pcm);
         let i = 0;
         for (; i + IOS_STREAM_FRAME_SIZE <= combined.length; i += IOS_STREAM_FRAME_SIZE) {
             runDecoder(combined.subarray(i, i + IOS_STREAM_FRAME_SIZE));
@@ -691,8 +703,8 @@ async function fetchAndStore() {
             return null;
         }
 
-        const bandpass = ensureIOSBandpass();
-        bandpass.reset();
+        // const bandpass = ensureIOSBandpass();
+        // bandpass.reset();
         updateSampleRate(IOS_STREAM_DECODE_SR);
 
         const controller = new AbortController();
@@ -727,7 +739,8 @@ async function fetchAndStore() {
         const processPCM = (pcm) => {
             if (!pcm || pcm.length === 0) return;
             if (isLoopbackEnabled()) queueIOSLoopbackPCM(pcm);
-            feedDecoderFrames(bandpass.process(pcm));
+            // feedDecoderFrames(bandpass.process(pcm));
+            feedDecoderFrames(pcm);
         };
 
         (async () => {
@@ -1077,7 +1090,8 @@ async function fetchAndStore() {
                     runDecoder(chunk.subarray(offset, offset + frame));
                 }
             };
-            filter.connect(decodeNode);
+            // filter.connect(decodeNode);
+            decodeInput.connect(decodeNode);
             return true;
         });
         workletModulePromise.catch((error) => {
@@ -1145,7 +1159,8 @@ async function fetchAndStore() {
             return;
         }
         inputTapSource = sourceNode;
-        tapNode.connect(filter);
+        // tapNode.connect(filter);
+        tapNode.connect(decodeInput);
         if (levelAnalyser) {
             tapNode.connect(levelAnalyser);
             meterInputSource = tapNode;
@@ -1739,7 +1754,7 @@ async function fetchAndStore() {
     }
 
     function startAutoRecording() {
-        if (autoRecordingEngaged || window.isRecording || (!inputTapNode && !nativeStreamActive)) {
+        if (autoRecordingEngaged || fileDecodeActive || window.isRecording || (!inputTapNode && !nativeStreamActive)) {
             return;
         }
         autoRecordingEngaged = true;
@@ -1944,11 +1959,11 @@ async function fetchAndStore() {
         refreshLoopback();
     }
 
-    async function stopDecode(resetEndec = true) {
+    async function stopDecode(resetEndec = true, flushDemod = true) {
         _bridgeLevelPeak = 0;
         stopWeatherRadioAlarm();
         if (window.EASBridge) window.EASBridge.send('decoder:level', { db: METER_DB_MIN });
-        flushPendingDecodeTail();
+        flushPendingDecodeTail(flushDemod);
         finalizeActiveSameProduct();
         resetDecoderState(resetEndec);
         if (window.isRecording) {
@@ -1987,7 +2002,7 @@ async function fetchAndStore() {
     populateMicrophones();
 
     const DECODER_SETTINGS_KEY = "eas-tools-decoder-settings";
-    const DECODER_TOGGLE_IDS = ["decoder-loopback", "decoder-auto-record", "decoder-alarm-beep"];
+    const DECODER_TOGGLE_IDS = ["decoder-loopback", "decoder-auto-record", "decoder-alarm-beep", "decoder-alarm-beep-customization"];
 
     function readDecoderSettings() {
         try {
@@ -2072,11 +2087,188 @@ async function fetchAndStore() {
 
     const ALARM_FADE_SECONDS = 0.06;
     const ALARM_GAIN = 1.8;
+    const CUSTOM_ALARM_GAIN = 1;
     const alarmSoundCache = new Map();
     let alarmSourceNode = null;
     let alarmGainNode = null;
     let alarmPlaybackToken = 0;
     let alarmActive = false;
+
+    const CUSTOM_ALARM_DB_NAME = "eas-tools-decoder-alarms";
+    const CUSTOM_ALARM_STORE = "sounds";
+    const CUSTOM_ALARM_DB_VERSION = 1;
+    const CUSTOM_ALARM_MAX_BYTES = 24 * 1024 * 1024;
+
+    const CUSTOM_ALARM_SLOTS = [
+        { key: "advisory", inputId: "decoder-custom-beep-file1", label: "advisories/tests" },
+        { key: "watch", inputId: "decoder-custom-beep-file2", label: "watches" },
+        { key: "warning", inputId: "decoder-custom-beep-file3", label: "warnings" }
+    ];
+
+    const SEVERITY_TO_CUSTOM_SLOT = {
+        Warning: "warning",
+        Watch: "watch",
+        Advisory: "advisory",
+        Statement: "advisory",
+        Information: "advisory"
+    };
+
+    const customAlarmBuffers = new Map();
+    const customAlarmNames = new Map();
+    let customAlarmDbPromise = null;
+
+    function openCustomAlarmDb() {
+        if (customAlarmDbPromise) { return customAlarmDbPromise; }
+        customAlarmDbPromise = new Promise((resolve, reject) => {
+            if (!window.indexedDB) {
+                reject(new Error("IndexedDB unavailable"));
+                return;
+            }
+            const request = window.indexedDB.open(CUSTOM_ALARM_DB_NAME, CUSTOM_ALARM_DB_VERSION);
+            request.onupgradeneeded = () => {
+                if (!request.result.objectStoreNames.contains(CUSTOM_ALARM_STORE)) {
+                    request.result.createObjectStore(CUSTOM_ALARM_STORE);
+                }
+            };
+            request.onsuccess = () => { resolve(request.result); };
+            request.onerror = () => { reject(request.error); };
+        }).catch((error) => {
+            customAlarmDbPromise = null;
+            throw error;
+        });
+        return customAlarmDbPromise;
+    }
+
+    function customAlarmDbGet(key) {
+        return openCustomAlarmDb().then((db) => new Promise((resolve, reject) => {
+            const tx = db.transaction(CUSTOM_ALARM_STORE, "readonly");
+            const request = tx.objectStore(CUSTOM_ALARM_STORE).get(key);
+            request.onsuccess = () => { resolve(request.result || null); };
+            request.onerror = () => { reject(request.error); };
+        }));
+    }
+
+    function customAlarmDbPut(key, record) {
+        return openCustomAlarmDb().then((db) => new Promise((resolve, reject) => {
+            const tx = db.transaction(CUSTOM_ALARM_STORE, "readwrite");
+            tx.objectStore(CUSTOM_ALARM_STORE).put(record, key);
+            tx.oncomplete = () => { resolve(); };
+            tx.onerror = () => { reject(tx.error); };
+            tx.onabort = () => { reject(tx.error); };
+        }));
+    }
+
+    function customAlarmDbDelete(key) {
+        return openCustomAlarmDb().then((db) => new Promise((resolve, reject) => {
+            const tx = db.transaction(CUSTOM_ALARM_STORE, "readwrite");
+            tx.objectStore(CUSTOM_ALARM_STORE).delete(key);
+            tx.oncomplete = () => { resolve(); };
+            tx.onerror = () => { reject(tx.error); };
+            tx.onabort = () => { reject(tx.error); };
+        }));
+    }
+
+    function areCustomAlarmsEnabled() {
+        const toggle = document.getElementById("decoder-alarm-beep-customization");
+        return !!(toggle && toggle.checked);
+    }
+
+    function decodeCustomAlarmBytes(bytes) {
+        if (!bytes || !bytes.byteLength) { return Promise.resolve(null); }
+        return decodeContext.decodeAudioData(bytes.slice(0)).catch((error) => {
+            console.warn("Unable to decode a custom decoder alarm:", error);
+            return null;
+        });
+    }
+
+    function setCustomAlarmStatus(message) {
+        const statusElement = document.getElementById("decoder-custom-beep-status");
+        if (statusElement) { statusElement.textContent = message; }
+    }
+
+    function renderCustomAlarmStatus(prefix) {
+        const lead = prefix ? prefix + " " : "";
+        if (!customAlarmNames.size) {
+            setCustomAlarmStatus(lead + "No custom sounds saved; the built-in weather radio alarms will play.");
+            return;
+        }
+        const parts = CUSTOM_ALARM_SLOTS.map((slot) => {
+            const name = customAlarmNames.get(slot.key);
+            return slot.label + ": " + (name || "built-in");
+        });
+        setCustomAlarmStatus(lead + "In use - " + parts.join(" | "));
+    }
+
+    function loadStoredCustomAlarms() {
+        return Promise.all(CUSTOM_ALARM_SLOTS.map((slot) => customAlarmDbGet(slot.key)
+            .then((record) => {
+                if (!record || !record.bytes) { return; }
+                return decodeCustomAlarmBytes(record.bytes).then((buffer) => {
+                    if (!buffer) { return; }
+                    customAlarmBuffers.set(slot.key, buffer);
+                    customAlarmNames.set(slot.key, record.name || "custom sound");
+                });
+            })
+            .catch((error) => {
+                console.warn("Unable to restore the custom decoder alarm for " + slot.label + ":", error);
+            })
+        )).then(() => { renderCustomAlarmStatus(""); });
+    }
+
+    function saveCustomAlarms() {
+        const pending = CUSTOM_ALARM_SLOTS
+            .map((slot) => ({ slot, file: document.getElementById(slot.inputId)?.files?.[0] || null }))
+            .filter((entry) => entry.file);
+
+        if (!pending.length) {
+            renderCustomAlarmStatus("Nothing new to save.");
+            return Promise.resolve();
+        }
+
+        setCustomAlarmStatus("Saving custom sounds...");
+
+        return Promise.all(pending.map(({ slot, file }) => {
+            if (file.size > CUSTOM_ALARM_MAX_BYTES) {
+                return { slot, error: "is larger than " + Math.round(CUSTOM_ALARM_MAX_BYTES / (1024 * 1024)) + " MB" };
+            }
+            return file.arrayBuffer()
+                .then((bytes) => decodeCustomAlarmBytes(bytes).then((buffer) => {
+                    if (!buffer) { return { slot, error: "could not be decoded as audio" }; }
+                    return customAlarmDbPut(slot.key, { name: file.name, type: file.type || "", bytes, savedAt: Date.now() })
+                        .then(() => {
+                            customAlarmBuffers.set(slot.key, buffer);
+                            customAlarmNames.set(slot.key, file.name);
+                            return { slot };
+                        });
+                }))
+                .catch((error) => {
+                    console.warn("Unable to save the custom decoder alarm for " + slot.label + ":", error);
+                    return { slot, error: error && error.message ? error.message : "could not be saved" };
+                });
+        })).then((results) => {
+            const failures = results.filter((result) => result.error);
+            if (failures.length) {
+                const detail = failures.map((result) => result.slot.label + " (" + result.error + ")").join(", ");
+                renderCustomAlarmStatus("Saved, but skipped " + detail + ".");
+            } else {
+                renderCustomAlarmStatus("Saved.");
+            }
+        });
+    }
+
+    function clearCustomAlarms() {
+        return Promise.all(CUSTOM_ALARM_SLOTS.map((slot) => customAlarmDbDelete(slot.key).catch((error) => {
+            console.warn("Unable to clear the custom decoder alarm for " + slot.label + ":", error);
+        }))).then(() => {
+            customAlarmBuffers.clear();
+            customAlarmNames.clear();
+            CUSTOM_ALARM_SLOTS.forEach((slot) => {
+                const input = document.getElementById(slot.inputId);
+                if (input) { input.value = ""; }
+            });
+            renderCustomAlarmStatus("Cleared.");
+        });
+    }
 
     function alertTextForSeverity(parsedHeader) {
         if (!parsedHeader || !parsedHeader.rawHeader) {
@@ -2127,16 +2319,27 @@ async function fetchAndStore() {
         seen.forEach((url) => { loadAlarmSound(url); });
     }
 
+    function resolveAlarmSound(severity) {
+        if (areCustomAlarmsEnabled()) {
+            const slotKey = SEVERITY_TO_CUSTOM_SLOT[severity] || SEVERITY_TO_CUSTOM_SLOT.Information;
+            const custom = customAlarmBuffers.get(slotKey);
+            if (custom) {
+                return Promise.resolve({ buffer: custom, peakGain: CUSTOM_ALARM_GAIN });
+            }
+        }
+        const url = ALARM_SOUND_FILES[severity] || ALARM_SOUND_FILES.Information;
+        return loadAlarmSound(url).then((buffer) => ({ buffer, peakGain: ALARM_GAIN }));
+    }
+
     function startWeatherRadioAlarm(severity) {
-        if (alarmActive || !isAlarmBeepEnabled()) {
+        if (alarmActive || fileDecodeActive || !isAlarmBeepEnabled()) {
             return;
         }
         alarmActive = true;
         const token = ++alarmPlaybackToken;
-        const url = ALARM_SOUND_FILES[severity] || ALARM_SOUND_FILES.Information;
         try { decodeContext.resume(); } catch (error) { }
 
-        loadAlarmSound(url).then((buffer) => {
+        resolveAlarmSound(severity).then(({ buffer, peakGain }) => {
             if (token !== alarmPlaybackToken) {
                 return;
             }
@@ -2147,9 +2350,9 @@ async function fetchAndStore() {
             const start = decodeContext.currentTime;
             const seconds = buffer.duration;
             const gain = decodeContext.createGain();
-            gain.gain.setValueAtTime(ALARM_GAIN, start);
+            gain.gain.setValueAtTime(peakGain, start);
             if (seconds < buffer.duration) {
-                gain.gain.setValueAtTime(ALARM_GAIN, start + seconds - ALARM_FADE_SECONDS);
+                gain.gain.setValueAtTime(peakGain, start + seconds - ALARM_FADE_SECONDS);
                 gain.gain.linearRampToValueAtTime(0, start + seconds);
             }
             const source = decodeContext.createBufferSource();
@@ -2168,6 +2371,11 @@ async function fetchAndStore() {
             alarmGainNode = gain;
             source.start(start);
             source.stop(start + seconds);
+        }).catch((error) => {
+            console.warn("Unable to play the decoder alarm:", error);
+            if (token === alarmPlaybackToken) {
+                alarmActive = false;
+            }
         });
     }
 
@@ -3162,7 +3370,7 @@ async function fetchAndStore() {
     let _lastBridgeLevelSent = 0;
     let _bridgeLevelPeak = 0;
     function runDecoder(buf) {
-        if (!buf || !buf.length) {
+        if (!buf || !buf.length || fileDecodeActive) {
             return;
         }
         _runDecoderCallCount++;
@@ -3190,13 +3398,34 @@ async function fetchAndStore() {
         if (_runDecoderCallCount <= 5 || _runDecoderCallCount % 500 === 0) {
         }
 
-        afskdemod(buf);
+        // afskdemod(buf);
+        seattyDemod.process(buf);
 
         if (headerTimes !== _lastHeaderTimesLog) {
             _lastHeaderTimesLog = headerTimes;
         }
     }
 
+    /*
+     * RETIRED DEMODULATOR: kept for reference, not executed.
+     *
+     * afskdemod's sliding-window correlator, discriminator's fixed threshold and clockdemod's
+     * transition-reset bit clock were replaced by the SeaTTY SAME demodulator port
+     * (seatty-same.js) over accuracy concerns; SeaTTY has the much better algorithm:
+     *   - |mark|^2 - |space|^2 was compared against thres = 15, an absolute level, so decoding
+     *     depended on input gain. The live path decoded nothing below about -19 dBFS peak, and
+     *     quiet files only decoded because they are normalized first. SeaTTY decides bits by
+     *     sign alone and decodes clean signals down to -60 dBFS.
+     *   - The bit clock restarted on every discriminator transition, so one noise-induced flip
+     *     moved the sampling point, and bitPeriod was rounded to whole samples. SeaTTY tracks
+     *     timing from the eye opening over the last 10 bits at a fractional 7 samples per bit.
+     *   - Noise tolerance trailed SeaTTY by 3-4 dB. SeaTTY's quadrature correlators behind a
+     *     ~1-bit integrate-and-dump filter run within about 1 dB of an ideal non-coherent FSK
+     *     receiver.
+     * tools/same-ab.mjs reproduces the comparison. Byte assembly, preamble detection and ENDEC
+     * fingerprinting continue in handleDemodBit, which adds SeaTTY's rules for ending a burst.
+     */
+    /*
     let dcWindow = [];
 
     let fMark = 0;
@@ -3287,9 +3516,261 @@ async function fetchAndStore() {
     }
 
     updateSampleRate(sampleRate);
+    */
 
-    let bitclock = 0;
-    let prevbit = 0;
+    let seattyDemod = null;
+
+    const SEATTY_DECODER_OPTIONS = {
+        saturateInt16: true,
+        detect1050: true,
+        tonePeakTruncate: false,
+        sameBandpass: { hz: 1822.9, q: 3 }
+    };
+
+    function updateSampleRate(sr) {
+        sampleRate = sr;
+        if (seattyDemod && typeof seattyDemod.free === 'function') {
+            seattyDemod.free();
+        }
+        seattyDemod = createSeattySameDemod({
+            ...SEATTY_DECODER_OPTIONS,
+            sampleRate: sr,
+            onBit: (bit, soft, sampleIndex) => handleDemodBit(bit, sampleIndex),
+            onTone: handleNwrTone
+        });
+    }
+
+    function dispatchSeattyEvents(kinds, index) {
+        for (let i = 0; i < kinds.length; i++) {
+            if (kinds[i] & SEATTY_EVENT_TONE) {
+                handleNwrTone(index[i]);
+            } else {
+                handleDemodBit(kinds[i] & 1, index[i]);
+            }
+        }
+    }
+
+    function yieldToMain() {
+        if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
+            return globalThis.scheduler.yield();
+        }
+        return new Promise((resolve) => {
+            const channel = new MessageChannel();
+            channel.port1.onmessage = () => {
+                channel.port1.close();
+                resolve();
+            };
+            channel.port2.postMessage(null);
+        });
+    }
+
+    let seattyWorkerPromise = null;
+    let seattyJobId = 0;
+
+    function getSeattyWorker() {
+        if (!seattyWorkerPromise) {
+            seattyWorkerPromise = new Promise((resolve) => {
+                let worker;
+                try {
+                    worker = new Worker(new URL('./seatty-worker.js', import.meta.url), { type: 'module' });
+                } catch (err) {
+                    console.warn("SeaTTY worker unavailable, decoding files on the main thread:", err);
+                    resolve(null);
+                    return;
+                }
+                worker.onerror = (event) => {
+                    console.warn("SeaTTY worker failed to start, decoding files on the main thread:", event.message || event);
+                    worker.terminate();
+                    resolve(null);
+                };
+                worker.onmessage = (event) => {
+                    if (event.data && event.data.type === 'ready') {
+                        worker.onerror = null;
+                        worker.onmessage = null;
+                        resolve(worker);
+                    }
+                };
+            });
+        }
+        return seattyWorkerPromise;
+    }
+
+    function beginFileDecode(rate) {
+        resetDecoderState();
+        updateSampleRate(rate);
+    }
+
+    function runSeattyWorkerJob(worker, message, transfer = []) {
+        return new Promise((resolve, reject) => {
+            const id = ++seattyJobId;
+            const finish = (err, handled) => {
+                worker.onmessage = null;
+                worker.onerror = null;
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(handled);
+                }
+            };
+            worker.onmessage = (event) => {
+                const msg = event.data || {};
+                if (msg.id !== id) {
+                    return;
+                }
+                try {
+                    if (msg.type === 'unsupported') {
+                        finish(null, false);
+                    } else if (msg.type === 'error') {
+                        finish(new Error(msg.message));
+                    } else if (msg.type === 'format') {
+                        beginFileDecode(msg.sampleRate);
+                    } else if (msg.type === 'batch') {
+                        dispatchSeattyEvents(msg.kinds, msg.index);
+                        if (msg.done) {
+                            finish(null, true);
+                        }
+                    }
+                } catch (err) {
+                    finish(err);
+                }
+            };
+            worker.onerror = (event) => {
+                seattyWorkerPromise = null;
+                worker.terminate();
+                finish(new Error(event.message || "SeaTTY worker failed"));
+            };
+            try {
+                worker.postMessage({ ...message, id }, transfer);
+            } catch (err) {
+                if (!message.buffer) {
+                    finish(err);
+                    return;
+                }
+                const copy = new Float32Array(message.buffer, message.byteOffset, message.length).slice();
+                worker.postMessage({ ...message, id, buffer: copy.buffer, byteOffset: 0 }, [copy.buffer]);
+            }
+        });
+    }
+
+    async function dispatchBatchesOnMainThread(batches) {
+        for await (const batch of batches) {
+            dispatchSeattyEvents(batch.kinds, batch.index);
+            if (!batch.done) {
+                await yieldToMain();
+            }
+        }
+    }
+
+    async function readBlobBytes(blob) {
+        if (typeof blob.stream !== 'function') {
+            return blob.arrayBuffer();
+        }
+        const bytes = new Uint8Array(blob.size);
+        const reader = blob.stream().getReader();
+        let offset = 0;
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) {
+                break;
+            }
+            bytes.set(value, offset);
+            offset += value.length;
+        }
+        return bytes.buffer;
+    }
+
+    async function decodeWavSource(worker, blob) {
+        if (worker) {
+            return runSeattyWorkerJob(worker, { type: 'decodeWav', file: blob, options: SEATTY_DECODER_OPTIONS });
+        }
+        const layout = await readWavLayout(blob);
+        if (!layout) {
+            return false;
+        }
+        beginFileDecode(layout.sampleRate);
+        const chunks = wavChannelChunks(blob, layout);
+        await dispatchBatchesOnMainThread(decodeBatches(chunks, layout.sampleRate, SEATTY_DECODER_OPTIONS, layout.sampleRate * 4));
+        return true;
+    }
+
+    async function decodeBufferedSource(worker, blob) {
+        const audioBuffer = await decodeContext.decodeAudioData(await readBlobBytes(blob));
+        const rate = audioBuffer.sampleRate;
+        beginFileDecode(rate);
+        const samples = audioBuffer.getChannelData(0);
+        if (worker) {
+            await runSeattyWorkerJob(worker, {
+                type: 'decode',
+                sampleRate: rate,
+                options: SEATTY_DECODER_OPTIONS,
+                buffer: samples.buffer,
+                byteOffset: samples.byteOffset,
+                length: samples.length,
+                batchSamples: rate * 10
+            }, [samples.buffer]);
+            return;
+        }
+        await dispatchBatchesOnMainThread(decodeBatches([samples], rate, SEATTY_DECODER_OPTIONS, rate * 4));
+    }
+
+    let fileDecodeActive = false;
+    let fileDecodeChain = Promise.resolve();
+
+    async function runSourceDecode(blob) {
+        fileDecodeActive = true;
+        _offlineDecode = true;
+        try {
+            const worker = await getSeattyWorker();
+            if (!await decodeWavSource(worker, blob)) {
+                await decodeBufferedSource(worker, blob);
+            }
+        } finally {
+            fileDecodeActive = false;
+            _offlineDecode = false;
+        }
+        await stopDecode(false, false);
+    }
+
+    function decodeAudioSource(blob) {
+        const run = fileDecodeChain.then(() => runSourceDecode(blob));
+        fileDecodeChain = run.catch(() => {});
+        return run;
+    }
+
+    const SAME_TONE_SUPPRESSION_SECONDS = 300;
+    let sameActiveUntilSample = -1;
+
+    // SAME always carries the 1050 Hz tone, but NWR also tones out messages with no SAME at all, so
+    // the tone is only an alert of its own while no SAME message is active: from a header until its
+    // EOM, or SAME_TONE_SUPPRESSION_SECONDS if the EOM is missed. Timed in audio samples so file
+    // decodes, which run faster than real time, behave the same.
+    function noteSameActivity(active) {
+        sameActiveUntilSample = active ? demodSampleCounter + SAME_TONE_SUPPRESSION_SECONDS * sampleRate : -1;
+    }
+
+    function handleNwrTone(sampleIndex) {
+        if (sampleIndex <= sameActiveUntilSample) {
+            return;
+        }
+        const output = document.querySelector("#output");
+        if (output) {
+            const note = document.createElement("div");
+            note.className = "alert";
+            note.innerText = "1050 Hz NWR alert tone detected";
+            output.appendChild(note);
+        }
+        startWeatherRadioAlarm("Warning");
+        if (isAutoRecordEnabled() && !autoRecordingTriggered) {
+            autoRecordingTriggered = true;
+            startAutoRecording();
+        }
+    }
+
+    updateSampleRate(sampleRate);
+
+    // Retired with clockdemod's bit clock.
+    // let bitclock = 0;
+    // let prevbit = 0;
     let shift = 0;
 
     let bits = [];
@@ -3367,8 +3848,8 @@ async function fetchAndStore() {
 
     function resetDecoderState(resetEndec = true) {
         stopAutoRecording();
-        bitclock = 0;
-        prevbit = 0;
+        // bitclock = 0;
+        // prevbit = 0;
         shift = 0;
         bits = [];
         bytes = [];
@@ -3391,26 +3872,33 @@ async function fetchAndStore() {
         _runDecoderCallCount = 0;
         _lastHeaderTimesLog = 0;
         _clockdemodByteCount = 0;
-        _afskCallCount = 0;
+        preambleShift = 0;
+        invalidByteCount = 0;
+        sameActiveUntilSample = -1;
+        // _afskCallCount = 0;
         if (resetEndec) {
             resetEndecDetection();
         }
-        clock = 0;
-        markIndex = 0;
-        spaceIndex = 0;
-        markIInteg = 0;
-        markQInteg = 0;
-        spaceIInteg = 0;
-        spaceQInteg = 0;
-        for (let i = 0; i < bitPeriod; i++) {
-            markIwindow[i] = 0;
-            markQwindow[i] = 0;
-            spaceIwindow[i] = 0;
-            spaceQwindow[i] = 0;
-        }
+        // clock = 0;
+        // markIndex = 0;
+        // spaceIndex = 0;
+        // markIInteg = 0;
+        // markQInteg = 0;
+        // spaceIInteg = 0;
+        // spaceQInteg = 0;
+        // for (let i = 0; i < bitPeriod; i++) {
+        //     markIwindow[i] = 0;
+        //     markQwindow[i] = 0;
+        //     spaceIwindow[i] = 0;
+        //     spaceQwindow[i] = 0;
+        // }
+        seattyDemod.reset();
     }
 
-    function flushPendingDecodeTail() {
+    function flushPendingDecodeTail(flushDemod = true) {
+        if (flushDemod) {
+            seattyDemod.flush();
+        }
         if (!decoding || !currentMsg.length) {
             return;
         }
@@ -3422,6 +3910,184 @@ async function fetchAndStore() {
     }
 
     let _clockdemodByteCount = 0;
+    const SAME_SYNC_WORD = 0xABABABAB;
+    const MAX_INVALID_BYTES = 4;
+    let preambleShift = 0;
+    let invalidByteCount = 0;
+
+    // The retired demodulator's fixed threshold turned the noise between bursts into constant bits,
+    // which arrive here as 0x00/0xFF terminators. SeaTTY's sign-only decisions turn that noise into
+    // random bits instead, so bursts are also ended the way SeaTTY ends them: on a 32-bit preamble
+    // at any byte alignment, and after more than MAX_INVALID_BYTES bytes no header can contain.
+    function handleDemodBit(bit, sampleIndex) {
+        demodSampleCounter = sampleIndex;
+        preambleShift = ((preambleShift >>> 1) | (bit << 31)) >>> 0;
+        if (decoding && preambleShift === SAME_SYNC_WORD
+            && (bytePos !== 7 || (micSource && currentMsg.length))) {
+            if (currentMsg.length && container) {
+                finalizeAlert("PREAMBLE_RESYNC");
+            }
+            decoding = false;
+            bytePos = 0;
+            currentByte = 0;
+            headerTimes = 4;
+            preambleByteRun = 4;
+            previousCompletedByte = -1;
+            return;
+        }
+        currentByte |= (bit << bytePos);
+        syncReg = ((syncReg << 1) | bit) & 0xFF;
+        if (syncReg == 0xAB && !decoding) {
+            bytePos = 0;
+            headerTimes++;
+        }
+        bytePos++;
+        if (bytePos == 8) {
+            _clockdemodByteCount++;
+            if (_clockdemodByteCount <= 20 || _clockdemodByteCount % 200 === 0) {
+            }
+            const byteSample = demodSampleCounter;
+            if (!decoding) {
+                if (terminatorRunCount > 0) {
+                    terminatorRunByte = -1;
+                    terminatorRunCount = 0;
+                }
+                if (currentByte === 0xAB) {
+                    if (abRunLength === 0) {
+                        noteEndecLeadingByteBeforePreamble(previousCompletedByte);
+                        if (lastPayloadByteSample > 0) {
+                            const gapMs = ((byteSample - lastPayloadByteSample) * 1000) / sampleRate;
+                            noteEndecGapMs(gapMs);
+                        }
+                    }
+                    abRunLength++;
+                } else {
+                    abRunLength = 0;
+                }
+            }
+            if (currentByte === 0xAB && currentMsg.length === 0 && (preambleByteRun > 0 || headerTimes > 0)) {
+                preambleByteRun++;
+            } else if (preambleByteRun > 0) {
+                noteEndecPreambleRun(preambleByteRun);
+                preambleByteRun = 0;
+            }
+            if (currentByte == 0xAB) {
+                headerTimes++;
+                if (headerTimes > 4) {
+                    decoding = true;
+                    abRunLength = 0;
+                    invalidByteCount = 0;
+                    updateSync(true);
+                }
+            } else {
+                headerTimes = 0;
+            }
+            if (decoding) {
+                noteSameProductByte(currentByte);
+                let handledByte = false;
+                const isTerminatorByte = (currentByte == 0 || currentByte == 0xFF);
+                if (isTerminatorByte) {
+                    if (terminatorRunCount === 0) {
+                        terminatorRunByte = currentByte;
+                        terminatorRunCount = 1;
+                    } else if (terminatorRunByte === currentByte) {
+                        terminatorRunCount++;
+                    } else {
+                        const termByte = terminatorRunByte;
+                        const termCount = terminatorRunCount;
+                        finalizeAlert("TERM_BYTE", termByte, termCount);
+                    }
+                    handledByte = true;
+                } else if (terminatorRunCount > 0) {
+                    const termByte = terminatorRunByte;
+                    const termCount = terminatorRunCount;
+                    finalizeAlert("TERM_BYTE", termByte, termCount);
+                    headerTimes = (currentByte == 0xAB) ? 1 : 0;
+                    handledByte = true;
+                }
+
+                if (!handledByte) {
+                    if (!micSource && currentByte == 0xAB && headerTimes > 4 && currentMsg.length && container) {
+                        if (lastPayloadByteSample > 0) {
+                            const splitGapMs = ((byteSample - lastPayloadByteSample) * 1000) / sampleRate;
+                            noteEndecGapMs(splitGapMs);
+                        }
+                        finalizeAlert("PREAMBLE_SPLIT");
+                        headerTimes = 1;
+                    } else if (currentByte !== 0xAB && ((currentByte & 0x80) || (currentByte < 0x20
+                        && currentByte !== 0x09 && currentByte !== 0x0A && currentByte !== 0x0D))) {
+                        if (++invalidByteCount > MAX_INVALID_BYTES) {
+                            finalizeAlert("NOISE");
+                        }
+                    // Once the header is complete its View Alert button is attached, and nothing valid
+                    // follows a header. Appending more through innerText would also replace the button
+                    // with plain text, so later bytes are dropped until the burst ends.
+                    } else if (currentByte !== 0xAB && !currentMsgFastPathHandled) {
+                        lastPayloadByteSample = byteSample;
+                        if (!container) {
+                            container = document.createElement("div");
+                            container.className = "alert";
+                            document.querySelector("#output").appendChild(container);
+                        }
+                        const currentChar = String.fromCharCode(currentByte);
+                        if (currentByte >= 32 && currentByte <= 126 && /^[A-Za-z0-9\-\+\/\(\)\\ ]$/.test(currentChar) === false) { }
+                        else {
+                            container.innerText += currentChar;
+                            currentMsg += currentChar;
+                            if (currentMsg === "NNNN" && eomCount === 2) {
+                                finalizeAlert("EOM_PAYLOAD");
+                            } else if (!currentMsgFastPathHandled && currentChar === "-" && hasCompleteSameHeaderTail(currentMsg)) {
+                                const product = maybeRotateSameProduct(currentMsg);
+                                const parsedHeader = parseHeader(currentMsg, product.id);
+                                if (parsedHeader && !parsedHeader.eom) {
+                                    product.alerts.push(parsedHeader);
+                                    noteSameActivity(true);
+                                    const needsSeverity = !!window.EASBridge || isAlarmBeepEnabled();
+                                    const easText = needsSeverity ? alertTextForSeverity(parsedHeader) : '';
+                                    const severity = alertSeverity(easText);
+                                    if (window.EASBridge) {
+                                        const alertName = events[parsedHeader.event] || parsedHeader.event || '';
+                                        const issueTime = parsedHeader.issueTime;
+                                        const expirationTime = typeof getExpirationTime === 'function' ? getExpirationTime(issueTime, parsedHeader.alertTime) : null;
+                                        window.EASBridge.send('decoder:header', {
+                                            raw: parsedHeader.rawHeader || '',
+                                            summary: easText.split('\n')[0] || '',
+                                            details: easText || '',
+                                            severity: severity,
+                                            eventType: alertName,
+                                            areas: typeof locationsToReadable === 'function' ? locationsToReadable(parsedHeader.locationCodes) : '',
+                                            issueTime: issueTime && typeof dateToReadable === 'function' ? dateToReadable(issueTime, false) : '',
+                                            expireTime: expirationTime && typeof dateToReadable === 'function' ? dateToReadable(expirationTime, false) : '',
+                                            sender: parsedHeader.sender || '',
+                                            originator: entryNames[parsedHeader.originator] || parsedHeader.originator || '',
+                                        });
+                                    }
+                                    const view = document.createElement("button");
+                                    view.addEventListener("click", () => {
+                                        showModal(parsedHeader);
+                                        window.modalShown = true;
+                                    });
+                                    view.innerText = "View Alert";
+                                    container.appendChild(document.createElement("span")).innerHTML = "&emsp;&emsp;";
+                                    container.appendChild(view);
+                                    currentMsgFastPathHandled = true;
+                                    startWeatherRadioAlarm(severity);
+                                }
+                            }
+                        }
+                        handleAutoRecordingTriggers();
+                    }
+                }
+            }
+            previousCompletedByte = currentByte;
+            bytePos = 0;
+            currentByte = 0;
+        }
+    }
+
+    // Retired with afskdemod, see the note above it. The byte handling inside moved to
+    // handleDemodBit.
+    /*
     function clockdemod(sample) {
         demodSampleCounter++;
         const bit = discriminator(sample);
@@ -3574,6 +4240,7 @@ async function fetchAndStore() {
         bitclock++;
         prevbit = bit;
     }
+    */
 
     function samplesFromMsAtRate(ms, rate) {
         return Math.max(0, Math.round(rate * (ms / 1000)));
@@ -3769,6 +4436,8 @@ async function fetchAndStore() {
         }
     }
 
+    // Retired with afskdemod, see the note above it.
+    /*
     let thres = 15;
 
     let bitState = 0;
@@ -3781,6 +4450,7 @@ async function fetchAndStore() {
         }
         return bitState;
     }
+    */
 
     function updateSync(sync) {
         addStatus(sync ? "SYNC" : "NO SYNC", sync ? "green" : "red");
@@ -3898,6 +4568,7 @@ async function fetchAndStore() {
         });
 
         if (parsedHeader.eom) {
+            noteSameActivity(false);
             const eomIndicator = document.createElement("div");
             eomIndicator.style.color = "var(--color-border-light)";
             eomIndicator.style.display = "inline";
@@ -3912,6 +4583,9 @@ async function fetchAndStore() {
         }
 
         product.alerts.push(parsedHeader);
+        if (!isObject(header)) {
+            noteSameActivity(true);
+        }
 
         if (window.EASBridge) {
             const alertName = events[parsedHeader.event] || parsedHeader.event || '';
@@ -4624,41 +5298,7 @@ async function fetchAndStore() {
             decoderLoad.disabled = true;
             resetDecoderState();
             try {
-                const arrayBuffer = await file.arrayBuffer();
-                const audioBuffer = await decodeContext.decodeAudioData(arrayBuffer);
-                updateSampleRate(audioBuffer.sampleRate);
-                const channelData = audioBuffer.getChannelData(0);
-                let sumSquares = 0;
-                let peak = 0;
-                for (let i = 0; i < channelData.length; i++) {
-                    const sample = channelData[i];
-                    const abs = sample < 0 ? -sample : sample;
-                    if (abs > peak) peak = abs;
-                    sumSquares += sample * sample;
-                }
-                if (peak > 0 && channelData.length > 0) {
-                    const rms = Math.sqrt(sumSquares / channelData.length);
-                    const minRms = 0.08912509381337455;
-                    if (rms > 0 && rms <= minRms) {
-                        const gain = 0.99 / peak;
-                        if (gain > 1) {
-                            for (let i = 0; i < channelData.length; i++) {
-                                channelData[i] *= gain;
-                            }
-                        }
-                    }
-                }
-                const chunkSize = 128;
-                _offlineDecode = true;
-                try {
-                    for (let i = 0; i < channelData.length; i += chunkSize) {
-                        const chunk = channelData.subarray(i, i + chunkSize);
-                        runDecoder(chunk);
-                    }
-                } finally {
-                    _offlineDecode = false;
-                }
-                stopDecode(false);
+                await decodeAudioSource(file);
             } catch (e) {
                 console.error("Failed to decode uploaded audio file:", e);
                 addStatus("FAILED TO READ AUDIO FILE!", "red");
@@ -4699,6 +5339,34 @@ async function fetchAndStore() {
             preloadAlarmSounds();
         }
     }
+
+    const customAlarmToggle = document.getElementById('decoder-alarm-beep-customization');
+    const customAlarmFilesDiv = document.getElementById('decoder-custom-beep-files');
+    if (customAlarmToggle && customAlarmFilesDiv) {
+        const syncCustomAlarmVisibility = function () {
+            customAlarmFilesDiv.style.display = customAlarmToggle.checked ? "block" : "none";
+        };
+        customAlarmToggle.addEventListener('change', syncCustomAlarmVisibility);
+        syncCustomAlarmVisibility();
+    }
+
+    const customAlarmSaveButton = document.getElementById('decoder-custom-beep-save');
+    if (customAlarmSaveButton) {
+        customAlarmSaveButton.addEventListener('click', function () {
+            customAlarmSaveButton.disabled = true;
+            saveCustomAlarms().finally(() => { customAlarmSaveButton.disabled = false; });
+        });
+    }
+
+    const customAlarmClearButton = document.getElementById('decoder-custom-beep-clear');
+    if (customAlarmClearButton) {
+        customAlarmClearButton.addEventListener('click', function () {
+            customAlarmClearButton.disabled = true;
+            clearCustomAlarms().finally(() => { customAlarmClearButton.disabled = false; });
+        });
+    }
+
+    loadStoredCustomAlarms();
 
     const autoRecordToggle = document.getElementById('decoder-auto-record');
     if (autoRecordToggle) {
@@ -4779,23 +5447,12 @@ async function fetchAndStore() {
             const files = event.dataTransfer.files;
             if (files.length > 0) {
                 addStatus("PROCESSING...", "yellow");
-                resetDecoderState();
-                const file = files[0];
-                const arrayBuffer = await file.arrayBuffer();
-                const audioBuffer = await decodeContext.decodeAudioData(arrayBuffer);
-                updateSampleRate(audioBuffer.sampleRate);
-                const channelData = audioBuffer.getChannelData(0);
-                const chunkSize = 128;
-                _offlineDecode = true;
                 try {
-                    for (let i = 0; i < channelData.length; i += chunkSize) {
-                        const chunk = channelData.slice(i, i + chunkSize);
-                        runDecoder(chunk);
-                    }
-                } finally {
-                    _offlineDecode = false;
+                    await decodeAudioSource(files[0]);
+                } catch (e) {
+                    console.error("Failed to decode dropped audio file:", e);
+                    addStatus("FAILED TO READ AUDIO FILE!", "red");
                 }
-                stopDecode(false);
             }
         });
     }
@@ -4844,39 +5501,8 @@ async function fetchAndStore() {
                 const binaryStr = atob(b64);
                 const bytes = new Uint8Array(binaryStr.length);
                 for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-                const arrayBuffer = bytes.buffer;
                 addStatus("PROCESSING...", "yellow");
-                const audioBuffer = await decodeContext.decodeAudioData(arrayBuffer);
-                resetDecoderState();
-                updateSampleRate(audioBuffer.sampleRate);
-                const channelData = audioBuffer.getChannelData(0);
-                let sumSquares = 0, peak = 0;
-                for (let i = 0; i < channelData.length; i++) {
-                    const s = channelData[i];
-                    const abs = s < 0 ? -s : s;
-                    if (abs > peak) peak = abs;
-                    sumSquares += s * s;
-                }
-                if (peak > 0 && channelData.length > 0) {
-                    const rms = Math.sqrt(sumSquares / channelData.length);
-                    const minRms = 0.08912509381337455;
-                    if (rms > 0 && rms <= minRms) {
-                        const gain = 0.99 / peak;
-                        if (gain > 1) {
-                            for (let i = 0; i < channelData.length; i++) channelData[i] *= gain;
-                        }
-                    }
-                }
-                const chunkSize = 128;
-                _offlineDecode = true;
-                try {
-                    for (let i = 0; i < channelData.length; i += chunkSize) {
-                        runDecoder(channelData.subarray(i, i + chunkSize));
-                    }
-                } finally {
-                    _offlineDecode = false;
-                }
-                stopDecode(false);
+                await decodeAudioSource(new Blob([bytes]));
             } catch (err) {
                 console.error('[EASBridge] loadFileData error:', err);
                 addStatus("FILE ERROR: " + err.message, "red");
@@ -4946,7 +5572,7 @@ async function fetchAndStore() {
             const sr = params?.sampleRate || 44100;
             nativeStreamActive = true;
             updateSampleRate(sr);
-            iosBandpass = new SoftwareBandpass(sr, 1822.9, 3);
+            // iosBandpass = new SoftwareBandpass(sr, 1822.9, 3);
             iosDecoderFrameRemainder = new Float32Array(0);
             resetDecoderState();
         });
@@ -4961,8 +5587,9 @@ async function fetchAndStore() {
                 recordingChunks.push(pcm.slice());
                 recordingLength += pcm.length;
             }
-            const bp = ensureIOSBandpass();
-            feedDecoderFrames(bp.process(pcm));
+            // const bp = ensureIOSBandpass();
+            // feedDecoderFrames(bp.process(pcm));
+            feedDecoderFrames(pcm);
         });
 
         window.EASBridge.on('decoder:nativeStreamEnd', () => {

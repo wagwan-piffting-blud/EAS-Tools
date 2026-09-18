@@ -63,6 +63,11 @@
             click on the map to place vertices &rarr; click the first vertex (or
             double-click anywhere) to close the shape. The bulletin re-renders
             live with the impacted counties. Click <em class="redEm">Clear</em> to start over fresh.
+            <br>
+            <strong>Keyboard:</strong> Tab to the map, then use the arrow keys to move a cursor,
+            <em>+</em> and <em>&minus;</em> to change the step, <em>Enter</em> to place a point and
+            <em>Shift+Enter</em> to close. Press <em>H</em> on the map to hear every key. On touch
+            screens, the cursor pad by the map does the same.
         </div>
         <div class="storm-bar">
             <strong>Area:</strong>
@@ -130,7 +135,25 @@
                 capture the current polygon.</span>
         </div>
         <main class="split">
-            <div id="map"></div>
+            <div id="map" tabindex="0" role="application" aria-label="Warning area map"
+                aria-describedby="map-keys-hint"></div>
+            <div id="map-pad" class="map-pad" role="group" aria-label="Map cursor pad">
+                <div class="map-pad-dirs">
+                    <button type="button" class="map-pad-north" data-map-cmd="north" aria-label="Move north">&uarr;</button>
+                    <button type="button" class="map-pad-west" data-map-cmd="west" aria-label="Move west">&larr;</button>
+                    <button type="button" class="map-pad-center" data-map-cmd="center" aria-label="Move cursor to map center">&#9678;</button>
+                    <button type="button" class="map-pad-east" data-map-cmd="east" aria-label="Move east">&rarr;</button>
+                    <button type="button" class="map-pad-south" data-map-cmd="south" aria-label="Move south">&darr;</button>
+                    <button type="button" class="map-pad-finer" data-map-cmd="finer" aria-label="Zoom in, smaller steps">+</button>
+                    <button type="button" class="map-pad-coarser" data-map-cmd="coarser" aria-label="Zoom out, larger steps">&minus;</button>
+                </div>
+                <div class="map-pad-actions">
+                    <button type="button" id="map-pad-place" data-map-cmd="place">Place point</button>
+                    <button type="button" data-map-cmd="close">Close polygon</button>
+                    <button type="button" data-map-cmd="undo">Undo point</button>
+                    <button type="button" data-map-cmd="where">Where am I</button>
+                </div>
+            </div>
             <div class="output-pane">
                 <div class="impacted-bar">
                     <span class="impacted-label">Impacted:</span>
@@ -154,6 +177,11 @@
                 <pre id="output">Draw a polygon on the map to render a bulletin.</pre>
             </div>
         </main>
+        <p id="map-keys-hint" hidden>Arrow keys move a cursor. Plus and minus change the step. Enter places a
+            point or selects an area. Shift+Enter closes the polygon. Space reads your location. H lists every key.</p>
+        <div id="status-live" class="visually-hidden" role="status" aria-atomic="true"></div>
+        <div id="status-alert" class="visually-hidden" role="alert" aria-atomic="true"></div>
+        <div id="map-live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
         <script src="vendor/leaflet/leaflet.js"></script>
         <script src="vendor/leaflet-draw/leaflet.draw.js"></script>
         <script src="vendor/velocityjs.bundle.js"></script>
@@ -725,10 +753,31 @@
                 currentRing = savedRing;
             }
 
-            function setStatus(msg, isError) {
+            function makeAnnouncer(id) {
+                var el = document.getElementById(id);
+                var clearTimer = null;
+                return function (text) {
+                    if (!text) return;
+                    clearTimeout(clearTimer);
+                    // A live region only speaks when its text changes, so a repeat gets a trailing nbsp.
+                    el.textContent = (el.textContent === text) ? text + "\u00a0" : text;
+                    clearTimer = setTimeout(function () { el.textContent = ""; }, 7000);
+                };
+            }
+
+            var announceStatus = makeAnnouncer("status-live");
+            var announceAlert = makeAnnouncer("status-alert");
+            var announceMap = makeAnnouncer("map-live");
+
+            // spoken defaults to msg; pass "" to update the status bar without speaking.
+            function setStatus(msg, isError, spoken) {
                 var el = document.getElementById("status");
                 el.textContent = msg;
                 el.className = isError ? "error" : "ok";
+                var say = (spoken === undefined) ? msg : spoken;
+                if (!say) return;
+                if (isError) announceAlert(say);
+                else announceStatus(say);
             }
 
             function loadTemplates(era) {
@@ -1484,11 +1533,16 @@
                 autoResolveCwaFromPolygon();
             }
 
+            // Leaflet makes every marker a tab stop with no accessible name, Leaflet.draw's invisible
+            // mouse marker included. The map's own keys replace them.
+            L.Marker.mergeOptions({ keyboard: false });
+
             var map = L.map("map", {
                 center: [41.40, -96.20],
                 zoom: 8,
                 zoomControl: true,
                 attributionControl: false,
+                keyboard: false,
 
                 zoomSnap: 0.25
             });
@@ -1785,6 +1839,7 @@
 
             function resetAfterPolygonClear() {
                 hitLayer.clearLayers();
+                lastHits = [];
                 hideStormMarker();
 
                 var autoCb = document.getElementById("centroid-auto-cb");
@@ -1817,6 +1872,548 @@
                 clearLocalStorage();
                 setStatus("Data cleared.", false);
                 saveState();
+            });
+
+            /**
+             * Keyboard and touch access to the map. NVDA focus mode and JAWS application mode pass
+             * keys straight through to a role="application" element, so the arrows drive a cursor
+             * here and a live region says where it is.
+             */
+            var MAP_STEPS_MI = [0.5, 1, 2, 5, 10, 25];
+            var MAP_DIRECTIONS = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"];
+            // Numpad plus and minus are screen reader commands on desktop layouts, hence the alternates.
+            var MAP_KEY_COMMANDS = {
+                ArrowUp: "north", ArrowDown: "south", ArrowLeft: "west", ArrowRight: "east",
+                "+": "finer", "=": "finer", PageUp: "finer",
+                "-": "coarser", "_": "coarser", PageDown: "coarser",
+                Enter: "place", Backspace: "undo", " ": "where", Home: "center",
+                h: "help", H: "help", "?": "help"
+            };
+            var MAP_REPEATABLE = { north: true, south: true, east: true, west: true, finer: true, coarser: true, undo: true };
+
+            var mapEl = document.getElementById("map");
+            var mapCursor = null;
+            var mapCursorMarker = null;
+            var mapStepIndex = 3;
+            var mapHeard = { primary: null, county: null, inPolygon: null };
+            var mapTerritory = null;
+            var mapMoveTimer = null;
+            var mapFocusTimer = null;
+            var mapCommandBusy = false;
+            var lastHits = [];
+
+            var MAP_CURSOR_ICON = L.divIcon({
+                className: "map-cursor-icon",
+                iconSize: [22, 22],
+                iconAnchor: [11, 11],
+                html: '<div class="map-cursor-inner"></div>'
+            });
+
+            function territoryForState(state) {
+                for (var i = 0; i < COMPOSITE_TRANSFORMS.length; i++) {
+                    if (COMPOSITE_TRANSFORMS[i].name === state) return COMPOSITE_TRANSFORMS[i];
+                }
+                return null;
+            }
+
+            // Alaska, Hawaii and the territories are drawn as shifted, scaled insets, so distances
+            // are measured on their real coordinates.
+            function realLonLat(lon, lat, territory) {
+                return territory ? inverseTransformPoint(lon, lat, territory) : [lon, lat];
+            }
+
+            function capitalize(s) {
+                return s.charAt(0).toUpperCase() + s.slice(1);
+            }
+
+            function plural(n, one, many) {
+                return n + " " + (n === 1 ? one : many);
+            }
+
+            function joinSpeech(parts) {
+                var kept = parts.filter(Boolean);
+                return kept.length ? kept.join(". ") + "." : "";
+            }
+
+            function mapStepPhrase() {
+                var miles = MAP_STEPS_MI[mapStepIndex];
+                return miles === 0.5 ? "half a mile" : plural(miles, "mile", "miles");
+            }
+
+            function areaSpeechName(feature) {
+                var p = feature.properties || {};
+                if (p.marine) return p.name;
+                var area = WarngenContext.featureToArea(feature);
+                if (p.zone) return p.name + " zone, " + area.parentRegion;
+                return area.name + (area.areaNotation ? " " + area.areaNotation : "") + ", " + area.parentRegion;
+            }
+
+            function partOfAreaPhrase(feature, point) {
+                var dirs = WarngenIntersect.pointSubdivision(point, feature);
+                if (!dirs.length) return "";
+                if (dirs[0] === "CENTRAL") return "central";
+                var extreme = dirs[0] === "EXTREME";
+                return (extreme ? "extreme " : "") + (extreme ? dirs.slice(1) : dirs).join("").toLowerCase() + "ern";
+            }
+
+            // Worded the way bulletins name part of a county: "In southeastern Douglas County, Nebraska".
+            function countyPositionLabel(feature, point, withState) {
+                var area = WarngenContext.featureToArea(feature);
+                var part = partOfAreaPhrase(feature, point);
+                var label;
+                if (area.areaNotation) {
+                    label = "In " + (part ? part + " " : "") + area.name + " " + area.areaNotation;
+                } else {
+                    var place = /^City of /.test(area.name) ? "the " + area.name : area.name;
+                    label = part ? "In the " + part + " part of " + place : "In " + place;
+                }
+                return withState ? label + ", " + area.parentRegion : label;
+            }
+
+            function cursorHatch() {
+                var source = activeHatchSource();
+                if (currentAreaSource === "ZONE" && extraGeojson.ZONE && (!source || !source.features.length)) {
+                    return { kind: "COUNTY", source: visibleCounties };
+                }
+                return { kind: currentAreaSource, source: source };
+            }
+
+            function lookupMapCursor() {
+                var pt = [mapCursor.lng, mapCursor.lat];
+                var hatch = cursorHatch();
+                var county = countyGeojson ? WarngenIntersect.findFeatureContaining(pt, countyGeojson) : null;
+                var area = hatch.source ? WarngenIntersect.findFeatureContaining(pt, hatch.source) : null;
+                var near = cityDBAll.length ? WarngenCities.nearestCity(cityDBAll, { lon: pt[0], lat: pt[1] }) : null;
+                var territory = territoryForState(county ? county.properties.state : (near && near.city.state));
+                var city = null;
+                if (near) {
+                    var here = realLonLat(pt[0], pt[1], territory);
+                    var there = realLonLat(near.city.lon, near.city.lat, territoryForState(near.city.state));
+                    city = {
+                        city: near.city,
+                        distance: WarngenCities.distanceMiles(there, here),
+                        bearing: WarngenCities.bearingDeg(there, here)
+                    };
+                }
+                var drawing = polygonDrawer.enabled();
+                return {
+                    point: pt,
+                    county: county,
+                    area: area,
+                    kind: hatch.kind,
+                    loaded: !!hatch.source,
+                    city: city,
+                    territory: territory,
+                    drawing: drawing,
+                    inPolygon: (selectionMode === "polygon" && !drawing && currentRing && currentRing.length >= 4)
+                        ? WarngenIntersect.pointInRing(pt, currentRing)
+                        : null
+                };
+            }
+
+            function primaryFeature(info) {
+                return info.kind === "COUNTY" ? info.county : info.area;
+            }
+
+            function primaryLabel(info, withState) {
+                var spec = AREA_SOURCES[info.kind] || AREA_SOURCES.COUNTY;
+                if (!info.loaded) return capitalize(spec.nouns) + " are still loading";
+                var feature = primaryFeature(info);
+                if (!feature) return "No " + spec.noun + " here";
+                var label = (info.kind === "COUNTY")
+                    ? countyPositionLabel(feature, info.point, withState !== false)
+                    : areaSpeechName(feature);
+                if (selectionMode === "areas") {
+                    if (!info.area) label += ", outside this office's area";
+                    else if (selectedAreaKeys[featureAreaKey(info.area)]) label += ", selected";
+                }
+                return label;
+            }
+
+            function countyLabel(info, withState) {
+                return (info.kind !== "COUNTY" && info.county)
+                    ? countyPositionLabel(info.county, info.point, withState !== false)
+                    : "";
+            }
+
+            function cityPhrase(info) {
+                if (!info.city) return "";
+                var c = info.city.city;
+                var countyState = info.county ? info.county.properties.state : null;
+                var name = c.name + (countyState && c.state !== countyState ? ", " + WarngenContext.stateName(c.state) : "");
+                // Cities are only points, so "in" means inside the cursor's county and close enough
+                // that the population suggests the town reaches this far.
+                var reach = Math.max(0.75, Math.min(8, 0.35 * Math.sqrt((c.pop || 0) / 1000)));
+                if (info.county && c.fips === info.county.properties.fips && info.city.distance <= reach) {
+                    return "In " + name;
+                }
+                var miles = Math.max(1, Math.round(info.city.distance));
+                var dir = MAP_DIRECTIONS[Math.round((((info.city.bearing % 360) + 360) % 360) / 45) % 8];
+                return plural(miles, "mile", "miles") + " " + dir + " of " + name;
+            }
+
+            function coordinatePhrase(info) {
+                var real = realLonLat(mapCursor.lng, mapCursor.lat, info.territory);
+                return Math.abs(real[1]).toFixed(2) + (real[1] < 0 ? " south, " : " north, ")
+                    + Math.abs(real[0]).toFixed(2) + (real[0] > 0 ? " east" : " west");
+            }
+
+            function polygonPhrase(info) {
+                if (selectionMode === "areas") return plural(selectedAreaCount(), "area", "areas") + " selected";
+                if (info.drawing) return "Drawing, " + plural(polygonDrawer._markers.length, "point", "points") + " placed";
+                if (info.inPolygon === null) return "No polygon yet";
+                return info.inPolygon ? "Inside the polygon" : "Outside the polygon";
+            }
+
+            function impactedPhrase() {
+                var spec = AREA_SOURCES[currentAreaSource] || AREA_SOURCES.COUNTY;
+                if (spec.file && !extraGeojson[currentAreaSource]) return capitalize(spec.nouns) + " are still loading";
+                if (!lastHits.length) return "No " + spec.nouns + " impacted";
+                return "Impacted: " + lastHits.map(areaSpeechName).join("; ");
+            }
+
+            function rememberHeard(info) {
+                var primary = primaryFeature(info);
+                mapHeard = {
+                    primaryKey: primary ? featureAreaKey(primary) : null,
+                    primary: primaryLabel(info),
+                    countyKey: info.county ? featureAreaKey(info.county) : null,
+                    county: countyLabel(info),
+                    inPolygon: info.inPolygon
+                };
+                mapTerritory = info.territory;
+            }
+
+            function mapReadout(full) {
+                var info = lookupMapCursor();
+                rememberHeard(info);
+                return joinSpeech([
+                    primaryLabel(info),
+                    countyLabel(info),
+                    cityPhrase(info),
+                    full ? coordinatePhrase(info) : "",
+                    "Step " + mapStepPhrase(),
+                    polygonPhrase(info),
+                    full ? impactedPhrase() : ""
+                ]);
+            }
+
+            // Only what changed since the last announcement, so holding an arrow stays short. A new part
+            // of the same county is named without repeating the state.
+            function mapMoveSpeech() {
+                var info = lookupMapCursor();
+                var parts = [];
+                if (info.inPolygon !== null && mapHeard.inPolygon !== null && info.inPolygon !== mapHeard.inPolygon) {
+                    parts.push(info.inPolygon ? "Entering the polygon" : "Leaving the polygon");
+                }
+                var primary = primaryLabel(info);
+                if (primary !== mapHeard.primary) {
+                    var feature = primaryFeature(info);
+                    var sameArea = !!feature && featureAreaKey(feature) === mapHeard.primaryKey;
+                    parts.push(sameArea ? primaryLabel(info, false) : primary);
+                }
+                var county = countyLabel(info);
+                if (county && county !== mapHeard.county) {
+                    var sameCounty = featureAreaKey(info.county) === mapHeard.countyKey;
+                    parts.push(sameCounty ? countyLabel(info, false) : county);
+                }
+                parts.push(cityPhrase(info));
+                rememberHeard(info);
+                return joinSpeech(parts);
+            }
+
+            function queueMoveSpeech() {
+                clearTimeout(mapMoveTimer);
+                mapMoveTimer = setTimeout(function () {
+                    mapMoveTimer = null;
+                    announceMap(mapMoveSpeech());
+                }, 150);
+            }
+
+            function cancelMoveSpeech() {
+                clearTimeout(mapMoveTimer);
+                mapMoveTimer = null;
+            }
+
+            // A command pressed right after a move would otherwise swallow where the move landed.
+            function sayMap(text) {
+                if (mapMoveTimer) {
+                    cancelMoveSpeech();
+                    text = (mapMoveSpeech() + " " + text).trim();
+                }
+                announceMap(text);
+            }
+
+            // Leaflet.draw tracks the mouse for its guide line and redraws the guide from the last
+            // mouse position on zoom, which is undefined when only the keyboard has been used.
+            function followCursorWhileDrawing(ll) {
+                polygonDrawer._currentLatLng = ll;
+                if (polygonDrawer._mouseMarker) polygonDrawer._mouseMarker.setLatLng(ll);
+                polygonDrawer._updateTooltip(ll);
+                if (polygonDrawer._markers.length) polygonDrawer._updateGuide(map.latLngToLayerPoint(ll));
+            }
+
+            function showMapCursor() {
+                var ll = L.latLng(mapCursor.lat, mapCursor.lng);
+                if (!mapCursorMarker) {
+                    mapCursorMarker = L.marker(ll, {
+                        icon: MAP_CURSOR_ICON,
+                        interactive: false,
+                        zIndexOffset: 2000
+                    }).addTo(map);
+                } else {
+                    mapCursorMarker.setLatLng(ll);
+                }
+                map.panInside(ll, { padding: [40, 40] });
+                if (polygonDrawer.enabled()) followCursorWhileDrawing(ll);
+            }
+
+            function ensureMapCursor(recenterIfHidden) {
+                if (mapCursor && !(recenterIfHidden && !map.getBounds().contains([mapCursor.lat, mapCursor.lng]))) {
+                    return false;
+                }
+                var c = map.getCenter();
+                mapCursor = { lat: c.lat, lng: c.lng };
+                mapHeard = { primary: null, county: null, inPolygon: null };
+                if (mapCursorMarker) mapCursorMarker.setLatLng(c);
+                return true;
+            }
+
+            function placeMapCursor(lat, lng) {
+                mapCursor = {
+                    lat: Math.max(-80, Math.min(80, lat)),
+                    lng: Math.max(-180, Math.min(180, lng))
+                };
+                showMapCursor();
+            }
+
+            function moveMapCursor(direction) {
+                var territory = (mapHeard.primary === null) ? lookupMapCursor().territory : mapTerritory;
+                var miles = MAP_STEPS_MI[mapStepIndex];
+                var real = realLonLat(mapCursor.lng, mapCursor.lat, territory);
+                var dLat = (miles / 69) * (territory ? territory.scaleLat : 1);
+                var dLon = (miles / (69 * Math.cos(real[1] * Math.PI / 180))) * (territory ? territory.scaleLon : 1);
+                var lat = mapCursor.lat, lng = mapCursor.lng;
+                if (direction === "north") lat += dLat;
+                else if (direction === "south") lat -= dLat;
+                else if (direction === "east") lng += dLon;
+                else lng -= dLon;
+                placeMapCursor(lat, lng);
+                queueMoveSpeech();
+            }
+
+            function changeMapStep(delta) {
+                var next = Math.max(0, Math.min(MAP_STEPS_MI.length - 1, mapStepIndex + delta));
+                var edge = (next !== mapStepIndex) ? "" : (delta < 0 ? "Smallest step. " : "Largest step. ");
+                mapStepIndex = next;
+                sayMap(edge + "Step " + mapStepPhrase() + ".");
+            }
+
+            function centerMapCursor() {
+                cancelMoveSpeech();
+                var c = map.getCenter();
+                mapHeard = { primary: null, county: null, inPolygon: null };
+                placeMapCursor(c.lat, c.lng);
+                announceMap("Map center. " + mapReadout(false));
+            }
+
+            function mapToggleArea() {
+                var info = lookupMapCursor();
+                var spec = AREA_SOURCES[info.kind] || AREA_SOURCES.COUNTY;
+                if (!info.loaded) {
+                    ensureAreaSourceLoaded(currentAreaSource).catch(function () { });
+                    sayMap(capitalize(spec.nouns) + " are still loading. Try again in a moment.");
+                    return;
+                }
+                if (!info.area) {
+                    var outside = primaryFeature(info);
+                    sayMap(outside
+                        ? areaSpeechName(outside) + " is outside this office's area."
+                        : "No " + spec.noun + " here to select.");
+                    return;
+                }
+                var wasSelected = !!selectedAreaKeys[featureAreaKey(info.area)];
+                toggleAreaSelection(info.area);
+                sayMap((wasSelected ? "Deselected " : "Selected ") + areaSpeechName(info.area) + ". "
+                    + plural(selectedAreaCount(), "area", "areas") + " selected.");
+                rememberHeard(lookupMapCursor());
+            }
+
+            function ringIsFlat(latlngs) {
+                var x0 = latlngs[0].lng, y0 = latlngs[0].lat;
+                var twiceArea = 0;
+                for (var i = 0; i < latlngs.length; i++) {
+                    var a = latlngs[i], b = latlngs[(i + 1) % latlngs.length];
+                    twiceArea += (a.lng - x0) * (b.lat - y0) - (b.lng - x0) * (a.lat - y0);
+                }
+                return Math.abs(twiceArea) < 1e-9;
+            }
+
+            function mapPlacePoint() {
+                if (selectionMode === "areas") {
+                    mapToggleArea();
+                    return;
+                }
+                var ll = L.latLng(mapCursor.lat, mapCursor.lng);
+                if (!polygonDrawer.enabled()) {
+                    var pressed = document.activeElement;
+                    polygonDrawer.enable();
+                    // Leaflet.draw focuses the map as drawing starts, which would pull a touch
+                    // screen reader off the pad button that was just pressed.
+                    if (pressed && pressed !== mapEl && pressed !== document.body) pressed.focus();
+                }
+                var markers = polygonDrawer._markers;
+                if (markers.length && markers[markers.length - 1].getLatLng().equals(ll)) {
+                    sayMap("There is already a point here. Move before placing another.");
+                    return;
+                }
+                var before = markers.length;
+                followCursorWhileDrawing(ll);
+                polygonDrawer.addVertex(ll);
+                var count = polygonDrawer._markers.length;
+                if (count === before) {
+                    sayMap("Can't place a point here. That edge would cross the polygon.");
+                    return;
+                }
+                var note = "";
+                if (count === 1) {
+                    note = currentRing
+                        ? " New polygon started. It replaces the current one when you close it."
+                        : " Place at least 3, then press Shift+Enter to close.";
+                } else if (count === 3) {
+                    note = " Shift+Enter closes the polygon.";
+                }
+                sayMap("Point " + count + "." + note);
+            }
+
+            function mapClosePolygon() {
+                if (selectionMode === "areas") {
+                    sayMap("Closing a polygon only applies in Draw polygon mode.");
+                    return;
+                }
+                if (!polygonDrawer.enabled()) {
+                    sayMap("No polygon in progress. Press Enter to place the first point.");
+                    return;
+                }
+                var latlngs = polygonDrawer._markers.map(function (m) { return m.getLatLng(); });
+                if (latlngs.length < 3) {
+                    sayMap("A polygon needs at least 3 points. " + plural(latlngs.length, "point", "points") + " placed so far.");
+                    return;
+                }
+                if (ringIsFlat(latlngs)) {
+                    sayMap("These points are in a straight line. Move sideways and place another point before closing.");
+                    return;
+                }
+                if (polygonDrawer._poly.newLatLngIntersects(latlngs[0], true)) {
+                    sayMap("Can't close yet. The closing edge would cross the polygon. Undo a point or place another first.");
+                    return;
+                }
+                polygonDrawer.completeShape();
+                sayMap("Polygon closed with " + latlngs.length + " points. " + impactedPhrase() + ".");
+            }
+
+            function mapUndoPoint() {
+                if (selectionMode === "areas" || !polygonDrawer.enabled()) {
+                    sayMap("No polygon in progress.");
+                    return;
+                }
+                var count = polygonDrawer._markers.length;
+                if (count <= 1) {
+                    polygonDrawer.disable();
+                    sayMap("Polygon drawing cancelled.");
+                    return;
+                }
+                polygonDrawer.deleteLastVertex();
+                followCursorWhileDrawing(L.latLng(mapCursor.lat, mapCursor.lng));
+                sayMap("Removed point " + count + ". " + plural(count - 1, "point", "points") + " left.");
+            }
+
+            function mapHelpText() {
+                return "Map keys. Arrow keys move the cursor north, south, east and west. "
+                    + "Plus or Page Up zooms in for smaller steps. Minus or Page Down zooms out for larger steps. "
+                    + (selectionMode === "areas"
+                        ? "Enter selects or deselects the area under the cursor. "
+                        : "Enter places a polygon point. Shift+Enter closes the polygon once it has 3 points. "
+                            + "Backspace removes the last point, and on the first point cancels the polygon. ")
+                    + "Space reads your full location. Home moves the cursor to the center of the map. "
+                    + "H repeats this help.";
+            }
+
+            function runMapCommand(cmd) {
+                clearTimeout(mapFocusTimer);
+                ensureMapCursor(false);
+                if (!mapCursorMarker) showMapCursor();
+                mapCommandBusy = true;
+                try {
+                    switch (cmd) {
+                        case "north":
+                        case "south":
+                        case "east":
+                        case "west":
+                            moveMapCursor(cmd);
+                            break;
+                        case "finer":
+                            changeMapStep(-1);
+                            break;
+                        case "coarser":
+                            changeMapStep(1);
+                            break;
+                        case "place":
+                            mapPlacePoint();
+                            break;
+                        case "close":
+                            mapClosePolygon();
+                            break;
+                        case "undo":
+                            mapUndoPoint();
+                            break;
+                        case "where":
+                            cancelMoveSpeech();
+                            announceMap(mapReadout(true));
+                            break;
+                        case "center":
+                            centerMapCursor();
+                            break;
+                        case "help":
+                            cancelMoveSpeech();
+                            announceMap(mapHelpText());
+                            break;
+                    }
+                } finally {
+                    mapCommandBusy = false;
+                }
+            }
+
+            mapEl.addEventListener("keydown", function (e) {
+                if (e.target !== mapEl || e.altKey || e.ctrlKey || e.metaKey) return;
+                var cmd = (e.key === "Enter" && e.shiftKey)
+                    ? "close"
+                    : (Object.prototype.hasOwnProperty.call(MAP_KEY_COMMANDS, e.key) ? MAP_KEY_COMMANDS[e.key] : null);
+                if (!cmd) return;
+                e.preventDefault();
+                if (e.repeat && !MAP_REPEATABLE[cmd]) return;
+                runMapCommand(cmd);
+            });
+
+            mapEl.addEventListener("focus", function () {
+                if (mapCommandBusy) return;
+                var recentered = ensureMapCursor(true);
+                clearTimeout(mapFocusTimer);
+                // Moving focus cuts off live-region speech, so let the screen reader finish
+                // announcing the map first.
+                mapFocusTimer = setTimeout(function () {
+                    if (document.activeElement !== mapEl) return;
+                    announceMap((recentered ? "Cursor at map center. " : "") + mapReadout(false));
+                }, 300);
+            });
+
+            document.getElementById("map-pad").addEventListener("click", function (e) {
+                var btn = e.target.closest("[data-map-cmd]");
+                if (btn) runMapCommand(btn.getAttribute("data-map-cmd"));
+            });
+
+            map.on("draw:canceled", function () {
+                announceMap("Polygon drawing cancelled.");
             });
 
             function isErrorPlaceholder(label) {
@@ -2193,6 +2790,15 @@
                 wrap.disabled = crsOn || normalizeOn;
             }
 
+            var lastRenderSpeech = "";
+
+            // Several inputs re-render on every keystroke, so the summary is only spoken when it changes.
+            function renderSpeech(text) {
+                var repeat = (text === lastRenderSpeech);
+                lastRenderSpeech = text;
+                return repeat ? "" : text;
+            }
+
             function doRender() {
                 try {
                     var era = document.getElementById("era-select").value;
@@ -2237,6 +2843,7 @@
                         hits = WarngenIntersect.findIntersectingFeatures(currentRing, hatchSource);
                     }
 
+                    lastHits = hits;
                     hitLayer.clearLayers();
                     if (hits.length > 0) hitLayer.addData({ type: "FeatureCollection", features: hits });
 
@@ -2250,6 +2857,7 @@
                         }).join(", ");
 
                     if (hits.length === 0 || (!wholeAreas && !currentRing)) {
+                        lastRenderSpeech = "";
                         document.getElementById("output").textContent = wholeAreas
                             ? "Click " + srcSpec.nouns + " on the map to select them, then a bulletin renders here."
                             : (currentRing
@@ -2466,7 +3074,7 @@
                     applyFillInsAndFormat();
                     var dt = (performance.now() - t0).toFixed(1);
                     if (zoneFellBack) {
-                        setStatus("No forecast zones bundled for this office -- hatching counties instead.", true);
+                        setStatus("No forecast zones bundled for this office -- hatching counties instead.", true, "");
                     }
 
                     var allCaps = document.getElementById("allcaps-cb").checked;
@@ -2483,16 +3091,20 @@
                     }
                     if (labels.length > 0) tags.push(labels.length + " FILL-IN" + (labels.length === 1 ? "" : "S"));
                     if (canconEmpty) tags.push("CANCON -> CON, no counties dropped");
-                    setStatus("Rendered " + hits.length + " counties in " + dt + " ms [" + tags.join(", ") + "]", false);
+                    var renderSaid = renderSpeech((zoneFellBack ? "No forecast zones bundled for this office, hatching counties instead. " : "")
+                        + "Rendered " + hits.length + " counties" + (tags.length ? ": " + tags.join(", ") : ""));
+                    setStatus("Rendered " + hits.length + " counties in " + dt + " ms [" + tags.join(", ") + "]", false,
+                        mapCommandBusy ? "" : renderSaid);
                 } catch (e) {
                     document.getElementById("output").textContent = "ERROR\n\n" + e.stack;
-                    setStatus("Render failed: " + e.message, true);
+                    setStatus("Render failed: " + e.message, true, renderSpeech("Render failed: " + e.message));
                 }
             }
 
             function syncSelectionModeUi() {
                 document.getElementById("mode-" + selectionMode).checked = true;
                 document.body.classList.toggle("mode-areas", selectionMode === "areas");
+                document.getElementById("map-pad-place").textContent = selectionMode === "areas" ? "Select area" : "Place point";
                 refreshAreaSelectionUi();
             }
 

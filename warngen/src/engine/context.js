@@ -380,9 +380,14 @@
         return area;
     }
 
+    function stateName(abbr) {
+        return STATE_NAMES[abbr] || abbr;
+    }
+
     return {
         buildMockContext:        buildMockContext,
         featureToArea:           featureToArea,
-        applyCwaRegionOverride:  applyCwaRegionOverride
+        applyCwaRegionOverride:  applyCwaRegionOverride,
+        stateName:               stateName
     };
 }));

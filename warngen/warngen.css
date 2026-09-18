@@ -163,6 +163,11 @@ body.mode-areas .leaflet-interactive {
     cursor: crosshair;
 }
 
+#map:focus-visible {
+    outline: 3px solid var(--wg-accent);
+    outline-offset: -3px;
+}
+
 #clear-poly-btn {
     background: var(--wg-danger-bg);
     color: var(--wg-danger);
@@ -446,6 +451,91 @@ body.mode-areas .leaflet-interactive {
 .leaflet-marker-draggable:hover .storm-marker-inner {
     border-color: var(--wg-accent-alt);
     background: var(--wg-accent-alt-fill);
+}
+
+.map-cursor-icon {
+    background: transparent !important;
+    border: none !important;
+    pointer-events: none;
+}
+
+.map-cursor-inner {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--wg-accent-alt);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--wg-map-canvas);
+    box-sizing: border-box;
+}
+
+.map-cursor-inner::before,
+.map-cursor-inner::after {
+    content: "";
+    position: absolute;
+    background: var(--wg-accent-alt);
+}
+
+.map-cursor-inner::before {
+    left: 8px;
+    top: -7px;
+    width: 2px;
+    height: 32px;
+}
+
+.map-cursor-inner::after {
+    top: 8px;
+    left: -7px;
+    width: 32px;
+    height: 2px;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.map-pad {
+    display: none;
+}
+
+.map-pad-dirs {
+    display: grid;
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(3, 48px);
+    gap: 6px;
+}
+
+.map-pad-dirs button {
+    padding: 0;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.map-pad-finer { grid-area: 1 / 1; }
+.map-pad-north { grid-area: 1 / 2; }
+.map-pad-coarser { grid-area: 1 / 3; }
+.map-pad-west { grid-area: 2 / 1; }
+.map-pad-center { grid-area: 2 / 2; }
+.map-pad-east { grid-area: 2 / 3; }
+.map-pad-south { grid-area: 3 / 2; }
+
+.map-pad-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.map-pad-actions button {
+    min-height: 48px;
+    padding: 4px 8px;
 }
 
 .leaflet-control-zoom a {
@@ -758,6 +848,25 @@ body.mode-areas .leaflet-interactive {
 }
 
 /* Media Queries */
+/* Touch-first devices and narrow windows get the on-screen map cursor pad. pointer, not
+   any-pointer: a desktop with any touch-capable input would otherwise grow a pad column too. */
+@media (max-width: 768px), (pointer: coarse) {
+    .app-body .map-pad {
+        display: flex;
+        flex: 0 0 auto;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: var(--wg-surface-bar);
+        border-left: 1px solid var(--wg-border);
+    }
+
+    .map-pad-actions {
+        width: 156px;
+    }
+}
+
 /* Mobile devices */
 @media (max-width: 768px) {
     html, body {
@@ -788,6 +897,22 @@ body.mode-areas .leaflet-interactive {
         width: 100%;
         height: 55vh;
         min-height: 300px;
+    }
+
+    .app-body .map-pad {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--wg-border);
+    }
+
+    .map-pad-actions {
+        width: auto;
+        flex: 1 1 180px;
+        max-width: 320px;
     }
 
     .output-pane {

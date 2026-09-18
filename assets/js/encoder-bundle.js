@@ -1194,6 +1194,18 @@ async function fetchAndStore() {
                 case "4":
                     create_header_tones(header);
                     break;
+                case "5":
+                    create_header_tones(header);
+                    create_nwr_tone();
+                    generate_silence(silenceSamples("headersToAttention"));
+                    create_wat();
+                    break;
+                case "6":
+                    create_header_tones(header);
+                    create_wat();
+                    generate_silence(silenceSamples("headersToAttention"));
+                    create_nwr_tone();
+                    break;
             }
         }
 
@@ -1436,6 +1448,12 @@ async function fetchAndStore() {
                     create_eom_tones();
                     break;
                 case "4":
+                    create_eom_tones();
+                    break;
+                case "5":
+                    create_eom_tones();
+                    break;
+                case "6":
                     create_eom_tones();
                     break;
             }
@@ -2549,7 +2567,7 @@ async function fetchAndStore() {
 
     const attentionToneDiv = document.getElementById("tlenContainer");
     const currentAttentionTone = document.getElementById("att");
-    const attentionToneDurationSettable = ["0", "1"];
+    const attentionToneDurationSettable = ["0", "1", "5", "6"];
 
     currentAttentionTone.addEventListener("change", function () {
         if (currentAttentionTone.value && attentionToneDurationSettable.includes(currentAttentionTone.value)) {

@@ -1,0 +1,22 @@
+SelectAll:
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"
+SetProject:Rate="44100"
+MixAndRender:
+Stereo to Mono:
+FilterCurve:f0="20" f1="30" f10="126.516" f11="144.2" f12="175.468" f13="199.994" f14="243.359" f15="277.376" f16="337.52" f17="384.698" f18="438.47" f19="533.544" f2="34.193" f20="608.122" f21="739.983" f22="843.416" f23="1026.296" f24="1169.75" f25="1333.256" f26="1622.348" f27="1849.118" f28="2250.065" f29="2564.576" f3="41.608" f30="3120.658" f31="3556.859" f32="4328.1" f33="4933.075" f34="5622.612" f35="6841.774" f36="7798.106" f37="9488.986" f38="10815.341" f39="13160.453" f4="47.423" f40="15000" f41="20000" f5="57.706" f6="65.772" f7="80.034" f8="91.221" f9="103.972" v0="-0.4692" v1="-0.4692" v10="-5.7493" v11="-4.9217" v12="0.0945" v13="-0.9553" v14="-8.0493" v15="-10.9352" v16="-11.0325" v17="-9.4977" v18="-6.5268" v19="0.2016" v2="-0.4692" v20="4.7864" v21="8.4069" v22="8.4358" v23="4.8918" v24="2.4584" v25="0.6555" v26="1.8142" v27="5.5356" v28="9.2047" v29="7.3032" v3="3.6378" v30="4.8692" v31="-1.111" v32="-7.064" v33="-10.4997" v34="-9.3291" v35="-11.0279" v36="-12.1604" v37="-13.8592" v38="-14.9917" v39="-16.6905" v4="6.3758" v40="-17.823" v41="-48" v5="10.3631" v6="13.5874" v7="12.9355" v8="7.6794" v9="-0.3376" FilterLength="8191" InterpolateLin="0" InterpolationMethod="B-spline"
+High-passFilter:frequency="23" rolloff="dB12"
+Low-passFilter:frequency="6709" rolloff="dB24"
+Limiter:gain-L="0" gain-R="0" hold="10" makeup="No" thresh="-8" type="SoftLimit"
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"
+NewMonoTrack:
+Noise:Amplitude="1" Type="White"
+Low-passFilter:frequency="2200" rolloff="dB12"
+High-passFilter:frequency="140" rolloff="dB12"
+Amplify:Ratio="0.12684"
+NewMonoTrack:
+Tone:Amplitude="0.0005847" Frequency="60" Interpolation="Linear" Waveform="Sine"
+NewMonoTrack:
+Tone:Amplitude="0.003825" Frequency="120" Interpolation="Linear" Waveform="Sine"
+SelectAll:
+MixAndRender:
+Normalize:ApplyGain="1" PeakLevel="-1" RemoveDcOffset="1" StereoIndependent="0"
