@@ -2665,8 +2665,22 @@ async function initCrawlEditor() {
         }
     }
 
-    async function header_to_readable(rawHeader, tzLocal, tzName, endecMode) {
+    function crawlSenderOverride() {
+        const el = document.getElementById('crawlOverrideSender');
+        const sender = el ? el.value.trim() : '';
+        return sender || null;
+    }
+
+    async function header_to_readable(rawHeader, tzLocal, tzName, endecMode, senderOverride = null) {
         const regex = window.EASREGEX;
+
+        if (senderOverride) {
+            try {
+                return E2T(rawHeader, endecMode, false, tzLocal && tzName == '' ? tzLocal : tzName, senderOverride);
+            } catch (err) {
+                return null;
+            }
+        }
 
         if (!regex.test(rawHeader.trim())) return null;
 
@@ -3194,7 +3208,7 @@ async function initCrawlEditor() {
         if (e2tMode === true) {
             const overrideTzInput = document.getElementById('crawlUseOverrideTZ');
             const timezoneOverride = overrideTzInput && overrideTzInput.value ? overrideTzInput.value : null;
-            const formatted = E2T(rawHeader, 'DAS2PLUS', false, timezoneOverride);
+            const formatted = E2T(rawHeader, 'DAS2PLUS', false, timezoneOverride, crawlSenderOverride());
             const formattedText = typeof formatted === 'string' ? formatted : String(formatted ?? '');
             const normalized = formattedText.replace(/\s+/g, ' ').trim();
             const dasdecMatch = normalized.match(/^(.*?)\s+has issued\s+(.*?)\s+for the following counties or areas:\s*([\s\S]*?)\s+at\s+(\d{1,2}:\d{2}\s*[AP]M)\s+on\s+([A-Za-z]{3}\s+\d{1,2},\s+\d{4})\s+Effective until\s+(\d{1,2}:\d{2}\s*[AP]M)(?:\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4})?\.\s*Message from\s+([^.\n]+)\.?$/i);
@@ -3333,7 +3347,7 @@ async function initCrawlEditor() {
         if (e2tMode === true) {
             const overrideTzInput = document.getElementById('crawlUseOverrideTZ');
             const timezoneOverride = overrideTzInput && overrideTzInput.value ? overrideTzInput.value : null;
-            const formatted = E2T(rawHeader, 'GORMAN', false, timezoneOverride);
+            const formatted = E2T(rawHeader, 'GORMAN', false, timezoneOverride, crawlSenderOverride());
             fullText = typeof formatted === 'string' ? formatted : String(formatted ?? '');
         }
 
@@ -3548,7 +3562,7 @@ async function initCrawlEditor() {
             const overrideTzInput = document.getElementById('crawlUseOverrideTZ');
             const timezoneOverride = overrideTzInput && overrideTzInput.value ? overrideTzInput.value : null;
             try {
-                const detail = parseHeaderDetailed(source, timezoneOverride);
+                const detail = parseHeaderDetailed(source, timezoneOverride, false, crawlSenderOverride());
                 return {
                     eventText: atariEventText(detail.eventName),
                     severity: atariSeverityFor(detail.eventName),
@@ -3979,6 +3993,7 @@ async function initCrawlEditor() {
             rawHeader: crawlMode === 'header' ? rawHeader : '',
             useLocalTZ: checked('crawlUseLocalTZ'),
             useOverrideTZ: value('crawlUseOverrideTZ'),
+            overrideSender: value('crawlOverrideSender').trim(),
             endecMode: value('endecMode'),
             useVDSMode: checked('crawlUseVDSMode'),
             vdsFrameDelay: value('vdsFrameDelay'),
@@ -4037,7 +4052,7 @@ async function initCrawlEditor() {
             controls.easyplusOriginator,
             controls.easyplusEventCode,
             usesCrawlText ? `${controls.crawlMode}:${controls.rawHeader}:${controls.text}` : '',
-            usesCrawlText ? `${controls.useLocalTZ}:${controls.useOverrideTZ}` : ''
+            usesCrawlText ? `${controls.useLocalTZ}:${controls.useOverrideTZ}:${controls.overrideSender}` : ''
         ].join('|');
     }
 
@@ -4059,13 +4074,13 @@ async function initCrawlEditor() {
         if (!controls.rawHeader || !controls.rawHeader.trim()) {
             return null;
         }
-        const key = [controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.endecMode].join('|');
+        const key = [controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.overrideSender, controls.endecMode].join('|');
         if (crawlAssetCache.headerKey === key) {
             return crawlAssetCache.headerText;
         }
         let readable = null;
         try {
-            readable = await header_to_readable(controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.endecMode);
+            readable = await header_to_readable(controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.endecMode, controls.overrideSender || null);
         } catch (err) {
             readable = null;
         }
@@ -4233,7 +4248,7 @@ async function initCrawlEditor() {
 
     const CRAWL_LIVE_INPUT_IDS = [
         'crawlText', 'crawlRawHeader', 'crawlSpeed', 'crawlFontSize', 'crawlTextColor',
-        'crawlBgColor', 'crawlMode', 'crawlUseLocalTZ', 'crawlUseOverrideTZ', 'endecMode',
+        'crawlBgColor', 'crawlMode', 'crawlUseLocalTZ', 'crawlUseOverrideTZ', 'crawlOverrideSender', 'endecMode',
         'crawlUseVDSMode', 'vdsFrameDelay', 'crawlFontFamily', 'crawlCustomFontFile',
         'crawlFontStyle', 'crawlOutlineColor', 'crawlOutlineWidth', 'crawlOutlineJoin',
         'crawlWidth', 'crawlHeight', 'crawlInset', 'crawlTopLeftManual',

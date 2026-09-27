@@ -1533,7 +1533,9 @@ async function fetchAndStore() {
         return hours.toString().padStart(2, "0") + minutes.toString().padStart(2, "0");
     }
 
-    const EVENT_GROUP_KEYS = ["weather", "non_weather", "administrative", "national", "unimplemented", "nws_misc"];
+    const EVENT_GROUP_KEYS = ["weather", "non_weather", "administrative", "national", "unimplemented", "nws_misc", "emnet"];
+
+    const EMNET_EVENT_CODES = ["ADM", "HUS", "NHW", "NPW", "SVW", "SWS", "TOM", "VAW"];
 
     const WEATHER_EVENT_KEYWORDS = [
         "BLIZZARD", "COASTAL FLOOD", "DUST STORM", "EXTREME WIND", "FLASH FLOOD", "FLOOD",
@@ -1572,6 +1574,9 @@ async function fetchAndStore() {
     }
 
     function getEventGroupKey(code, labelUpper) {
+        if (EMNET_EVENT_CODES.includes(code)) {
+            return "emnet";
+        }
         if ((code || '').startsWith('TX') || labelUpper.includes('TRANSMITTER')) {
             return "nws_misc";
         }
@@ -1629,7 +1634,7 @@ async function fetchAndStore() {
             const groupKey = getEventGroupKey(eventEntry.code, eventEntry.sortKey);
             const option = document.createElement('option');
             option.value = eventEntry.code;
-            option.textContent = eventEntry.label;
+            option.textContent = groupKey === "emnet" ? eventEntry.label + " (" + eventEntry.code + ")" : eventEntry.label;
             (fragments[groupKey] || fragments.unimplemented).appendChild(option);
         }
 
@@ -2840,6 +2845,8 @@ async function fetchAndStore() {
         };
     }
 
+    const SAME_MAX_LOCATIONS = 31;
+
     function snapPurge(minutes) {
         if (!(minutes > 0)) return { hr: 0, min: 15 };
         if (minutes <= 45) return { hr: 0, min: Math.max(15, Math.ceil(minutes / 15) * 15) };
@@ -2879,7 +2886,8 @@ async function fetchAndStore() {
             productClass: vm[1],
             action: vm[2],
             etn: vm[6],
-            fips: resolved.fips,
+            fips: resolved.fips.slice(0, SAME_MAX_LOCATIONS),
+            truncated: Math.max(0, resolved.fips.length - SAME_MAX_LOCATIONS),
             unmapped: resolved.unmapped,
             marine: resolved.marine,
             unnamed: resolved.unnamed,
@@ -2916,6 +2924,10 @@ async function fetchAndStore() {
 
         const notes = ["Converted " + parsed.phenSig + " from " + parsed.office
             + " to " + parsed.eventCode + " over " + parsed.fips.length + " FIPS."];
+        if (parsed.truncated) {
+            notes.push("Dropped " + parsed.truncated + " FIPS code(s) past the SAME limit of "
+                + SAME_MAX_LOCATIONS + " locations.");
+        }
         if (parsed.unmapped.length) {
             notes.push("Skipped " + parsed.unmapped.length + " unresolvable UGC area(s): "
                 + parsed.unmapped.slice(0, 8).join(", "));

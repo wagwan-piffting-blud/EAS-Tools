@@ -258,8 +258,15 @@ function parseEASDuration(durationStr) {
     };
 }
 
-function parseHeaderCore(header) {
-    const match = EAS_REGEX.exec(header);
+// A sender override replaces the header's sender field before validation, so a header whose
+// own sender is not SAME-legal (e.g. "Channel 4 EASNet" typed into the Atari 800XL program)
+// still parses.
+function parseHeaderCore(header, sender_override=null) {
+    const override = typeof sender_override === 'string' ? sender_override.trim() : '';
+    const source = override
+        ? String(header).trim().replace(/^(ZCZC-[A-Z]{3}-[A-Z\?]{3}-[\d-]+\+\d{4}-\d{7}-).*$/, '$1OVERRIDE-')
+        : header;
+    const match = EAS_REGEX.exec(source);
     if (!match) {
         throw new Error('Invalid EAS header format');
     }
@@ -271,7 +278,7 @@ function parseHeaderCore(header) {
         locations: locations.split('-'),
         startTime: parseEASTime(startTime),
         duration: parseEASDuration(duration),
-        senderid
+        senderid: override || senderid
     };
 }
 
@@ -842,8 +849,8 @@ function humanizeEAS(eas, endec_emulation_mode=null, canadian_mode=false, timezo
     }
 }
 
-export function E2T(header, endec_emulation_mode=null, canadian_mode=false, timezone_override=null) {
-    const parsed = parseHeaderCore(header);
+export function E2T(header, endec_emulation_mode=null, canadian_mode=false, timezone_override=null, sender_override=null) {
+    const parsed = parseHeaderCore(header, sender_override);
     return humanizeEAS(parsed, endec_emulation_mode, canadian_mode, timezone_override);
 }
 
@@ -854,8 +861,8 @@ export function parseHeader(header) {
 // Structured counterpart to E2T() for callers that lay out their own screen instead of
 // consuming prose. The timezone correction is the same one humanizeEAS() applies, so the
 // times here always agree with the text E2T would have produced for the same header.
-export function parseHeaderDetailed(header, timezone_override=null, canadian_mode=false) {
-    const parsed = parseHeaderCore(header);
+export function parseHeaderDetailed(header, timezone_override=null, canadian_mode=false, sender_override=null) {
+    const parsed = parseHeaderCore(header, sender_override);
     const startTime = reparseStartTimeInTimezone(parsed.startTime, timezone_override);
     const endTime = new Date(startTime.getTime() + parsed.duration.hours * 3600000 + parsed.duration.minutes * 60000);
 

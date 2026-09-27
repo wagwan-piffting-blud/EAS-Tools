@@ -199,6 +199,8 @@
                         </optgroup>
                         <optgroup label="NWS Unimplemented/Misc. Codes" data-event-group="nws_misc">
                         </optgroup>
+                        <optgroup label="EMNet Codes" data-event-group="emnet">
+                        </optgroup>
                     </select>
                     <br>
                     <br>
@@ -482,6 +484,10 @@
                         <option value="Pacific/Honolulu">Pacific/Honolulu (Hawaii-Aleutian Time)</option>
                     </select>
                     <br class="crawlOverrideTZ">
+                    <br>
+                    <label for="crawlOverrideSender">Override Sender ID (replaces the header's sender, which may then be any text):</label>
+                    <input type="text" id="crawlOverrideSender" maxlength="24" placeholder="e.g. Channel 4 EASNet">
+                    <br>
                     <br>
                     <label for="endecMode">ENDEC Emulation Mode:</label>
                     <select id="endecMode">

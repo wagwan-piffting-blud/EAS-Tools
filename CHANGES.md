@@ -12,6 +12,12 @@
 
 - Update CLAUDE.md to be a symlink to AGENTS.md. Thanks to GitHub user @seasonal-currency for suggesting this.
 
+- Add some more SAME event codes from ComLabs EMNet. Thanks to GitHub user @jakescooty for raising this issue.
+
+- Add the ability to override the SAME code sender to be longer than 8 characters in the Text Crawl Generator. Thanks (again) to GitHub user @jakescooty for suggesting this.
+
+- Fix a bug where AWIPS headers were not being validated fully in the encoder. This meant some headers were rejected for an ambiguous reason, and this has been fixed to provide more a more accurate reasoning (most commonly, this was due to the 31 FIPS code limit being exceeded). Thanks to GitHub user @InternOfCEOs for reporting this issue.
+
 ---
 
 2026-09-18:
