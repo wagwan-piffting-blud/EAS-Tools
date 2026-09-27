@@ -24,6 +24,10 @@
  *   --level -6           signal peak in dBFS
  *   --freq-offset 0      tone offset in Hz, both SAME tones or the 1050 Hz tone
  *   --clock-ppm 0        transmitter clock error, applied to baud and tones together
+ *   --reverb-rt60 0      model an acoustic path: reverb time in seconds (0 = direct/wired)
+ *   --reverb-drr 12      direct-to-reverberant ratio in dB, the "how close is the mic" knob.
+ *                        Raising the speaker's volume raises both fields and leaves DRR alone,
+ *                        so this, not --level or --snr, is what distance actually changes.
  *   --seed 1
  *
  * SNR is referenced to noise in a 3 kHz bandwidth, so for SAME Eb/N0 = SNR + 7.6 dB.
@@ -56,6 +60,8 @@ const PREAMBLE = '\xAB'.repeat(16);
 const FILE_MIN_RMS = 0.08912509381337455;
 const LIVE_BANDPASS_HZ = 1822.9;
 const LIVE_BANDPASS_Q = 3;
+// Keep in step with SEATTY_DECODER_OPTIONS.bandTilt in decoder-bundle.js.
+const INTEGRATED_BAND_TILT = { bits: 1024, warmup: 64, maxTilt: 3 };
 const NOISE_REF_BW = 3000;
 const BURSTS_PER_TX = 3;
 const TONE_SECONDS = 10;
@@ -439,6 +445,7 @@ function runIntegrated(samples, rate, live) {
         detect1050: true,
         tonePeakTruncate: false,
         sameBandpass: { hz: LIVE_BANDPASS_HZ, q: LIVE_BANDPASS_Q },
+        bandTilt: INTEGRATED_BAND_TILT,
         onBit: (bit, soft, sampleIndex) => {
             bytes.demodSampleCounter = sampleIndex;
             bytes.pushBit(bit);
@@ -539,6 +546,43 @@ function gaussian(rng) {
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng());
 }
 
+// Exponentially decaying noise impulse response with a 4 ms predelay, normalized so the tail sits
+// `drrDb` below the direct path. SAME is 1.92 ms per bit, so a reflection 10-30 ms late is 5-15 bit
+// periods of intersymbol interference and there is no equalizer in front of the demodulator.
+function applyReverb(samples, rt60, drrDb, rate, rng) {
+    if (!(rt60 > 0)) {
+        return samples;
+    }
+    const irLen = Math.floor(rt60 * rate);
+    const ir = new Float32Array(irLen);
+    const decay = Math.log(1e-3) / irLen;
+    const predelay = Math.floor(0.004 * rate);
+    let energy = 0;
+    for (let i = predelay; i < irLen; i++) {
+        ir[i] = gaussian(rng) * Math.exp(decay * i);
+        energy += ir[i] * ir[i];
+    }
+    const wet = 10 ** (-drrDb / 20) / Math.sqrt(energy || 1);
+    for (let i = 0; i < irLen; i++) {
+        ir[i] *= wet;
+    }
+    ir[0] += 1;
+
+    const out = new Float32Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+        const s = samples[i];
+        if (s === 0) {
+            continue;
+        }
+        const end = Math.min(irLen, samples.length - i);
+        for (let k = 0; k < end; k++) {
+            out[i + k] += s * ir[k];
+        }
+    }
+    samples.set(out);
+    return samples;
+}
+
 // Scales the result down to a -1 dBFS peak when the noise would push it past full scale, as a
 // recording made at a sane level would be; SeaTTY's int16 input path wraps rather than clips.
 function addNoise(out, amp, snrDb, rate, rng) {
@@ -614,6 +658,7 @@ function synthesizeTransmission(header, opts, rng) {
         }
         offset += burstLen + gap;
     }
+    applyReverb(out, opts.reverbRt60, opts.reverbDrr, rate, rng);
     addNoise(out, amp, opts.snrDb, rate, rng);
     return out;
 }
@@ -640,6 +685,7 @@ function synthesizeTone(opts, rng) {
             out[lead + n] = a * (Math.sin(w1 * n) + Math.sin(w2 * n));
         }
     }
+    applyReverb(out, opts.reverbRt60, opts.reverbDrr, rate, rng);
     addNoise(out, amp, opts.snrDb, rate, rng);
     return out;
 }
@@ -861,6 +907,8 @@ function parseArgs(argv) {
         level: -6,
         freqOffset: 0,
         clockPpm: 0,
+        reverbRt60: 0,
+        reverbDrr: 12,
         seed: 1
     };
     const num = (v, name) => {
@@ -897,6 +945,8 @@ function parseArgs(argv) {
             case '--level': opts.level = num(next(), a); break;
             case '--freq-offset': opts.freqOffset = num(next(), a); break;
             case '--clock-ppm': opts.clockPpm = num(next(), a); break;
+            case '--reverb-rt60': opts.reverbRt60 = num(next(), a); break;
+            case '--reverb-drr': opts.reverbDrr = num(next(), a); break;
             case '--seed': opts.seed = num(next(), a); break;
             case '-h':
             case '--help':
@@ -986,6 +1036,8 @@ function sharedJobFields(opts) {
         level: opts.level,
         freqOffset: opts.freqOffset,
         clockPpm: opts.clockPpm,
+        reverbRt60: opts.reverbRt60,
+        reverbDrr: opts.reverbDrr,
         live: opts.live,
         squelch: opts.squelch,
         detect1050: opts.detect1050,

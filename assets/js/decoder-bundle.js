@@ -253,6 +253,20 @@ async function fetchAndStore() {
     let streamAutoGainCurrent = 1;
     let streamAutoGainActiveTicks = 0;
 
+    const MIC_AUTO_GAIN_TARGET_RMS = STREAM_AUTO_GAIN_MIN_RMS;
+    const MIC_AUTO_GAIN_PEAK_CEILING = 0.99;
+    const MIC_AUTO_GAIN_MAX = 8;
+    const MIC_AUTO_GAIN_NOISE_FLOOR_RMS = 0.004;
+    const MIC_AUTO_GAIN_NOISE_FLOOR_PEAK = 0.012;
+    const MIC_AUTO_GAIN_POLL_MS = 120;
+    const MIC_AUTO_GAIN_ATTACK = 0.6;
+    const MIC_AUTO_GAIN_RELEASE = 0.2;
+    let micAutoGainNode = null;
+    let micAutoGainAnalyser = null;
+    let micAutoGainBuffer = null;
+    let micAutoGainTimer = 0;
+    let micAutoGainCurrent = 1;
+
     function isCapacitorIOS() {
         try {
             const cap = window.Capacitor;
@@ -277,6 +291,7 @@ async function fetchAndStore() {
 
     const IOS_STREAM_DECODE_SR = 44100;
     const IOS_STREAM_CHUNK_BYTES = 24576;
+    const IOS_STREAM_PRIMER_FRAMES = 2;
     const IOS_STREAM_FRAME_SIZE = 128;
     let iosDecoderFrameRemainder = new Float32Array(0);
 
@@ -378,6 +393,11 @@ async function fetchAndStore() {
     let iosStreamAbort = null;
     // let iosBandpass = null; (retired with the pre-decoder bandpass, see updateSampleRate)
     let nativeStreamActive = false;
+    let iosStreamActive = false;
+
+    function isDirectPCMSource() {
+        return nativeStreamActive || iosStreamActive;
+    }
     let iosLoopbackCtx = null;
     let iosLoopbackNode = null;
     let iosLoopbackRing = null;
@@ -688,6 +708,95 @@ async function fetchAndStore() {
         return out;
     }
 
+    const MPEG_BITRATES_V1L3 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
+    const MPEG_BITRATES_V2L3 = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0];
+    const MPEG_SAMPLE_RATES = [[44100, 48000, 32000], [22050, 24000, 16000], [11025, 12000, 8000]];
+
+    function mpegFrameSpans(data) {
+        const spans = [];
+        const n = data.length;
+        let i = 0;
+        while (i + 4 <= n) {
+            if (data[i] !== 0xFF || (data[i + 1] & 0xE0) !== 0xE0) {
+                i++;
+                continue;
+            }
+            const b1 = data[i + 1];
+            const b2 = data[i + 2];
+            const versionId = (b1 >> 3) & 0x03;
+            const layer = (b1 >> 1) & 0x03;
+            const bitrateIndex = (b2 >> 4) & 0x0F;
+            const rateIndex = (b2 >> 2) & 0x03;
+            const padding = (b2 >> 1) & 0x01;
+            if (versionId === 1 || layer !== 1 || rateIndex === 3 ||
+                bitrateIndex === 0 || bitrateIndex === 15) {
+                i++;
+                continue;
+            }
+            const rateGroup = versionId === 3 ? 0 : (versionId === 2 ? 1 : 2);
+            const sampleRate = MPEG_SAMPLE_RATES[rateGroup][rateIndex];
+            const bitrate = (versionId === 3 ? MPEG_BITRATES_V1L3 : MPEG_BITRATES_V2L3)[bitrateIndex];
+            if (!bitrate || !sampleRate) {
+                i++;
+                continue;
+            }
+            const samplesPerFrame = versionId === 3 ? 1152 : 576;
+            const length = Math.floor(samplesPerFrame / 8 * bitrate * 1000 / sampleRate) + padding;
+            if (length < 8 || i + length > n) {
+                break;
+            }
+            spans.push({ off: i, len: length });
+            i += length;
+        }
+        return spans;
+    }
+
+    function adtsFrameSpans(data) {
+        const spans = [];
+        const n = data.length;
+        let i = 0;
+        while (i + 7 <= n) {
+            if (data[i] !== 0xFF || (data[i + 1] & 0xF6) !== 0xF0) {
+                i++;
+                continue;
+            }
+            const length = ((data[i + 3] & 0x03) << 11) | (data[i + 4] << 3) | (data[i + 5] >> 5);
+            if (length < 7 || i + length > n) {
+                break;
+            }
+            spans.push({ off: i, len: length });
+            i += length;
+        }
+        return spans;
+    }
+
+    function spanCoverage(spans) {
+        let total = 0;
+        for (let i = 0; i < spans.length; i++) total += spans[i].len;
+        return total;
+    }
+
+    function detectFrameKind(data) {
+        const mpeg = spanCoverage(mpegFrameSpans(data));
+        const adts = spanCoverage(adtsFrameSpans(data));
+        const floor = data.length * 0.5;
+        if (mpeg < floor && adts < floor) return null;
+        return mpeg >= adts ? "mpeg" : "adts";
+    }
+
+    function frameSpansFor(kind, data) {
+        return kind === "adts" ? adtsFrameSpans(data) : mpegFrameSpans(data);
+    }
+
+    function decodeChunkTrimmed(ff, raw, dropRatio) {
+        return ffmpegDecodeChunk(ff, raw).then((pcm) => {
+            if (!pcm || !pcm.length || dropRatio <= 0) return pcm;
+            const drop = Math.round(pcm.length * dropRatio);
+            if (drop <= 0 || drop >= pcm.length) return pcm;
+            return pcm.subarray(drop);
+        });
+    }
+
     async function startIOSStreamDecoder(url) {
         await stopIOSStreamDecoder();
         iosDecoderFrameRemainder = new Float32Array(0);
@@ -725,6 +834,7 @@ async function fetchAndStore() {
             return null;
         }
 
+        iosStreamActive = true;
         addStatus("STREAMING...", "green");
         setStreamToggleState(true);
 
@@ -739,6 +849,10 @@ async function fetchAndStore() {
         const processPCM = (pcm) => {
             if (!pcm || pcm.length === 0) return;
             if (isLoopbackEnabled()) queueIOSLoopbackPCM(pcm);
+            if (window.isRecording && iosStreamActive) {
+                recordingChunks.push(pcm.slice());
+                recordingLength += pcm.length;
+            }
             // feedDecoderFrames(bandpass.process(pcm));
             feedDecoderFrames(pcm);
         };
@@ -751,6 +865,10 @@ async function fetchAndStore() {
             let isOgg = false;
             let headerExtracted = false;
             let pendingDecode = null;
+            let frameKind = null;
+            let frameKindChecked = false;
+            let primerBytes = new Uint8Array(0);
+            let primerFrames = 0;
 
             const awaitPending = async () => {
                 if (!pendingDecode) return null;
@@ -796,6 +914,7 @@ async function fetchAndStore() {
                     }
 
                     let raw;
+                    let dropRatio = 0;
                     if (isOgg) {
                         const splitEnd = getLastSafeOggSplit(accum, IOS_STREAM_CHUNK_BYTES);
                         if (splitEnd <= 0) {
@@ -812,7 +931,31 @@ async function fetchAndStore() {
                             raw = accum;
                         }
                     } else {
-                        raw = accum;
+                        if (!frameKindChecked) {
+                            frameKind = detectFrameKind(accum);
+                            frameKindChecked = true;
+                        }
+                        const spans = frameKind ? frameSpansFor(frameKind, accum) : [];
+                        if (!frameKind) {
+                            raw = accum;
+                        } else if (spans.length <= IOS_STREAM_PRIMER_FRAMES) {
+                            accumChunks.push(accum);
+                            accumBytes = accum.length;
+                            continue;
+                        } else {
+                            const first = spans[0].off;
+                            const last = spans[spans.length - 1];
+                            const payload = accum.slice(first, last.off + last.len);
+                            const remainder = accum.subarray(last.off + last.len);
+                            if (remainder.length > 0) {
+                                accumChunks.push(remainder.slice());
+                                accumBytes = remainder.length;
+                            }
+                            raw = primerFrames > 0 ? concatUint8(primerBytes, payload) : payload;
+                            dropRatio = primerFrames / (primerFrames + spans.length);
+                            primerBytes = payload.slice(spans[spans.length - IOS_STREAM_PRIMER_FRAMES].off - first);
+                            primerFrames = IOS_STREAM_PRIMER_FRAMES;
+                        }
                     }
 
                     if (isOgg && oggHeaders && oggHeaders.length > 0 && !isOggBosPage(raw)) {
@@ -820,7 +963,7 @@ async function fetchAndStore() {
                     }
 
                     const prevPCM = await awaitPending();
-                    pendingDecode = ffmpegDecodeChunk(ff, raw);
+                    pendingDecode = decodeChunkTrimmed(ff, raw, dropRatio);
                     processPCM(prevPCM);
                 }
 
@@ -840,15 +983,28 @@ async function fetchAndStore() {
                     try {
                         let tail = flattenChunks(accumChunks);
                         accumChunks.length = 0;
+                        let tailDropRatio = 0;
                         if (isOgg) {
                             const end = getLastCompleteOggPageEnd(tail);
                             tail = end > 0 ? tail.slice(0, end) : new Uint8Array(0);
+                        } else if (frameKind) {
+                            const spans = frameSpansFor(frameKind, tail);
+                            if (spans.length > 0) {
+                                const last = spans[spans.length - 1];
+                                tail = tail.slice(spans[0].off, last.off + last.len);
+                                if (primerFrames > 0) {
+                                    tail = concatUint8(primerBytes, tail);
+                                    tailDropRatio = primerFrames / (primerFrames + spans.length);
+                                }
+                            } else {
+                                tail = new Uint8Array(0);
+                            }
                         }
                         if (tail.length > 0) {
                             if (isOgg && oggHeaders && oggHeaders.length > 0 && !isOggBosPage(tail)) {
                                 tail = concatUint8(oggHeaders, tail);
                             }
-                            const pcm = await ffmpegDecodeChunk(ff, tail);
+                            const pcm = await decodeChunkTrimmed(ff, tail, tailDropRatio);
                             processPCM(pcm);
                         }
                     } catch (e) {
@@ -866,6 +1022,8 @@ async function fetchAndStore() {
                 }
                 flushPendingDecodeTail();
                 finalizeActiveSameProduct();
+                if (window.isRecording) stopRecording(true);
+                iosStreamActive = false;
                 iosStreamAbort = null;
             }
         })();
@@ -878,6 +1036,7 @@ async function fetchAndStore() {
             iosStreamAbort.abort();
             iosStreamAbort = null;
         }
+        iosStreamActive = false;
         iosDecoderFrameRemainder = new Float32Array(0);
         stopIOSLoopback();
     }
@@ -923,15 +1082,24 @@ async function fetchAndStore() {
     let streamHasStartedPlayback = false;
     let recordingNode = null;
     let recordingSinkGain = null;
+    let recordingBoostNode = null;
     let recordingSourceNode = null;
     let recordingChunks = [];
     let recordingSampleRate = 0;
     let recordingLength = 0;
     let workletModulePromise = null;
     const AUTO_RECORD_MAX_DURATION = 5 * 60 * 1000;
+    const AUTO_RECORD_CONFIRM_TIMEOUT = 4000;
+    const AUTO_RECORD_EOM_TIMEOUT = 6000;
+    const AUTO_RECORD_TAIL_FLUSH_MS = 300;
     let autoRecordingTimer = null;
     let autoRecordingEngaged = false;
     let autoRecordingTriggered = false;
+    let autoRecordingConfirmTimer = null;
+    let autoRecordingEomTimer = null;
+    let autoRecordingTailTimer = null;
+    let autoRecordingConfirmed = false;
+    let autoRecordingEomBursts = 0;
 
     if (meterFill) {
         levelAnalyser = decodeContext.createAnalyser();
@@ -1076,7 +1244,7 @@ async function fetchAndStore() {
         workletModulePromise = decodeContext.audioWorklet.addModule("assets/js/processor.js").then(() => {
             const decodeNode = new AudioWorkletNode(decodeContext, "eas-processor");
             decodeNode.port.onmessage = function (event) {
-                if (nativeStreamActive) return;
+                if (isDirectPCMSource()) return;
                 const chunk = event.data;
                 if (!chunk || !chunk.length) {
                     return;
@@ -1106,6 +1274,14 @@ async function fetchAndStore() {
 
     const MOBILE_MIC_GAIN = 7;
     const shouldApplyMobileInputGain = typeof navigator !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent || "");
+
+    function isMobileInputContext() {
+        if (shouldApplyMobileInputGain) {
+            return true;
+        }
+        const cap = (typeof window !== "undefined") ? window.Capacitor : null;
+        return !!(cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform());
+    }
 
     function createInputNode(sourceNode, applyMobileGain) {
         if (!applyMobileGain) {
@@ -1203,6 +1379,89 @@ async function fetchAndStore() {
         streamAutoGainBuffer = null;
         streamAutoGainCurrent = 1;
         streamAutoGainActiveTicks = 0;
+    }
+
+    function stopMicAutoGain() {
+        if (micAutoGainTimer) {
+            clearInterval(micAutoGainTimer);
+            micAutoGainTimer = 0;
+        }
+        if (micAutoGainAnalyser) {
+            try { micAutoGainAnalyser.disconnect(); } catch (e) { }
+            micAutoGainAnalyser = null;
+        }
+        if (micAutoGainNode) {
+            try { micAutoGainNode.disconnect(); } catch (e) { }
+            micAutoGainNode = null;
+        }
+        micAutoGainBuffer = null;
+        micAutoGainCurrent = 1;
+    }
+
+    function attachMicInputTap(sourceNode) {
+        if (!sourceNode) {
+            return;
+        }
+        const gainNode = decodeContext.createGain();
+        gainNode.gain.value = 1;
+        const analyser = decodeContext.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0;
+        const buffer = new Float32Array(analyser.fftSize);
+        attachInputTap(sourceNode);
+        if (!inputTapNode) {
+            return;
+        }
+        try {
+            inputTapNode.disconnect(decodeInput);
+            inputTapNode.connect(gainNode);
+            gainNode.connect(decodeInput);
+            inputTapNode.connect(analyser);
+        } catch (error) {
+            console.warn("Unable to create mic auto gain path:", error);
+            try { inputTapNode.connect(decodeInput); } catch (e) { }
+            return;
+        }
+        micAutoGainNode = gainNode;
+        micAutoGainAnalyser = analyser;
+        micAutoGainBuffer = buffer;
+        micAutoGainCurrent = 1;
+        micAutoGainTimer = setInterval(() => {
+            if (!micAutoGainAnalyser || !micAutoGainNode || !micAutoGainBuffer) {
+                return;
+            }
+            micAutoGainAnalyser.getFloatTimeDomainData(micAutoGainBuffer);
+            let sumSquares = 0;
+            let peak = 0;
+            for (let i = 0; i < micAutoGainBuffer.length; i++) {
+                const sample = micAutoGainBuffer[i];
+                const abs = sample < 0 ? -sample : sample;
+                if (abs > peak) {
+                    peak = abs;
+                }
+                sumSquares += sample * sample;
+            }
+            const rms = Math.sqrt(sumSquares / micAutoGainBuffer.length);
+            if (rms < MIC_AUTO_GAIN_NOISE_FLOOR_RMS && peak < MIC_AUTO_GAIN_NOISE_FLOOR_PEAK) {
+                return;
+            }
+            let target = rms > 0 ? (MIC_AUTO_GAIN_TARGET_RMS / rms) : 1;
+            if (peak > 0) {
+                const peakLimit = MIC_AUTO_GAIN_PEAK_CEILING / peak;
+                if (peakLimit < target) {
+                    target = peakLimit;
+                }
+            }
+            if (target > MIC_AUTO_GAIN_MAX) {
+                target = MIC_AUTO_GAIN_MAX;
+            }
+            if (target < 1) {
+                target = 1;
+            }
+            const rate = (target < micAutoGainCurrent) ? MIC_AUTO_GAIN_ATTACK : MIC_AUTO_GAIN_RELEASE;
+            micAutoGainCurrent += (target - micAutoGainCurrent) * rate;
+            micAutoGainNode.gain.setTargetAtTime(micAutoGainCurrent, decodeContext.currentTime, 0.05);
+        }, MIC_AUTO_GAIN_POLL_MS);
     }
 
     function attachStreamInputTap(sourceNode) {
@@ -1305,6 +1564,7 @@ async function fetchAndStore() {
     }
 
     function detachInputTap() {
+        stopMicAutoGain();
         if (inputTapSource) {
             try {
                 inputTapSource.disconnect();
@@ -1434,7 +1694,7 @@ async function fetchAndStore() {
                 setStreamToggleState(false);
                 return null;
             }
-            document.querySelector('[data-decoder-record-toggle]').disabled = true;
+            document.querySelector('[data-decoder-record-toggle]').disabled = false;
             return true;
         }
 
@@ -1593,7 +1853,7 @@ async function fetchAndStore() {
         if (window.isRecording) {
             return true;
         }
-        if (nativeStreamActive) {
+        if (isDirectPCMSource()) {
             recordingSampleRate = sampleRate;
             recordingChunks = [];
             recordingLength = 0;
@@ -1626,7 +1886,19 @@ async function fetchAndStore() {
         recordingSampleRate = decodeContext.sampleRate || sampleRate;
         recordingChunks = [];
         recordingLength = 0;
-        recordingSourceNode = activeSource;
+        recordingBoostNode = null;
+        const recordBoost = (isMobileInputContext() && !shouldApplyMobileInputGain) ? MOBILE_MIC_GAIN : 1;
+        if (recordBoost !== 1) {
+            try {
+                recordingBoostNode = decodeContext.createGain();
+                recordingBoostNode.gain.value = recordBoost;
+                activeSource.connect(recordingBoostNode);
+            } catch (error) {
+                console.warn("Unable to build recording boost node:", error);
+                recordingBoostNode = null;
+            }
+        }
+        recordingSourceNode = recordingBoostNode || activeSource;
         const tapChannels = inputTapSource ? inputTapSource.channelCount : activeSource.channelCount;
         const sourceChannels = Math.max(1, tapChannels || 1);
         recordingNode = new AudioWorkletNode(decodeContext, "eas-recorder", {
@@ -1679,6 +1951,10 @@ async function fetchAndStore() {
                 recordingSinkGain.disconnect();
                 recordingSinkGain = null;
             }
+            if (recordingBoostNode) {
+                try { recordingBoostNode.disconnect(); } catch (e) { }
+                recordingBoostNode = null;
+            }
             recordingSourceNode = null;
             recordingChunks = [];
             recordingLength = 0;
@@ -1691,7 +1967,7 @@ async function fetchAndStore() {
         return true;
     }
 
-    async function stopRecording(shouldPatchBoundaries = false) {
+    async function stopRecording(shouldPatchBoundaries = false, discard = false) {
         if (!window.isRecording) {
             return false;
         }
@@ -1714,8 +1990,19 @@ async function fetchAndStore() {
             recordingSinkGain.disconnect();
             recordingSinkGain = null;
         }
+        if (recordingBoostNode) {
+            try { recordingBoostNode.disconnect(); } catch (e) { }
+            recordingBoostNode = null;
+        }
         recordingSourceNode = null;
         updateRecordButtonLabel(false);
+        if (discard) {
+            recordingChunks = [];
+            recordingLength = 0;
+            recordingSampleRate = 0;
+            resetAutoRecordingState();
+            return true;
+        }
         if (!recordingChunks.length || !recordingLength) {
             recordingChunks = [];
             recordingLength = 0;
@@ -1725,12 +2012,28 @@ async function fetchAndStore() {
         recordingChunks = [];
         recordingLength = 0;
         const outputSampleRate = recordingSampleRate || sampleRate;
+        const rawSamples = pcmData ? pcmData.length : 0;
         if (shouldPatchBoundaries) {
-            pcmData = patchAutoRecordingPcmBoundaries(pcmData, outputSampleRate);
+            try {
+                pcmData = patchAutoRecordingPcmBoundaries(pcmData, outputSampleRate);
+            } catch (e) {
+                console.error("[REC-PATCH] failed:", e);
+            }
         }
-        const wavBuffer = encodeWavBuffer(pcmData, outputSampleRate);
+        let wavBuffer = null;
+        try {
+            wavBuffer = encodeWavBuffer(pcmData, outputSampleRate);
+        } catch (e) {
+            console.error("[REC-ENCODE] failed:", e);
+        }
         recordingSampleRate = 0;
-        triggerRecordingDownload(wavBuffer);
+        if (wavBuffer) {
+            Promise.resolve()
+                .then(function () { return triggerRecordingDownload(wavBuffer); })
+                .catch(function (e) {
+                    console.error("[REC-SAVE] failed:", e);
+                });
+        }
         resetAutoRecordingState();
         return true;
     }
@@ -1739,6 +2042,18 @@ async function fetchAndStore() {
         if (autoRecordingTimer) {
             clearTimeout(autoRecordingTimer);
             autoRecordingTimer = null;
+        }
+        if (autoRecordingConfirmTimer) {
+            clearTimeout(autoRecordingConfirmTimer);
+            autoRecordingConfirmTimer = null;
+        }
+        if (autoRecordingEomTimer) {
+            clearTimeout(autoRecordingEomTimer);
+            autoRecordingEomTimer = null;
+        }
+        if (autoRecordingTailTimer) {
+            clearTimeout(autoRecordingTailTimer);
+            autoRecordingTailTimer = null;
         }
         autoRecordingEngaged = false;
     }
@@ -1754,10 +2069,11 @@ async function fetchAndStore() {
     }
 
     function startAutoRecording() {
-        if (autoRecordingEngaged || fileDecodeActive || window.isRecording || (!inputTapNode && !nativeStreamActive)) {
+        if (autoRecordingEngaged || fileDecodeActive || window.isRecording || (!inputTapNode && !isDirectPCMSource())) {
             return;
         }
         autoRecordingEngaged = true;
+        autoRecordingEomBursts = 0;
         startRecording().then((started) => {
             if (!started) {
                 resetAutoRecordingState();
@@ -1777,6 +2093,85 @@ async function fetchAndStore() {
             resetAutoRecordingState();
             autoRecordingTriggered = false;
         });
+    }
+
+    function handleAutoRecordingPreamble() {
+        if (!isAutoRecordEnabled() || autoRecordingTriggered || window.isRecording || fileDecodeActive) {
+            return;
+        }
+        autoRecordingTriggered = true;
+        autoRecordingConfirmed = false;
+        startAutoRecording();
+        if (autoRecordingEngaged) {
+            scheduleAutoRecordingConfirmTimeout();
+        } else {
+            autoRecordingTriggered = false;
+        }
+    }
+
+    function scheduleAutoRecordingConfirmTimeout() {
+        if (autoRecordingConfirmTimer) {
+            clearTimeout(autoRecordingConfirmTimer);
+        }
+        autoRecordingConfirmTimer = setTimeout(() => {
+            autoRecordingConfirmTimer = null;
+            if (!autoRecordingConfirmed) {
+                cancelAutoRecording();
+            }
+        }, AUTO_RECORD_CONFIRM_TIMEOUT);
+    }
+
+    function confirmAutoRecording() {
+        autoRecordingConfirmed = true;
+        if (autoRecordingConfirmTimer) {
+            clearTimeout(autoRecordingConfirmTimer);
+            autoRecordingConfirmTimer = null;
+        }
+    }
+
+    function cancelAutoRecording() {
+        const wasEngaged = autoRecordingEngaged;
+        resetAutoRecordingState();
+        autoRecordingTriggered = false;
+        if (wasEngaged && window.isRecording) {
+            stopRecording(false, true);
+        }
+    }
+
+    function noteAutoRecordingEomBurst() {
+        if (!autoRecordingEngaged || !window.isRecording) {
+            return;
+        }
+        autoRecordingEomBursts++;
+        if (autoRecordingEomBursts >= 3) {
+            finishAutoRecordingAfterEom();
+        } else {
+            scheduleAutoRecordingEomTimeout();
+        }
+    }
+
+    function scheduleAutoRecordingEomTimeout() {
+        if (autoRecordingEomTimer) {
+            clearTimeout(autoRecordingEomTimer);
+        }
+        autoRecordingEomTimer = setTimeout(() => {
+            autoRecordingEomTimer = null;
+            finishAutoRecordingAfterEom();
+        }, AUTO_RECORD_EOM_TIMEOUT);
+    }
+
+    function finishAutoRecordingAfterEom() {
+        if (autoRecordingEomTimer) {
+            clearTimeout(autoRecordingEomTimer);
+            autoRecordingEomTimer = null;
+        }
+        if (autoRecordingTailTimer) {
+            return;
+        }
+        autoRecordingTailTimer = setTimeout(() => {
+            autoRecordingTailTimer = null;
+            stopAutoRecording(true);
+        }, AUTO_RECORD_TAIL_FLUSH_MS);
     }
 
     function stopAutoRecording(shouldPatchBoundaries = false) {
@@ -1905,6 +2300,7 @@ async function fetchAndStore() {
             micStartStopButton.disabled = false;
             addStatus("STREAM ACCESS FAILED!", "red");
             window.streamUrl = null;
+            if (window.EASBridge) window.EASBridge.send('decoder:streamState', { active: false });
             return;
         }
 
@@ -1952,7 +2348,7 @@ async function fetchAndStore() {
         const source = decodeContext.createMediaStreamSource(stream);
         const micInputNode = createMicInputNode(source);
         micSource = source;
-        attachInputTap(micInputNode);
+        attachMicInputTap(micInputNode);
         updateSampleRate(decodeContext.sampleRate);
         updateSync(false);
         decodeContext.resume();
@@ -3365,15 +3761,12 @@ async function fetchAndStore() {
     resetEndecDetection();
     let buffer = [];
 
-    let _runDecoderCallCount = 0;
-    let _lastHeaderTimesLog = 0;
     let _lastBridgeLevelSent = 0;
     let _bridgeLevelPeak = 0;
     function runDecoder(buf) {
         if (!buf || !buf.length || fileDecodeActive) {
             return;
         }
-        _runDecoderCallCount++;
         let sum = 0;
         for (let i = 0; i < buf.length; i++) {
             const s = buf[i];
@@ -3395,15 +3788,7 @@ async function fetchAndStore() {
             }
         }
 
-        if (_runDecoderCallCount <= 5 || _runDecoderCallCount % 500 === 0) {
-        }
-
-        // afskdemod(buf);
         seattyDemod.process(buf);
-
-        if (headerTimes !== _lastHeaderTimesLog) {
-            _lastHeaderTimesLog = headerTimes;
-        }
     }
 
     /*
@@ -3524,7 +3909,8 @@ async function fetchAndStore() {
         saturateInt16: true,
         detect1050: true,
         tonePeakTruncate: false,
-        sameBandpass: { hz: 1822.9, q: 3 }
+        sameBandpass: { hz: 1822.9, q: 3 },
+        bandTilt: { bits: 1024, warmup: 64, maxTilt: 3 }
     };
 
     function updateSampleRate(sr) {
@@ -3869,8 +4255,6 @@ async function fetchAndStore() {
         terminatorRunByte = -1;
         terminatorRunCount = 0;
         lastPayloadByteSample = 0;
-        _runDecoderCallCount = 0;
-        _lastHeaderTimesLog = 0;
         _clockdemodByteCount = 0;
         preambleShift = 0;
         invalidByteCount = 0;
@@ -3974,10 +4358,14 @@ async function fetchAndStore() {
             if (currentByte == 0xAB) {
                 headerTimes++;
                 if (headerTimes > 4) {
+                    const wasDecoding = decoding;
                     decoding = true;
                     abRunLength = 0;
                     invalidByteCount = 0;
                     updateSync(true);
+                    if (!wasDecoding) {
+                        handleAutoRecordingPreamble();
+                    }
                 }
             } else {
                 headerTimes = 0;
@@ -4034,6 +4422,9 @@ async function fetchAndStore() {
                         else {
                             container.innerText += currentChar;
                             currentMsg += currentChar;
+                            if (currentMsg === "NNNN") {
+                                noteAutoRecordingEomBurst();
+                            }
                             if (currentMsg === "NNNN" && eomCount === 2) {
                                 finalizeAlert("EOM_PAYLOAD");
                             } else if (!currentMsgFastPathHandled && currentChar === "-" && hasCompleteSameHeaderTail(currentMsg)) {
@@ -4246,57 +4637,150 @@ async function fetchAndStore() {
         return Math.max(0, Math.round(rate * (ms / 1000)));
     }
 
-    function synthesizeAfskTxStrings(txStrings, rate, betweenSilenceSamples = 0, finalSilenceSamples = 0) {
-        if (!Array.isArray(txStrings) || !txStrings.length || !Number.isFinite(rate) || rate <= 0) {
+    const SAME_BIT_SECONDS = 0.00192;
+    const SAME_MARK_FREQ = 2083.3333333;
+    const SAME_SPACE_FREQ = 1562.5;
+    const SAME_TX_AMPLITUDE = 0.79;
+    const SAME_TWO_PI = Math.PI * 2;
+
+    function samplesPerSameBit(rate) {
+        return rate * SAME_BIT_SECONDS;
+    }
+
+    function renderSameAfsk(bits, rate, amplitude, phaseOffset = 0, limitSamples = -1) {
+        if (!Array.isArray(bits) || !bits.length || !Number.isFinite(rate) || rate <= 0) {
+            return { pcm: new Float32Array(0), endPhase: phaseOffset };
+        }
+        const perBit = samplesPerSameBit(rate);
+        const natural = Math.ceil(bits.length * perBit);
+        const total = (limitSamples >= 0) ? Math.min(limitSamples, natural) : natural;
+        const out = new Float32Array(total);
+        const markInc = (SAME_TWO_PI * SAME_MARK_FREQ) / rate;
+        const spaceInc = (SAME_TWO_PI * SAME_SPACE_FREQ) / rate;
+        let phase = phaseOffset;
+        let clock = 0;
+        for (let k = 0; k < bits.length && clock < total; k++) {
+            const inc = bits[k] ? markInc : spaceInc;
+            const bitEnd = (k + 1) * perBit;
+            while (clock < bitEnd && clock < total) {
+                out[clock] = Math.sin(phase) * amplitude;
+                phase += inc;
+                if (phase >= SAME_TWO_PI) {
+                    phase -= SAME_TWO_PI;
+                }
+                clock++;
+            }
+        }
+        return { pcm: out, endPhase: phase };
+    }
+
+    function synthesizeSameBurst(txString, rate, amplitude) {
+        if (typeof txString !== "string" || !txString.length) {
             return new Float32Array(0);
         }
-        const validTxStrings = txStrings.filter((s) => typeof s === "string" && s.length > 0);
-        if (!validTxStrings.length) {
+        return renderSameAfsk(bitsFromStringLSB(txString), rate, amplitude).pcm;
+    }
+
+    function synthesizeSameBurstLeadIn(txString, rate, amplitude, missingSamples, joinValue, joinSlope) {
+        if (typeof txString !== "string" || !txString.length || !(missingSamples > 0)) {
             return new Float32Array(0);
         }
+        const bits = bitsFromStringLSB(txString);
+        const dry = renderSameAfsk(bits, rate, amplitude, 0, missingSamples);
+        if (!dry.pcm.length || !(amplitude > 0) || !Number.isFinite(joinValue)) {
+            return dry.pcm;
+        }
+        const target = Math.max(-1, Math.min(1, joinValue / amplitude));
+        let theta = Math.asin(target);
+        if (joinSlope < 0) {
+            theta = Math.PI - theta;
+        }
+        return renderSameAfsk(bits, rate, amplitude, theta - dry.endPhase, missingSamples).pcm;
+    }
 
-        const bitSamples = Math.max(1, Math.ceil(rate * 0.00192));
-        const amplitude = 0.79;
-        const markStep = (2 * Math.PI * 2083.3) / rate;
-        const spaceStep = (2 * Math.PI * 1562.5) / rate;
-        const markBit = new Float32Array(bitSamples);
-        const spaceBit = new Float32Array(bitSamples);
-        for (let i = 0; i < bitSamples; i++) {
-            markBit[i] = Math.sin(i * markStep) * amplitude;
-            spaceBit[i] = Math.sin(i * spaceStep) * amplitude;
+    function peakBetween(pcmData, from, to) {
+        let peak = 0;
+        const start = Math.max(0, Math.floor(from));
+        const end = Math.min(pcmData.length, Math.ceil(to));
+        for (let i = start; i < end; i++) {
+            const v = Math.abs(pcmData[i]);
+            if (v > peak) {
+                peak = v;
+            }
         }
+        return peak;
+    }
 
-        let totalSamples = (finalSilenceSamples > 0) ? finalSilenceSamples : 0;
-        for (let i = 0; i < validTxStrings.length; i++) {
-            totalSamples += validTxStrings[i].length * 8 * bitSamples;
+    function refineBurstSegment(pcmData, start, end, threshold) {
+        let s = start;
+        let e = end;
+        while (s < e && Math.abs(pcmData[s]) <= threshold) {
+            s++;
         }
-        if (betweenSilenceSamples > 0 && validTxStrings.length > 1) {
-            totalSamples += betweenSilenceSamples * (validTxStrings.length - 1);
+        while (e > s && Math.abs(pcmData[e - 1]) <= threshold) {
+            e--;
         }
-        if (!totalSamples) {
-            return new Float32Array(0);
-        }
+        return { start: s, end: e };
+    }
 
-        const out = new Float32Array(totalSamples);
-        let offset = 0;
-        for (let i = 0; i < validTxStrings.length; i++) {
-            const tx = validTxStrings[i];
-            for (let charIndex = 0; charIndex < tx.length; charIndex++) {
-                const byteValue = tx.charCodeAt(charIndex) & 0xFF;
-                for (let bitIndex = 0; bitIndex < 8; bitIndex++) {
-                    out.set(((byteValue >> bitIndex) & 1) ? markBit : spaceBit, offset);
-                    offset += bitSamples;
+    function findBurstSegments(pcmData, rate, fromSample, toSample, minGapSamples) {
+        const start = Math.max(0, Math.floor(fromSample));
+        const end = Math.min(pcmData.length, Math.ceil(toSample));
+        const windowSize = Math.max(1, Math.round(rate * 0.004));
+        if (end - start < windowSize) {
+            return [];
+        }
+        const peak = peakBetween(pcmData, start, end);
+        if (!peak) {
+            return [];
+        }
+        const threshold = Math.max(0.004, Math.min(0.08, peak * 0.16));
+        const minGapWindows = Math.max(1, Math.ceil(minGapSamples / windowSize));
+        const segments = [];
+        let segStart = -1;
+        let segEnd = -1;
+        let lowRun = 0;
+        for (let w = start; w < end; w += windowSize) {
+            const wEnd = Math.min(w + windowSize, end);
+            let sumAbs = 0;
+            for (let i = w; i < wEnd; i++) {
+                sumAbs += Math.abs(pcmData[i]);
+            }
+            if ((sumAbs / (wEnd - w)) > threshold) {
+                if (segStart < 0) {
+                    segStart = w;
+                }
+                segEnd = wEnd;
+                lowRun = 0;
+            } else if (segStart >= 0) {
+                lowRun++;
+                if (lowRun >= minGapWindows) {
+                    segments.push(refineBurstSegment(pcmData, segStart, segEnd, threshold));
+                    segStart = -1;
+                    lowRun = 0;
                 }
             }
-
-            const isLast = (i === validTxStrings.length - 1);
-            if (!isLast && betweenSilenceSamples > 0) {
-                offset += betweenSilenceSamples;
-            } else if (isLast && finalSilenceSamples > 0) {
-                offset += finalSilenceSamples;
-            }
         }
+        if (segStart >= 0) {
+            segments.push(refineBurstSegment(pcmData, segStart, segEnd, threshold));
+        }
+        return segments;
+    }
 
+    function concatPcmParts(parts) {
+        let total = 0;
+        for (let i = 0; i < parts.length; i++) {
+            total += parts[i].length;
+        }
+        const out = new Float32Array(total);
+        let offset = 0;
+        for (let i = 0; i < parts.length; i++) {
+            if (!parts[i].length) {
+                continue;
+            }
+            out.set(parts[i], offset);
+            offset += parts[i].length;
+        }
         return out;
     }
 
@@ -4316,102 +4800,110 @@ async function fetchAndStore() {
         return "";
     }
 
-    function trimFirstCapturedHeaderBurst(pcmData, rate, expectedGapSamples) {
-        if (!(pcmData instanceof Float32Array) || !pcmData.length) {
-            return pcmData;
-        }
-        const safeRate = (Number.isFinite(rate) && rate > 0) ? rate : sampleRate;
-        const minGapSamples = Math.max(1, Math.floor(expectedGapSamples * 0.45));
-        if (minGapSamples <= 0 || pcmData.length <= minGapSamples) {
-            return pcmData;
-        }
-
-        let peak = 0;
-        for (let i = 0; i < pcmData.length; i++) {
-            const v = Math.abs(pcmData[i]);
-            if (v > peak) {
-                peak = v;
-            }
-        }
-        if (!peak) {
-            return pcmData;
-        }
-
-        const silenceThreshold = Math.max(0.005, Math.min(0.08, peak * 0.16));
-        const windowSize = Math.max(1, Math.round(safeRate * 0.004));
-        const consecutiveWindows = Math.max(1, Math.ceil(minGapSamples / windowSize));
-        const maxScanSample = Math.min(pcmData.length - windowSize, Math.round(safeRate * 8));
-
-        let lowWindowRun = 0;
-        for (let start = 0; start <= maxScanSample; start += windowSize) {
-            let sumAbs = 0;
-            const end = Math.min(start + windowSize, pcmData.length);
-            for (let i = start; i < end; i++) {
-                sumAbs += Math.abs(pcmData[i]);
-            }
-            const avgAbs = sumAbs / (end - start);
-            if (avgAbs <= silenceThreshold) {
-                lowWindowRun++;
-                if (lowWindowRun >= consecutiveWindows) {
-                    const gapEndSample = Math.min(pcmData.length, end);
-                    if (gapEndSample > 0 && gapEndSample < pcmData.length) {
-                        return pcmData.subarray(gapEndSample);
-                    }
-                    break;
-                }
-            } else {
-                lowWindowRun = 0;
-            }
-        }
-
-        return pcmData;
-    }
-
     function patchAutoRecordingPcmBoundaries(pcmData, rate) {
         if (!(pcmData instanceof Float32Array) || !pcmData.length) {
             return pcmData;
         }
 
         const safeRate = (Number.isFinite(rate) && rate > 0) ? rate : sampleRate;
+        const header = getAutoRecordingHeaderForPatch();
+        if (!hasCompleteSameHeaderTail(header)) {
+            return pcmData;
+        }
+
         const mode = getOverallEndecMode();
         const profile = getEndecModeProfile(mode);
-        const betweenGapSamples = samplesFromMsAtRate((profile && Number.isFinite(profile.betweenGapMs)) ? profile.betweenGapMs : 1000, safeRate);
-        const oneSecondSamples = samplesFromMsAtRate(1000, safeRate);
+        const gapMs = (profile && Number.isFinite(profile.betweenGapMs)) ? profile.betweenGapMs : 1000;
+        const betweenGapSamples = samplesFromMsAtRate(gapMs, safeRate);
+        const minGapSamples = Math.max(1, Math.floor(betweenGapSamples * 0.45));
+        const headerTx = buildHeaderTxStrings(header, mode);
+        const eomTx = buildEomTxStrings(mode);
+        const perBit = samplesPerSameBit(safeRate);
+        const nominalHeaderBurst = Math.ceil(headerTx[0].length * 8 * perBit);
+        const nominalEomBurst = Math.ceil(eomTx[0].length * 8 * perBit);
 
-        let headerLeadIn = new Float32Array(0);
-        const headerForPatch = getAutoRecordingHeaderForPatch();
-        let trimmedPcmData = pcmData;
-        if (hasCompleteSameHeaderTail(headerForPatch)) {
-            const cleanHeader = stripLeadingPreamble16(headerForPatch);
-            const headerBurst = SAME_PREAMBLE + cleanHeader;
-            headerLeadIn = synthesizeAfskTxStrings([headerBurst], safeRate, 0, oneSecondSamples);
-            trimmedPcmData = trimFirstCapturedHeaderBurst(pcmData, safeRate, betweenGapSamples);
+        const headScanEnd = Math.min(pcmData.length, samplesFromMsAtRate(8000, safeRate));
+        const headSegments = findBurstSegments(pcmData, safeRate, 0, headScanEnd, minGapSamples);
+        const headerSegments = [];
+        for (let i = 0; i < headSegments.length && headerSegments.length < 3; i++) {
+            if ((headSegments[i].end - headSegments[i].start) > nominalHeaderBurst * 1.6) {
+                break;
+            }
+            headerSegments.push(headSegments[i]);
         }
-
-        const eomBurst = SAME_PREAMBLE + "NNNN";
-        let eomTail = synthesizeAfskTxStrings([eomBurst, eomBurst], safeRate, betweenGapSamples, oneSecondSamples);
-        if (eomTail.length && betweenGapSamples > 0) {
-            const withLeadGap = new Float32Array(betweenGapSamples + eomTail.length);
-            withLeadGap.set(eomTail, betweenGapSamples);
-            eomTail = withLeadGap;
-        }
-
-        if (!headerLeadIn.length && !eomTail.length) {
-            return trimmedPcmData;
+        if (!headerSegments.length) {
+            return pcmData;
         }
 
-        const merged = new Float32Array(headerLeadIn.length + trimmedPcmData.length + eomTail.length);
-        let offset = 0;
-        if (headerLeadIn.length) {
-            merged.set(headerLeadIn, offset);
-            offset += headerLeadIn.length;
+        let headerBurstSamples = nominalHeaderBurst;
+        for (let i = 1; i < headerSegments.length; i++) {
+            const span = headerSegments[i].end - headerSegments[i].start;
+            if (Math.abs(span - nominalHeaderBurst) <= nominalHeaderBurst * 0.3) {
+                headerBurstSamples = span;
+                break;
+            }
         }
-        merged.set(trimmedPcmData, offset);
-        offset += trimmedPcmData.length;
-        if (eomTail.length) {
-            merged.set(eomTail, offset);
+
+        const referenceSegment = headerSegments[headerSegments.length - 1];
+        const measuredPeak = peakBetween(pcmData, referenceSegment.start, referenceSegment.end);
+        const burstAmplitude = (measuredPeak > 0.001) ? Math.min(0.99, measuredPeak) : SAME_TX_AMPLITUDE;
+
+        const missingHeaderBursts = Math.max(0, 3 - headerSegments.length);
+        const firstSegment = headerSegments[0];
+        const leadEdgeTolerance = samplesFromMsAtRate(30, safeRate);
+        let headTrim = 0;
+        let leadIn = new Float32Array(0);
+        if (firstSegment.start <= leadEdgeTolerance) {
+            const missing = headerBurstSamples - firstSegment.end;
+            if (missing > 0) {
+                const joinSlope = (pcmData.length > 1) ? (pcmData[1] - pcmData[0]) : 0;
+                leadIn = synthesizeSameBurstLeadIn(headerTx[missingHeaderBursts] || headerTx[0],
+                    safeRate, burstAmplitude, missing, pcmData[0], joinSlope);
+            } else {
+                headTrim = -missing;
+            }
+        } else {
+            headTrim = firstSegment.start;
         }
-        return merged;
+
+        const tailWindow = samplesFromMsAtRate(gapMs * 3 + 3000, safeRate);
+        const tailSegments = findBurstSegments(pcmData, safeRate,
+            Math.max(headTrim, pcmData.length - tailWindow), pcmData.length, minGapSamples);
+        let capturedEomBursts = 0;
+        let tailEnd = pcmData.length;
+        for (let i = tailSegments.length - 1; i >= 0 && capturedEomBursts < 3; i--) {
+            const span = tailSegments[i].end - tailSegments[i].start;
+            if (span > nominalEomBurst * 1.6 || span < nominalEomBurst * 0.5) {
+                break;
+            }
+            if (!capturedEomBursts) {
+                tailEnd = tailSegments[i].end;
+            }
+            capturedEomBursts++;
+            if (i > 0 && (tailSegments[i].start - tailSegments[i - 1].end) > betweenGapSamples * 2.2) {
+                break;
+            }
+        }
+        if (!capturedEomBursts) {
+            tailEnd = pcmData.length;
+        }
+        const eomBursts = Math.min(3, Math.max(capturedEomBursts, autoRecordingEomBursts));
+
+        const parts = [];
+        for (let i = 0; i < missingHeaderBursts; i++) {
+            parts.push(synthesizeSameBurst(headerTx[i], safeRate, burstAmplitude));
+            parts.push(new Float32Array(betweenGapSamples));
+        }
+        if (leadIn.length) {
+            parts.push(leadIn);
+        }
+        const bodyStart = Math.max(0, Math.min(headTrim, tailEnd));
+        parts.push(pcmData.subarray(bodyStart, tailEnd));
+        for (let i = eomBursts; i < 3; i++) {
+            parts.push(new Float32Array(betweenGapSamples));
+            parts.push(synthesizeSameBurst(eomTx[i], safeRate, burstAmplitude));
+        }
+        return concatPcmParts(parts);
     }
 
     function handleAutoRecordingTriggers() {
@@ -4421,18 +4913,12 @@ async function fetchAndStore() {
         if (!isAutoRecordEnabled()) {
             return;
         }
-        if (!autoRecordingTriggered && currentMsg.length >= 4) {
-            const prefix = currentMsg.slice(0, 4).toUpperCase();
-            if (prefix === "ZCZC") {
+        if (currentMsg.length >= 4 && currentMsg.slice(0, 4).toUpperCase() === "ZCZC") {
+            if (!autoRecordingTriggered) {
                 autoRecordingTriggered = true;
                 startAutoRecording();
             }
-        }
-        if (autoRecordingTriggered && currentMsg.length >= 4) {
-            const tailWindow = currentMsg.slice(-8).toUpperCase();
-            if (tailWindow.includes("NNNN")) {
-                stopAutoRecording(true);
-            }
+            confirmAutoRecording();
         }
     }
 
@@ -4457,6 +4943,9 @@ async function fetchAndStore() {
     }
 
     function parseHeader(input, productId = null) {
+        if (typeof input !== "string" || !input.length) {
+            return;
+        }
         if (input.startsWith("NNNN")) {
             eomCount++;
             const isFinalEomBurst = (eomCount === 3);
@@ -4474,6 +4963,9 @@ async function fetchAndStore() {
         }
         let output = {};
         const parts = input.split("+");
+        if (parts.length < 2) {
+            return;
+        }
         const first = parts[0].split("-");
         const second = parts[1].split("-");
         if (first.length < 3 || second.length !== 4) {
@@ -4549,12 +5041,28 @@ async function fetchAndStore() {
         if (isObject(header)) {
             product = maybeRotateSameProduct(header.rawHeader);
             parsedHeader = parseHeader(header.rawHeader, product.id);
-            parsedHeader.endecMode = "NONE (Raw Header)";
-            parsedHeader.endecModeReady = true;
-            parsedHeader.productId = null;
+            if (parsedHeader) {
+                parsedHeader.endecMode = "NONE (Raw Header)";
+                parsedHeader.endecModeReady = true;
+                parsedHeader.productId = null;
+            }
         } else {
             product = maybeRotateSameProduct(header);
             parsedHeader = parseHeader(header, product.id);
+        }
+
+        if (!parsedHeader) {
+            const rawText = isObject(header) ? (header.rawHeader || "") : String(header || "");
+            console.warn("Discarding unparseable SAME burst:", JSON.stringify(rawText));
+            product.segments.push({
+                type: "header",
+                reason: segmentMeta?.reason || "UNKNOWN",
+                terminatorByte: segmentMeta?.terminatorByte ?? null,
+                terminatorRunLength: segmentMeta?.terminatorRunLength ?? 0,
+                observedMode: segmentMeta?.observedMode || "DEFAULT",
+                unparseable: true
+            });
+            return;
         }
 
         const view = document.createElement("button");

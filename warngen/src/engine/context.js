@@ -82,7 +82,13 @@
         var start    = opts.start   || now;
         var duration = opts.duration != null ? opts.duration : 30;
 
-        var expire   = opts.expire  || new Date(start.getTime() + duration * 60000);
+        // TemplateRunner: Wx ends at roundDateTo15(start + duration), and ${duration} is
+        // that rounded span in minutes.
+        var expire   = opts.expire;
+        if (!expire) {
+            expire = Utils.roundDateTo15(new Date(start.getTime() + duration * 60000));
+            duration = Math.floor((expire.getTime() - start.getTime()) / 60000);
+        }
         var TMLtime  = opts.TMLtime || now;
         var event    = opts.event   || now;
 
@@ -93,7 +99,7 @@
 
         var WMOId        = opts.WMOId        || computeWmoIdFallback(productId, siteId);
         var BBBId        = opts.BBBId        || "";
-        var productClass = opts.productClass || "T";
+        var productClass = opts.productClass || "O";
         var action       = opts.action       || "NEW";
         var etn          = opts.etn          || "0042";
 
@@ -190,14 +196,14 @@
         var awwSiteId = opts.awwSiteId || "";
         var awwSiteName = opts.awwSiteName || "";
         var ugcFormat = opts.ugcFormat || "C";
-        var ugcline = UGC.build(areas, expire, ugcFormat);
+        var ugcline = UGC.build(areas, opts.ugcPurge || expire, ugcFormat);
 
         // Followup state. cancelareas are the areas that were in the original warning but have
         // dropped out of the current polygon; they get their own UGC line and VTEC segment.
         // null rather than [] when nothing was dropped: the templates gate their CAN segment on
         // #if(${cancelareas}), and an empty list would still emit a segment with an empty UGC.
         var cancelareas = (opts.cancelareas && opts.cancelareas.length) ? opts.cancelareas : null;
-        var ugclinecan  = cancelareas ? UGC.build(cancelareas, expire, ugcFormat) : "";
+        var ugclinecan  = cancelareas ? UGC.build(cancelareas, opts.ugcCanPurge || expire, ugcFormat) : "";
         var phenomena   = opts.phenomena || PRODUCT_PHENOMENA[productId] || "SV";
         var significance = opts.significance || "W";
 
@@ -241,10 +247,11 @@
             closestPoints: closestPoints,
             otherClosestPoints: otherClosestPoints,
             cityList:      cityList,
+            locationList:  opts.locationList || [],
             otherPoints:   otherPoints,
             pathCast:      pathCast,
 
-            stormType:              "single",
+            stormType:              opts.stormType === "line" ? "line" : "single",
             movementSpeed:          movementSpeed,
             movementInKnots:        movementInKnots,
             movementDirection:      movementDirection,
@@ -282,10 +289,13 @@
         PR:"Puerto Rico", VI:"U.S. Virgin Islands"
     };
 
+    // countyTypes.txt, the areaNotationTranslationFile the geospatial configs name.
     var COUNTY_NOTATION_OVERRIDES = {
-        LA: { area: "Parish",      areas: "Parishes" },
-        AK: { area: "Borough",     areas: "Boroughs" },
-        PR: { area: "Municipio",   areas: "Municipios" }
+        LA: { area: "Parish",       areas: "Parishes" },
+        DC: { area: "",             areas: "" },
+        AK: { area: "",             areas: "" },
+        PR: { area: "Municipality", areas: "Municipalities" },
+        GU: { area: "",             areas: "" }
     };
 
     /**

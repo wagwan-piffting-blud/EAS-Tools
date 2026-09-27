@@ -37,6 +37,9 @@ Web‑based **EAS / SAME Tools** that run entirely in your browser. Packed to th
 * **WarnGen**
   * Web‑based AWIPS CAVE WarnGen clone for creating/editing AWIPS/VTEC products
   * Map interface for selecting affected areas and form‑based interface for entering product details
+  * Civil emergency products (CEM, CAE, EVI, SPW, LAE and the rest of the 19 AWIPS GFE CivilEmerg types), ported from the AWIPS formatters with each office's real PIL/WMO headings
+  * Watches: SPC tornado and severe thunderstorm watches (SEL, WOU and WWP, issued from a dedicated SPC office), office watch county notifications (WCN), winter storm, extreme cold, high wind, flood, fire weather and coastal flood watches, and tropical watches and warnings (TCV and HLS), built from real NWS products and the AWIPS GFE formatters
+  * Radar overlay: open a NEXRAD Level II (Archive II) file and draw any tilt of reflectivity, velocity, spectrum width or the dual-pol products under the map, with GRLevelX `.pal` color tables and a readout of the value under the cursor. Decoded entirely in the browser; nothing is fetched
   * Export products in standard .kml/.txt format
 * **Phoneme Converter/Generator**
   * Convert regular text into phoneme representations for use with TTS voices
@@ -221,12 +224,10 @@ For a demonstration of each individual TTS voice, see the [voice demo page](http
   * [Leaflet](https://leafletjs.com/)
   * [us-atlas](https://github.com/topojson/us-atlas)
   * [topojson-client](https://github.com/topojson/topojson-client)
-  * [all-the-cities](https://github.com/zeke/all-the-cities)
+  * [NSF Unidata AWIPS EDEX](https://www.unidata.ucar.edu/data/awips-edex-access) via [python-awips](https://unidata.github.io/python-awips/)
   * [Streaming Shapefile Parser](https://github.com/mbostock/shapefile)
   * [US Census Bureau TIGER/Line Shapefiles](https://www.census.gov/cgi-bin/geo/shapefiles/index.php)
   * [NOAA / National Weather Service County Warning Area Shapefile](https://www.weather.gov/gis/ZoneCounty)
-  * [GeoNames](https://www.geonames.org/)
-  * [U.S. Geological Survey GNIS](https://www.usgs.gov/tools/geographic-names-information-system-gnis)
 
 > See each upstream project for their respective licenses.
 

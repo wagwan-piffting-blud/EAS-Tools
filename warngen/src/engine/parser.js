@@ -84,20 +84,27 @@
         return polygon;
     }
 
+    // A line of storms carries one LOC pair per vertex, wrapping onto indented lines.
     function parseTML(line) {
-        var m = /TIME\.\.\.MOT\.\.\.LOC\s+(\d{4})Z\s+(\d{1,3})DEG\s+(\d{1,3})KT\s+(\d{3,4})\s+(\d{3,5})/.exec(line);
+        var m = /TIME\.\.\.MOT\.\.\.LOC\s+(\d{4})Z\s+(\d{1,3})DEG\s+(\d{1,3})KT((?:\s+\d{3,4}\s+\d{3,5})+)/.exec(line);
         if (!m) return null;
         var hh = parseInt(m[1].slice(0, 2), 10);
         var mm = parseInt(m[1].slice(2, 4), 10);
-        var lon = parseInt(m[5], 10) / 100;
-        if (lon > 0) lon = -lon;
+        var nums = m[4].trim().split(/\s+/);
+        var locations = [];
+        for (var i = 0; i + 1 < nums.length; i += 2) {
+            var lon = parseInt(nums[i + 1], 10) / 100;
+            if (lon > 0) lon = -lon;
+            locations.push([parseInt(nums[i], 10) / 100, lon]);
+        }
         return {
             timeHHMM: m[1],
             hour: hh,
             minute: mm,
             bearingFrom: parseInt(m[2], 10),
             speedKt: parseInt(m[3], 10),
-            location: [parseInt(m[4], 10) / 100, lon]
+            location: locations[0],
+            locations: locations
         };
     }
 
@@ -242,7 +249,11 @@
         for (var t = polyIdx; t < lines.length; t++) {
             if (/^TIME\.\.\.MOT\.\.\.LOC\b/.test(lines[t])) { tmlIdx = t; break; }
         }
-        var motion = tmlIdx >= 0 ? parseTML(lines[tmlIdx]) : null;
+        var tmlText = tmlIdx >= 0 ? lines[tmlIdx] : null;
+        for (var tc = tmlIdx + 1; tmlIdx >= 0 && tc < lines.length && /^(\d{3,4}\s+\d{3,5}\s*)+$/.test(lines[tc]); tc++) {
+            tmlText += " " + lines[tc];
+        }
+        var motion = tmlText ? parseTML(tmlText) : null;
 
         var eventName = findEventName(lines, wmoIdx + (awipsId ? 2 : 1));
         if (!eventName && PHENOMENON_NAMES[phenomenon] && SIGNIFICANCE_NAMES[significance]) {
@@ -250,6 +261,23 @@
         }
 
         var tags = parseTags(bulletin);
+
+        var officeName = null;
+        for (var oi = wmoIdx; oi < lines.length && oi < wmoIdx + 14; oi++) {
+            var om = /^National Weather Service (.+)$/.exec(lines[oi]);
+            if (om) { officeName = om[1].trim(); break; }
+        }
+        var issuedBy = /The National Weather Service in (.+?) has issued/i.exec(bulletin.replace(/\s+/g, " "));
+        var officeShortName = issuedBy ? issuedBy[1].trim() : null;
+
+        var eventTime = null;
+        if (motion && startTime instanceof Date && !isNaN(startTime.getTime())) {
+            eventTime = new Date(startTime.getTime());
+            eventTime.setUTCHours(motion.hour, motion.minute, 0, 0);
+            if (eventTime.getTime() > startTime.getTime() + 60000) {
+                eventTime.setUTCDate(eventTime.getUTCDate() - 1);
+            }
+        }
 
         var result = {
             valid: true,
@@ -272,6 +300,10 @@
             ugcLine: ugcLine,
             areas: areas,
             motion: motion,
+            eventTime: eventTime,
+            officeName: officeName,
+            officeShortName: officeShortName,
+            impactBased: isImpactBased(bulletin, tags),
             tags: tags
         };
 
@@ -279,10 +311,153 @@
         return result;
     }
 
+    // Impact-based products carry HAZARD/SOURCE/IMPACT paragraphs or the IBW threat tags.
+    function isImpactBased(text, tags) {
+        if (/^\s*HAZARD\.\.\./im.test(text) && /^\s*SOURCE\.\.\./im.test(text)) return true;
+        if (/^\s*IMPACT\.\.\./im.test(text)) return true;
+        return /^(TORNADO|THUNDERSTORM|FLASH FLOOD) DAMAGE THREAT\.\.\./im.test(text)
+            || /^(TORNADO|WATERSPOUT)\.\.\.(RADAR INDICATED|OBSERVED|POSSIBLE)/im.test(text);
+    }
+
+    // BulletListManager.selectBulletFromFollowup: upper-case, "..." read as ",", every quoted
+    // term must appear, and a term led by "-" must not.
+    function normalizeForParse(text) {
+        return String(text).replace(/\s+/g, " ").toUpperCase().replace(/\.\.\./g, ",");
+    }
+
+    function parseStringMatches(parseString, normalizedText) {
+        if (!parseString) return false;
+        var ps = String(parseString).toUpperCase().replace(/\.\.\./g, ",").replace(/\s+/g, " ");
+        var parts = ps.split("\",");
+        for (var i = 0; i < parts.length; i++) {
+            var p = parts[i].replace(/"/g, "");
+            if (p.charAt(0) === "-") {
+                if (normalizedText.indexOf(p.slice(1)) !== -1) return false;
+            } else if (normalizedText.indexOf(p) === -1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /*
+     * BulletListManager.recreateBulletsFromFollowup: defaults first (not on COR), then every
+     * bullet whose parseString matches, a match replacing whatever its group held. A bullet
+     * with no parseString of its own borrows one from a same-named bullet in another action
+     * group (the NEW listofcities has none; the followup ones do). Unlike a followup, an
+     * ungrouped default whose parseString does not match is dropped, since the goal is to
+     * reproduce the imported text.
+     */
+    function selectBulletsFromText(bullets, text, opts) {
+        opts = opts || {};
+        var borrowed = opts.parseStrings || {};
+        var norm = normalizeForParse(text);
+        var selected = {};
+        var groupSel = {};
+        var order = [];
+
+        function select(b) {
+            if (b.group) {
+                if (groupSel[b.group] && groupSel[b.group] !== b.name) delete selected[groupSel[b.group]];
+                groupSel[b.group] = b.name;
+            }
+            if (!selected[b.name]) order.push(b.name);
+            selected[b.name] = true;
+        }
+
+        var usable = bullets.filter(function (b) { return b && b.name && b.type !== "title"; });
+        if (opts.action !== "COR") {
+            usable.forEach(function (b) { if (b.default) select(b); });
+        }
+        usable.forEach(function (b) {
+            var ps = b.parseString || borrowed[b.name];
+            if (!ps) return;
+            if (parseStringMatches(ps, norm)) {
+                select(b);
+            } else if (!b.group && selected[b.name]) {
+                delete selected[b.name];
+            }
+        });
+        return order.filter(function (n) { return selected[n]; });
+    }
+
+    function escapeRe(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function anchorPattern(s) {
+        return s.split(" ").map(escapeRe).join("\\s+");
+    }
+
+    /*
+     * Recover forecaster fill-ins from an imported product: every !** LABEL **! left in the
+     * rendered template has literal template text around it, which locates the same spot
+     * in the product. Returns [{ label, ordinal, value }] in the page's fill-in keying.
+     */
+    function recoverFillIns(rendered, product) {
+        var re = /!\*\*\s*([^*]*?)\s*\*\*!/g;
+        var flat = String(product).replace(/\s+/g, " ");
+        var marks = [];
+        var m;
+        while ((m = re.exec(rendered)) !== null) {
+            marks.push({ label: m[1], start: m.index, end: m.index + m[0].length });
+        }
+
+        var signature = null;
+        var tail = String(product).split("$$");
+        if (tail.length > 1) {
+            var sigLines = tail[tail.length - 1].split("\n").map(function (l) { return l.trim(); })
+                .filter(function (l) { return l.length > 0; });
+            if (sigLines.length) signature = sigLines[sigLines.length - 1];
+        }
+
+        var anonCount = 0;
+        var byKey = {};
+        var out = [];
+        marks.forEach(function (mk, i) {
+            var ordinal = mk.label ? 0 : anonCount++;
+            var key = mk.label + "\u0000" + ordinal;
+            var value = null;
+
+            if (/NAME\/INITIALS/i.test(mk.label)) {
+                value = signature;
+            } else {
+                var prevEnd = i > 0 ? marks[i - 1].end : 0;
+                var nextStart = i + 1 < marks.length ? marks[i + 1].start : rendered.length;
+                var beforeWords = rendered.slice(prevEnd, mk.start).trim().split(/\s+/).filter(Boolean);
+                var afterWords = rendered.slice(mk.end, nextStart).trim().split(/\s+/).filter(Boolean);
+                // Longest anchors first; the product may reword what lies further away.
+                var tries = [[6, 3], [3, 2], [2, 1], [6, 0]];
+                for (var t = 0; t < tries.length && !value; t++) {
+                    var b = beforeWords.slice(-tries[t][0]).join(" ");
+                    var a = afterWords.slice(0, tries[t][1]).join(" ");
+                    if (!b && !a) continue;
+                    var pat = (b ? anchorPattern(b) + "\\s*" : "") + "(.{1,120}?)"
+                        + (a ? "\\s*" + anchorPattern(a) : "\\s*(?=[.!?]|$)");
+                    var hit = new RegExp(pat, "i").exec(flat);
+                    if (hit && hit[1] && !/!\*\*/.test(hit[1]) && hit[1].trim()) value = hit[1].trim();
+                }
+            }
+            if (!value) return;
+            var prior = byKey[key];
+            if (prior && /[a-z]/.test(prior.value)) return;
+            if (prior) {
+                prior.value = value;
+                return;
+            }
+            byKey[key] = { label: mk.label, ordinal: ordinal, value: value };
+            out.push(byKey[key]);
+        });
+        return out;
+    }
+
     var module_state = { last: null };
 
     return {
         parseBulletin: parseBulletin,
+        selectBulletsFromText: selectBulletsFromText,
+        recoverFillIns: recoverFillIns,
+        _parseStringMatches: function (ps, text) { return parseStringMatches(ps, normalizeForParse(text)); },
         get last() { return module_state.last; },
         _parseVtecDate: parseVtecDate,
         _parseUgc: parseUgc,

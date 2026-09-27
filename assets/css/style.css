@@ -1398,6 +1398,15 @@ textarea:disabled {
     border-radius: 3px;
 }
 
+.little {
+    font-size: 14px;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+    top: -0.3em;
+    color: red;
+}
+
 /* Media Queries */
 /* Mobile devices */
 @media screen and (max-width: 1079px) {

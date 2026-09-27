@@ -61,16 +61,16 @@
                     <li><a href="https://github.com/shepherdwind/velocity.js" target="_blank" rel="noopener noreferrer nofollow">velocityjs</a>: JavaScript port of Apache Velocity; renders the NWS WarnGen <code>.vm</code> templates unchanged, with seven small compatibility patches applied at preprocess time.</li>
                     <li><a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer nofollow">Leaflet</a>: Open-source interactive map library powering the polygon-drawing surface and the county GeoJSON overlay.</li>
                     <li><a href="https://github.com/Leaflet/Leaflet.draw" target="_blank" rel="noopener noreferrer nofollow">Leaflet.draw</a>: Leaflet plugin providing the polygon-drawing, vertex-editing, and clearing tools.</li>
+                    <li><a href="https://github.com/protomaps/PMTiles" target="_blank" rel="noopener noreferrer nofollow">PMTiles</a>: Single-file tile archive format and reader; serves the WarnGen satellite layer from one file with HTTP range requests.</li>
+                    <li><a href="https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer" target="_blank" rel="noopener noreferrer nofollow">USGS The National Map: Orthoimagery</a>: Public-domain imagery behind the WarnGen satellite layer (USDA NAIP over the lower 48, Landsat and Blue Marble at small scales).</li>
                     <li><a href="https://github.com/topojson/us-atlas" target="_blank" rel="noopener noreferrer nofollow">us-atlas</a>: Pre-built TopoJSON of the U.S. Census 2017 cartographic boundary shapefiles; source of the 3,231-county national GeoJSON after build-time conversion.</li>
                     <li><a href="https://github.com/topojson/topojson-client" target="_blank" rel="noopener noreferrer nofollow">topojson-client</a>: TopoJSON-to-GeoJSON converter used at build time to prepare the county dataset.</li>
-                    <li><a href="https://github.com/zeke/all-the-cities" target="_blank" rel="noopener noreferrer nofollow">all-the-cities</a>: Worldwide cities database derived from GeoNames, filtered to U.S. entries (pop &ge; 1,000) and spatial-joined to county FIPS at build time to produce the 16,231-city lookup.</li>
+                    <li><a href="https://www.unidata.ucar.edu/data/awips-edex-access" target="_blank" rel="noopener noreferrer nofollow">NSF Unidata AWIPS EDEX</a> via <a href="https://unidata.github.io/python-awips/" target="_blank" rel="noopener noreferrer nofollow">python-awips</a>: Source of the AWIPS <code>mapdata.warngenloc</code> table, WarnGen's own point source, filtered to WARNGENLEV 1&ndash;4 on land and spatial-joined to county FIPS at build time to produce the ~62,700-location lookup.</li>
                     <li><a href="https://github.com/mbostock/shapefile" target="_blank" rel="noopener noreferrer nofollow">shapefile</a>: DBF/SHP parser used to extract FIPS&rarr;CWA mappings from the NWS County Warning Area shapefile.</li>
                     <li><a href="https://github.com/markedjs/marked" target="_blank" rel="noopener noreferrer nofollow">marked</a>: Markdown parser used to render <code>CHANGES.md</code> on the Change Log page.</li>
                     <li>NWS WarnGen Velocity templates: The CRS-era <code>.vm</code> and <code>.xml</code> template files derived from public-domain NWS originals that drive the bulletin generation engine. Sourced from the <a href="https://discord.gg/YNuDM8kjR9" target="_blank">NWR Reference Discord server</a>.</li>
                     <li><a href="https://www.census.gov/cgi-bin/geo/shapefiles/index.php" target="_blank" rel="noopener noreferrer nofollow">U.S. Census Bureau TIGER/Cartographic Boundary Shapefiles</a>: Source of the county geometries, FIPS codes, and state assignments (delivered via us-atlas).</li>
                     <li><a href="https://www.weather.gov/gis/ZoneCounty" target="_blank" rel="noopener noreferrer nofollow">NOAA / National Weather Service County Warning Area Shapefile</a> (<code>c_*.zip</code>): Source of the FIPS&rarr;WFO assignment for all ~3,200 U.S. counties across 125 CWAs.</li>
-                    <li><a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer nofollow">GeoNames</a>: Place-name, coordinate, and population data underlying the cities database (delivered via all-the-cities).</li>
-                    <li><a href="https://www.usgs.gov/tools/geographic-names-information-system-gnis" target="_blank" rel="noopener noreferrer nofollow">U.S. Geological Survey GNIS</a>: Upstream source for many of the populated-place records that GeoNames aggregates.</li>
                 </ul>
                 <h3>Inspiration &amp; References</h3>
                 <ul>
@@ -84,7 +84,7 @@
                     <li><a href="https://www.weather.gov/directives/010#:~:text=NDS%2010%2D17%20Dissemination" target="_blank" rel="noopener noreferrer nofollow">NWSI 10-17</a>: NWS Instruction list. These dictate how warnings are disseminated and how they should be formatted.</li>
                     <li><a href="https://www.youtube.com/channel/UCxdYMkg8HS1CrFy7k3GtwTg" target="_blank" rel="noopener noreferrer nofollow">jacklefucksnetwork</a>: Creator of the BC370CRS weather radio sound effects used in the Decoder tool.</li>
                 </ul>
-                <h2>Page last updated: September 5th, 2026</h2>
+                <h2>Page last updated: September 25th, 2026</h2>
                 <button onclick="location.href='index.html'">Back to EAS Tools</button>
             </article>
         </main>

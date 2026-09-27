@@ -17,6 +17,7 @@
         var action           = opts.action || "NEW";
         var initialOverrides = opts.initialOverrides || [];
         var onChange         = opts.onChange || function () {};
+        var lockedGroups     = opts.lockedGroups || [];
 
         // opts.bullets lets the caller pick an action+phenomenon group; without it, fall back
         // to the first group configured for the action.
@@ -81,6 +82,10 @@
             input.name = b.group ? ("__" + action + "_" + b.group) : ("__" + action + "_" + b.name);
             input.value = b.name;
             input.checked = !!selected[b.name];
+            if (b.group && lockedGroups.indexOf(b.group.toLowerCase()) !== -1) {
+                input.disabled = true;
+                label.title = "Locked on followups (lockedGroupsOnFollowup)";
+            }
 
             var textSpan = document.createElement("span");
             textSpan.textContent = b.text;

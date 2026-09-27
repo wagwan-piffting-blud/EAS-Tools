@@ -659,6 +659,9 @@ function humanizeEAS(eas, endec_emulation_mode=null, canadian_mode=false, timezo
             let orgText = normalOriginator;
             if (originator === 'CIV') orgText = 'The Civil Authorities';
             if (originator === 'EAS') orgText = 'An EAS Participant';
+            // Rev96 wording, which the SAGE's HelloTTS front end recognises.
+            if (originator === 'PEP') orgText = 'The United States Government';
+            if (originator === 'EAN') orgText = 'The Emergency Action Notification Network';
             const startParts = getZonedParts(startTime);
             const endParts = getZonedParts(endTime);
             const sameDay = startParts.dateKey === endParts.dateKey;

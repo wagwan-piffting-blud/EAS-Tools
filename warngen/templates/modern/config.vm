@@ -12,7 +12,6 @@
 #set($landDistanceUnits = "miles")
 ### SET MARINE REFERENCE DISTANCE UNITS (UNIT is in ALL CAPS)
 #set($marineDistanceUnits = "NM")
-#set($productClass = "O")
 
 ### SET DISTANCE (LAND) AT OR BELOW WHICH STORM REFERENCE MILEAGE WILL BE SHOWN AS "NEAR"
 #set($maxLandNearDistance = 6)

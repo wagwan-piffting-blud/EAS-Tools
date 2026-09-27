@@ -119,20 +119,239 @@
         return lines.join("\n");
     }
 
+    // Lock tags take no room on the page (WrapUtil.indexIgnoringLockMarkers).
+    function visible(s) {
+        return s.replace(/<\/?L>/g, "");
+    }
+
+    var LOCK_START = "<L>";
+    var LOCK_END = "</L>";
+    var INDENT = "  ";
+    var BULLET_START = "* ";
+    var DELIM_GROUP = "\0";
+    var NORMAL_DELIMS = [" ", "...", DELIM_GROUP, "-"];
+    var AREA_DELIMS = ["-", "...", DELIM_GROUP, " "];
+    var UGC_LINE_RE = /(^(\w{2}[CZ]\d{3}\S*-\d{6}-)$|((\d{3}-)*\d{6}-)$|((\d{3}-)+))/;
+    var AREA_LIST_RE = new RegExp("^((" + LOCK_END + "){0,1}((([\\?\\(\\)\\w\\.,/'-]+\\s{1,})+\\w{2}-)*"
+        + "(([\\?\\(\\)\\w\\.,/'-]+\\s{1,})+\\w{2}-)))");
+
+    function isJavaWhitespace(c) {
+        return /[ \t\n\x0B\f\r\x1C-\x1F]/.test(c);
+    }
+
+    function indexIgnoringLockMarkers(text, start, count) {
+        var i = start;
+        for (;;) {
+            if (text.startsWith(LOCK_START, i)) {
+                i += LOCK_START.length;
+            } else if (text.startsWith(LOCK_END, i)) {
+                i += LOCK_END.length;
+            } else if (count > 0) {
+                if (i >= text.length) break;
+                ++i;
+                --count;
+            } else {
+                break;
+            }
+        }
+        return i;
+    }
+
+    // Trailing whitespace goes, stepping over any lock marks mixed into it.
+    function appendRTrim(text, start, end, sb) {
+        var sbStart = sb.length;
+        sb += text.slice(start, end);
+        var i = sb.length;
+        while (i > sbStart) {
+            if (isJavaWhitespace(sb.charAt(i - 1))) {
+                sb = sb.slice(0, i - 1) + sb.slice(i);
+                --i;
+            } else if (i - sbStart >= LOCK_START.length && sb.slice(i - LOCK_START.length, i) === LOCK_START) {
+                i -= LOCK_START.length;
+            } else if (i - sbStart >= LOCK_END.length && sb.slice(i - LOCK_END.length, i) === LOCK_END) {
+                i -= LOCK_END.length;
+            } else {
+                break;
+            }
+        }
+        return sb;
+    }
+
+    function splitEndOfLine(text, start, inBullet, sb) {
+        var goodBreak = start;
+        var i = start;
+        while (i < text.length) {
+            if (isJavaWhitespace(text.charAt(i))) {
+                ++i;
+            } else if (text.startsWith(LOCK_START, i)) {
+                goodBreak = i;
+                i += LOCK_START.length;
+                break;
+            } else if (text.startsWith(LOCK_END, i)) {
+                i += LOCK_END.length;
+                goodBreak = i;
+                break;
+            } else {
+                break;
+            }
+        }
+        if (i >= text.length) goodBreak = i;
+        if (goodBreak >= start) sb = appendRTrim(text, start, goodBreak, sb);
+        if (i < text.length) {
+            sb += "\n";
+            if (inBullet) sb += INDENT;
+            sb = appendRTrim(text, goodBreak, i, sb);
+        }
+        return { i: i, sb: sb };
+    }
+
+    function javaLastIndexOf(text, str, from) {
+        return from < 0 ? -1 : text.lastIndexOf(str, from);
+    }
+
+    // WrapUtil.wrapLongLine: within a delimiter group the break closest to the margin wins;
+    // a later group is only tried when an earlier one finds nothing.
+    function wrapLongLine(line, inBullet, delims, maxLength) {
+        var sb = "";
+        var start = 0;
+        var allowLength = maxLength;
+        var failed = false;
+
+        if (inBullet) {
+            var lead = "";
+            var i = indexIgnoringLockMarkers(line, start, 0);
+            while (i < line.length && lead.length < 2) {
+                lead += line.charAt(i);
+                i = indexIgnoringLockMarkers(line, i, 1);
+            }
+            if (lead.length === 2) {
+                allowLength -= INDENT.length;
+                if (lead === INDENT || lead === BULLET_START) {
+                    start = i;
+                    sb += line.slice(0, i);
+                } else {
+                    sb += INDENT;
+                }
+            }
+        }
+
+        while (start < line.length) {
+            var limit = indexIgnoringLockMarkers(line, start, allowLength);
+            if (limit >= line.length) {
+                sb = appendRTrim(line, start, line.length, sb);
+                break;
+            }
+            var bestDelim = null;
+            var bestP = -1;
+            for (var d = 0; d < delims.length; d++) {
+                var delim = delims[d];
+                if (delim === DELIM_GROUP) {
+                    if (bestDelim !== null) break;
+                    continue;
+                }
+                var backup = delim === " " ? 0 : delim.length;
+                var p = !failed ? javaLastIndexOf(line, delim, limit - backup)
+                    : line.indexOf(delim, Math.max(0, limit - backup));
+                if (p >= start && ((bestDelim === null || !failed) ? p > bestP : p < bestP)) {
+                    bestDelim = delim;
+                    bestP = p;
+                }
+            }
+
+            if (bestDelim !== null) {
+                failed = false;
+                var next = bestP + bestDelim.length;
+                var segmentEnd = bestDelim === " " ? bestP : next;
+                sb = appendRTrim(line, start, segmentEnd, sb);
+                var split = splitEndOfLine(line, next, inBullet, sb);
+                start = split.i;
+                sb = split.sb;
+                if (inBullet) allowLength = maxLength - INDENT.length;
+            } else if (!failed) {
+                failed = true;
+            } else {
+                sb = appendRTrim(line, start, line.length, sb);
+                break;
+            }
+        }
+        return sb;
+    }
+
+    function wrapDelimiters(line) {
+        if (UGC_LINE_RE.test(line)) return AREA_DELIMS;
+        if (AREA_LIST_RE.test(line) && line.indexOf(BULLET_START) !== 0) return AREA_DELIMS;
+        return NORMAL_DELIMS;
+    }
+
+    /**
+     * WrapUtil.wrap at 69 columns. Lock tags take no width; from a "* " line to the next
+     * blank line, lines get the two-space bullet indent.
+     */
     function wrapBulletin(text, width) {
-        if (!width) width = 68;
+        var maxWidth = width || 69;
         var lines = text.split("\n");
         var out = [];
+        var inBullet = false;
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i];
-            if (line.length <= width) { out.push(line); continue; }
-            if (/^(LAT\.\.\.LON|TIME\.\.\.MOT\.\.\.LOC|\$\$|&&|\s+\d{4}\s+\d{4}|WUUS|\/[OTE]\.|[A-Z]{3,4}\d{3})/.test(line)) {
+            var unlocked = visible(line);
+            if (unlocked.trim().length === 0) {
+                inBullet = false;
                 out.push(line);
                 continue;
             }
-            var contIndent = /^\* /.test(line)
+            var wasInBullet = inBullet;
+            if (unlocked.indexOf(BULLET_START) === 0) inBullet = true;
+            var add = (wasInBullet && unlocked.indexOf(INDENT) !== 0) ? INDENT.length : 0;
+            if (unlocked.length <= maxWidth - add) {
+                out.push((add > 0 ? INDENT : "") + line);
+            } else {
+                out.push(wrapLongLine(line, inBullet, wrapDelimiters(line), maxWidth));
+            }
+        }
+        return out.join("\n");
+    }
+
+    function wrapUgcLines(text, width) {
+        return text.split("\n").map(function (line) {
+            if (!/^[A-Z]{2}[CZ]\d{3}.*-\d{6}-$/.test(line) || line.length <= width) return line;
+            var out = [];
+            while (line.length > width) {
+                var at = line.lastIndexOf("-", width - 1);
+                if (at <= 0) at = width - 1;
+                out.push(line.slice(0, at + 1));
+                line = line.slice(at + 1);
+            }
+            if (line) out.push(line);
+            return out.join("\n");
+        }).join("\n");
+    }
+
+    // Word wrap for the CRS layout, which predates WarnGen's WrapUtil.
+    function wrapWords(text, width) {
+        if (!width) width = 68;
+        var lines = text.split("\n");
+        var out = [];
+        var inBullet = false;
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            var plain = visible(line);
+            if (plain.trim() === "") {
+                inBullet = false;
+            } else if (/^\* /.test(plain)) {
+                inBullet = true;
+            } else if (inBullet && !/^  /.test(plain)) {
+                line = "  " + line;
+                plain = "  " + plain;
+            }
+            if (plain.length <= width) { out.push(line); continue; }
+            if (/^(LAT\.\.\.LON|TIME\.\.\.MOT\.\.\.LOC|\$\$|&&|\s+\d{4}\s+\d{4}|WUUS|\/[OTE]\.|[A-Z]{3,4}\d{3})/.test(plain)) {
+                out.push(line);
+                continue;
+            }
+            var contIndent = /^\* /.test(plain)
                 ? "  "
-                : (line.match(/^(\s*)/) || ["",""])[1];
+                : (plain.match(/^(\s*)/) || ["",""])[1];
             out.push(wrapOneLine(line, width, contIndent));
         }
         return out.join("\n");
@@ -149,7 +368,7 @@
         var current = leadIndent + words[0];
         for (var i = 1; i < words.length; i++) {
             var w = words[i];
-            if ((current + " " + w).length <= width) {
+            if (visible(current + " " + w).length <= width) {
                 current = current + " " + w;
             } else {
                 pieces.push(current);
@@ -165,7 +384,7 @@
         t = stripUntilPeriod(t);
         t = ellipsizeAtBullet(t);
         t = indentBulletContent(t);
-        t = wrapBulletin(t, 68);
+        t = wrapUgcLines(wrapWords(t, 68), 64);
         return t;
     }
 

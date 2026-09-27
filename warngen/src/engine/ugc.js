@@ -78,8 +78,8 @@
         var m = expireDate.getUTCMinutes();
         var purge = pad2(d) + pad2(h) + pad2(m);
 
-        var full = sections.join("-") + "-" + purge + "-";
-        return wrapUGC(full, 64);
+        // Unwrapped, as FipsUtil.getUgcLine returns it; WrapUtil breaks it at the dashes.
+        return sections.join("-") + "-" + purge + "-";
     }
 
     return {

@@ -191,23 +191,30 @@ async function initCrawlEditor() {
         const fontSelect = document.getElementById('crawlFontFamily');
         if (!fontSelect) return;
 
-        await Promise.all(
+        let chosenDuringLoad = false;
+        fontSelect.addEventListener('change', () => { chosenDuringLoad = true; }, { once: true });
+
+        const results = await Promise.allSettled(
             fontsToLoad.map(({ family, file, description }) => {
                 if (family === 'User-Upload') {
-                    fontSelect.appendChild(new Option(`${family} (${description})`, family));
                     return Promise.resolve();
                 }
-                else {
-                    const font = new FontFace(family, `url(${fontDir}${file})`);
-                    return font.load().then((loaded) => {
-                        document.fonts.add(loaded);
-                        fontSelect.appendChild(new Option(`${family} (${description})`, family));
-                    });
-                }
+                const font = new FontFace(family, `url(${fontDir}${file})`);
+                return font.load().then((loaded) => {
+                    document.fonts.add(loaded);
+                    fontSelect.appendChild(new Option(`${family} (${description})`, family));
+                });
             })
         );
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                console.error(`Failed to load crawl font ${fontsToLoad[index].file}`, result.reason);
+            }
+        });
+        const upload = fontsToLoad.find(({ family }) => family === 'User-Upload');
+        fontSelect.appendChild(new Option(`${upload.family} (${upload.description})`, upload.family));
 
-        const previousValue = fontSelect.value;
+        const previousValue = chosenDuringLoad ? fontSelect.value : 'Arial';
         const sortedOptions = Array.from(fontSelect.options).sort((a, b) =>
             a.text.localeCompare(b.text, undefined, { sensitivity: 'base' })
         );
@@ -215,9 +222,12 @@ async function initCrawlEditor() {
         sortedOptions.forEach((option) => frag.appendChild(option));
         fontSelect.replaceChildren(frag);
 
-        if (previousValue && sortedOptions.some((option) => option.value === previousValue)) {
+        const fallback = sortedOptions.find((option) => option.value !== 'User-Upload');
+        if (sortedOptions.some((option) => option.value === previousValue)) {
             fontSelect.value = previousValue;
-        } else if (fontSelect.selectedIndex === -1 && fontSelect.options.length) {
+        } else if (fallback) {
+            fontSelect.value = fallback.value;
+        } else if (fontSelect.options.length) {
             fontSelect.selectedIndex = 0;
         }
     };
@@ -4778,9 +4788,18 @@ async function initCrawlEditor() {
             ensureFontsReady().then(() => {
                 const savedFontFamily = String(migrated.crawlFontFamily);
                 const optionExists = Array.from(fontFamilyInput.options || []).some((option) => option.value === savedFontFamily);
-                const useUserUpload = savedFontFamily === 'User-Upload' || !optionExists;
-                applyValueToCrawlElement(fontFamilyInput, useUserUpload ? 'User-Upload' : savedFontFamily);
+                const uploadedFile = document.getElementById('crawlCustomFontFile')?.files?.[0];
+                const savedUpload = savedFontFamily === 'User-Upload';
+                const useUserUpload = savedUpload ? Boolean(uploadedFile) : !optionExists;
+                let restoredFontFamily = savedFontFamily;
+                if (useUserUpload) {
+                    restoredFontFamily = 'User-Upload';
+                } else if (savedUpload) {
+                    restoredFontFamily = 'Arial';
+                }
+                applyValueToCrawlElement(fontFamilyInput, restoredFontFamily);
                 setCustomFontUploadVisibility(useUserUpload);
+                scheduleCrawlApply(0);
             });
         }
 

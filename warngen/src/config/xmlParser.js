@@ -56,6 +56,23 @@
         return ring;
     }
 
+    // Defaults are PathcastConfiguration's; distanceThreshold has none there, so the
+    // modern base value stands in.
+    function parsePathcastConfig(xmlText) {
+        var out = { distanceThreshold: 4.0, distanceThresholdLOS: 5, intervalMin: 5, deltaMin: 5, maxResults: 10, maxGroup: 8 };
+        var m = /<pathcastConfig>([\s\S]*?)<\/pathcastConfig>/.exec(String(xmlText || "").replace(/<!--[\s\S]*?-->/g, ""));
+        if (!m) return out;
+        var fields = {
+            distanceThreshold: "distanceThreshold", distanceThresholdLOS: "distanceThresholdLOS",
+            intervalMin: "interval", deltaMin: "delta", maxResults: "maxResults", maxGroup: "maxGroup"
+        };
+        Object.keys(fields).forEach(function (key) {
+            var v = new RegExp("<" + fields[key] + ">\\s*([\\d.]+)\\s*</" + fields[key] + ">").exec(m[1]);
+            if (v) out[key] = parseFloat(v[1]);
+        });
+        return out;
+    }
+
     function parseBulletConfig(xmlText) {
 
         var parser;
@@ -79,6 +96,13 @@
             areaSource:      areaSourceOf(xmlText),
             defaultDuration: parseInt(textOf(root, "defaultDuration") || "0", 10),
             durations:       textsOf(root, "duration").map(function (d) { return parseInt(d, 10); }),
+            enableDuration:  textOf(root, "enableDuration") !== "false",
+            trackEnabled:    textOf(root, "trackEnabled") !== "false",
+            unitDistance:    (textOf(root, "unitDistance") || "mi").trim(),
+            unitSpeed:       (textOf(root, "unitSpeed") || "mph").trim(),
+            autoLockText:    textOf(root, "autoLockText") !== "false",
+            lockedGroupsOnFollowup: (textOf(root, "lockedGroupsOnFollowup") || "").split(",")
+                .map(function (g) { return g.trim().toLowerCase(); }).filter(Boolean),
             actions:         {},
             groups:          [],
             actionList:      []
@@ -164,6 +188,7 @@
 
     return {
         parseBulletConfig: parseBulletConfig,
+        parsePathcastConfig: parsePathcastConfig,
         phensForAction:    phensForAction,
         bulletsFor:        bulletsFor,
         groupFor:          groupFor,

@@ -90,6 +90,7 @@ const STAGE3_TAPS = new Float64Array([
 
 const DECIM2_MIN_RATE = 16537;
 const DECIM4_MIN_RATE = 33075;
+const STAGE3_RATE = SEATTY_RATE / 4;
 const US_PER_SECOND = 1000000;
 const PCM_MAX = 32767;
 
@@ -418,6 +419,9 @@ class Bandpass {
 //   sameBandpass: { hz, q }  bandpass the demodulator's input at the input rate, in f64, ahead of
 //                      its own copy of the input chain; the spectrum (squelch, 1050 Hz) still sees
 //                      unfiltered audio through the other copy
+//   bandTilt: { bits, warmup, maxTilt }  track the mark and space envelopes over `bits` bit periods
+//                      and scale mark by their ratio before the difference, which cancels a channel
+//                      that passes 1562.5 Hz and 2083.3 Hz unequally
 export class SeattySameDemod {
     constructor(opts = {}) {
         this.onBit = opts.onBit || null;
@@ -429,6 +433,7 @@ export class SeattySameDemod {
         this.demodulate = opts.demodulate ?? true;
         this.sameBandpass = (this.demodulate && opts.sameBandpass) || null;
         this.split = !!this.sameBandpass && (this.squelchEnabled || this.detect1050);
+        this.setBandTilt(opts.bandTilt || null);
         this.setSquelchLevel(opts.squelchLevel ?? 50);
         this.setSquelchShift(opts.squelchShiftHz ?? 450);
         this.setSampleRate(opts.sampleRate || SEATTY_RATE);
@@ -440,6 +445,25 @@ export class SeattySameDemod {
             this.split);
         this.bandpass = this.sameBandpass ? new Bandpass(rate, this.sameBandpass.hz, this.sameBandpass.q) : null;
         this.reset();
+    }
+
+    // Not SeaTTY. `bits` is the averaging length in bit periods; the envelopes update at the
+    // 2756.25 Hz stage-3 rate, 5.292 samples per bit.
+    setBandTilt(cfg) {
+        if (!cfg) {
+            this.bandTilt = null;
+            this.tiltAlpha = 0;
+            return;
+        }
+        const bits = cfg.bits ?? 1024;
+        this.bandTilt = {
+            warmup: cfg.warmup ?? 64,
+            maxTilt: Math.max(1, cfg.maxTilt ?? 3)
+        };
+        this.tiltAlpha = 1 - Math.exp(-1 / (bits * STAGE3_RATE / SAME_BAUD));
+        this.tiltMark = 0;
+        this.tiltSpace = 0;
+        this.tiltSeen = 0;
     }
 
     // Squelch slider 0..100, 50 by default (0x00416614)
@@ -481,6 +505,9 @@ export class SeattySameDemod {
         this.peak = new Float64Array(BIN_LAST + 1);
         this.squelchOpen = true;
         this.toneCount = 0;
+        this.tiltMark = 0;
+        this.tiltSpace = 0;
+        this.tiltSeen = 0;
         this.input.reset();
         if (this.bandpass) {
             this.bandpass.reset();
@@ -671,7 +698,7 @@ export class SeattySameDemod {
                 const spacePow = qSpace * qSpace + iSpace * iSpace;
                 const mark = (markPow > POWER_FLOOR) ? Math.sqrt(markPow) : 0;
                 const space = (spacePow > POWER_FLOOR) ? Math.sqrt(spacePow) : 0;
-                this.soft = mark - space;
+                this.soft = this.tiltAlpha > 0 ? this.applyTilt(mark, space) : mark - space;
             }
         }
 
@@ -680,6 +707,29 @@ export class SeattySameDemod {
             this.resampleAcc -= BITSYNC_STEP;
             this.bitSync(this.soft);
         }
+    }
+
+    // The bit is sign(|mark| - |space|), which only holds when the channel passes 1562.5 Hz and
+    // 2083.3 Hz equally. A phone microphone that rolls the mark tone off a few dB turns marks into
+    // spaces, and that is what the errors look like in practice. Scaling mark by the ratio of the
+    // two long-term envelopes cancels the tilt; it leaves the discriminator's magnitude alone apart
+    // from that factor, so the eye metric and the lock integrator still read what they did.
+    applyTilt(mark, space) {
+        const a = this.tiltAlpha;
+        this.tiltMark += a * (mark - this.tiltMark);
+        this.tiltSpace += a * (space - this.tiltSpace);
+        this.tiltSeen++;
+        if (this.tiltSeen <= this.bandTilt.warmup || this.tiltMark <= 1e-9 || this.tiltSpace <= 1e-9) {
+            return mark - space;
+        }
+        const max = this.bandTilt.maxTilt;
+        let tilt = this.tiltSpace / this.tiltMark;
+        if (tilt > max) {
+            tilt = max;
+        } else if (tilt < 1 / max) {
+            tilt = 1 / max;
+        }
+        return mark * tilt - space;
     }
 
     // SAME_BitSync @ 0x00427174

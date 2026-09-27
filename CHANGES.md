@@ -1,5 +1,19 @@
 # EAS Tools Changelog
 
+2026-09-27:
+
+- Redid WarnGen even more to fix a number of issues regarding the behavior and to add more product types. The templates now include additional product types that were previously missing, such as civil alerts (think Child Abduction Emergencies, Civil Emergency Messages, etc.). Most types of watches have also been added to the templates, including tornado, severe thunderstorm, and winter/tropical weather type watches.
+
+- Add satellite imagery to WarnGen. This allows users to include satellite imagery when generating alerts, providing a more comprehensive and informative experience. The imagery goes up to zoom level 13, and has been tested to work on both web and mobile platforms. The satellite imagery is sourced from a reliable provider (specifically `nationalmap.gov`), and will be updated regularly to ensure that users have access to the most current and accurate images. **Due to the size of the PMTiles file (over 15 GB!), this feature REQUIRES an active Internet connection to use fully.** However, if you wish to obtain a local copy, the full file [is available for download at this link](https://eas.tools/warngen/data/satellite.pmtiles), and you may feel free to download it for your local use. However, please note this file is LARGE, and will take a while to download. It is not included in the GitHub repository, and your local copies must be managed manually/updated as needed as satellite imagery is updated. Updates wil be posted to this changelog when they are made to the images, so you may update your copies at that time. Thank you to both GitHub user @GreatLordBug and Discord user pringlezgameing for suggesting this feature.
+
+- Add support for AR2V radar images. These kinds of files come from UniData NEXRAD, and are available in a public S3 bucket located at `https://unidata-nexrad-level2.s3.amazonaws.com/?list-type=2&prefix=...`. You can use custom (mock) radar imagery or pre-existing radar imagery from the NEXRAD archive. This allows you to upload previous (or fake) storms to generate realistic-looking alerts based on the radar data you have available. The AR2V radar images are processed and displayed fully locally in the browser. Thank you to Discord user nwshouston for suggesting this feature.
+
+- Update almost all documentation pages to reflect the current state of the Tools and their features. This includes updates to the FAQ, TTS documents, and adds a new TTS List page for the current list of available TTS voices and, importantly, **where to download your own, locally hosted, copies** of every single voice on EAS Tools. This helps reduce load on the Web TTS service, and allows for more freedom in how you use the voices. The TTS List page is located [here](https://eas.tools/tts-list.html), and includes links for most voice banks. Some are not hosted due to reasons beyond my control, but as the TTS service is updated, I will continue to add more voices to the list as they become available. There is also a "Wanted Voices" list for voices that are not currently available but are desired by users. If you have any questions or suggestions for improving the TTS List page, please let me know so I can consider them for future updates. Thank you!
+
+- Update CLAUDE.md to be a symlink to AGENTS.md. Thanks to GitHub user @seasonal-currency for suggesting this.
+
+---
+
 2026-09-18:
 
 - Add the ability to use custom sounds for the "beep/sound on alert received" feature in the decoder tool. This allows users to select their own audio files to play when an alert is received, providing a more personalized experience. Most audio file types are supported. Files are saved on-device so they will persist across sessions, and the decoder will use the last selected file as the default for future alerts.

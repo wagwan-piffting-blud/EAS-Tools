@@ -21,6 +21,14 @@
         Z:   0
     };
 
+    // TextWarningConstants.timeZoneAbbreviationMap: the one-letter TIME_ZONE codes WarnGen
+    // reads off counties and zones, as [base zone, observes no DST].
+    var ZONE_LETTERS = {
+        A: ["AKST", false], C: ["CST", false], E: ["EST", false], G: ["CHST", true],
+        H: ["HST", true], M: ["MST", false], m: ["MST", true], P: ["PST", false],
+        S: ["SST", true], V: ["AST", true]
+    };
+
     function isUsDst(utcDate) {
         var y = utcDate.getUTCFullYear();
         var march = new Date(Date.UTC(y, 2, 1));
@@ -64,9 +72,15 @@
     var MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun",
                        "Jul","Aug","Sep","Oct","Nov","Dec"];
     var DOW_SHORT   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    var DOW_LONG    = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
     function formatDate(date, fmt, baseZone, dstLess) {
         if (!(date instanceof Date)) date = new Date(date);
+        var letter = ZONE_LETTERS[baseZone];
+        if (letter) {
+            baseZone = letter[0];
+            dstLess = letter[1];
+        }
         var zone = baseZone || "UTC";
         var effZone = effectiveZone(zone, date, dstLess);
         var localOffset = TZ_OFFSETS[effZone];
@@ -103,6 +117,7 @@
             if (fmt.substr(i, 3) === "MMM")  { out += MONTH_SHORT[month]; i += 3; continue; }
             if (fmt.substr(i, 2) === "MM")   { out += pad2(month + 1); i += 2; continue; }
             if (c === "M")                    { out += (month + 1); i += 1; continue; }
+            if (fmt.substr(i, 4) === "EEEE") { out += DOW_LONG[dow]; i += 4; continue; }
             if (fmt.substr(i, 3) === "EEE")  { out += DOW_SHORT[dow]; i += 3; continue; }
             if (fmt.substr(i, 2) === "dd")   { out += pad2(day); i += 2; continue; }
             if (c === "d")                    { out += day; i += 1; continue; }
@@ -121,47 +136,56 @@
         return out;
     }
 
+    // DateUtil.roundDate: nearest multiple of the interval, ties going earlier.
+    function roundDate(date, intervalMinutes) {
+        var ms = intervalMinutes * 60000;
+        var t = date.getTime();
+        var earlier = t - (t % ms);
+        var later = earlier + ms;
+        return new Date((t - earlier) > (later - t) ? later : earlier);
+    }
+
+    function asInterval(v) {
+        if (typeof v === "number") return v;
+        if (typeof v === "string" && /^\d+$/.test(v)) return parseInt(v, 10);
+        return null;
+    }
+
+    /**
+     * DateUtil's template overloads: format(date, fmt), format(date, fmt, interval),
+     * format(date, fmt, tz) and format(date, fmt, interval, tz). With no zone it formats in
+     * GMT, as DateUtil.format(date, format, interval) does.
+     */
     function makeDateUtil(dstLessMap) {
         var map = dstLessMap || {};
         function isDstLess(tz) { return !!map[tz]; }
+        function prepare(date, a, b) {
+            var d = (date instanceof Date) ? date : new Date(date);
+            var interval = asInterval(a);
+            var tz = interval === null ? a : b;
+            if (interval > 0) d = roundDate(d, interval);
+            return { date: d, tz: tz || "GMT" };
+        }
         return {
 
-            format: function (date, fmt, tz, offsetMinutes) {
-                var d = (date instanceof Date) ? date : new Date(date);
-                if (typeof offsetMinutes === "number" && offsetMinutes !== 0) {
-                    d = shiftMinutes(d, offsetMinutes);
-                }
-                return formatDate(d, fmt, tz, isDstLess(tz));
+            format: function (date, fmt, a, b) {
+                var p = prepare(date, a, b);
+                return formatDate(p.date, fmt, p.tz, isDstLess(p.tz));
             },
 
-            formatUseNoonMidnight: function (date, fmt, intervalMinutes, tz) {
-                var dstLess = isDstLess(tz);
-                var d = (date instanceof Date) ? date : new Date(date);
-                var ms = d.getTime();
-                var step = (intervalMinutes || 1) * 60000;
-                var rounded = new Date(Math.ceil(ms / step) * step);
-
-                var effZone = effectiveZone(tz || "UTC", rounded, dstLess);
-                var localOffset = TZ_OFFSETS[effZone];
-                if (localOffset === undefined) localOffset = 0;
-                var local = shiftMinutes(rounded, localOffset);
-                var localHour = local.getUTCHours();
-                var localMinute = local.getUTCMinutes();
-
-                var formatted = formatDate(rounded, fmt, tz, dstLess);
-
-                if (localMinute === 0) {
-                    if (localHour === 12) {
-
-                        formatted = formatted.replace(/^\d{1,2}:?00 (?:PM|AM)/, "Noon");
-                    } else if (localHour === 0) {
-
-                        formatted = formatted.replace(/^\d{1,2}:?00 (?:PM|AM)/, "Midnight");
-                    }
+            formatUseNoonMidnight: function (date, fmt, interval, tz) {
+                var p = prepare(date, interval, tz);
+                var str = formatDate(p.date, fmt, p.tz, isDstLess(p.tz));
+                if (/1200\s(AM|PM)/.test(str)) {
+                    str = str.replace(/1200 AM/g, "midnight").replace(/1200 PM/g, "noon");
                 }
-                return formatted;
+                return str;
             }
         };
+    }
+
+    function roundDateTo15(date) {
+        return roundDate(date, 15);
     }
 
     var dateUtil = makeDateUtil({});
@@ -169,9 +193,10 @@
     var timeFormat = {
         ymdthmz: "yyMMdd'T'HHmm'Z'",
         header:  "hmm a z EEE MMM d yyyy",
-        plain:   "h:mm a z",
+        plain:   "hmm a z EEEE",
         clock:   "hmm a z",
-        time:    "HHmm"
+        time:    "HHmm",
+        ddhhmm:  "ddHHmm"
     };
 
     var list = {
@@ -263,6 +288,8 @@
     return {
         dateUtil:    dateUtil,
         makeDateUtil: makeDateUtil,
+        roundDate:   roundDate,
+        roundDateTo15: roundDateTo15,
         timeFormat:  timeFormat,
         list:        list,
         mathUtil:    mathUtil,
@@ -271,7 +298,13 @@
         _isUsDst:        isUsDst,
         _effectiveZone:  effectiveZone,
         _formatDate:     formatDate,
+        ZONE_LETTERS:    ZONE_LETTERS,
         _zoneOffsetMinutes: function (tz, utcDate, dstLess) {
+            var letter = ZONE_LETTERS[tz];
+            if (letter) {
+                tz = letter[0];
+                dstLess = letter[1];
+            }
             var off = TZ_OFFSETS[effectiveZone(tz || "UTC", utcDate, dstLess)];
             return off === undefined ? 0 : off;
         }

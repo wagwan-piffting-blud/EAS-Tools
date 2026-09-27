@@ -1,5 +1,6 @@
 import {
     SEATTY_RATE,
+    SAME_BAUD,
     SINE,
     FFT_TABLES,
     SeattySameDemod,
@@ -7,6 +8,8 @@ import {
     squelchBins,
     squelchThreshold
 } from './seatty-same.js';
+
+const STAGE3_RATE = SEATTY_RATE / 4;
 
 const FLAG_SATURATE = 1;
 const FLAG_DEMODULATE = 2;
@@ -99,6 +102,7 @@ export class SeattySameWasm {
         this.sameBandpass = (this.demodulate && opts.sameBandpass) || null;
         this.squelchLevel = opts.squelchLevel ?? 50;
         this.squelchShiftHz = opts.squelchShiftHz ?? 450;
+        this.bandTilt = opts.bandTilt || null;
         this.handle = 0;
         this.setSampleRate(opts.sampleRate || SEATTY_RATE);
     }
@@ -132,6 +136,28 @@ export class SeattySameWasm {
             finalizer.register(this, this.handle, this);
         }
         this.applySquelch();
+        this.applyBandTilt();
+    }
+
+    setBandTilt(cfg) {
+        this.bandTilt = cfg || null;
+        this.applyBandTilt();
+    }
+
+    // A .wasm cached from before seatty_set_band_tilt existed would decode without the correction
+    // rather than throw, so the option degrades to SeaTTY's behaviour instead of breaking decoding.
+    applyBandTilt() {
+        if (!this.handle || typeof wasm.seatty_set_band_tilt !== 'function') {
+            return;
+        }
+        if (!this.bandTilt) {
+            wasm.seatty_set_band_tilt(this.handle, 0, 0, 1);
+            return;
+        }
+        const bits = this.bandTilt.bits ?? 1024;
+        const alpha = 1 - Math.exp(-1 / (bits * STAGE3_RATE / SAME_BAUD));
+        wasm.seatty_set_band_tilt(this.handle, alpha, this.bandTilt.warmup ?? 64,
+            Math.max(1, this.bandTilt.maxTilt ?? 3));
     }
 
     setSquelchLevel(level) {

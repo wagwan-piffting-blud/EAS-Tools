@@ -104,7 +104,7 @@
     function directionalSubdivision(warningRing, feat, opts) {
         opts = opts || {};
         var N                 = opts.N                 || 20;
-        var majorityThreshold = opts.majorityThreshold || 0.75;
+        var majorityThreshold = opts.majorityThreshold || 0.60;
         var quadrantThreshold = opts.quadrantThreshold || 0.33;
         var extremeThreshold  = opts.extremeThreshold  || 0.70;
         if (!feat.geometry) return [];
@@ -212,9 +212,85 @@
                                     quadrantThreshold, extremeThreshold);
     }
 
-    function findIntersectingFeatures(warningRing, geojson, minOverlap) {
+    function ringAreaKm2(ring) {
+        var a = 0, lat = 0;
+        for (var i = 0; i < ring.length - 1; i++) {
+            a += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+            lat += ring[i][1];
+        }
+        lat /= Math.max(1, ring.length - 1);
+        return Math.abs(a / 2) * 111.32 * 111.32 * Math.cos(lat * Math.PI / 180);
+    }
+
+    function featureAreaKm2(feat) {
+        var polys = feat.geometry.type === "Polygon" ? [feat.geometry.coordinates] : feat.geometry.coordinates;
+        var total = 0;
+        polys.forEach(function (p) {
+            total += ringAreaKm2(p[0]);
+            for (var h = 1; h < p.length; h++) total -= ringAreaKm2(p[h]);
+        });
+        return total;
+    }
+
+    function distanceToRing(pt, ring) {
+        var k = Math.cos(pt[1] * Math.PI / 180);
+        var best = Infinity;
+        for (var i = 0; i < ring.length - 1; i++) {
+            var ax = ring[i][0] * k, ay = ring[i][1], bx = ring[i + 1][0] * k, by = ring[i + 1][1];
+            var px = pt[0] * k, py = pt[1];
+            var dx = bx - ax, dy = by - ay;
+            var len = dx * dx + dy * dy;
+            var t = len > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len)) : 0;
+            var ex = ax + t * dx - px, ey = ay + t * dy - py;
+            var d = Math.sqrt(ex * ex + ey * ey);
+            if (d < best) best = d;
+        }
+        return best;
+    }
+
+    /**
+     * True when some of the feature lies inside the ring by more than margin degrees. An
+     * issued polygon has been rounded to 0.01 degrees, so it clips its neighbours in slivers
+     * that WarnGen never hatched.
+     */
+    function overlapsBeyond(warningRing, feat, margin) {
+        var polys = feat.geometry.type === "Polygon" ? [feat.geometry.coordinates] : feat.geometry.coordinates;
+        var rb = bbox(warningRing);
+        for (var p = 0; p < polys.length; p++) {
+            var b = bbox(polys[p][0]);
+            var x0 = Math.max(b[0], rb[0]), x1 = Math.min(b[2], rb[2]);
+            var y0 = Math.max(b[1], rb[1]), y1 = Math.min(b[3], rb[3]);
+            if (x1 <= x0 || y1 <= y0) continue;
+            var step = Math.max(margin / 2, Math.max(x1 - x0, y1 - y0) / 80);
+            for (var x = x0 + step / 2; x < x1; x += step) {
+                for (var y = y0 + step / 2; y < y1; y += step) {
+                    var pt = [x, y];
+                    if (!pointInRing(pt, polys[p][0]) || !pointInRing(pt, warningRing)) continue;
+                    var inHole = false;
+                    for (var h = 1; h < polys[p].length; h++) {
+                        if (pointInRing(pt, polys[p][h])) { inHole = true; break; }
+                    }
+                    if (!inHole && distanceToRing(pt, warningRing) > margin) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // WarngenLayer.filterCheck with an areaSource's inclusionPercent/inclusionArea/inclusionAndOr.
+    function passesInclusion(ratio, feat, inclusion) {
+        var percentOk = ratio * 100 >= inclusion.percent;
+        var areaOk = featureAreaKm2(feat) * ratio > inclusion.area;
+        return inclusion.andOr === "AND" ? percentOk && areaOk : percentOk || areaOk;
+    }
+
+    /**
+     * inclusion: { percent, area (km^2), andOr } from the geospatial config, or a bare
+     * minimum overlap fraction.
+     */
+    function findIntersectingFeatures(warningRing, geojson, inclusion) {
         if (!geojson || !geojson.features) return [];
-        if (minOverlap == null) minOverlap = 0.01;
+        var minOverlap = typeof inclusion === "number" ? inclusion : (inclusion ? null : 0.01);
         var hits = [];
         for (var k = 0; k < geojson.features.length; k++) {
             var feat = geojson.features[k];
@@ -229,7 +305,11 @@
                 }
             }
             if (!candidate) continue;
-            if (minOverlap > 0 && overlapRatio(warningRing, feat) < minOverlap) continue;
+            if (minOverlap === null) {
+                if (!passesInclusion(overlapRatio(warningRing, feat, 40), feat, inclusion)) continue;
+            } else if (minOverlap > 0 && overlapRatio(warningRing, feat) < minOverlap) {
+                continue;
+            }
             hits.push(feat);
         }
         return hits;
@@ -266,6 +346,9 @@
 
     return {
         findIntersectingFeatures: findIntersectingFeatures,
+        passesInclusion:          passesInclusion,
+        overlapsBeyond:           overlapsBeyond,
+        featureAreaKm2:           featureAreaKm2,
         findFeatureContaining:    findFeatureContaining,
         overlapRatio:             overlapRatio,
         directionalSubdivision:   directionalSubdivision,
