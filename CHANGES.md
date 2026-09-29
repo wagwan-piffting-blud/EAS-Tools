@@ -1,5 +1,11 @@
 # EAS Tools Changelog
 
+2026-09-29:
+
+- Update AGENTS.md and README.md to better serve autonomous coding agents like Claude Code when working with this repository. Thank you to GitHub user @seasonal-currency for suggesting this change.
+
+---
+
 2026-09-27:
 
 - Redid WarnGen even more to fix a number of issues regarding the behavior and to add more product types. The templates now include additional product types that were previously missing, such as civil alerts (think Child Abduction Emergencies, Civil Emergency Messages, etc.). Most types of watches have also been added to the templates, including tornado, severe thunderstorm, and winter/tropical weather type watches.

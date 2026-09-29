@@ -6,7 +6,9 @@
 
 Web‑based **EAS / SAME Tools** that run entirely in your browser. Packed to the brim with features, such as a full **decoder**, **encoder**, **text crawl generator**, **audio splicer**, **phoneme converter/generator**, and **video/audio muxer**. All tools are client‑side and work offline after the initial load. All open source and freely available on GitHub. Run your own copy if you'd like!
 
-> ⚠️ **Legal & ethics notice**
+> [!CAUTION]
+> **Legal & ethics notice**
+>
 > This project is for **lab, testing, hobbyist, and educational use only**. In many jurisdictions (e.g., U.S. FCC 47 CFR §11.45), transmitting or simulating EAS tones outside of authorized tests is prohibited. **Do not broadcast** generated tones or headers over public channels. The author is NOT responsible for ANY misuse of this software toolkit. You must also adhere to the EAS Tools [Terms of Service](https://eas.tools/terms.html) at all times when using the app.
 
 ---
@@ -50,6 +52,7 @@ Web‑based **EAS / SAME Tools** that run entirely in your browser. Packed to th
   * Downloadable video file with new audio track
 
 ## Other highlights
+
 * App is almost fully client‑side; runs entirely in your browser with no server backend (except for web TTS requests, if used)
 * Works offline after initial load (service workers and all necessary assets included in initial load)
 * Open source and freely available on GitHub (run your own copy if desired)
@@ -66,6 +69,7 @@ Web‑based **EAS / SAME Tools** that run entirely in your browser. Packed to th
    git clone https://github.com/wagwan-piffting-blud/EAS-Tools.git
    cd EAS-Tools
    ```
+
 2. **Serve** it from `localhost` (recommended for microphone access):
 
    ```bash
@@ -141,6 +145,7 @@ What you’ll see:
 4. Click **Export WAV** to create a single continuous WAV file for download
 
 ### Phoneme Converter/Generator
+
 1. Go to **Phoneme Converter/Generator** tab
 2. Enter the text you wish to convert into phonemes in the provided text area
 3. Click the **Convert** button to generate the phoneme representation of the text
@@ -148,6 +153,7 @@ What you’ll see:
 5. You can then copy the generated phonemes to your clipboard for use with the Web TTS service or your own local copy of whatever TTS voice(s) you have available
 
 ### WarnGen
+
 1. Go to the **WarnGen** tab
 2. Select the desired product template and era from the dropdowns (e.g., Tornado Warning, Flash Flood Warning, etc.; era options include "Current" for the most recent templates used in AWIPS CAVE, and "Legacy" for older, CRS era templates)
 3. Fill out the form fields with the appropriate information for your product (e.g., event type, affected areas, start/end times, product-specific details, forecaster fill-ins, etc.)
@@ -165,6 +171,7 @@ What you’ll see:
 ### Navigation
 
 Use the tabs at the top of the page to switch between the various available tools. You can also link to a specific tab using URL parameters:
+
 * `?tool=decoder` – Opens the **Decoder** tab
 * `?tool=encoder` – Opens the **Encoder** tab
 * `?tool=crawl` – Opens the **Text Crawl Generator** tab
@@ -189,7 +196,7 @@ For a demonstration of each individual TTS voice, see the [voice demo page](http
 
 ## 📜 Credits & third‑party
 
-* Logo design: **BunnyTub** (https://bunnytub.com/) for the new EAS Tools "Toolbox" Logo
+* Logo design: **BunnyTub** [bunnytub.com](https://bunnytub.com) for the new EAS Tools "Toolbox" Logo
 * UI fonts: **Hack** (via `assets/css/hack.css`)
 * WAV writer: **wavefile.js** (bundled in `assets/js/wavefile.js`)
 * Resampling: **wave‑resampler.js** (bundled in `assets/js/wave‑resampler.js`)
@@ -237,10 +244,12 @@ For a demonstration of each individual TTS voice, see the [voice demo page](http
 
 This project is licensed under **GPL‑3.0** (see [`LICENSE`](./LICENSE)).
 
----
-
 ## 📍 Disclaimers
 
-This tool decodes and synthesizes EAS/SAME signals for **lab, testing, hobbyist, and educational** purposes only. You are responsible for complying with all laws, regulations, and organizational policies applicable to your use. The author is NOT responsible for ANY misuse of this software toolkit. You must also adhere to the EAS Tools [Terms of Service](https://eas.tools/terms.html) at all times when using the app.
+> [!CAUTION]
+> This tool decodes and synthesizes EAS/SAME signals for **lab, testing, hobbyist, and educational** purposes only.
+> You are responsible for complying with all applicable laws, regulations, and organizational policies that govern your usage of the output from this software. The authors are **not** responsible for any misuse or abuse of this software. You **must** also adhere to the EAS Tools [Terms of Service](https://eas.tools/terms.html) at all times when using the app.
 
-## GenAI Disclosure Notice: Portions of this repository have been generated using Generative AI tools (ChatGPT, ChatGPT Codex, GitHub Copilot, Claude, Claude Code).
+## GenAI Disclosure Notice
+
+ Portions of this repository have been generated using Generative AI tools (ChatGPT, ChatGPT Codex, GitHub Copilot, Claude, Claude Code)
