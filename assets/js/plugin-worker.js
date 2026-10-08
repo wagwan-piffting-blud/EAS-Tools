@@ -44,9 +44,20 @@
         const warm = msg.start - msg.inStart;
         return out.slice(warm, warm + (msg.end - msg.start));
     }
+    const errText = (e) => String((e && (e.stack || e.message)) || e);
     function handle(msg) {
-        if (msg.type === 'init') { ready = loadEmu(msg.cfg).then(() => post({ type: 'ready' })); return; }
-        if (msg.type === 'process') ready.then(() => { const valid = processChunk(msg); post({ type: 'done', id: msg.id, start: msg.start, valid: valid.buffer }, [valid.buffer]); });
+        if (msg.type === 'init') {
+            try { ready = Promise.resolve(loadEmu(msg.cfg)); } catch (e) { ready = Promise.reject(e); }
+            ready.then(() => post({ type: 'ready' }), (e) => post({ type: 'init-error', error: errText(e) }));
+            return;
+        }
+        if (msg.type === 'process') {
+            const p = ready || Promise.reject(new Error('process before init'));
+            p.then(() => {
+                const valid = processChunk(msg);
+                post({ type: 'done', id: msg.id, start: msg.start, valid: valid.buffer }, [valid.buffer]);
+            }).catch((e) => post({ type: 'done', id: msg.id, start: msg.start, error: errText(e) }));
+        }
     }
     if (isNode) { const { parentPort } = require('worker_threads'); post = (m, t) => parentPort.postMessage(m, t); parentPort.on('message', handle); }
     else { post = (m, t) => self.postMessage(m, t); self.onmessage = (e) => handle(e.data); }

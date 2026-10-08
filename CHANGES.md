@@ -1,5 +1,21 @@
 # EAS Tools Changelog
 
+2026-10-08:
+
+- Add (a very primitive) NEXRAD radar image generation feature to WarnGen. It's _very_ basic and predictable/generic looking, but it works, and allows users to make "traditional" radar scans for supercell storms/tornados. Credit to @jakescooty for suggesting this feature.
+
+- Add a custom "screen builder" to the Text Crawl Generator. This allows users to create their own custom screens for their text crawls, providing a more personalized and unique experience. Again, thank you to @jakescooty for suggesting this feature.
+
+- Add more control over volume to both the encoder and splicer tools. Essentially, you can now tell the encoder how much to boost or reduce the volume of the announcement audio, and the splicer tool the volume of the input audio for macro input, as well as how much "effect" a macro should have. Credit to @jakescooty and @idk27629 both for suggesting these enhancements.
+
+- Add more TTS demo files to the TTS demo page. This change also updates the current (fallback) voice list to be current.
+
+- Fix a bug where macros would get stuck in rare instances, on mobile devices especially with more limited processing power. There is also now the ability to cancel a macro during processing, which should help with this issue alongside improved error handling. Thanks to Discord user mrekrap for reporting this issue.
+
+- Add a "update" banner to the bottom footer of the site, which will appear when a new (code) version of EAS Tools is available. This banner is just a fancier "refresh the page" button, but it should help users know when a new version of the EAS Tools code is available, and to refresh the page to get the latest features and bug fixes, especially if you keep EAS Tools open in a tab for long periods of time. The updater checks every 5 minutes.
+
+---
+
 2026-09-29:
 
 - Update AGENTS.md and README.md to better serve autonomous coding agents like Claude Code when working with this repository. Thank you to GitHub user @seasonal-currency for suggesting this change.

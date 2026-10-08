@@ -399,6 +399,22 @@
                         <input type="number" id="vmify-custom-intensity" name="vmify-custom-intensity" min="0" max="3" step="0.01" value="1">
                     </div>
                 </div>
+                <div id="announcementLevelDiv" role="group" aria-labelledby="announcementLevelHeading" style="display: none;">
+                    <br>
+                    <strong id="announcementLevelHeading">Announcement Level:</strong>
+                    <span id="announcementAutoLevelRow">
+                        <br>
+                        <label for="announcementAutoLevel">Auto-Level Text-to-Speech (evens out loud and quiet voices; untick to keep the voice's own level):</label>
+                        <input type="checkbox" id="announcementAutoLevel" name="announcementAutoLevel" checked>
+                    </span>
+                    <br>
+                    <label for="announcementGain">Announcement Volume (dB, -24 to +12):</label>
+                    <input type="range" id="announcementGain" name="announcementGain" min="-24" max="12" value="0" step="1">
+                    <label for="announcementGainNumber" class="visually-hidden">Announcement volume in decibels, minus twenty-four to twelve</label>
+                    <input type="number" class="slider-number" id="announcementGainNumber" name="announcementGainNumber" min="-24" max="12" value="0" step="1">
+                    <button type="button" id="announcementGainReset">Reset</button>
+                    <p class="inline-note">Applies to TTS and custom audio. 0 dB keeps the usual level; +6 dB lets a full-scale announcement reach the top of the exported WAV, and anything above that clips.</p>
+                </div>
                 <div id="silenceTimingContainer" role="group" aria-labelledby="silenceTimingHeading">
                     <br>
                     <strong id="silenceTimingHeading">Silence Timing (0-30000 ms. each; defaults come from the selected ENDEC):</strong>
@@ -568,6 +584,11 @@
                         <option value="image">Custom Image Background</option>
                         <option value="premade">Premade/Common Background Images</option>
                     </select>
+                    <div id="crawlScreenBuilderRow">
+                        <button type="button" id="crawlOpenScreenBuilder" aria-describedby="crawlScreenBuilderNote">Open Screen Builder</button>
+                        <p id="crawlScreenBuilderNote" class="inline-note">Design your own alert screen, with or without the crawl, or start from the Atari 800XL, EASyPLUS and other built-in screens. Saved screens appear under Premade/Common Background Images and can be exported as .json.</p>
+                        <input type="hidden" id="crawlCustomScreenData" value="">
+                    </div>
                     <div id="crawlBackgroundColorDiv">
                         <br>
                         <label for="crawlBgColor">Background Color:</label>
@@ -859,6 +880,14 @@
                         <select id="spliceMacros" data-splice-macro-select>
                             <!-- The macro list will be loaded by JS -->
                         </select>
+                        <div id="spliceMacroLevel" data-splice-macro-level hidden>
+                            <br>
+                            <label for="spliceMacroStrength">Macro Strength (%, 0-100; lower blends in more of the unprocessed audio):</label>
+                            <input id="spliceMacroStrength" type="number" min="0" max="100" step="1" value="100" data-splice-macro-strength>
+                            <br>
+                            <label for="spliceMacroVolume">Macro Volume (dB, -24 to +12):</label>
+                            <input id="spliceMacroVolume" type="number" min="-24" max="12" step="1" value="0" data-splice-macro-volume>
+                        </div>
                         <br>
                         <br>
                         <button type="button" data-splice-chain-editor-btn>Macro Chain Editor</button>
@@ -1186,6 +1215,72 @@
                     },
                 };
 
+                const UPDATE_CHECK_MIN_MS = 5 * 60 * 1000;
+                const assetTags = new Map();
+                let lastUpdateCheck = 0;
+                let updateBarShown = false;
+                const inNativeApp = () => !!(window.Capacitor?.isNativePlatform?.() || window.EASBridge || window.__EAS_REMOTE_SHIM__ || location.hostname === 'appassets.androidplatform.net');
+                const fetchAssetTag = async (href) => {
+                    try {
+                        const r = await fetch(href, { method: 'HEAD', cache: 'no-store' });
+                        if (!r.ok) return null;
+                        return r.headers.get('etag') || r.headers.get('last-modified');
+                    } catch {
+                        return null;
+                    }
+                };
+                const trackAsset = (url) => {
+                    if (inNativeApp()) return;
+                    let href;
+                    try { href = new URL(url, document.baseURI); } catch { return; }
+                    if (href.origin !== location.origin) return;
+                    href.hash = '';
+                    const key = href.href;
+                    if (assetTags.has(key)) return;
+                    assetTags.set(key, null);
+                    fetchAssetTag(key).then((tag) => { if (tag && assetTags.get(key) === null) assetTags.set(key, tag); });
+                };
+                const showUpdateBar = () => {
+                    if (updateBarShown) return;
+                    updateBarShown = true;
+                    const bar = document.createElement('div');
+                    bar.className = 'update-bar';
+                    bar.setAttribute('role', 'status');
+                    bar.setAttribute('aria-live', 'polite');
+                    const msg = document.createElement('span');
+                    msg.textContent = 'A new version of EAS Tools is available. Reload to get the latest fixes.';
+                    const reloadBtn = document.createElement('button');
+                    reloadBtn.type = 'button';
+                    reloadBtn.textContent = 'Reload';
+                    reloadBtn.addEventListener('click', () => location.reload());
+                    const laterBtn = document.createElement('button');
+                    laterBtn.type = 'button';
+                    laterBtn.textContent = 'Later';
+                    laterBtn.addEventListener('click', () => { bar.hidden = true; });
+                    bar.append(msg, reloadBtn, laterBtn);
+                    document.body.appendChild(bar);
+                };
+                const checkForUpdate = async () => {
+                    if (updateBarShown || !navigator.onLine || inNativeApp()) return;
+                    const now = Date.now();
+                    if (now - lastUpdateCheck < UPDATE_CHECK_MIN_MS) return;
+                    lastUpdateCheck = now;
+                    for (const [key, tag] of assetTags) {
+                        if (!tag) continue;
+                        const current = await fetchAssetTag(key);
+                        if (current && current !== tag) {
+                            showUpdateBar();
+                            return;
+                        }
+                    }
+                };
+                trackAsset(location.href);
+                document.querySelectorAll('script[src]').forEach((s) => trackAsset(s.getAttribute('src')));
+                document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+                window.addEventListener('focus', checkForUpdate);
+                window.addEventListener('online', checkForUpdate);
+                setInterval(() => { if (document.visibilityState === 'visible') checkForUpdate(); }, 30 * 60 * 1000);
+
                 const scriptPromises = new Map();
                 const loadScript = (url) => {
                     if (scriptPromises.has(url)) return scriptPromises.get(url);
@@ -1193,7 +1288,7 @@
                         const script = document.createElement('script');
                         script.src = url;
                         script.async = false;
-                        script.onload = () => resolve();
+                        script.onload = () => { trackAsset(url); resolve(); };
                         script.onerror = () => reject(new Error('Failed to load ' + url));
                         document.head.appendChild(script);
                     });
@@ -1205,6 +1300,7 @@
                 const loadModule = (url) => {
                     if (modulePromises.has(url)) return modulePromises.get(url);
                     const promise = import(new URL(url, document.baseURI).href);
+                    promise.then(() => trackAsset(url), () => { });
                     modulePromises.set(url, promise);
                     return promise;
                 };

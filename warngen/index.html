@@ -123,6 +123,8 @@
             <button type="button" id="radar-load-btn" class="mini-btn"
                 title="Open a NEXRAD Level II (Archive II) file, such as KHGX20260927_034129_V06 or a .ar2v, .gz or .bz2 copy. Real-time chunks can be opened together.">Open Level II file</button>
             <input type="file" id="radar-file" multiple style="display:none">
+            <button type="button" id="radar-synth-btn" class="mini-btn" aria-haspopup="dialog"
+                title="No Level II file? Build a made-up storm on a radar near your office for practice.">Generate storm</button>
             <label>Product <select id="radar-product" disabled></select></label>
             <label>Tilt <select id="radar-tilt" disabled></select></label>
             <label>Opacity <input type="range" id="radar-opacity" min="10" max="100" step="5" value="70" disabled></label>
@@ -136,6 +138,56 @@
             <button type="button" id="radar-clear-btn" class="mini-btn" disabled>Remove</button>
             <span id="radar-info" class="motion-label" aria-live="polite"></span>
             <span id="radar-probe" class="motion-label"></span>
+        </div>
+        <div id="synth-overlay" class="modal-overlay" hidden>
+            <div id="synth-dialog" class="modal-box synth-box" role="dialog" aria-modal="true"
+                aria-labelledby="synth-title" aria-describedby="synth-desc">
+                <h2 id="synth-title" class="modal-message">Generate a synthetic storm</h2>
+                <p id="synth-desc" class="synth-note">Builds a made-up radar volume (reflectivity, velocity,
+                    spectrum width, ZDR and correlation coefficient) for practice. It is not real data. The storm
+                    is oriented by the Storm motion bar: <span id="synth-motion"></span>.</p>
+                <div class="synth-grid">
+                    <label for="synth-type">Storm type</label>
+                    <select id="synth-type">
+                        <option value="supercell" selected>Classic supercell (hook echo)</option>
+                        <option value="qlcs">QLCS / bow echo</option>
+                    </select>
+                    <label for="synth-intensity">Intensity</label>
+                    <select id="synth-intensity">
+                        <option value="weak">Weak</option>
+                        <option value="moderate" selected>Moderate</option>
+                        <option value="strong">Strong</option>
+                    </select>
+                    <label for="synth-tornadic">Tornadic</label>
+                    <span class="synth-row">
+                        <input type="checkbox" id="synth-tornadic" aria-describedby="synth-tornadic-hint">
+                        <span id="synth-tornadic-hint" class="synth-hint">Adds a debris ball (low CC) and a tight velocity couplet</span>
+                    </span>
+                    <span id="synth-storm-label">Storm position</span>
+                    <span class="synth-row" role="group" aria-labelledby="synth-storm-label">
+                        <label>Lat <input type="number" id="synth-storm-lat" step="0.01" min="-90" max="90"></label>
+                        <label>Lon <input type="number" id="synth-storm-lon" step="0.01" min="-180" max="180"></label>
+                        <button type="button" id="synth-storm-center-btn" class="mini-btn">Use map center</button>
+                    </span>
+                    <span id="synth-site-label">Radar site</span>
+                    <span class="synth-row" role="group" aria-labelledby="synth-site-label">
+                        <label>ID <input type="text" id="synth-icao" maxlength="4" size="5" spellcheck="false" autocomplete="off"></label>
+                        <label>Lat <input type="number" id="synth-site-lat" step="0.01" min="-90" max="90"></label>
+                        <label>Lon <input type="number" id="synth-site-lon" step="0.01" min="-180" max="180"></label>
+                        <button type="button" id="synth-site-office-btn" class="mini-btn">Use office</button>
+                    </span>
+                    <label for="synth-seed">Seed</label>
+                    <span class="synth-row">
+                        <input type="number" id="synth-seed" min="0" max="999999" step="1">
+                        <button type="button" id="synth-reseed-btn" class="mini-btn">New seed</button>
+                    </span>
+                </div>
+                <p id="synth-error" class="synth-error" role="alert"></p>
+                <div class="modal-buttons">
+                    <button type="button" id="synth-cancel-btn" class="secondary-btn">Cancel</button>
+                    <button type="button" id="synth-generate-btn" class="primary-btn">Generate</button>
+                </div>
+            </div>
         </div>
         <div class="meta-bar">
             <strong>Product:</strong>
@@ -332,6 +384,7 @@
         <script src="src/radar/level2.js"></script>
         <script src="src/radar/palette.js"></script>
         <script src="src/radar/layer.js"></script>
+        <script src="src/radar/synth.js"></script>
         <script>
             // Fragments are #parse()d by the product templates and are never rendered directly.
             var MODERN_FRAGMENTS = [
@@ -2918,31 +2971,174 @@
                 Promise.all(list.map(function (f) { return f.arrayBuffer(); })).then(function (buffers) {
                     return WarngenLevel2.parse(buffers);
                 }).then(function (volume) {
-                    radarVolume = volume;
-                    var tilt = radarEl("radar-tilt");
-                    tilt.innerHTML = "";
-                    volume.sweeps.forEach(function (sweep, i) {
-                        tilt.appendChild(new Option(radarTiltLabel(sweep), String(i)));
-                    });
-                    tilt.value = "0";
-                    fillRadarProducts("REF");
-                    setRadarControls(true);
-                    radarEl("radar-show-cb").checked = true;
-                    radarLayer.setVolume(volume);
-                    applyRadarView();
-                    syncRadarVisibility();
-                    var mapSite = radarLayer.mapSite();
-                    var site = L.latLng(mapSite.lat, mapSite.lon);
-                    if (!map.getBounds().intersects(site.toBounds(2 * 230000))) {
-                        map.fitBounds(site.toBounds(2 * 230000));
-                    }
-                    var when = volume.time.toISOString().replace("T", " ").slice(0, 19) + "Z";
-                    radarEl("radar-info").textContent = volume.icao + " " + when + (volume.vcp ? " · VCP " + volume.vcp : "");
+                    showRadarVolume(volume);
                     setStatus("Loaded " + volume.icao + " radar: " + volume.sweeps.length + " tilt" + (volume.sweeps.length === 1 ? "" : "s") + ".", false);
                 }).catch(function (err) {
                     setStatus("Couldn't read that radar file: " + (err && err.message ? err.message : err), true);
                 });
             }
+
+            // Shared by Level II files and synthetic storms, which arrive in the same volume shape.
+            function showRadarVolume(volume) {
+                radarVolume = volume;
+                var tilt = radarEl("radar-tilt");
+                tilt.innerHTML = "";
+                volume.sweeps.forEach(function (sweep, i) {
+                    tilt.appendChild(new Option(radarTiltLabel(sweep), String(i)));
+                });
+                tilt.value = "0";
+                fillRadarProducts("REF");
+                setRadarControls(true);
+                radarEl("radar-show-cb").checked = true;
+                radarLayer.setVolume(volume);
+                applyRadarView();
+                syncRadarVisibility();
+                var mapSite = radarLayer.mapSite();
+                var site = L.latLng(mapSite.lat, mapSite.lon);
+                if (!map.getBounds().intersects(site.toBounds(2 * 230000))) {
+                    map.fitBounds(site.toBounds(2 * 230000));
+                }
+                var when = volume.time.toISOString().replace("T", " ").slice(0, 19) + "Z";
+                var info = volume.icao + " " + when + (volume.vcp ? " · VCP " + volume.vcp : "");
+                radarEl("radar-info").textContent = volume.synthetic ? "SYNTHETIC " + info + " · made-up practice data" : info;
+            }
+
+            var synthLastOffice = null;
+            var synthReturnFocus = null;
+
+            // Map coordinates are composite (inset) coordinates for Alaska, Hawaii and the territories.
+            function synthRealPoint(latlng) {
+                var t = detectTerritory(latlng.lng, latlng.lat, "compositeBbox");
+                if (!t) return { lat: latlng.lat, lon: latlng.lng };
+                var p = inverseTransformPoint(latlng.lng, latlng.lat, t);
+                return { lat: p[1], lon: p[0] };
+            }
+
+            function synthSetPoint(prefix, point) {
+                radarEl(prefix + "-lat").value = point ? point.lat.toFixed(3) : "";
+                radarEl(prefix + "-lon").value = point ? point.lon.toFixed(3) : "";
+            }
+
+            function synthFillOffice() {
+                var office = document.getElementById("office-select").value;
+                var loc = wfoLocations[office];
+                var label = OFFICE_LABELS[office];
+                radarEl("synth-icao").value = label ? label.split(" ")[0] : "K" + office;
+                synthSetPoint("synth-site", loc ? { lat: loc[1], lon: loc[0] } : null);
+                synthLastOffice = office;
+            }
+
+            function synthDefaultStorm() {
+                var marker = stormMarker && map.hasLayer(stormMarker) ? stormMarker.getLatLng() : null;
+                return synthRealPoint(marker || map.getCenter());
+            }
+
+            function synthFocusables() {
+                return Array.prototype.filter.call(
+                    radarEl("synth-dialog").querySelectorAll("button, input, select"),
+                    function (el) { return !el.disabled && el.offsetParent !== null; }
+                );
+            }
+
+            function openSynthDialog() {
+                synthReturnFocus = document.activeElement;
+                if (synthLastOffice !== document.getElementById("office-select").value) synthFillOffice();
+                synthSetPoint("synth-storm", synthDefaultStorm());
+                if (radarEl("synth-seed").value === "") radarEl("synth-seed").value = String(Math.floor(Math.random() * 1000000));
+                var bearing = parseFloat(document.getElementById("motion-bearing").value) || 0;
+                var speed = parseFloat(document.getElementById("motion-speed").value) || 0;
+                radarEl("synth-motion").textContent = "toward " + Math.round(bearing) + "° (" +
+                    document.getElementById("motion-label").textContent + ") at " + Math.round(speed) + " mph";
+                radarEl("synth-error").textContent = "";
+                radarEl("synth-generate-btn").disabled = false;
+                radarEl("synth-overlay").hidden = false;
+                radarEl("synth-type").focus();
+            }
+
+            function closeSynthDialog() {
+                radarEl("synth-overlay").hidden = true;
+                if (synthReturnFocus && typeof synthReturnFocus.focus === "function") synthReturnFocus.focus();
+                synthReturnFocus = null;
+            }
+
+            function synthNumber(id) {
+                var raw = radarEl(id).value;
+                return raw === "" ? NaN : Number(raw);
+            }
+
+            function generateSynthStorm() {
+                var error = radarEl("synth-error");
+                var options = {
+                    type: radarEl("synth-type").value,
+                    intensity: radarEl("synth-intensity").value,
+                    tornadic: radarEl("synth-tornadic").checked,
+                    seed: Math.max(0, Math.floor(synthNumber("synth-seed")) || 0),
+                    icao: (radarEl("synth-icao").value || "").trim() || "SYNT",
+                    site: { lat: synthNumber("synth-site-lat"), lon: synthNumber("synth-site-lon") },
+                    storm: { lat: synthNumber("synth-storm-lat"), lon: synthNumber("synth-storm-lon") },
+                    motionBearing: parseFloat(document.getElementById("motion-bearing").value) || 0,
+                    motionSpeedMph: parseFloat(document.getElementById("motion-speed").value) || 0
+                };
+                radarEl("synth-seed").value = String(options.seed);
+                error.textContent = "";
+                radarEl("synth-generate-btn").disabled = true;
+                setStatus("Generating a synthetic storm…", false);
+                // Let the status paint before the volume build blocks the thread for a moment.
+                setTimeout(function () {
+                    var volume;
+                    try {
+                        volume = WarngenRadarSynth.generate(options);
+                    } catch (err) {
+                        radarEl("synth-generate-btn").disabled = false;
+                        error.textContent = err && err.message ? err.message : String(err);
+                        setStatus("Couldn't generate the storm: " + error.textContent, true);
+                        return;
+                    }
+                    closeSynthDialog();
+                    showRadarVolume(volume);
+                    setStatus("Generated a synthetic " + volume.synthetic.label + " on the " + volume.icao + " radar: " +
+                        volume.sweeps.length + " tilts. This is made-up data for practice, not a real scan.", false);
+                }, 30);
+            }
+
+            radarEl("radar-synth-btn").addEventListener("click", openSynthDialog);
+            radarEl("synth-cancel-btn").addEventListener("click", closeSynthDialog);
+            radarEl("synth-generate-btn").addEventListener("click", generateSynthStorm);
+            radarEl("synth-storm-center-btn").addEventListener("click", function () {
+                synthSetPoint("synth-storm", synthRealPoint(map.getCenter()));
+            });
+            radarEl("synth-site-office-btn").addEventListener("click", synthFillOffice);
+            radarEl("synth-reseed-btn").addEventListener("click", function () {
+                radarEl("synth-seed").value = String(Math.floor(Math.random() * 1000000));
+            });
+            radarEl("synth-overlay").addEventListener("mousedown", function (e) {
+                if (e.target === this) closeSynthDialog();
+            });
+            radarEl("synth-overlay").addEventListener("keydown", function (e) {
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeSynthDialog();
+                    return;
+                }
+                if (e.key === "Enter" && e.target.tagName === "INPUT" && e.target.type !== "checkbox") {
+                    e.preventDefault();
+                    generateSynthStorm();
+                    return;
+                }
+                if (e.key !== "Tab") return;
+                var items = synthFocusables();
+                if (!items.length) return;
+                var first = items[0];
+                var last = items[items.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            });
 
             function clearRadar() {
                 radarVolume = null;

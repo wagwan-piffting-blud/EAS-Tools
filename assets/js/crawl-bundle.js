@@ -1,6 +1,7 @@
 import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
 import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady } from '../E2T/EAS2Text-NG.js';
 import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec } from './mediabunny/mediabunny.min.js';
+import { SCREEN_TYPE, openScreenBuilder, listScreens, getScreen, adoptScreen, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices } from './crawl-screen-builder.js';
 
 async function initCrawlEditor() {
     let crawlTextEditor = null;
@@ -2929,6 +2930,18 @@ async function initCrawlEditor() {
         }
         clearPremadeInputLocks();
         const requestId = ++premadeSizingRequestToken;
+        if (descriptor.type === SCREEN_TYPE) {
+            const screen = getScreen(descriptor.source);
+            if (screen) {
+                updateCrawlControlsFromAsset({
+                    width: screen.width,
+                    height: screen.height,
+                    inset: screen.crawl.enabled ? screen.crawl.inset : undefined,
+                    topLeft: screenTopLeft(screen)
+                }, { premade: true });
+            }
+            return;
+        }
         let initialTopLeft;
         if (descriptor.source === 'easyplus_gray') {
             const eventCodeInput = document.getElementById('easyplusEventCode');
@@ -3494,7 +3507,15 @@ async function initCrawlEditor() {
         borough: { one: 'BOROUGH', many: 'BOROUGHS' }
     });
 
-    function atariAreaText(locationNames) {
+    const SCREEN_AREA_SUFFIXES = Object.freeze({
+        county: { one: 'County', many: 'Counties' },
+        parish: { one: 'Parish', many: 'Parishes' },
+        borough: { one: 'Borough', many: 'Boroughs' }
+    });
+
+    function atariAreaText(locationNames, upper = true) {
+        const genericArea = upper ? ATARI_GENERIC_AREA : 'Your Area';
+        const suffixes = upper ? ATARI_AREA_SUFFIXES : SCREEN_AREA_SUFFIXES;
         const entries = Array.isArray(locationNames) ? locationNames : [];
         const seen = new Set();
         const names = [];
@@ -3512,7 +3533,7 @@ async function initCrawlEditor() {
                 continue;
             }
             if (/^All of The United States$/i.test(base)) {
-                return ATARI_GENERIC_AREA;
+                return genericArea;
             }
             const normalized = base.replace(/^State of\s+/i, 'All of ');
             const subdivision = String((entry && entry.subdivision) || '').trim();
@@ -3520,7 +3541,7 @@ async function initCrawlEditor() {
         }
 
         if (!names.length) {
-            return ATARI_GENERIC_AREA;
+            return genericArea;
         }
 
         const suffixPattern = /\s(County|Parish|Borough)$/i;
@@ -3534,23 +3555,25 @@ async function initCrawlEditor() {
         if (suffixKeys.size === 1 && !suffixKeys.has('')) {
             const key = Array.from(suffixKeys)[0];
             parts = names.map((name) => name.replace(suffixPattern, ''));
-            suffix = names.length > 1 ? ATARI_AREA_SUFFIXES[key].many : ATARI_AREA_SUFFIXES[key].one;
+            suffix = names.length > 1 ? suffixes[key].many : suffixes[key].one;
         }
 
         const joined = parts.length > 1
-            ? `${parts.slice(0, -1).join(', ')} AND ${parts[parts.length - 1]}`
+            ? `${parts.slice(0, -1).join(', ')} ${upper ? 'AND' : 'and'} ${parts[parts.length - 1]}`
             : parts[0];
 
-        return (suffix ? `${joined} ${suffix}` : joined).toUpperCase();
+        const text = suffix ? `${joined} ${suffix}` : joined;
+        return upper ? text.toUpperCase() : text;
     }
 
-    function atariUntilText(detail) {
+    function atariUntilText(detail, upper = true) {
+        const indefinite = upper ? ATARI_INDEFINITE : 'Further Notice';
         if (!detail || detail.indefinite) {
-            return ATARI_INDEFINITE;
+            return indefinite;
         }
         const time = String(detail.endTimeText || '').replace(/^0/, '');
         if (!time) {
-            return ATARI_INDEFINITE;
+            return indefinite;
         }
         return detail.endsOnStartDay ? time : `${time} ${detail.endDateText}`;
     }
@@ -3582,6 +3605,84 @@ async function initCrawlEditor() {
             areaText: ATARI_GENERIC_AREA,
             untilText: ATARI_INDEFINITE,
             senderText: ''
+        };
+    }
+
+    function screenArticle(text) {
+        return /^[AEIOU]/i.test(String(text || '').trim()) ? 'an' : 'a';
+    }
+
+    async function buildCustomScreenTokens(screen) {
+        const value = (id) => {
+            const node = document.getElementById(id);
+            return node ? node.value : '';
+        };
+        const collapse = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
+        const stripArticle = (text) => collapse(text).replace(/^(?:a|an|the)\s+/i, '');
+        const headerMode = value('crawlMode') === 'header';
+        const rawHeader = headerMode ? value('crawlRawHeader').trim() : '';
+        const timezoneOverride = value('crawlUseOverrideTZ') || null;
+        let crawlText = value('crawlText');
+
+        if (headerMode) {
+            crawlText = '';
+            if (rawHeader) {
+                try {
+                    const useLocalTZ = document.getElementById('crawlUseLocalTZ')?.checked === true;
+                    const endecMode = screen && screen.textEndecMode ? screen.textEndecMode : value('endecMode');
+                    crawlText = await header_to_readable(rawHeader, useLocalTZ, value('crawlUseOverrideTZ'), endecMode, crawlSenderOverride()) || '';
+                } catch (err) {
+                    crawlText = '';
+                }
+            }
+        }
+
+        if (headerMode && rawHeader) {
+            try {
+                const detail = parseHeaderDetailed(rawHeader, timezoneOverride, false, crawlSenderOverride());
+                const event = stripArticle(detail.eventName);
+                const mappedOriginator = mapEasyplusOriginatorToFullName(detail.originator).replace(/A Primary/gi, 'Primary').trim();
+                const originator = mappedOriginator && mappedOriginator !== detail.originator
+                    ? mappedOriginator
+                    : stripArticle(detail.originatorName);
+                const eventCode = String(detail.eventCode || '').toUpperCase();
+                return {
+                    EVENT: event,
+                    EVENT_CODE: eventCode,
+                    ARTICLE: screenArticle(event),
+                    ORIGINATOR: originator,
+                    ORIGINATOR_CODE: String(detail.originator || '').toUpperCase(),
+                    LOCATIONS: atariAreaText(detail.locationNames, false),
+                    START: String(detail.startTimeText || '').replace(/^0/, ''),
+                    END: String(detail.endTimeText || '').replace(/^0/, ''),
+                    END_DATE: String(detail.endDateText || ''),
+                    UNTIL: atariUntilText(detail, false),
+                    SENDER: String(detail.senderId || ''),
+                    HEADLINE: eventCode === 'EAN' || eventCode === 'EAT' ? 'NATIONAL ALERT' : 'EMERGENCY ALERT SYSTEM',
+                    TEXT: crawlText,
+                    SEVERITY: atariSeverityFor(detail.eventName)
+                };
+            } catch (error) {
+                console.error('Failed to parse the EAS header for the custom screen:', error);
+            }
+        }
+
+        const fallbackEvent = collapse(headerMode ? rawHeader : crawlText);
+        return {
+            EVENT: fallbackEvent,
+            EVENT_CODE: '',
+            ARTICLE: screenArticle(fallbackEvent),
+            ORIGINATOR: '',
+            ORIGINATOR_CODE: '',
+            LOCATIONS: 'Your Area',
+            START: '',
+            END: '',
+            END_DATE: '',
+            UNTIL: 'Further Notice',
+            SENDER: '',
+            HEADLINE: 'EMERGENCY ALERT SYSTEM',
+            TEXT: crawlText,
+            SEVERITY: atariSeverityFor(fallbackEvent)
         };
     }
 
@@ -3737,7 +3838,49 @@ async function initCrawlEditor() {
                         }
                     }
 
-                    if (descriptor && descriptor.type === 'image') {
+                    if (descriptor.type === SCREEN_TYPE) {
+                        const screen = getScreen(descriptor.source);
+                        if (screen) {
+                            const rendered = await renderScreenFrames(screen, await buildCustomScreenTokens(screen));
+                            const frames = rendered.frames.filter(Boolean);
+                            const inset = screen.crawl.enabled ? screen.crawl.inset : undefined;
+                            if (frames.length > 1) {
+                                const flashingImage = new Image();
+                                flashingImage.src = frames[0].src;
+                                await waitForBackgroundImageLoad(flashingImage);
+                                window.__dasdecBackground = {
+                                    pages: frames,
+                                    rotationDelayMs: rendered.flashIntervalMs,
+                                    drivesTotalFrames: false,
+                                    width: rendered.width,
+                                    height: rendered.height
+                                };
+                                const rotationState = createPageRotationState(frames, rendered.flashIntervalMs, flashingImage);
+                                window.__dasdecRotationState = rotationState;
+                                rotationState.resume();
+                                return {
+                                    image: flashingImage,
+                                    width: rendered.width,
+                                    height: rendered.height,
+                                    inset,
+                                    topLeft: rendered.topLeft,
+                                    source: descriptor.source
+                                };
+                            }
+                            if (frames.length) {
+                                return {
+                                    image: frames[0],
+                                    width: rendered.width,
+                                    height: rendered.height,
+                                    inset,
+                                    topLeft: rendered.topLeft,
+                                    source: descriptor.source
+                                };
+                            }
+                        }
+                    }
+
+                    else if (descriptor && descriptor.type === 'image') {
                         const media = await loadMediaElementFromSource(descriptor.type, descriptor.source);
                         if (media) {
                             const topLeft = getPremadeTopLeft(descriptor.source);
@@ -4044,10 +4187,13 @@ async function initCrawlEditor() {
             ? parseBackgroundSelectionValue(controls.crawlBackgroundPremade)
             : null;
         const source = descriptor ? descriptor.source : '';
-        const usesCrawlText = source === 'dasdec' || source === 'eas_1cg' || source === 'atari_800xl';
+        const isScreen = Boolean(descriptor && descriptor.type === SCREEN_TYPE);
+        const usesCrawlText = isScreen || source === 'dasdec' || source === 'eas_1cg' || source === 'atari_800xl';
+        const screen = isScreen ? getScreen(source) : null;
         return [
             controls.crawlBackgroundMode,
             controls.crawlBackgroundPremade,
+            isScreen ? `${screen ? screen.updated : 'missing'}:${controls.endecMode}` : '',
             crawlFileToken('crawlBackgroundImageFile'),
             controls.easyplusOriginator,
             controls.easyplusEventCode,
@@ -4428,8 +4574,25 @@ async function initCrawlEditor() {
             && premadeSelect.value.includes('atari_800xl');
 
         let textToCopy = window.crawlGenerator.getCrawlText() || '';
+        const customScreenId = backgroundModeSelect && backgroundModeSelect.value === 'premade'
+            ? selectedCustomScreenId()
+            : null;
+        const customScreen = customScreenId ? getScreen(customScreenId) : null;
 
-        if (usingHeaderMode && usingDasdecBackground) {
+        if (customScreen) {
+            try {
+                const lines = await screenTextLines(customScreen, await buildCustomScreenTokens(customScreen));
+                const screenText = lines.join('\n').trim();
+                if (screenText) {
+                    textToCopy = screenText;
+                }
+            } catch (error) {
+                console.error('Failed to format the custom screen text for copying:', error);
+                addStatus('Failed to format the custom screen text. Falling back to displayed crawl text.', 'WARN');
+            }
+        }
+
+        else if (usingHeaderMode && usingDasdecBackground) {
             const rawHeader = document.getElementById('crawlRawHeader').value;
             if (!rawHeader) {
                 alert('Please provide an EAS header before copying DASDEC text.');
@@ -4566,10 +4729,141 @@ async function initCrawlEditor() {
     const crawlBackgroundPremadeSelect = document.getElementById('crawlBackgroundPremadeSelect');
     if (crawlBackgroundPremadeSelect) {
         crawlBackgroundPremadeSelect.addEventListener('change', () => {
+            syncCustomScreenData();
             const modeSelect = document.getElementById('crawlBackgroundMode');
             if (modeSelect && modeSelect.value === 'premade') {
                 requestPremadeBackgroundSizing();
             }
+        });
+    }
+
+    function selectedCustomScreenId() {
+        const select = document.getElementById('crawlBackgroundPremadeSelect');
+        const descriptor = select ? parseBackgroundSelectionValue(select.value) : null;
+        return descriptor && descriptor.type === SCREEN_TYPE ? descriptor.source : null;
+    }
+
+    function refreshCustomScreenOptions() {
+        const select = document.getElementById('crawlBackgroundPremadeSelect');
+        if (!select) return;
+        const current = select.value;
+        select.querySelectorAll('optgroup[data-custom-screens]').forEach((group) => group.remove());
+        const screens = listScreens();
+        if (screens.length) {
+            const group = document.createElement('optgroup');
+            group.label = 'Custom Screens';
+            group.dataset.customScreens = '1';
+            screens.forEach((screen) => {
+                group.appendChild(new Option(`Custom: ${screen.name}`, `${SCREEN_TYPE}:${screen.id}`));
+            });
+            select.appendChild(group);
+        }
+        if (Array.from(select.options).some((option) => option.value === current)) {
+            select.value = current;
+        }
+    }
+
+    function syncCustomScreenData() {
+        const input = document.getElementById('crawlCustomScreenData');
+        if (!input) return;
+        const id = selectedCustomScreenId();
+        const screen = id ? getScreen(id) : null;
+        input.value = screen ? JSON.stringify(screen) : '';
+    }
+
+    function adoptCustomScreenFromSettings(settings) {
+        const raw = settings && typeof settings.crawlCustomScreenData === 'string' ? settings.crawlCustomScreenData : '';
+        if (!raw) return;
+        try {
+            if (adoptScreen(JSON.parse(raw))) {
+                refreshCustomScreenOptions();
+            }
+        } catch (err) {
+            console.error('The preset carries a custom screen that could not be read:', err);
+        }
+    }
+
+    function crawlScreenFontChoices() {
+        return (window.crawlFontsToLoad || [])
+            .filter((font) => font.family !== USER_UPLOAD_FONT_FAMILY)
+            .map((font) => ({ value: font.family, label: font.family }))
+            .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+    }
+
+    function useCustomScreen(screen) {
+        refreshCustomScreenOptions();
+        const modeSelect = document.getElementById('crawlBackgroundMode');
+        const select = document.getElementById('crawlBackgroundPremadeSelect');
+        if (!modeSelect || !select) return;
+        if (modeSelect.value !== 'premade') {
+            modeSelect.value = 'premade';
+            modeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        select.value = `${SCREEN_TYPE}:${screen.id}`;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        crawlAssetCache.backgroundKey = null;
+        scheduleCrawlApply(0);
+        addStatus(`Using the custom screen "${screen.name}".`);
+    }
+
+    const crawlBuilderTemplateSources = new Set(templateChoices().map((choice) => choice.value));
+
+    async function openCrawlScreenBuilder(trigger) {
+        await ensureFontsReady();
+        let endecModes = [];
+        try {
+            await resourcesReady;
+            endecModes = allEndecModes().filter((mode) => mode.toLowerCase() !== 'json');
+        } catch (err) {
+            endecModes = [];
+        }
+        const modeSelect = document.getElementById('crawlBackgroundMode');
+        const select = document.getElementById('crawlBackgroundPremadeSelect');
+        const descriptor = modeSelect && select && modeSelect.value === 'premade'
+            ? parseBackgroundSelectionValue(select.value)
+            : null;
+        let initialLayout = null;
+        let initialTemplate = 'blank';
+        if (descriptor && descriptor.type === SCREEN_TYPE) {
+            initialLayout = getScreen(descriptor.source);
+        } else if (descriptor && crawlBuilderTemplateSources.has(descriptor.source)) {
+            initialTemplate = descriptor.source;
+        }
+        await openScreenBuilder({
+            initialLayout,
+            initialTemplate: initialLayout ? null : initialTemplate,
+            fonts: crawlScreenFontChoices(),
+            returnFocus: trigger,
+            saveFile,
+            getPreviewTokens: buildCustomScreenTokens,
+            endecModes,
+            crawlBandHeight: () => (Number(document.getElementById('crawlFontSize')?.value) || 24) + 10,
+            onSave: (screen) => {
+                refreshCustomScreenOptions();
+                syncCustomScreenData();
+                if (selectedCustomScreenId() === screen.id) {
+                    requestPremadeBackgroundSizing();
+                    scheduleCrawlApply(0);
+                }
+            },
+            onDelete: () => {
+                refreshCustomScreenOptions();
+                syncCustomScreenData();
+                scheduleCrawlApply(0);
+            },
+            onUse: (screen) => useCustomScreen(screen)
+        });
+    }
+
+    refreshCustomScreenOptions();
+
+    const crawlOpenScreenBuilderButton = document.getElementById('crawlOpenScreenBuilder');
+    if (crawlOpenScreenBuilderButton) {
+        crawlOpenScreenBuilderButton.addEventListener('click', () => {
+            openCrawlScreenBuilder(crawlOpenScreenBuilderButton).catch((err) => {
+                console.error('The screen builder could not open:', err);
+                addStatus(`The screen builder could not open: ${err?.message || err}`, 'ERROR');
+            });
         });
     }
 
@@ -4784,6 +5078,7 @@ async function initCrawlEditor() {
     const savedSettings = localStorage.getItem(localStorageKey);
 
     const applySettingsToControls = (settings, { showStatus = true } = {}) => {
+        adoptCustomScreenFromSettings(settings);
         const migrated = migrateLegacyCrawlSettings(settings);
         const elements = getPersistedCrawlSettingElements();
         elements.forEach((element) => {
@@ -5018,6 +5313,7 @@ async function initCrawlEditor() {
     };
 
     function getCurrentSettings() {
+        syncCustomScreenData();
         const collected = {};
         getPersistedCrawlSettingElements().forEach((element) => {
             if (!element.id) {
@@ -5260,6 +5556,7 @@ async function initCrawlEditor() {
                     topLeftX: tlx,
                     topLeftY: tly,
                     scroll: !PREMADE_STATIC_SOURCES.has(source)
+                        && !(descriptor && descriptor.type === SCREEN_TYPE && getScreen(source) && getScreen(source).crawl && getScreen(source).crawl.enabled === false)
                 });
             } catch (err) {
                 console.error('[EASBridge] crawl:renderPremade error:', err);

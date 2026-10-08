@@ -610,6 +610,43 @@ async function fetchAndStore() {
         }
     }
 
+    const ANNOUNCEMENT_GAIN_MIN_DB = -24;
+    const ANNOUNCEMENT_GAIN_MAX_DB = 12;
+    const ANNOUNCEMENT_CEILING = 0.99;
+    const ANNOUNCEMENT_MAX_CEILING = 1.98;
+
+    function announcementAutoLevelEnabled() {
+        return document.getElementById("announcementAutoLevel")?.checked !== false;
+    }
+
+    function announcementGainLinear() {
+        const db = Number(document.getElementById("announcementGain")?.value);
+        if (!Number.isFinite(db) || db === 0) return 1;
+        return dbToLin(Math.min(ANNOUNCEMENT_GAIN_MAX_DB, Math.max(ANNOUNCEMENT_GAIN_MIN_DB, db)));
+    }
+
+    function levelTtsPcm(pcm, options) {
+        return announcementAutoLevelEnabled() ? normalizeTtsPcm(pcm, options) : pcm;
+    }
+
+    function appendAnnouncementPcm(pcm) {
+        if (!pcm) return;
+        const gain = announcementGainLinear();
+        const ceiling = Math.min(ANNOUNCEMENT_MAX_CEILING, ANNOUNCEMENT_CEILING * Math.max(1, gain));
+        for (let i = 0; i < pcm.length; i++) {
+            let s = pcm[i] * gain;
+            if (s > ceiling) s = ceiling;
+            else if (s < -ceiling) s = -ceiling;
+            samples.push(s);
+        }
+    }
+
+    function sampleToInt32(s) {
+        if (s > 2) s = 2;
+        else if (s < -2) s = -2;
+        return s * (2147483647 / 2);
+    }
+
     var wav = new wavefile.WaveFile();
 
     function zero_pad_int(num, totalLength) {
@@ -715,9 +752,7 @@ async function fetchAndStore() {
         const useEndecRate = shouldEmulateEndecRate() && endecRate !== SAMPLE_RATE;
         const outRate = useEndecRate ? endecRate : SAMPLE_RATE;
         const outSamples = useEndecRate ? Array.from(resamplePcmSinc(samples, SAMPLE_RATE, endecRate)) : samples;
-        wav.fromScratch(1, outRate, '32', outSamples.map(e => {
-            return e * (2147483647 / 2);
-        }));
+        wav.fromScratch(1, outRate, '32', outSamples.map(sampleToInt32));
         const wavBuffer = wav.toBuffer().buffer;
         await saveFile('eas.wav', wavBuffer, 'audio/wav');
         addStatus(useEndecRate ? `Download started (${outRate} Hz ENDEC rate).` : "Download started...");
@@ -1129,7 +1164,7 @@ async function fetchAndStore() {
             });
 
             const pcm = resamplePcm(result.pcm, result.sampleRate, SAMPLE_RATE);
-            const normalizedPcm = normalizeTtsPcm(pcm, {
+            const normalizedPcm = levelTtsPcm(pcm, {
                 targetDb: ttsNormalizationTargetDb(backend, prosody.volume),
                 maxGainDb: 24,
                 softClip: cl,
@@ -1140,13 +1175,13 @@ async function fetchAndStore() {
 
             if (/Speechify/i.test(voice) && document.getElementById("shouldBitcrushSpeechify")?.checked) {
                 const bitcrushed = await bitcrushSpeechifyPcm(normalizedPcm, SAMPLE_RATE);
-                appendPcmToSamples(bitcrushed.sampleRate === SAMPLE_RATE
+                appendAnnouncementPcm(bitcrushed.sampleRate === SAMPLE_RATE
                     ? bitcrushed.pcm
                     : resamplePcmSinc(bitcrushed.pcm, bitcrushed.sampleRate, SAMPLE_RATE));
             }
 
             else {
-                appendPcmToSamples(normalizedPcm);
+                appendAnnouncementPcm(normalizedPcm);
             }
         }
 
@@ -1210,9 +1245,9 @@ async function fetchAndStore() {
         }
 
         const appendAnnouncement = (pcmRaw) => {
-            const pcm = normalizeTtsPcm(pcmRaw, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
+            const pcm = levelTtsPcm(pcmRaw, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
             generate_silence(silenceSamples("attentionToMessage"));
-            appendPcmToSamples(pcm);
+            appendAnnouncementPcm(pcm);
         };
 
         const selectedVoiceRaw = (window.ttsVoice || '').trim();
@@ -1286,13 +1321,13 @@ async function fetchAndStore() {
                         if (result?.pcm?.length) {
                             const resampled = resamplePcm(result.pcm, result.sampleRate, SAMPLE_RATE);
                             if (spfyVoice !== null && document.getElementById('shouldBitcrushSpeechify')?.checked === true) {
-                                const normalized = normalizeTtsPcm(resampled, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
+                                const normalized = levelTtsPcm(resampled, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
                                 const bitcrushed = await bitcrushSpeechifyPcm(normalized, SAMPLE_RATE);
                                 const bitcrushedPcm = bitcrushed.sampleRate === SAMPLE_RATE
                                     ? bitcrushed.pcm
                                     : resamplePcmSinc(bitcrushed.pcm, bitcrushed.sampleRate, SAMPLE_RATE);
                                 generate_silence(silenceSamples("attentionToMessage"));
-                                appendPcmToSamples(bitcrushedPcm);
+                                appendAnnouncementPcm(bitcrushedPcm);
                             } else {
                                 appendAnnouncement(resampled);
                             }
@@ -1425,7 +1460,7 @@ async function fetchAndStore() {
                     pcm = vmifyPcm(pcm, SAMPLE_RATE, { intensity: Number.isFinite(vmifyIntensity) ? vmifyIntensity : 1 });
                 }
                 generate_silence(silenceSamples("attentionToMessage"));
-                appendPcmToSamples(pcm);
+                appendAnnouncementPcm(pcm);
             }
             else {
                 addStatus("You must select a custom audio file when using Custom Audio! There will instead be silence.", "ERROR");
@@ -1840,6 +1875,8 @@ async function fetchAndStore() {
             'clip': clipSignal,
             'endecResample': endecResample,
             'enable-vmify-custom': document.getElementById('enable-vmify-custom')?.checked || false,
+            'announcementAutoLevel': announcementAutoLevelEnabled(),
+            'announcementGain': document.getElementById('announcementGain')?.value || '0',
             'vmify-custom-intensity': document.getElementById('vmify-custom-intensity')?.value || '1',
             'silenceUniform': document.getElementById('silenceUniform')?.checked || false,
             'silencePreTone': document.getElementById('silencePreTone')?.value ?? '1000',
@@ -1923,9 +1960,7 @@ async function fetchAndStore() {
             URL.revokeObjectURL(playbackElement.dataset.objectUrl);
         }
 
-        wav.fromScratch(1, SAMPLE_RATE, '32', samples.map(e => {
-            return e * (2147483647 / 2);
-        }));
+        wav.fromScratch(1, SAMPLE_RATE, '32', samples.map(sampleToInt32));
         const wavBuffer = wav.toBuffer().buffer;
         const wavBlob = new Blob([new DataView(wavBuffer)], { type: 'audio/wav' });
         const wavUrl = URL.createObjectURL(wavBlob);
@@ -2449,10 +2484,19 @@ async function fetchAndStore() {
 
     if (transferButton) {
         transferButton.addEventListener('click', () => {
-            const cheader = document.getElementById("cheader").value;
-            const parsedHeader = parseSameHeaderParam(cheader);
-            if (parsedHeader) {
-                applyHeaderDetails(parsedHeader);
+            const resolved = resolveHeaderInput(document.getElementById("cheader").value);
+            if (!resolved.ok) {
+                addStatus(resolved.error, "ERROR");
+                return;
+            }
+            const parsedHeader = parseSameHeaderParam(resolved.header);
+            if (!parsedHeader) {
+                addStatus("Could not transfer header: " + resolved.header, "ERROR");
+                return;
+            }
+            applyHeaderDetails(parsedHeader);
+            if (resolved.notes) {
+                resolved.notes.forEach(function (n, i) { addStatus(n, i ? "ERROR" : undefined); });
             }
             encoderModeSelect.value = "builder";
             encoderModeSelect.dispatchEvent(new Event('change'));
@@ -2522,10 +2566,21 @@ async function fetchAndStore() {
             stringEncoder.style.display = "block";
             window.useCustom = true;
         }
+        updateHeaderPreview();
     });
+
+    const announcementLevelDiv = document.getElementById("announcementLevelDiv");
+    const announcementAutoLevelRow = document.getElementById("announcementAutoLevelRow");
 
     announcementTypeSelect.addEventListener("change", function () {
         window.announcementType = announcementTypeSelect.value;
+
+        if (announcementLevelDiv) {
+            announcementLevelDiv.style.display = (window.announcementType === "tts" || window.announcementType === "custom") ? "block" : "none";
+        }
+        if (announcementAutoLevelRow) {
+            announcementAutoLevelRow.hidden = window.announcementType !== "tts";
+        }
 
         if (window.announcementType === "tts") {
             ttsOuterDiv.style.display = "block";
@@ -2569,6 +2624,7 @@ async function fetchAndStore() {
     bindSliderNumberPair({ sliderId: "ttsRate", numberId: "ttsRateNumber", resetId: "ttsRateReset" });
     bindSliderNumberPair({ sliderId: "ttsPitch", numberId: "ttsPitchNumber", resetId: "ttsPitchReset" });
     bindSliderNumberPair({ sliderId: "ttsVolume", numberId: "ttsVolumeNumber", resetId: "ttsVolumeReset" });
+    bindSliderNumberPair({ sliderId: "announcementGain", numberId: "announcementGainNumber", resetId: "announcementGainReset" });
 
     const attentionToneDiv = document.getElementById("tlenContainer");
     const currentAttentionTone = document.getElementById("att");
@@ -2681,7 +2737,13 @@ async function fetchAndStore() {
         const headerPreviewElem = document.getElementById("headerPreview");
         if (!headerPreviewElem) return;
         if (window.mode === "header") {
-            headerPreviewElem.textContent = "";
+            let resolved = null;
+            try {
+                resolved = resolveHeaderInput(rawinput.value);
+            } catch (err) {
+                resolved = null;
+            }
+            headerPreviewElem.textContent = (resolved && resolved.ok) ? resolved.header : "";
             return;
         }
         if (locations.length < 1) {
@@ -2711,6 +2773,7 @@ async function fetchAndStore() {
     originators.addEventListener("change", updateHeaderPreview);
     minselect.addEventListener("change", updateHeaderPreview);
     parinput.addEventListener("input", updateHeaderPreview);
+    rawinput.addEventListener("input", updateHeaderPreview);
     timeselect.addEventListener("change", updateHeaderPreview);
     hrselect.addEventListener("change", updateHeaderPreview);
 
@@ -3096,6 +3159,8 @@ async function fetchAndStore() {
                 if (params.bitcrushSpeechify != null && el('shouldBitcrushSpeechify')) el('shouldBitcrushSpeechify').checked = params.bitcrushSpeechify;
                 if (params.vmifyCustom != null && el('enable-vmify-custom')) { el('enable-vmify-custom').checked = params.vmifyCustom; el('enable-vmify-custom').dispatchEvent(new Event('change')); }
                 if (params.vmifyCustomIntensity != null && el('vmify-custom-intensity')) el('vmify-custom-intensity').value = params.vmifyCustomIntensity.toString();
+                if (params.announcementAutoLevel != null && el('announcementAutoLevel')) el('announcementAutoLevel').checked = params.announcementAutoLevel;
+                if (params.announcementGain != null && el('announcementGain')) { el('announcementGain').value = params.announcementGain.toString(); el('announcementGain').dispatchEvent(new Event('input')); }
                 if (params.eomDelay != null && el('silenceMessageToEom')) {
                     el('silenceMessageToEom').value = (1000 + Number(params.eomDelay)).toString();
                 }

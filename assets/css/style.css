@@ -849,6 +849,23 @@ textarea:disabled {
     flex: 0 0 auto;
 }
 
+.splice-chain-item {
+    flex-wrap: wrap;
+}
+
+.splice-chain-item-level {
+    display: flex;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.8rem;
+}
+
+.splice-chain-item-number {
+    width: 4.5em;
+    margin-left: 4px;
+}
+
 .splice-chain-item-params {
     flex: 1 1 40%;
     min-width: 80px;
@@ -1685,6 +1702,34 @@ textarea:disabled {
     button[data-splice-play] {
         font-size: 0.85rem !important;
     }
+}
+
+/* Update-available bar */
+.update-bar {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--sab) + 12px);
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    max-width: calc(100vw - 32px);
+    padding: 10px 14px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 2px solid var(--color-orange);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.update-bar[hidden] {
+    display: none;
+}
+
+.update-bar button {
+    min-height: 36px;
 }
 
 /* Light mode */

@@ -103,6 +103,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     let macroWaveformActiveKey = null;
     let macroWaveformOutputSig = null;
     let macroWaveformPendingKey = null;
+    let macroWaveformCancelledKey = null;
     let macroWaveformJobSeq = 0;
     let macroWaveformDebounce = null;
     let macroComboBtn = null;
@@ -244,6 +245,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             vmifyEnabled ? '1' : '0',
             vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
             macroId === 'CHAIN' ? chainSig() : '',
+            macroLevelSig(),
             state.pcm.length,
             state.sampleRate,
         ];
@@ -290,6 +292,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             return;
         }
         if (macroWaveformActiveKey === key || macroWaveformPendingKey === key) return;
+        if (!immediate && macroWaveformCancelledKey === key) return;
         if (macroWaveformActiveKey) {
             macroWaveformActiveKey = null;
             macroWaveformPcm = null;
@@ -317,25 +320,19 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             try {
                 let processed = null;
                 try {
-                    const fxPcm = applyExportFxToPcm(pcmRef, sr, macroId);
-                    if (macroId === 'CHAIN') {
-                        const out = await applyMacroChainToPcm(fxPcm, sr, macroProgressCb);
-                        setMacroProgress(1, 'Macro preview ready!');
-                        processed = { pcm: out.pcm, sampleRate: out.sampleRate };
-                    } else if (macroId.startsWith('AUD:') && window.AudacityMacroEngine) {
-                        const out = await window.AudacityMacroEngine.applyMacroFile(fxPcm, sr, macroId.slice(4), { onProgress: macroProgressCb });
-                        setMacroProgress(1, 'Macro preview ready!');
-                        processed = { pcm: out.pcm, sampleRate: out.sampleRate };
-                    } else {
-                        const blob = await renderMacroWithSox(fxPcm, sr, macroId, 0);
-                        if (blob) {
-                            processed = await decodeWavBlobToFloat32(blob);
-                        } else if (fxPcm !== pcmRef) {
-                            processed = { pcm: fxPcm, sampleRate: sr };
-                        }
-                    }
+                    const out = await trackMacroJob(() => renderSelectedMacroPcm(pcmRef, sr, macroId, macroProgressCb));
+                    const doneLabel = macroRenderDoneLabel(macroId, true);
+                    if (doneLabel) setMacroProgress(1, doneLabel);
+                    if (out.pcm !== pcmRef) processed = out;
+                    macroWaveformCancelledKey = null;
                 } catch (err) {
-                    console.error('Macro waveform render failed', err);
+                    setMacroProgress(1, '');
+                    if (isMacroCancelError(err)) {
+                        macroWaveformCancelledKey = key;
+                        persistStatus('Macro processing cancelled.', true);
+                    } else {
+                        console.error('Macro waveform render failed', err);
+                    }
                 }
 
                 if (jobId !== macroWaveformJobSeq) return;
@@ -352,7 +349,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     macroWaveformPcm = processed.pcm;
                     macroWaveformSampleRate = processed.sampleRate || sr;
                     macroWaveformActiveKey = key;
-                    macroWaveformOutputSig = (macroId.startsWith('AUD:') || macroId === 'CHAIN') ? getMacroOutputSignature(macroId) : null;
+                    macroWaveformOutputSig = getMacroOutputSignature(macroId);
                 } else {
                     macroWaveformPcm = null;
                     macroWaveformSampleRate = 0;
@@ -410,9 +407,57 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         bar.style.cssText = 'height:100%;width:0%;background:#7ae37a;transition:width .08s linear';
         wrap.appendChild(bar);
         persistLabel.parentNode.insertBefore(wrap, persistLabel.nextSibling);
-        macroProgressUI = { wrap, bar };
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.textContent = 'Cancel Macro';
+        cancelBtn.hidden = true;
+        cancelBtn.style.marginTop = '4px';
+        cancelBtn.setAttribute('data-splice-macro-cancel', '');
+        cancelBtn.addEventListener('click', cancelMacroJobs);
+        wrap.parentNode.insertBefore(cancelBtn, wrap.nextSibling);
+        macroProgressUI = { wrap, bar, cancelBtn };
         return macroProgressUI;
     };
+    let macroJobsActive = 0;
+    let macroCancelSeq = 0;
+    const macroCancelError = () => {
+        const e = new Error('Macro processing cancelled');
+        e.name = 'AbortError';
+        return e;
+    };
+    const syncMacroCancelBtn = () => {
+        const ui = ensureMacroProgress();
+        if (!ui) return;
+        const show = macroJobsActive > 0;
+        if (!show) {
+            const hadFocus = document.activeElement === ui.cancelBtn;
+            ui.cancelBtn.disabled = false;
+            ui.cancelBtn.textContent = 'Cancel Macro';
+            if (hadFocus && macroSelect && !macroSelect.disabled) macroSelect.focus();
+        }
+        ui.cancelBtn.hidden = !show;
+    };
+    const trackMacroJob = async (fn) => {
+        macroJobsActive++;
+        syncMacroCancelBtn();
+        try {
+            return await fn();
+        } finally {
+            macroJobsActive = Math.max(0, macroJobsActive - 1);
+            syncMacroCancelBtn();
+        }
+    };
+    function cancelMacroJobs() {
+        if (!macroJobsActive) return;
+        macroCancelSeq++;
+        if (window.AudacityMacroEngine && window.AudacityMacroEngine.cancel) window.AudacityMacroEngine.cancel();
+        const ui = ensureMacroProgress();
+        if (ui) {
+            ui.cancelBtn.disabled = true;
+            ui.cancelBtn.textContent = 'Cancelling...';
+        }
+        persistStatus('Cancelling macro...', true);
+    }
     const setMacroProgress = (fraction, label) => {
         const ui = ensureMacroProgress();
         if (ui) {
@@ -625,6 +670,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     spliceLoudnessInput: spliceLoudnessInput ? parseFloat(spliceLoudnessInput.value) : 0,
                     spliceSilenceInput: spliceSilenceInput ? parseFloat(spliceSilenceInput.value) : 0.5,
                     macroSelection: macroSelect ? macroSelect.value : null,
+                    macroLevel: getMacroLevel(),
                     staticEnabled: enableStaticNoiseCheckbox ? enableStaticNoiseCheckbox.checked : false,
                     staticOptions: {
                         level: staticNoiseLevelInput ? staticNoiseLevelInput.value : null,
@@ -3114,6 +3160,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         ttsInput.value = payload.ttsText || '';
         macroSelect.value = payload.macroSelection || 'FLAT';
         restoreAudMacroSelection();
+        if (macroStrengthInput) macroStrengthInput.value = String(chainItemMix(payload.macroLevel));
+        if (macroVolumeInput) macroVolumeInput.value = String(chainItemGainDb(payload.macroLevel));
+        syncMacroLevelUi();
         spliceSilenceInput.value = payload.spliceSilenceInput ?? 0.5;
         spliceLoudnessInput.value = payload.spliceLoudnessInput ?? 0;
         enableStaticNoiseCheckbox.checked = payload.staticEnabled || false;
@@ -3177,7 +3226,15 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
+    function isMacroCancelError(err) {
+        return !!err && err.name === 'AbortError' && /Macro processing cancelled/.test(String(err.message));
+    }
+
     function reportErrorStatus(message, err) {
+        if (isMacroCancelError(err)) {
+            if (typeof persistStatus === 'function') persistStatus('Macro processing cancelled.', true);
+            return;
+        }
         if (typeof persistStatus === 'function') {
             persistStatus(message, false);
         } else {
@@ -3719,12 +3776,64 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         { cmd: 'Invert', params: '' },
     ];
 
-    const chainSig = () => macroChain.map((it) => it.id + (it.params ? '{' + it.params + '}' : '')).join('>');
+    const CHAIN_MIX_MIN = 0;
+    const CHAIN_MIX_MAX = 100;
+    const CHAIN_GAIN_MIN_DB = -24;
+    const CHAIN_GAIN_MAX_DB = 12;
+
+    const clampChainNumber = (value, min, max, fallback) => {
+        if (value === null || value === undefined || value === '') return fallback;
+        const n = Number(value);
+        return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+    };
+    const chainItemMix = (it) => clampChainNumber(it && it.mix, CHAIN_MIX_MIN, CHAIN_MIX_MAX, CHAIN_MIX_MAX);
+    const chainItemGainDb = (it) => clampChainNumber(it && it.gainDb, CHAIN_GAIN_MIN_DB, CHAIN_GAIN_MAX_DB, 0);
+    const chainItemHasLevel = (it) => chainItemMix(it) !== CHAIN_MIX_MAX || chainItemGainDb(it) !== 0;
+
+    const macroStrengthInput = panel.querySelector('[data-splice-macro-strength]');
+    const macroVolumeInput = panel.querySelector('[data-splice-macro-volume]');
+    const getMacroLevel = () => ({
+        mix: chainItemMix({ mix: macroStrengthInput ? macroStrengthInput.value : '' }),
+        gainDb: chainItemGainDb({ gainDb: macroVolumeInput ? macroVolumeInput.value : '' }),
+    });
+    const macroLevelSig = () => {
+        const level = getMacroLevel();
+        return level.mix + '/' + level.gainDb;
+    };
+
+    const chainSig = () => macroChain.map((it) => it.id
+        + (it.params ? '{' + it.params + '}' : '')
+        + (chainItemHasLevel(it) ? '@' + chainItemMix(it) + '/' + chainItemGainDb(it) : '')).join('>');
 
     function persistMacroChain() {
         try {
-            localStorage.setItem(CHAIN_STORAGE_KEY, JSON.stringify(macroChain.map((it) => ({ id: it.id, label: it.label, steps: it.steps, params: it.params || '' }))));
+            localStorage.setItem(CHAIN_STORAGE_KEY, JSON.stringify(macroChain.map((it) => ({
+                id: it.id,
+                label: it.label,
+                steps: it.steps,
+                params: it.params || '',
+                mix: chainItemMix(it),
+                gainDb: chainItemGainDb(it),
+            }))));
         } catch (e) { }
+    }
+
+    function applyChainItemLevel(dry, drySr, wet, wetSr, item) {
+        if (!chainItemHasLevel(item) || !wet || !wet.length) return wet;
+        const mix = chainItemMix(item) / 100;
+        const gain = Math.pow(10, chainItemGainDb(item) / 20);
+        const dryAligned = mix < 1 && dry && dry.length
+            ? (drySr === wetSr ? dry : resamplePcmSinc(dry, drySr, wetSr))
+            : null;
+        const dryMix = 1 - mix;
+        const dryLen = dryAligned ? dryAligned.length : 0;
+        const out = new Float32Array(wet.length);
+        for (let i = 0; i < wet.length; i++) {
+            let s = wet[i] * mix;
+            if (i < dryLen) s += dryAligned[i] * dryMix;
+            out[i] = s * gain;
+        }
+        return out;
     }
 
     function updateChainOption() {
@@ -3781,6 +3890,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     label: (typeof it.label === 'string' && it.label) ? it.label : it.id,
                     steps: Number.isFinite(it.steps) && it.steps > 0 ? it.steps : 1,
                     params: typeof it.params === 'string' ? it.params : '',
+                    mix: chainItemMix(it),
+                    gainDb: chainItemGainDb(it),
                 }));
         }
         updateChainOption();
@@ -3848,11 +3959,15 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         let cur = pcm;
         let sr = sampleRate;
         const total = macroChain.length;
+        const cancelSeq = macroCancelSeq;
         for (let i = 0; i < total; i++) {
+            if (cancelSeq !== macroCancelSeq) throw macroCancelError();
             const item = macroChain[i];
             const base = i / total;
             const span = 1 / total;
             const stageLabel = 'Chain ' + (i + 1) + '/' + total + ': ' + item.label;
+            const dry = cur;
+            const drySr = sr;
             if (onProgress) onProgress({ step: i + 1, total, cmd: stageLabel, fraction: base });
             if (item.id.startsWith('AUD:') || item.id.startsWith('CMD:')) {
                 if (!window.AudacityMacroEngine) {
@@ -3884,10 +3999,45 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     cur = addStaticNoiseToPcm(cur, sr, { level: 0.14, fadeDepth: 0.45, fadeRateHz: 0.6 });
                 }
             }
+            cur = applyChainItemLevel(dry, drySr, cur, sr, item);
             if (onProgress) onProgress({ step: i + 1, total, cmd: stageLabel, fraction: (i + 1) / total });
         }
+        if (cancelSeq !== macroCancelSeq) throw macroCancelError();
         return { pcm: cur, sampleRate: sr };
     }
+
+    async function renderSelectedMacroPcm(pcm, sampleRate, macroId, onProgress) {
+        const id = macroId || 'FLAT';
+        const cancelSeq = macroCancelSeq;
+        const fxPcm = applyExportFxToPcm(pcm, sampleRate, id);
+        let out = null;
+        if (id === 'CHAIN') {
+            out = await applyMacroChainToPcm(fxPcm, sampleRate, onProgress);
+        } else if (id.startsWith('AUD:')) {
+            if (!window.AudacityMacroEngine) {
+                throw new Error('Audacity macro engine unavailable for "' + id.slice(4) + '".');
+            }
+            out = await window.AudacityMacroEngine.applyMacroFile(fxPcm, sampleRate, id.slice(4), { onProgress });
+        } else {
+            const blob = await renderMacroWithSox(fxPcm, sampleRate, id, 0);
+            out = blob ? await decodeWavBlobDirect(blob) : null;
+        }
+        if (cancelSeq !== macroCancelSeq) throw macroCancelError();
+        if (!out || !out.pcm || !out.pcm.length) {
+            return { pcm: fxPcm, sampleRate, macroApplied: false };
+        }
+        return {
+            pcm: applyChainItemLevel(fxPcm, sampleRate, out.pcm, out.sampleRate, getMacroLevel()),
+            sampleRate: out.sampleRate,
+            macroApplied: true,
+        };
+    }
+
+    const macroRenderDoneLabel = (macroId, preview) => {
+        if (macroId === 'CHAIN') return preview ? 'Macro preview ready!' : 'Macro chain render complete';
+        if (macroId.startsWith('AUD:')) return preview ? 'Macro preview ready!' : 'Macro render complete';
+        return null;
+    };
 
     function setupChainEditor() {
         const openBtn = panel.querySelector('[data-splice-chain-editor-btn]');
@@ -3908,7 +4058,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
         const intro = document.createElement('p');
         intro.className = 'splice-chain-intro';
-        intro.textContent = 'Build an ordered chain of macros and effects, applied top to bottom in one pass. Limits: ' + MAX_CHAIN_ITEMS + ' macros or ' + MAX_CHAIN_STEPS + ' total effect steps, whichever comes first.';
+        intro.textContent = 'Build an ordered chain of macros and effects, applied top to bottom in one pass. Limits: ' + MAX_CHAIN_ITEMS + ' macros or ' + MAX_CHAIN_STEPS + ' total effect steps, whichever comes first. Strength blends each macro with the audio going into it (100% is the full effect), and Volume raises or lowers what that macro puts out. The Macro Strength and Volume boxes under Apply Macro work the same way on the whole chain or on a single macro.';
 
         const cols = document.createElement('div');
         cols.className = 'splice-chain-cols';
@@ -4031,6 +4181,37 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     paramsInput.addEventListener('blur', () => { li.draggable = true; });
                 }
 
+                const level = document.createElement('span');
+                level.className = 'splice-chain-item-level';
+                const addLevelInput = (labelText, spokenText, key, min, max, read, describe) => {
+                    const label = document.createElement('label');
+                    label.className = 'splice-chain-item-level-label';
+                    label.textContent = labelText + ' ';
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'splice-chain-item-number';
+                    input.min = String(min);
+                    input.max = String(max);
+                    input.step = '1';
+                    input.value = String(read(item));
+                    input.dataset.chainLevel = key;
+                    input.setAttribute('aria-label', spokenText + ' for "' + item.label + '"');
+                    input.addEventListener('change', () => {
+                        item[key] = clampChainNumber(input.value, min, max, read({}));
+                        input.value = String(item[key]);
+                        onChainMutated();
+                        chainEditorStatus('Set "' + item.label + '" ' + describe(item[key]) + '.');
+                    });
+                    input.addEventListener('pointerdown', () => { li.draggable = false; });
+                    input.addEventListener('blur', () => { li.draggable = true; });
+                    label.appendChild(input);
+                    level.appendChild(label);
+                };
+                addLevelInput('Strength %', 'Strength in percent', 'mix', CHAIN_MIX_MIN, CHAIN_MIX_MAX, chainItemMix,
+                    (v) => 'strength to ' + v + '%');
+                addLevelInput('Volume dB', 'Volume in decibels', 'gainDb', CHAIN_GAIN_MIN_DB, CHAIN_GAIN_MAX_DB, chainItemGainDb,
+                    (v) => 'volume to ' + (v > 0 ? '+' : '') + v + ' dB');
+
                 const controls = document.createElement('span');
                 controls.className = 'splice-chain-item-controls';
                 const upBtn = document.createElement('button');
@@ -4057,6 +4238,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 li.appendChild(name);
                 if (paramsInput) li.appendChild(paramsInput);
                 li.appendChild(controls);
+                li.appendChild(level);
 
                 li.addEventListener('dragstart', (e) => {
                     e.dataTransfer.setData('text/plain', 'C|' + index);
@@ -4124,7 +4306,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 return;
             }
             const index = Math.max(0, Math.min(macroChain.length, at));
-            macroChain.splice(index, 0, { id, label, steps, params: params || '' });
+            macroChain.splice(index, 0, { id, label, steps, params: params || '', mix: CHAIN_MIX_MAX, gainDb: 0 });
             onChainMutated();
             renderChainList();
             chainEditorStatus('Added "' + label + '".');
@@ -4580,46 +4762,23 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
 
         const id = macroId || 'FLAT';
-        const loudnessDbfs = getExportLoudnessDbfs();
-
-        const fxPcm = applyExportFxToPcm(pcm, sampleRate, id);
-
-        const exportGain = Math.pow(10, loudnessDbfs / 20);
-        const pcmForExport = clonePcmWithGain(fxPcm, exportGain);
-
-        if (id === 'CHAIN') {
-            try {
-                const processed = await applyMacroChainToPcm(fxPcm, sampleRate, macroProgressCb);
-                setMacroProgress(1, 'Macro chain render complete');
-                return encodeWavFromPcm(clonePcmWithGain(processed.pcm, exportGain), processed.sampleRate);
-            } catch (err) {
-                setMacroProgress(1, '');
-                reportErrorStatus('Macro chain failed; exporting dry.', err);
-                return encodeWavFromPcm(pcmForExport, sampleRate);
-            }
-        }
-
-        if (id.startsWith('AUD:') && window.AudacityMacroEngine) {
-            try {
-                const processed = await window.AudacityMacroEngine.applyMacroFile(
-                    fxPcm, sampleRate, id.slice(4), { onProgress: macroProgressCb });
-                setMacroProgress(1, 'Macro render complete');
-                return encodeWavFromPcm(clonePcmWithGain(processed.pcm, exportGain), processed.sampleRate);
-            } catch (err) {
-                setMacroProgress(1, '');
-                reportErrorStatus(`Audacity macro '${id.slice(4)}' failed; exporting dry.`, err);
-                return encodeWavFromPcm(pcmForExport, sampleRate);
-            }
-        }
+        const exportGain = getExportGain();
 
         try {
-            const soxBlob = await renderMacroWithSox(fxPcm, sampleRate, id, loudnessDbfs);
-            if (soxBlob) {
-                return soxBlob;
+            const processed = await trackMacroJob(() => renderSelectedMacroPcm(pcm, sampleRate, id, macroProgressCb));
+            const doneLabel = macroRenderDoneLabel(id, false);
+            if (doneLabel) setMacroProgress(1, doneLabel);
+            return encodeWavFromPcm(clonePcmWithGain(processed.pcm, exportGain), processed.sampleRate);
+        } catch (err) {
+            setMacroProgress(1, '');
+            if (isMacroCancelError(err)) {
+                persistStatus('Macro processing cancelled.', true);
+                throw err;
             }
-        } catch (err) { /* ignore */ }
-
-        return encodeWavFromPcm(pcmForExport, sampleRate);
+            const what = id === 'CHAIN' ? 'Macro chain' : (id.startsWith('AUD:') ? `Audacity macro '${id.slice(4)}'` : `Macro '${id}'`);
+            reportErrorStatus(what + ' failed; exporting dry.', err);
+            return encodeWavFromPcm(clonePcmWithGain(applyExportFxToPcm(pcm, sampleRate, id), exportGain), sampleRate);
+        }
     }
 
     window.EASSplicerFX = window.EASSplicerFX || {};
@@ -4646,6 +4805,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             vmifyEnabled ? '1' : '0',
             vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
             (macroId || '').toUpperCase() === 'CHAIN' ? chainSig() : '',
+            macroLevelSig(),
         ].join('|');
     };
 
@@ -4670,6 +4830,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             vmifyEnabled ? '1' : '0',
             vmifyEnabled ? (vmifyIntensityInput?.value ?? '') : '',
             (macroId || '').toUpperCase() === 'CHAIN' ? chainSig() : '',
+            macroLevelSig(),
         ].join('|');
     };
 
@@ -4691,10 +4852,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             && sameSegmentPcmRefs(macroRenderBlobCache.segRefs, segRefs)) {
             return macroRenderBlobCache.blob;
         }
-        if ((macroId.startsWith('AUD:') || macroId === 'CHAIN') && macroWaveformPcm && macroWaveformPcm.length
+        if (macroWaveformPcm && macroWaveformPcm.length
             && macroWaveformOutputSig && macroWaveformOutputSig === getMacroOutputSignature(macroId)) {
-            const exportGain = Math.pow(10, getExportLoudnessDbfs() / 20);
-            const reusedBlob = encodeWavFromPcm(clonePcmWithGain(macroWaveformPcm, exportGain), macroWaveformSampleRate);
+            const reusedBlob = encodeWavFromPcm(clonePcmWithGain(macroWaveformPcm, getExportGain()), macroWaveformSampleRate);
             if (reusedBlob) {
                 macroRenderBlobCache = { key, blob: reusedBlob, segRefs };
                 return reusedBlob;
@@ -4904,9 +5064,14 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         try {
             if (macroId === 'CHAIN') {
                 if (!macroChain.length || macroChain.some((it) => !it.id.startsWith('AUD:') && !it.id.startsWith('CMD:'))) return false;
-                text = macroChain.map((it) => it.id.startsWith('AUD:')
-                    ? 'Macro_' + it.id.slice(4).replace(/\.txt$/i, '') + ':'
-                    : it.id.slice(4) + ':' + (it.params || '')).join('\n');
+                if (macroChain.some((it) => chainItemMix(it) !== CHAIN_MIX_MAX)) return false;
+                text = macroChain.map((it) => {
+                    const line = it.id.startsWith('AUD:')
+                        ? 'Macro_' + it.id.slice(4).replace(/\.txt$/i, '') + ':'
+                        : it.id.slice(4) + ':' + (it.params || '');
+                    const gainDb = chainItemGainDb(it);
+                    return gainDb === 0 ? line : line + '\nAmplify:Ratio="' + Math.pow(10, gainDb / 20) + '"';
+                }).join('\n');
                 streamName = 'Macro Chain';
             } else if (macroId.startsWith('AUD:')) {
                 text = await window.AudacityMacroEngine.fetchMacroText(macroId.slice(4));
@@ -4914,6 +5079,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             } else {
                 return false;
             }
+            const level = getMacroLevel();
+            if (level.mix !== CHAIN_MIX_MAX) return false;
+            if (level.gainDb !== 0) text += '\nAmplify:Ratio="' + Math.pow(10, level.gainDb / 20) + '"';
             if (window.AudacityMacroEngine.expandMacroFlat) {
                 text = await window.AudacityMacroEngine.expandMacroFlat(text);
             }
@@ -4942,9 +5110,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const W = MACRO_STREAM_W;
         const WIN = STREAM_WIN_FRAMES;
         const name = streamName;
+        const cancelSeq = macroCancelSeq;
+        macroJobsActive++;
+        syncMacroCancelBtn();
         try {
             await writable.write(new Uint8Array(header));
             for (let start = 0; start < totalFrames; start += WIN) {
+                if (cancelSeq !== macroCancelSeq) throw macroCancelError();
                 const end = Math.min(totalFrames, start + WIN);
                 const wa = Math.max(0, start - W);
                 const wb = Math.min(totalFrames, end + W);
@@ -4974,6 +5146,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             try { await writable.close(); } catch (_) {}
             reportErrorStatus('Streaming macro export failed for "' + name + '".', e);
             return true;
+        } finally {
+            macroJobsActive = Math.max(0, macroJobsActive - 1);
+            syncMacroCancelBtn();
         }
 
         let outFile;
@@ -5102,6 +5277,29 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             scheduleMacroWaveformUpdate();
         });
     }
+
+    function syncMacroLevelUi() {
+        const levelDiv = panel.querySelector('[data-splice-macro-level]');
+        if (levelDiv) levelDiv.hidden = getSelectedMacroId() === 'FLAT';
+    }
+
+    if (macroSelect) {
+        macroSelect.addEventListener('change', syncMacroLevelUi);
+        new MutationObserver(syncMacroLevelUi).observe(macroSelect, { childList: true, subtree: true });
+        syncMacroLevelUi();
+    }
+
+    [
+        [macroStrengthInput, (v) => chainItemMix({ mix: v })],
+        [macroVolumeInput, (v) => chainItemGainDb({ gainDb: v })],
+    ].forEach(([input, normalize]) => {
+        if (!input) return;
+        input.addEventListener('change', () => {
+            input.value = String(normalize(input.value));
+            invalidateMacroPreview();
+            scheduleMacroWaveformUpdate();
+        });
+    });
 
     if (previewMacroBtn) {
         previewMacroBtn.addEventListener('click', async () => {

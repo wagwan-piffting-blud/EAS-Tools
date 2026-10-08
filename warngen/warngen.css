@@ -937,6 +937,67 @@ body:not(.iw-mode) #iw-panel,
     gap: 8px;
 }
 
+.modal-overlay[hidden] {
+    display: none;
+}
+
+.synth-box {
+    max-width: 640px;
+    overflow-y: auto;
+}
+
+.synth-box h2.modal-message {
+    margin: 0 0 8px 0;
+}
+
+.synth-note {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.synth-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 8px 12px;
+    align-items: center;
+}
+
+.synth-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+}
+
+.synth-grid input[type="number"] {
+    width: 7.5em;
+}
+
+.synth-hint {
+    color: var(--wg-accent-dim);
+    font-size: 11px;
+}
+
+.synth-error {
+    min-height: 1.2em;
+    margin: 10px 0 0 0;
+    color: var(--wg-danger);
+    font-size: 12px;
+}
+
+@media (max-width: 768px) {
+    .synth-box {
+        min-width: 0;
+        max-width: 94%;
+        max-height: 90%;
+    }
+
+    .synth-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .watch-row {
     gap: 6px;
 }

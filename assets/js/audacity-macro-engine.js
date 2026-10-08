@@ -13,6 +13,7 @@
         workerModuleBudget: 512,
         workerModuleCacheMax: 768,
         workerRegionMax: 0,
+        workerReadyTimeoutMs: 30000,
         log: (...a) => console.log('[AME]', ...a),
     };
 
@@ -283,7 +284,43 @@
 
     const yieldToUI = () => new Promise((r) => setTimeout(r, 0));
 
-    async function runPlugin(dllBytes, paramStr, pcm, sr, onBlock) {
+    let cancelEpoch = 0;
+    const cancelListeners = new Set();
+    function cancelError() {
+        const e = new Error('Macro processing cancelled');
+        e.name = 'AbortError';
+        return e;
+    }
+    function isCancelError(e) { return !!e && e.name === 'AbortError'; }
+    function makeGuard(signal) {
+        const epoch = cancelEpoch;
+        const aborted = () => epoch !== cancelEpoch || !!(signal && signal.aborted);
+        const guard = {
+            aborted,
+            check() { if (aborted()) throw cancelError(); },
+            race(p) {
+                if (aborted()) return Promise.reject(cancelError());
+                return new Promise((res, rej) => {
+                    const onCancel = () => { cleanup(); rej(cancelError()); };
+                    const cleanup = () => {
+                        cancelListeners.delete(onCancel);
+                        if (signal && signal.removeEventListener) signal.removeEventListener('abort', onCancel);
+                    };
+                    cancelListeners.add(onCancel);
+                    if (signal && signal.addEventListener) signal.addEventListener('abort', onCancel);
+                    p.then((v) => { cleanup(); res(v); }, (e) => { cleanup(); rej(e); });
+                });
+            },
+        };
+        return guard;
+    }
+    function cancel() {
+        cancelEpoch++;
+        for (const fn of [...cancelListeners]) { try { fn(); } catch (e) { } }
+        cfg.log('cancel requested');
+    }
+
+    async function runPlugin(dllBytes, paramStr, pcm, sr, onBlock, guard) {
         const dp = M._malloc(dllBytes.length);
         M.HEAPU8.set(dllBytes, dp);
         const rc = M._vst_w_load(dp, dllBytes.length);
@@ -305,22 +342,25 @@
         const inL = M._malloc(BS*4), inR = M._malloc(BS*4), outL = M._malloc(BS*4), outR = M._malloc(BS*4);
         const fi = inL >> 2, fr = inR >> 2, fol = outL >> 2;
         let lastYield = Date.now();
-        for (let pos = 0; pos < N; pos += BS) {
-            const n = Math.min(BS, N - pos);
-            const H = M.HEAPF32;
-            for (let i = 0; i < n; i++) { H[fi+i] = pcm[pos+i]; H[fr+i] = 0; }
-            M._vst_w_process(inL, inR, outL, outR, n);
-            if (M._vst_w_faulted()) { cfg.log(`  ** faulted at pos=${pos}; stopping effect`); break; }
-            const H2 = M.HEAPF32;
-            for (let i = 0; i < n; i++) out[pos+i] = H2[fol+i];
-            if (onBlock) onBlock((pos + n) / N);
-            if (Date.now() - lastYield > 30) { await yieldToUI(); lastYield = Date.now(); }
+        try {
+            for (let pos = 0; pos < N; pos += BS) {
+                const n = Math.min(BS, N - pos);
+                const H = M.HEAPF32;
+                for (let i = 0; i < n; i++) { H[fi+i] = pcm[pos+i]; H[fr+i] = 0; }
+                M._vst_w_process(inL, inR, outL, outR, n);
+                if (M._vst_w_faulted()) { cfg.log(`  ** faulted at pos=${pos}; stopping effect`); break; }
+                const H2 = M.HEAPF32;
+                for (let i = 0; i < n; i++) out[pos+i] = H2[fol+i];
+                if (onBlock) onBlock((pos + n) / N);
+                if (Date.now() - lastYield > 30) { await yieldToUI(); lastYield = Date.now(); if (guard) guard.check(); }
+            }
+        } finally {
+            M._free(inL); M._free(inR); M._free(outL); M._free(outR);
         }
-        M._free(inL); M._free(inR); M._free(outL); M._free(outR);
         return out;
     }
 
-    async function runLadspaPlugin(dllBytes, paramStr, pcm, sr, onBlock) {
+    async function runLadspaPlugin(dllBytes, paramStr, pcm, sr, onBlock, guard) {
         const dp = M._malloc(dllBytes.length);
         M.HEAPU8.set(dllBytes, dp);
         const rc = M._ladspa_w_load(dp, dllBytes.length, sr);
@@ -341,18 +381,21 @@
         const inP = M._malloc(BS*4), outP = M._malloc(BS*4);
         const fi = inP >> 2, fo = outP >> 2;
         let lastYield = Date.now();
-        for (let pos = 0; pos < N; pos += BS) {
-            const n = Math.min(BS, N - pos);
-            const H = M.HEAPF32;
-            for (let i = 0; i < n; i++) H[fi+i] = pcm[pos+i];
-            M._ladspa_w_process(inP, outP, n);
-            if (M._ladspa_w_faulted()) { cfg.log(`  ** ladspa faulted at pos=${pos}; stopping effect`); break; }
-            const H2 = M.HEAPF32;
-            for (let i = 0; i < n; i++) out[pos+i] = H2[fo+i];
-            if (onBlock) onBlock((pos + n) / N);
-            if (Date.now() - lastYield > 30) { await yieldToUI(); lastYield = Date.now(); }
+        try {
+            for (let pos = 0; pos < N; pos += BS) {
+                const n = Math.min(BS, N - pos);
+                const H = M.HEAPF32;
+                for (let i = 0; i < n; i++) H[fi+i] = pcm[pos+i];
+                M._ladspa_w_process(inP, outP, n);
+                if (M._ladspa_w_faulted()) { cfg.log(`  ** ladspa faulted at pos=${pos}; stopping effect`); break; }
+                const H2 = M.HEAPF32;
+                for (let i = 0; i < n; i++) out[pos+i] = H2[fo+i];
+                if (onBlock) onBlock((pos + n) / N);
+                if (Date.now() - lastYield > 30) { await yieldToUI(); lastYield = Date.now(); if (guard) guard.check(); }
+            }
+        } finally {
+            M._free(inP); M._free(outP);
         }
-        M._free(inP); M._free(outP);
         return out;
     }
 
@@ -385,28 +428,65 @@
                 const w = mkWorker();
                 const onMsg = (fn) => { if (isNode) w.on('message', fn); else { fn.__w = (e) => fn(e.data); w.addEventListener('message', fn.__w); } };
                 const offMsg = (fn) => { if (isNode) w.off('message', fn); else if (fn.__w) w.removeEventListener('message', fn.__w); };
-                const ready = new Promise((res) => { const h = (m) => { if (m && m.type === 'ready') { offMsg(h); res(); } }; onMsg(h); });
+                let failReject = null;
+                const failed = new Promise((_, rej) => { failReject = rej; });
+                failed.catch(() => { });
+                const fail = (why) => failReject(new Error(`plugin worker ${i}: ${why}`));
+                if (isNode) {
+                    w.on('error', (e) => fail('error: ' + ((e && e.message) || e)));
+                    w.on('exit', (code) => fail('exited (code ' + code + ')'));
+                } else {
+                    w.addEventListener('error', (e) => fail('error: ' + ((e && e.message) || 'script failed to load or threw')));
+                    w.addEventListener('messageerror', () => fail('messageerror'));
+                }
+                const ready = Promise.race([failed, new Promise((res, rej) => {
+                    const h = (m) => {
+                        if (m && m.type === 'ready') { offMsg(h); res(); }
+                        else if (m && m.type === 'init-error') { offMsg(h); rej(new Error(`plugin worker ${i}: init failed: ${m.error}`)); }
+                    };
+                    onMsg(h);
+                })]);
+                ready.catch(() => { });
                 w.postMessage({ type: 'init', cfg: initCfg });
-                workers.push({ w, ready, onMsg, offMsg, isNode });
+                workers.push({ w, ready, failed, onMsg, offMsg, isNode });
             }
             pbPool = { workers, size: n };
         } catch (e) { cfg.log('plugin pool init failed: ' + (e && e.message)); pbPool = false; }
         return pbPool || null;
     }
-    function resetPluginPool() {
+    let pbFailure = null;
+    function terminatePluginPool() {
         if (pbPool && pbPool.workers) { for (const x of pbPool.workers) { try { x.w.terminate(); } catch (e) { } } }
         pbPool = null;
+    }
+    function resetPluginPool() {
+        terminatePluginPool();
+        pbFailure = null;
         try { if (global.EmuJitCompiler && global.EmuJitCompiler.clearModuleCache) global.EmuJitCompiler.clearModuleCache(); } catch (e) { }
         cfg.log('plugin pool reset (next run rebuilds with current workerJit/budget)');
     }
+    function pluginPoolStatus() {
+        return { state: pbPool === null ? 'idle' : (pbPool ? 'running' : 'disabled'), size: pbPool ? pbPool.size : 0, failure: pbFailure };
+    }
     function pbJob(x, msg, transfer) {
-        return new Promise((res) => {
-            const h = (m) => { if (m && m.type === 'done' && m.id === msg.id) { x.offMsg(h); res(m); } };
+        return Promise.race([x.failed, new Promise((res, rej) => {
+            const h = (m) => {
+                if (!m || m.type !== 'done' || m.id !== msg.id) return;
+                x.offMsg(h);
+                if (m.error) rej(new Error(`plugin worker chunk ${msg.id}: ${m.error}`));
+                else res(m);
+            };
             x.onMsg(h);
             x.w.postMessage(msg, transfer);
-        });
+        })]);
     }
-    async function runPluginChunked(dllBytes, paramStr, pcm, sr, cmd, ladspa) {
+    function withTimeout(p, ms, what) {
+        if (!(ms > 0)) return p;
+        let t = null;
+        return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej(new Error(`${what} after ${ms} ms`)), ms); })])
+            .finally(() => clearTimeout(t));
+    }
+    async function runPluginChunked(dllBytes, paramStr, pcm, sr, cmd, ladspa, guard) {
         if (cfg.disableParallel || cfg.disablePluginParallel) return null;
         const W = PB_WARMUP[norm(cmd)];
         if (W === undefined) return null;
@@ -415,8 +495,9 @@
         const minChunk = Math.max(W * 4, 200000);
         const nChunks = Math.max(1, Math.min(pool.size, Math.floor(pcm.length / minChunk)));
         if (nChunks < 2) return null;
+        const g = guard || makeGuard(null);
         try {
-            await Promise.all(pool.workers.map(x => x.ready));
+            await g.race(withTimeout(Promise.all(pool.workers.map(x => x.ready)), cfg.workerReadyTimeoutMs, 'plugin workers not ready'));
             const jobs = [];
             for (let k = 0; k < nChunks; k++) {
                 const start = Math.floor(pcm.length * k / nChunks), end = Math.floor(pcm.length * (k + 1) / nChunks);
@@ -426,12 +507,20 @@
                 const dll = dllBytes.slice().buffer;
                 jobs.push(pbJob(pool.workers[k], { type: 'process', id: k, dll, input, paramStr, sr, bs: cfg.block, start, end, inStart, ladspa }, [dll, input]));
             }
-            const dones = await Promise.all(jobs);
+            const dones = await g.race(Promise.all(jobs));
             const recon = new Float32Array(pcm.length);
             for (const d of dones) { const v = new Float32Array(d.valid); for (let i = 0; i < v.length; i++) recon[d.start + i] = v[i]; }
             cfg.log(`  [parallel] ${cmd} split ${nChunks} chunks x${pool.size}w (warmup ${W})`);
             return recon;
-        } catch (e) { cfg.log('plugin parallel failed, serial fallback: ' + (e && e.message)); return null; }
+        } catch (e) {
+            terminatePluginPool();
+            if (isCancelError(e)) throw e;
+            pbFailure = (e && e.message) || String(e);
+            pbPool = false;
+            cfg.log('plugin parallel failed, serial fallback for this session: ' + pbFailure);
+            if (typeof console !== 'undefined' && console.warn) console.warn('[AME] plugin worker pool disabled:', pbFailure);
+            return null;
+        }
     }
 
     function biquadRun(c, x) {
@@ -615,8 +704,11 @@
                 makeup = 1.0/threshold; break; }
             case 1: { const thr=1+threshold, amount=Math.pow(2,7*p.p1/100), peak=LogCurve(threshold,1.0,amount); makeup=1.0/peak;
                 T[STEPS]=0; for (let n=STEPS;n<SIZE;n++){ T[n]=(n<STEPS*thr)?(n/STEPS-1):LogCurve(threshold,n/STEPS-1,amount); } copyHalf(); break; }
-            case 2: case 7: { const iter=Math.floor(p.p1/20), frac=p.p1/20-iter, ss=1/STEPS; let lv=0;
+            case 2: { const iter=Math.floor(p.p1/20), frac=p.p1/20-iter, ss=1/STEPS; let lv=0;
                 for (let n=STEPS;n<SIZE;n++){ T[n]=lv; for(let i=0;i<iter;i++) T[n]=Math.sin(T[n]*Math.PI/2); T[n]+=(Math.sin(T[n]*Math.PI/2)-T[n])*frac; lv+=ss; } copyHalf(); break; }
+            case 7: { const iter=Math.floor(p.p1/20), frac=p.p1/20-iter, ss=1/STEPS; let lv=0;
+                const S = (x) => (1+Math.sin(x*Math.PI-Math.PI/2))/2;
+                for (let n=STEPS;n<SIZE;n++){ T[n]=lv; for(let i=0;i<iter;i++) T[n]=S(T[n]); T[n]+=(S(T[n])-T[n])*frac; lv+=ss; } copyHalf(); break; }
             case 3: { const amount=Math.min(0.999,DB2LIN(-p.p1));
                 for (let n=STEPS;n<SIZE;n++){ const lv=n/STEPS, scale=-1/(1-amount), curve=Math.exp((lv-1)*Math.log(amount)); T[n]=scale*(curve-1); } copyHalf(); break; }
             case 4: { const amount=p.p1, ss=1/STEPS; let lv=0;
@@ -641,7 +733,7 @@
     }
     function waveShaper(s, T, STEPS) {
         let idx = Math.floor(s*STEPS)+STEPS; if(idx<0)idx=0; if(idx>2*STEPS-1)idx=2*STEPS-1;
-        const xo = ((1+s)*STEPS)-idx;
+        let xo = ((1+s)*STEPS)-idx; if(xo<0)xo=0; if(xo>1)xo=1;
         return T[idx] + (T[idx+1]-T[idx])*xo;
     }
     function distortion(params, pcm, sr) {
@@ -655,7 +747,7 @@
         const wet = p.p1/100, res = p.p2/100;
         const dcLen = Math.max(1, Math.floor(sr/20)); const dcQ = p.dcBlock ? new Float64Array(dcLen) : null; let dcSum=0, dcIdx=0;
         for (let i=0;i<pcm.length;i++){
-            const ws = waveShaper(pcm[i],T,STEPS);
+            const ws = waveShaper(type===0 ? pcm[i]*(1+wet) : pcm[i],T,STEPS);
             let o;
             if (type===10) o = ws*(wet-res) + pcm[i]*res;
             else if (type===0 || type===1) o = ws*((1-res) + makeup*res);
@@ -1429,11 +1521,11 @@
             if (!entry) return applyBuiltin(cmd, params, chan, proj.sr);
             const dllBytes = await fetchPlugin(entry.file);
             const ladspa = entry.kind === 'ladspa';
-            const par = await runPluginChunked(dllBytes, params, chan, proj.sr, cmd, ladspa);
+            const par = await runPluginChunked(dllBytes, params, chan, proj.sr, cmd, ladspa, proj.guard);
             if (par) return par;
             return ladspa
-                ? await runLadspaPlugin(dllBytes, params, chan, proj.sr, subReport)
-                : await runPlugin(dllBytes, params, chan, proj.sr, subReport);
+                ? await runLadspaPlugin(dllBytes, params, chan, proj.sr, subReport, proj.guard)
+                : await runPlugin(dllBytes, params, chan, proj.sr, subReport, proj.guard);
         };
         for (let s = 0; s < sel.length; s++) {
             const idx = sel[s];
@@ -1779,13 +1871,14 @@
     }
 
     async function applyMacroText(pcm, sr, text, opts) {
-        await ready();
         opts = opts || {};
+        const guard = makeGuard(opts.signal || null);
+        await guard.race(ready());
         const onProgress = opts.onProgress || null;
         const onStep = opts.onStep || null;
-        const proj = { sr, length: pcm.length, tracks: [new Float32Array(pcm)], pans: [0], selected: new Set([0]), clipboard: null, selRange: null, undoStack: [], redoStack: [], undoEnabled: false };
+        const proj = { sr, length: pcm.length, tracks: [new Float32Array(pcm)], pans: [0], selected: new Set([0]), clipboard: null, selRange: null, undoStack: [], redoStack: [], undoEnabled: false, guard };
 
-        const steps = await expandMacroLines(text, [], []);
+        const steps = await guard.race(expandMacroLines(text, [], []));
         const total = steps.length;
         proj.undoEnabled = steps.some(st => st.cmd === 'Undo' || st.cmd === 'Redo');
         let maxUndoRun = 0; for (let i = 0, run = 0; i < total; i++) { if (steps[i].cmd === 'Undo') { run++; if (run > maxUndoRun) maxUndoRun = run; } else run = 0; }
@@ -1793,8 +1886,11 @@
         if (proj.undoEnabled) cfg.log(`  [project] undo history capped at ${undoCap} (macro's deepest undo run = ${maxUndoRun})`);
 
         const startTime = Date.now();
+        let lastYield = startTime;
 
         for (let s = 0; s < total; s++) {
+            if (Date.now() - lastYield > 30) { await yieldToUI(); lastYield = Date.now(); }
+            guard.check();
             const { cmd, params } = steps[s];
             cfg.log(`[${s + 1}/${total}] ${cmd}`);
             if (onStep) onStep(s + 1, total, cmd);
@@ -1816,6 +1912,7 @@
                 cfg.log(`    TR[${s+1}] ${cmd}: ${parts.join(' ')}`);
             }
         }
+        guard.check();
         if (onProgress) onProgress({ step: total, total, cmd: 'done', fraction: 1 });
         cfg.log(`done: ${total} steps -> ${proj.tracks.length} track[s] @ ${proj.sr} Hz (took ${((Date.now() - startTime)/1000).toFixed(2)} seconds wall-clock time)`);
         return { pcm: mixBuffers(proj.tracks, proj.length), sampleRate: proj.sr };
@@ -1827,6 +1924,7 @@
 
     global.AudacityMacroEngine = {
         config: cfg, ready, listMacros, loadMacroList, resolvePlugin, resolvePluginEntry, resetPluginPool,
+        cancel, isCancelError, pluginPoolStatus,
         applyMacroText, applyMacroFile, fetchMacroText, expandMacroSteps, expandMacroFlat,
         registerCustomMacro, unregisterCustomMacro, listCustomMacros,
     };
