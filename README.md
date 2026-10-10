@@ -1,6 +1,10 @@
 # Emergency Alert System (EAS)/Specific Area Message Encoding (SAME) Tools
 
-[Google Play](https://play.google.com/store/apps/details?id=com.wagspuzzle.eastools) | [Apple App Store](https://apps.apple.com/us/app/eas-tools/id6759717275)
+> [!NOTE]
+> Want to support my work? Consider donating via [GitHub Sponsors](https://github.com/sponsors/wagwan-piffting-blud), [PayPal](https://paypal.me/wagspuzzlespace), or [Ko-fi](https://ko-fi.com/wagspuzzlespace). Any amount of support is greatly appreciated and helps me continue to maintain and improve EAS Tools. Thank you for your generosity!
+
+> [!NOTE]
+> You can also download the EAS Tools app for mobile devices for a better native mobile experience from either of the major app stores: [Google Play Store](https://play.google.com/store/apps/details?id=com.wagspuzzle.eastools) | [Apple App Store](https://apps.apple.com/us/app/eas-tools/id6759717275)
 
 [![EAS Logo](./assets/eas-tools-logo.png)](./assets/eas-tools-logo.png)
 
@@ -214,7 +218,7 @@ For a demonstration of each individual TTS voice, see the [voice demo page](http
   * CryptoDude3 GitHub Pages site (removed) for most of the original code (encoder/decoder logic) and current page looks
   * [nicksmadscience SAME Encoder, Python](https://github.com/nicksmadscience/eas-same-encoder)
   * [Mab879 C++ SAME Encoder](https://github.com/Mab879/eas_encoder)
-  * Anon64 EAS Header Generator (removed)
+  * [Anon64 EAS Header Generator](https://github.anon64.dev/eas-gen/)
   * [wavefile.js](https://rochars.github.io/wavefile/)
   * [wave‑resampler.js](https://github.com/rochars/wave-resampler)
   * [piper.tts.js](https://github.com/Mintplex-Labs/piper-tts-web)

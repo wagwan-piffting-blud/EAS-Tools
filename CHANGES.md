@@ -1,5 +1,11 @@
 # EAS Tools Changelog
 
+2026-10-10:
+
+- Update documentation slightly. Nothing major.
+
+---
+
 2026-10-08:
 
 - Add (a very primitive) NEXRAD radar image generation feature to WarnGen. It's _very_ basic and predictable/generic looking, but it works, and allows users to make "traditional" radar scans for supercell storms/tornados. Credit to @jakescooty for suggesting this feature.
