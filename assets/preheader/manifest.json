@@ -1,0 +1,33 @@
+{
+    "version": 1,
+    "presets": [
+        {
+            "id": "dasdec-rwt-intro",
+            "label": "DASDEC RWT intro: This station is testing equipment...",
+            "slot": "pre",
+            "file": "dasdec-rwt-intro.wav",
+            "pair": "dasdec-rwt-outro"
+        },
+        {
+            "id": "dasdec-rwt-outro",
+            "label": "DASDEC RWT outro: This concludes this test...",
+            "slot": "post",
+            "file": "dasdec-rwt-outro.wav",
+            "pair": "dasdec-rwt-intro"
+        },
+        {
+            "id": "dasdec-rwt-new-intro",
+            "label": "DASDEC RWT intro (newer firmware)",
+            "slot": "pre",
+            "file": "dasdec-rwt-new-intro.wav",
+            "pair": "dasdec-rwt-new-outro"
+        },
+        {
+            "id": "dasdec-rwt-new-outro",
+            "label": "DASDEC RWT outro (newer firmware)",
+            "slot": "post",
+            "file": "dasdec-rwt-new-outro.wav",
+            "pair": "dasdec-rwt-new-intro"
+        }
+    ]
+}

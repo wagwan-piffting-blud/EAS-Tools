@@ -33,7 +33,9 @@ const TEMPLATE_CHOICES = Object.freeze([
     { value: 'easyplus', label: 'EASyPLUS' },
     { value: 'easyplus_gray', label: 'EASyPLUS Gray' },
     { value: 'eas_1cg', label: 'Gorman Redlich EAS-1CG (single page)' },
-    { value: 'dasdec', label: 'DASDEC (single page)' }
+    { value: 'dasdec', label: 'DASDEC (single page)' },
+    { value: 'dasdec_black', label: 'DASDEC (black, single page)' },
+    { value: 'dasdec_blue', label: 'DASDEC (blue, single page)' }
 ]);
 
 let elementCounter = 0;
@@ -121,6 +123,7 @@ function normalizeElement(raw) {
             outlineWidth: roundTo(clampNumber(raw.outlineWidth, 0, 50, 0)),
             outlineJoin: pickEnum(raw.outlineJoin, ['round', 'bevel', 'miter'], 'round'),
             lineHeight: roundTo(clampNumber(raw.lineHeight, 0, 4000, 0)),
+            letterSpacing: roundTo(clampNumber(raw.letterSpacing, -100, 1000, 0)),
             wrap: pickEnum(raw.wrap, ['none', 'width', 'columns'], 'width'),
             columns: Math.round(clampNumber(raw.columns, 1, 500, 32)),
             uppercase: raw.uppercase === true
@@ -448,9 +451,55 @@ function segmentsFromGlyphs(glyphs) {
     return segments;
 }
 
+function glyphCount(text) {
+    return Array.from(text).length;
+}
+
+function resetLetterSpacing(ctx) {
+    if ('letterSpacing' in ctx) {
+        ctx.letterSpacing = '0px';
+    }
+}
+
+function measureSpaced(ctx, text, spacing) {
+    const count = glyphCount(text);
+    return count ? ctx.measureText(text).width + spacing * (count - 1) : 0;
+}
+
+function drawSpacedSegment(ctx, text, x, y, spacing, outline) {
+    if (!spacing) {
+        if (outline) {
+            ctx.strokeText(text, x, y);
+        }
+        ctx.fillText(text, x, y);
+        return x + ctx.measureText(text).width;
+    }
+    if ('letterSpacing' in ctx) {
+        const advance = ctx.measureText(text).width + spacing * glyphCount(text);
+        ctx.letterSpacing = `${spacing}px`;
+        if (outline) {
+            ctx.strokeText(text, x, y);
+        }
+        ctx.fillText(text, x, y);
+        ctx.letterSpacing = '0px';
+        return x + advance;
+    }
+    let cursor = x;
+    for (const glyph of text) {
+        if (outline) {
+            ctx.strokeText(glyph, cursor, y);
+        }
+        ctx.fillText(glyph, cursor, y);
+        cursor += ctx.measureText(glyph).width + spacing;
+    }
+    return cursor;
+}
+
 function layoutText(ctx, element, resolved, showTokens) {
     ctx.font = fontString(element);
-    const measure = (text) => ctx.measureText(text).width;
+    resetLetterSpacing(ctx);
+    const spacing = element.letterSpacing || 0;
+    const measure = (text) => measureSpaced(ctx, text, spacing);
     const baseColor = resolveColorValue(element.color, resolved, '#FFFFFF');
     const content = substituteTokens(element.text, resolved, showTokens).replace(/\r/g, '');
     const lines = [];
@@ -468,7 +517,11 @@ function layoutText(ctx, element, resolved, showTokens) {
     } else {
         firstCenter = element.y + lineHeight / 2;
     }
-    const widths = lines.map((segments) => segments.reduce((sum, segment) => sum + measure(segment.text), 0));
+    const widths = lines.map((segments) => {
+        const natural = segments.reduce((sum, segment) => sum + ctx.measureText(segment.text).width, 0);
+        const count = segments.reduce((sum, segment) => sum + glyphCount(segment.text), 0);
+        return count ? natural + spacing * (count - 1) : 0;
+    });
     const widest = widths.reduce((max, width) => Math.max(max, width), 0);
     const boxWidth = Math.max(element.width, element.wrap === 'none' ? widest : 0);
     let boxLeft = element.x;
@@ -483,6 +536,7 @@ function layoutText(ctx, element, resolved, showTokens) {
         lines,
         widths,
         lineHeight,
+        spacing,
         firstCenter,
         bounds: {
             x: boxLeft,
@@ -514,11 +568,7 @@ function drawText(ctx, element, resolved, showTokens) {
         const y = laid.firstCenter + index * laid.lineHeight;
         segments.forEach((segment) => {
             ctx.fillStyle = segment.color;
-            if (outline) {
-                ctx.strokeText(segment.text, x, y);
-            }
-            ctx.fillText(segment.text, x, y);
-            x += ctx.measureText(segment.text).width;
+            x = drawSpacedSegment(ctx, segment.text, x, y, laid.spacing, outline);
         });
     });
     return laid;
@@ -686,6 +736,7 @@ function textElement(props) {
         outlineWidth: 0,
         outlineJoin: 'round',
         lineHeight: 0,
+        letterSpacing: 0,
         wrap: 'none',
         columns: 32,
         uppercase: false,
@@ -818,29 +869,72 @@ async function eas1cgTemplate() {
     });
 }
 
-function dasdecTemplate() {
+const DASDEC_BACKGROUND_URL = new URL('../screens/dasdec.png', import.meta.url).href;
+const DASDEC_SAFE_MARGIN = 16;
+const DASDEC_TITLE = 'Emergency Alert System';
+
+async function assetDataUrl(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            return '';
+        }
+        return sanitizeImageSource(await readFileAsDataUrl(await response.blob()));
+    } catch (err) {
+        return '';
+    }
+}
+
+async function dasdecTemplate() {
+    const width = 640;
+    const height = 480;
+    const size = 25;
+    const textWidth = 576;
     return baseScreen({
         name: 'My DASDEC Screen',
-        width: 640,
-        height: 480,
+        width,
+        height,
         textEndecMode: 'DAS2PLUS',
-        background: { color: '#2E3251', image: '' },
+        background: { color: '#454563', image: await assetDataUrl(DASDEC_BACKGROUND_URL) },
         crawl: { enabled: false, y: 384, inset: 0 },
         elements: [
-            { id: newElementId(), type: 'rect', x: 0, y: 0, width: 640, height: 480, fill: '', stroke: '#7A2F4C', strokeWidth: 10, flash: false },
             textElement({
                 text: '{TEXT}',
-                x: 0,
-                y: 10,
-                width: 640,
+                x: (width - textWidth) / 2,
+                y: 53,
+                width: textWidth,
                 align: 'center',
                 valign: 'top',
                 font: 'Luxi Mono',
-                size: 28,
-                lineHeight: 32,
-                wrap: 'columns',
-                columns: 35
+                size,
+                letterSpacing: 0,
+                lineHeight: 34,
+                wrap: 'width'
             })
+        ]
+    });
+}
+
+function dasdecVariantTemplate(blue) {
+    const width = 640;
+    const height = 480;
+    const font = blue ? 'Arial Bold' : 'Luxi Mono';
+    const lineHeight = blue ? 31 : 30;
+    const common = { x: 0, width, align: 'center', valign: 'middle', font, size: 25, wrap: 'none' };
+    const body = blue
+        ? { x: 32, width: 576, wrap: 'width' }
+        : { x: DASDEC_SAFE_MARGIN, width: width - DASDEC_SAFE_MARGIN * 2, wrap: 'columns', columns: 36 };
+    return baseScreen({
+        name: blue ? 'My DASDEC (Blue) Screen' : 'My DASDEC (Black) Screen',
+        width,
+        height,
+        textEndecMode: 'DAS2PLUS',
+        background: { color: blue ? '#0000FF' : '#000000', image: '' },
+        crawl: { enabled: false, y: 384, inset: 0 },
+        elements: [
+            textElement({ ...common, text: DASDEC_TITLE, y: blue ? 33 : 77 }),
+            textElement({ ...common, ...body, text: '{TEXT}', valign: 'top', lineHeight, y: (blue ? 77 : 112) - lineHeight / 2 }),
+            textElement({ ...common, text: '1/1', y: blue ? 453 : 450 })
         ]
     });
 }
@@ -854,7 +948,9 @@ export async function createScreenTemplate(kind) {
     } else if (kind === 'eas_1cg') {
         layout = await eas1cgTemplate();
     } else if (kind === 'dasdec') {
-        layout = dasdecTemplate();
+        layout = await dasdecTemplate();
+    } else if (kind === 'dasdec_black' || kind === 'dasdec_blue') {
+        layout = dasdecVariantTemplate(kind === 'dasdec_blue');
     } else {
         layout = baseScreen({
             name: 'My Screen',
@@ -1296,6 +1392,9 @@ function createBuilder() {
             const lineInput = numberInput(roundTo(element.lineHeight, 2), { min: 0, max: 4000, step: 'any' });
             bindNumber(lineInput, element, 'lineHeight', { min: 0, max: 4000 });
             add(field('sb-prop-line-height', 'Line spacing (pixels, 0 = automatic):', lineInput));
+            const letterInput = numberInput(roundTo(element.letterSpacing || 0, 2), { min: -100, max: 1000, step: 'any' });
+            bindNumber(letterInput, element, 'letterSpacing', { min: -100, max: 1000 });
+            add(field('sb-prop-letter-spacing', 'Letter spacing (extra pixels between characters):', letterInput));
             const bold = checkInput(element.bold);
             bindCheck(bold, element, 'bold');
             add(field('sb-prop-bold', 'Bold:', bold));

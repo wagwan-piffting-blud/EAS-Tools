@@ -21,7 +21,7 @@
         const dp = M._malloc(dll.length); M.HEAPU8.set(dll, dp);
         const rc = isLadspa ? M._ladspa_w_load(dp, dll.length, sr) : M._vst_w_load(dp, dll.length);
         M._free(dp);
-        if (rc !== 0) return new Float32Array(msg.end - msg.start);
+        if (rc !== 0) { const e = new Error('plugin load rc=' + rc); e.loadRc = rc; throw e; }
         if (isLadspa) M._ladspa_w_prepare(bs); else { M._vst_w_samplerate(sr); M._vst_w_blocksize(bs); }
         if (msg.paramStr) {
             const len = (M.lengthBytesUTF8 ? M.lengthBytesUTF8(msg.paramStr) : msg.paramStr.length) + 1;
@@ -56,7 +56,7 @@
             p.then(() => {
                 const valid = processChunk(msg);
                 post({ type: 'done', id: msg.id, start: msg.start, valid: valid.buffer }, [valid.buffer]);
-            }).catch((e) => post({ type: 'done', id: msg.id, start: msg.start, error: errText(e) }));
+            }).catch((e) => post({ type: 'done', id: msg.id, start: msg.start, error: errText(e), loadRc: e && e.loadRc }));
         }
     }
     if (isNode) { const { parentPort } = require('worker_threads'); post = (m, t) => parentPort.postMessage(m, t); parentPort.on('message', handle); }

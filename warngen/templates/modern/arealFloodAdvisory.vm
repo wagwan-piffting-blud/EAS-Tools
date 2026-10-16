@@ -145,6 +145,8 @@ ${dateUtil.format(${now}, ${timeFormat.header}, ${localtimezone})}
 ...THIS MESSAGE IS FOR TEST PURPOSES ONLY...
 
 #end
+#set($hsOn = $bullets.contains("hazSimp"))
+#if(!${hsOn})
 #headlineext(${officeLoc}, ${backupSite}, ${extend})
 
 * ##
@@ -168,6 +170,7 @@ ${advType}
 #end
 ### GP end
 
+#end
 #set($report = "!** warning basis **!")
 #set($report2 = "")
 #set($cause = "heavy rain")
@@ -294,6 +297,86 @@ ${advType}
   #set($report = "gauge reports indicated !**EVENT TYPE**!." )
 #end
 ### GP end
+#if(${hsOn})
+#############################################################
+## HAZARD SIMPLIFICATION LAYOUT (Hazard Services FLS)      ##
+#############################################################
+#set($hsCause = "excessive rainfall")
+#if($bullets.contains("SM"))
+#set($hsCause = "snowmelt")
+#elseif($bullets.contains("RS"))
+#set($hsCause = "rain and snowmelt")
+#elseif($bullets.contains("IJ"))
+#set($hsCause = "an ice jam")
+#elseif($bullets.contains("IC"))
+#set($hsCause = "an ice jam and rain")
+#elseif($bullets.contains("DR"))
+#set($hsCause = "a dam floodgate release")
+#end
+#set($hsKind = "Flooding")
+#if($bullets.contains("small"))
+#set($hsKind = "Small stream flooding")
+#elseif($bullets.contains("uss"))
+#set($hsKind = "Urban and small stream flooding")
+#elseif($bullets.contains("arroyo"))
+#set($hsKind = "Arroyo and small stream flooding")
+#end
+#set($hsVerb = "is expected")
+#set($hsEffect = "in effect")
+#if(${action} == "EXT")
+#set($hsVerb = "continues")
+#set($hsEffect = "now in effect")
+#end
+#set($hsImpacts = "Minor flooding in low-lying and poor drainage areas.")
+#if($bullets.contains("arroyo"))
+#set($hsImpacts = "Minor flooding in low-lying and poor drainage areas. Rises in small streams and normally dry arroyos.")
+#end
+#set($hsHeadline = "Flood Advisory ${hsEffect} until ${hazSimp.until($expire, $now, $localtimezone)}")
+
+...${hsHeadline.toUpperCase()}...
+
+* WHAT...${hsKind} caused by ${hsCause} ${hsVerb}.
+
+* WHERE...${hazSimp.where($areas)}
+
+* WHEN...#secondBullet(${dateUtil},${expire},${timeFormat},${localtimezone},${secondtimezone})
+
+
+* IMPACTS...${hsImpacts}
+
+* ADDITIONAL DETAILS...
+#if($bullets.contains("DR"))
+  - Flooding will result in !** Specify Location **! from an upstream dam floodgate release.
+#else
+  - #thirdBullet(${dateUtil},${event},${timeFormat},${localtimezone},${secondtimezone}), ${report} ${rainAmount}
+#end
+#set($hsNl = "
+")
+#set($hsIndent = "${hsNl}    ")
+#if($bullets.contains("drainages"))
+#set($hsDrain = "#drainages(${riverdrainages})")
+#if(${hsDrain.trim()} != "")
+  - ${hsDrain.trim().split($hsNl).join($hsIndent)}
+#end
+#end
+#if($bullets.contains("addRainfall"))
+  - Additional rainfall amounts of !** EDIT AMOUNT **! inches are expected over the area. This additional rain will result in minor flooding.
+#end
+#if($bullets.contains("specificPlace"))
+  - !** ENTER LOCATION **! is the most likely place to experience minor flooding.
+#end
+#if($bullets.contains("listofcities"))
+#set($hsCities = "#locationsList('' 'flooding' 0 ${cityList} ${otherPoints} ${areas} ${dateUtil} ${timeFormat} 0)")
+#if(${cityList.size()} > 0)
+  - Some locations that will experience flooding include...
+    ${hsCities.trim().split($hsNl).join($hsIndent)}
+#else
+  - ${hsCities.trim().split($hsNl).join($hsIndent)}
+#end
+#end
+  - http://www.weather.gov/safety/flood
+
+#else
 * ##
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE. ##
@@ -391,6 +474,7 @@ Additional rainfall of !** EDIT AMOUNT **! inches is expected over the area. Thi
 #if($bullets.contains("drainages"))
 #drainages(${riverdrainages})
 
+#end
 #end
 ## parse file commands here pull in mile marker and/or point marker info
 ## #parse("mileMarkers.vm")

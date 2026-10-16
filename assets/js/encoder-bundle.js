@@ -960,7 +960,7 @@ async function fetchAndStore() {
         emitTxBurstsFromStrings(txStrings, between, after, relayPop);
     }
 
-    function create_eom_tones() {
+    function create_eom_tones(postPcm) {
         const mode = getOverallEndecMode();
         const isLegacyDigital = (mode === LEGACY_DIGITAL_MODE);
         const profile = isLegacyDigital ? null : getEndecModeProfile(mode);
@@ -968,7 +968,15 @@ async function fetchAndStore() {
         const txStrings = buildEomTxStrings(mode);
         const between = samplesFromMs(isLegacyDigital ? 1000 : profile.betweenGapMs);
         const relayPop = (mode === "TRILITHIC_POP") ? profile.relayPop : null;
-        emitTxBurstsFromStrings(txStrings, between, silenceSamples("eomToEnd"), relayPop);
+        emitTxBurstsFromStrings(txStrings, between, null, relayPop);
+        append_post_eom_audio(postPcm);
+        generate_silence(silenceSamples("eomToEnd"));
+    }
+
+    function append_post_eom_audio(postPcm) {
+        if (!postPcm || !postPcm.length) return;
+        generate_silence(prePostGapSamples("post"));
+        appendPcmToSamples(postPcm);
     }
 
     var pelmorexTonePromise = null;
@@ -1083,6 +1091,281 @@ async function fetchAndStore() {
             appendPcmToSamples(referenceTone);
             return;
         }
+    }
+
+    const PRE_POST_MANIFEST_URL = new URL('../preheader/manifest.json', import.meta.url);
+    const PRE_POST_GAP_FALLBACK_MS = 1000;
+    const PRE_POST_SLOTS = {
+        pre: {
+            select: "preHeaderAudio",
+            file: "preHeaderAudioFile",
+            fileRow: "preHeaderAudioFileRow",
+            gap: "silencePreHeaderToHeaders",
+            gapRow: "preHeaderGapRow",
+            nativeKey: "_nativePreHeaderAudioBuffer",
+            label: "Pre-alert audio"
+        },
+        post: {
+            select: "postEomAudio",
+            file: "postEomAudioFile",
+            fileRow: "postEomAudioFileRow",
+            gap: "silenceEomToPostEom",
+            gapRow: "postEomGapRow",
+            nativeKey: "_nativePostEomAudioBuffer",
+            label: "Post-alert audio"
+        }
+    };
+    const prePostOverrides = { pre: null, post: null, preGap: null, postGap: null };
+    const prePostPcmCache = new Map();
+    let prePostManifestPromise = null;
+
+    function escapeStatusText(text) {
+        return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    }
+
+    function encoderAnnounce(message) {
+        let region = document.getElementById("encoderAnnouncer");
+        if (!region) {
+            region = document.createElement("div");
+            region.id = "encoderAnnouncer";
+            region.className = "visually-hidden";
+            region.setAttribute("role", "status");
+            region.setAttribute("aria-live", "polite");
+            region.setAttribute("aria-atomic", "true");
+            (document.getElementById("encoder-panel") || document.body).appendChild(region);
+        }
+        const node = document.createElement("div");
+        node.textContent = message;
+        region.replaceChildren(node);
+    }
+
+    async function prePostFileExists(url) {
+        try {
+            const head = await fetch(url, { method: "HEAD", cache: "no-cache" });
+            if (head.ok) return true;
+            if (head.status !== 405 && head.status !== 501) return false;
+        } catch (error) {
+            return false;
+        }
+        try {
+            const probe = await fetch(url, { headers: { Range: "bytes=0-0" }, cache: "no-cache" });
+            if (probe.body && typeof probe.body.cancel === "function") probe.body.cancel().catch(() => { });
+            return probe.ok;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function loadPrePostManifest() {
+        if (prePostManifestPromise) return prePostManifestPromise;
+        prePostManifestPromise = (async () => {
+            let presets = [];
+            try {
+                const response = await fetch(PRE_POST_MANIFEST_URL, { cache: "no-cache" });
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                const data = await response.json();
+                const list = Array.isArray(data) ? data : (data && Array.isArray(data.presets) ? data.presets : []);
+                presets = list
+                    .filter((p) => p && typeof p.id === "string" && p.id && p.id !== "none" && p.id !== "custom"
+                        && typeof p.file === "string" && p.file && (p.slot === "pre" || p.slot === "post"))
+                    .map((p) => ({
+                        id: p.id,
+                        label: (typeof p.label === "string" && p.label) ? p.label : p.id,
+                        slot: p.slot,
+                        pair: typeof p.pair === "string" ? p.pair : "",
+                        url: new URL(p.file, PRE_POST_MANIFEST_URL).href,
+                        available: false
+                    }));
+            } catch (error) {
+                console.error("Unable to load the pre-header/post-EOM audio manifest.", error);
+                return [];
+            }
+            await Promise.all(presets.map(async (preset) => {
+                preset.available = await prePostFileExists(preset.url);
+            }));
+            return presets;
+        })();
+        return prePostManifestPromise;
+    }
+
+    async function decodePrePostAudio(arrayBuffer) {
+        const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        const decodeContext = OfflineCtx
+            ? new OfflineCtx(1, 1, SAMPLE_RATE)
+            : new (window.AudioContext || window.webkitAudioContext)();
+        const decode = decodeContext.decodeAudioData.bind(decodeContext);
+        let audioBuffer;
+        try {
+            audioBuffer = decode.length > 1
+                ? await new Promise((resolve, reject) => decode(arrayBuffer.slice(0), resolve, reject))
+                : await decode(arrayBuffer.slice(0));
+        } finally {
+            if (!OfflineCtx && typeof decodeContext.close === "function") {
+                decodeContext.close().catch(() => { });
+            }
+        }
+
+        const channels = Math.max(1, audioBuffer.numberOfChannels);
+        const length = audioBuffer.length;
+        const merged = new Float32Array(length);
+        const invChannels = 1 / channels;
+        for (let channel = 0; channel < channels; channel++) {
+            const channelData = audioBuffer.getChannelData(channel);
+            for (let i = 0; i < length; i++) {
+                merged[i] += channelData[i] * invChannels;
+            }
+        }
+
+        return audioBuffer.sampleRate === SAMPLE_RATE
+            ? merged
+            : resamplePcmSinc(merged, audioBuffer.sampleRate, SAMPLE_RATE);
+    }
+
+    function readPrePostChoice(slot) {
+        if (prePostOverrides[slot]) return prePostOverrides[slot];
+        const select = document.getElementById(PRE_POST_SLOTS[slot].select);
+        return select ? (select.value || "none") : "none";
+    }
+
+    function prePostGapSamples(slot) {
+        const input = document.getElementById(PRE_POST_SLOTS[slot].gap);
+        const raw = input ? input.value : prePostOverrides[slot + "Gap"];
+        return samplesFromMs(clampSilenceMs(raw, PRE_POST_GAP_FALLBACK_MS));
+    }
+
+    function reportPrePost(message, type) {
+        addStatus(escapeStatusText(message), type);
+        encoderAnnounce(message);
+    }
+
+    async function resolvePrePostPcm(slot) {
+        const spec = PRE_POST_SLOTS[slot];
+        const choice = readPrePostChoice(slot);
+        if (!choice || choice === "none") return null;
+
+        if (choice === "custom") {
+            try {
+                const file = document.getElementById(spec.file)?.files?.[0];
+                const arrayBuffer = file ? await file.arrayBuffer() : window[spec.nativeKey];
+                if (!arrayBuffer) {
+                    reportPrePost(spec.label + ": no custom audio file was selected, so it was skipped.", "WARN");
+                    return null;
+                }
+                return await decodePrePostAudio(arrayBuffer);
+            } catch (error) {
+                console.error("Unable to decode " + spec.label + ".", error);
+                reportPrePost(spec.label + ": the custom audio file could not be decoded, so it was skipped.", "ERROR");
+                return null;
+            }
+        }
+
+        const presets = await loadPrePostManifest();
+        const preset = presets.find((p) => p.id === choice);
+        if (!preset) {
+            reportPrePost(spec.label + ": the built-in preset \"" + choice + "\" is not in the manifest, so it was skipped.", "WARN");
+            return null;
+        }
+        if (prePostPcmCache.has(preset.url)) return prePostPcmCache.get(preset.url);
+        try {
+            const response = await fetch(preset.url);
+            if (!response.ok) {
+                reportPrePost(spec.label + ": the recording for \"" + preset.label + "\" is not installed, so it was skipped.", "WARN");
+                return null;
+            }
+            const pcm = await decodePrePostAudio(await response.arrayBuffer());
+            prePostPcmCache.set(preset.url, pcm);
+            return pcm;
+        } catch (error) {
+            console.error("Unable to load " + spec.label + " preset.", error);
+            reportPrePost(spec.label + ": the recording for \"" + preset.label + "\" could not be loaded, so it was skipped.", "ERROR");
+            return null;
+        }
+    }
+
+    function syncPrePostUi(slot) {
+        const spec = PRE_POST_SLOTS[slot];
+        const select = document.getElementById(spec.select);
+        if (!select) return;
+        const value = select.value || "none";
+        const fileRow = document.getElementById(spec.fileRow);
+        const gapRow = document.getElementById(spec.gapRow);
+        if (fileRow) fileRow.hidden = value !== "custom";
+        if (gapRow) gapRow.hidden = value === "none";
+    }
+
+    function applyPrePostPair(preSelect) {
+        const option = preSelect.options[preSelect.selectedIndex];
+        const pair = option && option.dataset ? option.dataset.pair : "";
+        if (!pair) return;
+        const postSelect = document.getElementById(PRE_POST_SLOTS.post.select);
+        if (!postSelect || postSelect.value !== "none") return;
+        const partner = Array.from(postSelect.options).find((o) => o.value === pair && !o.disabled);
+        if (!partner) return;
+        postSelect.value = pair;
+        prePostOverrides.post = null;
+        syncPrePostUi("post");
+        encoderAnnounce("Post-alert audio set to " + partner.textContent + " to match.");
+    }
+
+    function populatePrePostSelects(presets, saved) {
+        for (const slot of Object.keys(PRE_POST_SLOTS)) {
+            const spec = PRE_POST_SLOTS[slot];
+            const select = document.getElementById(spec.select);
+            if (!select) continue;
+            select.querySelectorAll("optgroup[data-pre-post-presets]").forEach((g) => g.remove());
+            const group = document.createElement("optgroup");
+            group.label = "Built-in recordings";
+            group.setAttribute("data-pre-post-presets", "");
+            presets.filter((p) => p.slot === slot).forEach((preset) => {
+                const option = document.createElement("option");
+                option.value = preset.id;
+                option.textContent = preset.available ? preset.label : preset.label + " (recording not installed)";
+                option.disabled = !preset.available;
+                if (preset.pair) option.dataset.pair = preset.pair;
+                group.appendChild(option);
+            });
+            if (group.children.length) {
+                const customOption = select.querySelector('option[value="custom"]');
+                select.insertBefore(group, customOption || null);
+            }
+            const pending = saved ? saved[spec.select] : null;
+            if (pending && select.value === "none" && !prePostOverrides[slot]) {
+                const match = Array.from(select.options).find((o) => o.value === pending && !o.disabled);
+                if (match) select.value = pending;
+            }
+            syncPrePostUi(slot);
+        }
+    }
+
+    function initPrePostAudio(saved) {
+        for (const slot of Object.keys(PRE_POST_SLOTS)) {
+            const spec = PRE_POST_SLOTS[slot];
+            const select = document.getElementById(spec.select);
+            if (select) {
+                select.addEventListener("change", () => {
+                    prePostOverrides[slot] = null;
+                    syncPrePostUi(slot);
+                    if (slot === "pre") applyPrePostPair(select);
+                });
+                syncPrePostUi(slot);
+            }
+            const gapInput = document.getElementById(spec.gap);
+            if (gapInput) {
+                gapInput.addEventListener("change", () => {
+                    prePostOverrides[slot + "Gap"] = null;
+                    const raw = parseFloat(gapInput.value);
+                    if (!Number.isFinite(raw) || raw < 0) {
+                        gapInput.value = "0";
+                    } else if (raw > SILENCE_GAP_MAX_MILLISECONDS) {
+                        gapInput.value = SILENCE_GAP_MAX_MILLISECONDS.toString();
+                    }
+                });
+            }
+        }
+        return loadPrePostManifest().then((presets) => {
+            populatePrePostSelects(presets, saved);
+            return presets;
+        });
     }
 
     function create_header_string(origin, event, locations, length, date, par) {
@@ -1207,7 +1490,13 @@ async function fetchAndStore() {
         }
 
         activeSilenceGaps = getSilenceGapsMs(endecMode);
+        const prePcm = await resolvePrePostPcm("pre");
+        const postPcm = await resolvePrePostPcm("post");
         generate_silence(silenceSamples("preTone"));
+        if (prePcm && prePcm.length) {
+            appendPcmToSamples(prePcm);
+            generate_silence(prePostGapSamples("pre"));
+        }
 
         if (tone !== null) {
             switch (tone.toString()) {
@@ -1471,30 +1760,32 @@ async function fetchAndStore() {
         if (tone !== null) {
             switch (tone.toString()) {
                 case "0":
-                    create_eom_tones();
+                    create_eom_tones(postPcm);
                     break;
                 case "1":
-                    create_eom_tones();
+                    create_eom_tones(postPcm);
                     break;
                 case "2":
+                    append_post_eom_audio(postPcm);
                     generate_silence(silenceSamples("eomToEnd"));
                     break;
                 case "3":
-                    create_eom_tones();
+                    create_eom_tones(postPcm);
                     break;
                 case "4":
-                    create_eom_tones();
+                    create_eom_tones(postPcm);
                     break;
                 case "5":
-                    create_eom_tones();
+                    create_eom_tones(postPcm);
                     break;
                 case "6":
-                    create_eom_tones();
+                    create_eom_tones(postPcm);
                     break;
             }
         }
 
         else {
+            append_post_eom_audio(postPcm);
             generate_silence(silenceSamples("eomToEnd"));
         }
 
@@ -1883,7 +2174,11 @@ async function fetchAndStore() {
             'silenceHeadersToAttention': document.getElementById('silenceHeadersToAttention')?.value ?? '1000',
             'silenceAttentionToMessage': document.getElementById('silenceAttentionToMessage')?.value ?? '1000',
             'silenceMessageToEom': document.getElementById('silenceMessageToEom')?.value ?? '1000',
-            'silenceEomToEnd': document.getElementById('silenceEomToEnd')?.value ?? '1000'
+            'silenceEomToEnd': document.getElementById('silenceEomToEnd')?.value ?? '1000',
+            'preHeaderAudio': readPrePostChoice("pre"),
+            'postEomAudio': readPrePostChoice("post"),
+            'silencePreHeaderToHeaders': document.getElementById('silencePreHeaderToHeaders')?.value ?? String(prePostOverrides.preGap ?? PRE_POST_GAP_FALLBACK_MS),
+            'silenceEomToPostEom': document.getElementById('silenceEomToPostEom')?.value ?? String(prePostOverrides.postGap ?? PRE_POST_GAP_FALLBACK_MS)
         }));
 
         samples = [];
@@ -2081,16 +2376,15 @@ async function fetchAndStore() {
         return subdiv + st + co;
     }
 
-    function addLoc() {
-        const fallbackSubdiv = (regionselect?.value || "0").toString().charAt(0) || "0";
-        const manualInput = (fipsinput?.value || "").trim();
-        const rawCodes = manualInput
-            ? manualInput.split("-").map(code => code.trim()).filter(Boolean)
-            : [(regionselect.value || "").toString() + (stateselect.value || "").toString() + (countyselect.value || "").toString()];
+    function currentFallbackSubdiv() {
+        return (regionselect?.value || "0").toString().charAt(0) || "0";
+    }
+
+    function addLocationCodes(rawCodes, fallbackSubdiv) {
         const existing = new Set(locations);
         const invalid = [];
-        let addedCount = 0;
-        let duplicateCount = 0;
+        const added = [];
+        const duplicates = [];
 
         for (let i = 0; i < rawCodes.length; i++) {
             const normalized = normalizeFipsCode(rawCodes[i], fallbackSubdiv);
@@ -2099,20 +2393,40 @@ async function fetchAndStore() {
                 continue;
             }
             if (existing.has(normalized)) {
-                duplicateCount++;
+                duplicates.push(normalized);
                 continue;
             }
             existing.add(normalized);
             locations.push(normalized);
-            addedCount++;
+            added.push(normalized);
         }
 
-        if (addedCount > 0) {
+        if (added.length > 0) {
             updateTable();
+        }
+        return { added, duplicates, invalid };
+    }
+
+    function addLoc() {
+        const fallbackSubdiv = currentFallbackSubdiv();
+        const manualInput = (fipsinput?.value || "").trim();
+        const rawCodes = manualInput
+            ? manualInput.split("-").map(code => code.trim()).filter(Boolean)
+            : [(regionselect.value || "").toString() + (stateselect.value || "").toString() + (countyselect.value || "").toString()];
+        const result = addLocationCodes(rawCodes, fallbackSubdiv);
+        const invalid = result.invalid;
+        const addedCount = result.added.length;
+        const duplicateCount = result.duplicates.length;
+
+        if (addedCount === 1) {
+            encoderAnnounce("Added " + spokenLocation(result.added[0]) + ". " + locationCountText() + ".");
+        } else if (addedCount > 1) {
+            encoderAnnounce("Added " + addedCount + " locations. " + locationCountText() + ".");
         }
 
         if (addedCount === 0 && duplicateCount > 0 && invalid.length === 0) {
             addStatus("You can't add the same location code twice!");
+            encoderAnnounce("That location is already in the list.");
             return;
         }
 
@@ -2125,41 +2439,87 @@ async function fetchAndStore() {
         }
     }
 
+    function describeLocation(code) {
+        const isCA = fipsModeSelect && fipsModeSelect.value === "ca";
+        const re = code.charAt(0);
+        const region = rgn[re] || re;
+        if (isCA) {
+            const caCode = code.slice(1);
+            return { name: canadaCounty[caCode] || code, area: caProvinces[caCode.charAt(0)] || "Unknown", region };
+        }
+        const st = code.slice(1, 3);
+        const co = code.slice(3, 6);
+        let name = (county[st] && county[st][co]) || code;
+        if (co == "000" && st !== "00") { name = "Entire State"; }
+        return { name, area: state[st] || st, region };
+    }
+
+    function spokenLocation(code) {
+        const d = describeLocation(code);
+        let text = d.name === "Entire State" ? "all of " + d.area : d.name;
+        if (d.name !== "Entire State" && d.area && d.area !== "Unknown" && d.name.indexOf(d.area) === -1) {
+            text += ", " + d.area;
+        }
+        if (d.region && d.region !== "0") {
+            text += " (" + d.region + ")";
+        }
+        return text;
+    }
+
+    function locationCountText() {
+        return locations.length + (locations.length === 1 ? " location" : " locations") + " in the list";
+    }
+
+    function removeLocationAt(index, restoreFocus) {
+        if (!Number.isInteger(index) || index < 0 || index >= locations.length) return;
+        const code = locations[index];
+        const spoken = spokenLocation(code);
+        locations.splice(index, 1);
+        updateTable();
+        encoderAnnounce("Removed " + spoken + ". " + locationCountText() + ".");
+        if (!restoreFocus) return;
+        const buttons = document.querySelectorAll("#container .loc-remove");
+        const target = buttons[Math.min(index, buttons.length - 1)]
+            || document.getElementById("locSearch")
+            || document.querySelector("[data-encoder-add-loc]");
+        if (target) target.focus();
+    }
+
     function updateTable() {
         var fcont = document.getElementById("container");
-        var fipstable = document.getElementById("fips");
         locations = window.locations;
         fcont.innerHTML = "";
-        const isCA = fipsModeSelect && fipsModeSelect.value === "ca";
         for (var i = 0; i < locations.length; i++) {
+            const d = describeLocation(locations[i]);
             var tr = document.createElement("tr");
             var c = document.createElement("td");
             var s = document.createElement("td");
             var l = document.createElement("td");
             var r = document.createElement("td");
+            var x = document.createElement("td");
             c.innerText = locations[i];
-            if (isCA) {
-                const caCode = locations[i].slice(1);
-                l.innerText = canadaCounty[caCode] || locations[i];
-                const provDigit = caCode.charAt(0);
-                s.innerText = caProvinces[provDigit] || "Unknown";
-                var re = locations[i].charAt(0);
-                r.innerText = rgn[re] || re;
-            } else {
-                var st = locations[i].slice(1, 3);
-                var co = locations[i].slice(3, 6);
-                var re = locations[i].charAt(0);
-                l.innerText = (county[st] && county[st][co]) || locations[i];
-                if (co == "000" && st !== "00") { l.innerText = "Entire State"; }
-                r.innerText = rgn[re] || re; s.innerText = state[st] || st;
-            }
-            tr.appendChild(l); tr.appendChild(s); tr.appendChild(r); tr.appendChild(c);
+            l.innerText = d.name;
+            s.innerText = d.area;
+            r.innerText = d.region;
+            const removeButton = document.createElement("button");
+            removeButton.type = "button";
+            removeButton.className = "loc-remove";
+            removeButton.textContent = "Remove";
+            removeButton.setAttribute("aria-label", "Remove " + spokenLocation(locations[i]) + ", " + locations[i]);
+            removeButton.setAttribute("data-val", i.toString());
+            removeButton.addEventListener("click", function (e) {
+                e.stopPropagation();
+                removeLocationAt(parseInt(this.getAttribute("data-val"), 10), true);
+            });
+            x.appendChild(removeButton);
+            tr.appendChild(l); tr.appendChild(s); tr.appendChild(r); tr.appendChild(c); tr.appendChild(x);
             tr.setAttribute("class", "entry");
             tr.setAttribute("data-val", i.toString());
-            tr.addEventListener("click", function (e) { locations.splice(parseInt(e.srcElement.parentElement.getAttribute("data-val")), 1); updateTable(); });
+            tr.addEventListener("click", function () { removeLocationAt(parseInt(this.getAttribute("data-val"), 10), false); });
             fcont.appendChild(tr);
         }
         if (typeof updateHeaderPreview === "function") updateHeaderPreview();
+        if (typeof refreshLocationSearchMarks === "function") refreshLocationSearchMarks();
     }
     updateTable();
 
@@ -2265,10 +2625,298 @@ async function fetchAndStore() {
                 populateUSSelectors();
                 if (wxrOption) wxrOption.textContent = "National Weather Service";
             }
+            resetLocationSearch();
         });
     }
 
     populateUSSelectors();
+
+    async function ensureSearchableSelect() {
+        if (!document.querySelector('link[href$="searchable-select.css"]')) {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = new URL('../css/searchable-select.css', import.meta.url).href;
+            document.head.appendChild(link);
+        }
+        if (!window.EASSearchableSelect) {
+            try {
+                await import('./searchable-select.js');
+            } catch (error) {
+                console.error("Unable to load the searchable select component.", error);
+            }
+        }
+        return window.EASSearchableSelect || null;
+    }
+
+    const searchableSelect = await ensureSearchableSelect();
+    if (searchableSelect) {
+        for (const select of [stateselect, countyselect]) {
+            searchableSelect.enhance(select, {
+                placeholder: "Type to filter...",
+                emptyText: "No matches.",
+                className: "encoder-loc-combo"
+            });
+        }
+    }
+
+    const LOCATION_SEARCH_MAX_RESULTS = 100;
+    var locationSearch = null;
+
+    function buildLocationSearchIndex() {
+        const entries = [];
+        if (fipsModeSelect && fipsModeSelect.value === "ca") {
+            Object.keys(canadaCounty).forEach((code) => {
+                const name = canadaCounty[code];
+                const province = caProvinces[code.charAt(0)] || "";
+                const isWhole = code.slice(1) === "0000";
+                const label = (!isWhole && province) ? name + ", " + province : name;
+                entries.push({ code, label, hay: (label + " " + code + (isWhole ? " entire all province" : "")).toLowerCase() });
+            });
+        } else {
+            const fullNames = {};
+            Object.entries(window.abbrvs || {}).forEach(([full, abbr]) => { fullNames[abbr] = full; });
+            Object.keys(county).forEach((st) => {
+                const abbr = state[st] || "";
+                const full = fullNames[abbr] || "";
+                Object.keys(county[st]).forEach((co) => {
+                    const name = county[st][co];
+                    let label = name;
+                    if (co !== "000" && abbr.length === 2 && !/,\s*[A-Z]{2}$/.test(name)) {
+                        label = name + ", " + abbr;
+                    }
+                    const extra = co === "000" ? " entire state all" : "";
+                    entries.push({ code: st + co, label, hay: (label + " " + abbr + " " + full + " " + st + co + extra).toLowerCase() });
+                });
+            });
+        }
+        entries.sort((a, b) => a.label.localeCompare(b.label));
+        return entries;
+    }
+
+    function resetLocationSearch() {
+        if (!locationSearch) return;
+        locationSearch.index = null;
+        locationSearch.input.value = "";
+        locationSearch.close();
+    }
+
+    function refreshLocationSearchMarks() {
+        if (locationSearch && locationSearch.isOpen()) locationSearch.render(false);
+    }
+
+    function initLocationSearch() {
+        const input = document.getElementById("locSearch");
+        const list = document.getElementById("locSearchList");
+        if (!input || !list) return null;
+        const countRegion = document.getElementById("locSearchCount");
+        const ls = { input, list, index: null, results: [], active: -1, open: false };
+
+        const ensureIndex = () => {
+            if (!ls.index) ls.index = buildLocationSearchIndex();
+            return ls.index;
+        };
+
+        const filter = (query) => {
+            const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+            const index = ensureIndex();
+            if (!terms.length) return index.slice();
+            const first = terms[0];
+            const scored = [];
+            for (let i = 0; i < index.length; i++) {
+                const entry = index[i];
+                let ok = true;
+                for (let t = 0; t < terms.length; t++) {
+                    if (entry.hay.indexOf(terms[t]) === -1) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (!ok) continue;
+                const label = entry.label.toLowerCase();
+                let score = 2;
+                if (label.startsWith(first)) score = 0;
+                else if (label.indexOf(" " + first) !== -1) score = 1;
+                scored.push({ entry, score, i });
+            }
+            scored.sort((a, b) => (a.score - b.score) || (a.i - b.i));
+            return scored.map((s) => s.entry);
+        };
+
+        const optionId = (i) => "locSearchOpt-" + i;
+
+        const setActive = (i) => {
+            const prev = ls.active >= 0 ? document.getElementById(optionId(ls.active)) : null;
+            if (prev) {
+                prev.classList.remove("is-active");
+                prev.setAttribute("aria-selected", "false");
+            }
+            ls.active = i;
+            const li = i >= 0 ? document.getElementById(optionId(i)) : null;
+            if (li) {
+                li.classList.add("is-active");
+                li.setAttribute("aria-selected", "true");
+                input.setAttribute("aria-activedescendant", li.id);
+                const lr = list.getBoundingClientRect();
+                const ir = li.getBoundingClientRect();
+                if (ir.top < lr.top) list.scrollTop -= (lr.top - ir.top);
+                else if (ir.bottom > lr.bottom) list.scrollTop += (ir.bottom - lr.bottom);
+            } else {
+                input.removeAttribute("aria-activedescendant");
+            }
+        };
+
+        const render = (announceCount) => {
+            const subdiv = currentFallbackSubdiv();
+            const added = new Set(locations);
+            const shown = Math.min(ls.results.length, LOCATION_SEARCH_MAX_RESULTS);
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < shown; i++) {
+                const entry = ls.results[i];
+                const fullCode = subdiv + entry.code;
+                const isAdded = added.has(fullCode);
+                const li = document.createElement("li");
+                li.id = optionId(i);
+                li.className = "loc-search__opt" + (isAdded ? " is-added" : "");
+                li.setAttribute("role", "option");
+                li.setAttribute("aria-selected", "false");
+                li.setAttribute("aria-label", entry.label + ", " + fullCode + (isAdded ? ", already added" : ""));
+                li.dataset.index = String(i);
+                const name = document.createElement("span");
+                name.className = "loc-search__name";
+                name.textContent = entry.label;
+                const code = document.createElement("span");
+                code.className = "loc-search__code";
+                code.textContent = isAdded ? fullCode + " ✓" : fullCode;
+                li.appendChild(name);
+                li.appendChild(code);
+                frag.appendChild(li);
+            }
+            if (!ls.results.length) {
+                const empty = document.createElement("li");
+                empty.className = "loc-search__note";
+                empty.setAttribute("role", "presentation");
+                empty.textContent = "No matching locations.";
+                frag.appendChild(empty);
+            } else if (ls.results.length > shown) {
+                const note = document.createElement("li");
+                note.className = "loc-search__note";
+                note.setAttribute("role", "presentation");
+                note.textContent = "Showing the first " + shown + " of " + ls.results.length + " matches. Keep typing to narrow the list.";
+                frag.appendChild(note);
+            }
+            list.replaceChildren(frag);
+            const active = Math.min(ls.active, shown - 1);
+            ls.active = -1;
+            setActive(active);
+            if (announceCount && countRegion) {
+                countRegion.textContent = !ls.results.length
+                    ? "No matching locations."
+                    : ls.results.length + (ls.results.length === 1 ? " match" : " matches")
+                    + (ls.results.length > shown ? ", showing the first " + shown : "") + ". Use the arrow keys and Enter to add.";
+            }
+        };
+
+        const openList = () => {
+            if (ls.open) return;
+            ls.open = true;
+            list.hidden = false;
+            input.setAttribute("aria-expanded", "true");
+        };
+
+        const close = () => {
+            ls.open = false;
+            list.hidden = true;
+            input.setAttribute("aria-expanded", "false");
+            input.removeAttribute("aria-activedescendant");
+            ls.active = -1;
+        };
+
+        const search = () => {
+            const query = input.value.trim();
+            if (!query) {
+                close();
+                ls.results = [];
+                if (countRegion) countRegion.textContent = "";
+                return;
+            }
+            ls.results = filter(query);
+            ls.active = ls.results.length ? 0 : -1;
+            openList();
+            list.scrollTop = 0;
+            render(true);
+        };
+
+        const pick = (i) => {
+            const entry = ls.results[i];
+            if (!entry) return;
+            const result = addLocationCodes([entry.code], currentFallbackSubdiv());
+            if (result.added.length) {
+                encoderAnnounce("Added " + spokenLocation(result.added[0]) + ". " + locationCountText() + ".");
+            } else if (result.duplicates.length) {
+                encoderAnnounce(spokenLocation(result.duplicates[0]) + " is already in the list.");
+            } else {
+                encoderAnnounce("Could not add " + entry.label + ".");
+            }
+            if (ls.open) render(false);
+            input.focus();
+        };
+
+        input.addEventListener("input", search);
+        input.addEventListener("keydown", (e) => {
+            const shown = Math.min(ls.results.length, LOCATION_SEARCH_MAX_RESULTS);
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                e.preventDefault();
+                if (!ls.open) {
+                    ls.results = filter(input.value.trim());
+                    ls.active = ls.results.length ? 0 : -1;
+                    openList();
+                    render(true);
+                    return;
+                }
+                if (!shown) return;
+                let next = ls.active + (e.key === "ArrowDown" ? 1 : -1);
+                if (next < 0) next = shown - 1;
+                if (next >= shown) next = 0;
+                setActive(next);
+            } else if (e.key === "Enter") {
+                if (ls.open && ls.active >= 0) {
+                    e.preventDefault();
+                    pick(ls.active);
+                }
+            } else if (e.key === "Escape") {
+                if (ls.open) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    close();
+                } else if (input.value) {
+                    e.preventDefault();
+                    input.value = "";
+                    if (countRegion) countRegion.textContent = "";
+                }
+            } else if (e.key === "Tab") {
+                close();
+            }
+        });
+        input.addEventListener("blur", () => close());
+        list.addEventListener("mousedown", (e) => e.preventDefault());
+        list.addEventListener("click", (e) => {
+            const li = e.target.closest(".loc-search__opt");
+            if (!li) return;
+            pick(parseInt(li.dataset.index, 10));
+        });
+        if (regionselect) regionselect.addEventListener("change", refreshLocationSearchMarks);
+
+        return {
+            input,
+            get index() { return ls.index; },
+            set index(v) { ls.index = v; },
+            isOpen: () => ls.open,
+            render,
+            close
+        };
+    }
+
+    locationSearch = initLocationSearch();
 
     function parseSameHeaderParam(rawHeader) {
         if (!rawHeader) {
@@ -2551,6 +3199,16 @@ async function fetchAndStore() {
 
     applyProfileSilenceDefaults(
         document.getElementById("overallEndecMode").value, restoredSettingIds);
+
+    let savedPrePostSettings = null;
+    if (!headerParam) {
+        try {
+            savedPrePostSettings = JSON.parse(localStorage.getItem("eas-tools-encoder-settings") || "null");
+        } catch (error) {
+            savedPrePostSettings = null;
+        }
+    }
+    initPrePostAudio(savedPrePostSettings);
 
     encoderModeSelect.addEventListener("change", function () {
         window.mode = encoderModeSelect.value;
@@ -3106,6 +3764,12 @@ async function fetchAndStore() {
                 }
             }
             window.EASBridge.send('encoder:eventGroupsData', { groups: eventGroupsArr });
+
+            loadPrePostManifest().then((presets) => {
+                window.EASBridge.send('encoder:prePostAudioData', {
+                    presets: presets.map((p) => ({ id: p.id, label: p.label, slot: p.slot, pair: p.pair, available: p.available }))
+                });
+            });
         }
 
         window.EASBridge.on('encoder:requestData', () => {
@@ -3168,6 +3832,24 @@ async function fetchAndStore() {
                 for (const silenceId of ['silencePreTone', 'silenceHeadersToAttention', 'silenceAttentionToMessage', 'silenceMessageToEom', 'silenceEomToEnd']) {
                     if (params[silenceId] != null && el(silenceId)) el(silenceId).value = params[silenceId].toString();
                 }
+                if (params.preHeaderAudio != null || params.postEomAudio != null) {
+                    await loadPrePostManifest();
+                }
+                for (const [slot, key] of [['pre', 'preHeaderAudio'], ['post', 'postEomAudio']]) {
+                    if (params[key] == null) continue;
+                    const choice = String(params[key]) || 'none';
+                    prePostOverrides[slot] = choice;
+                    const select = el(PRE_POST_SLOTS[slot].select);
+                    if (select) {
+                        select.value = choice;
+                        syncPrePostUi(slot);
+                    }
+                }
+                for (const [slot, key] of [['pre', 'silencePreHeaderToHeaders'], ['post', 'silenceEomToPostEom']]) {
+                    if (params[key] == null) continue;
+                    prePostOverrides[slot + 'Gap'] = params[key].toString();
+                    if (el(key)) el(key).value = params[key].toString();
+                }
 
                 if (params.fipsMode && el('fipsMode')) {
                     el('fipsMode').value = params.fipsMode;
@@ -3215,6 +3897,33 @@ async function fetchAndStore() {
                 window.EASBridge.send('encoder:status', { text: 'ERROR: Failed to load custom audio: ' + err.message });
             }
         });
+
+        window._nativePreHeaderAudioBuffer = null;
+        window._nativePostEomAudioBuffer = null;
+        for (const [eventName, slot] of [['encoder:loadPreHeaderAudio', 'pre'], ['encoder:loadPostEomAudio', 'post']]) {
+            const spec = PRE_POST_SLOTS[slot];
+            window.EASBridge.on(eventName, async (params) => {
+                try {
+                    if (params?.clear) {
+                        window[spec.nativeKey] = null;
+                        window.EASBridge.send('encoder:status', { text: '[LOG] ' + spec.label + ' cleared' });
+                        return;
+                    }
+                    const base64 = params?.base64;
+                    if (!base64) return;
+                    const binaryStr = atob(base64);
+                    const bytes = new Uint8Array(binaryStr.length);
+                    for (let i = 0; i < binaryStr.length; i++) {
+                        bytes[i] = binaryStr.charCodeAt(i);
+                    }
+                    window[spec.nativeKey] = bytes.buffer;
+                    window.EASBridge.send('encoder:status', { text: '[LOG] ' + spec.label + ' loaded (' + Math.round(bytes.length / 1024) + ' KB)' });
+                } catch (err) {
+                    console.error('[EASBridge] ' + eventName + ' error:', err);
+                    window.EASBridge.send('encoder:status', { text: 'ERROR: Failed to load ' + spec.label.toLowerCase() + ': ' + err.message });
+                }
+            });
+        }
 
         window.EASBridge.on('encoder:togglePlayback', () => {
             const el = document.getElementById('audioPlayback');

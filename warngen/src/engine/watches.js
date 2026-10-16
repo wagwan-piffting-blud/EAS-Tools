@@ -21,14 +21,22 @@
         { id: "FA", family: "zone", phen: "FA", pil: "FFA", name: "Flood Watch" },
         { id: "FW", family: "zone", phen: "FW", pil: "RFW", name: "Fire Weather Watch" },
         { id: "CF", family: "zone", phen: "CF", pil: "CFW", name: "Coastal Flood Watch" },
+        { id: "WS.W", family: "zone", phen: "WS", sig: "W", pil: "WSW", name: "Winter Storm Warning" },
+        { id: "BZ.W", family: "zone", phen: "BZ", sig: "W", pil: "WSW", name: "Blizzard Warning" },
+        { id: "IS.W", family: "zone", phen: "IS", sig: "W", pil: "WSW", name: "Ice Storm Warning" },
+        { id: "EC.W", family: "zone", phen: "EC", sig: "W", pil: "NPW", name: "Extreme Cold Warning" },
+        { id: "HW.W", family: "zone", phen: "HW", sig: "W", pil: "NPW", name: "High Wind Warning" },
         { id: "TCV", family: "tropical", pil: "TCV", name: "Tropical Cyclone Watch/Warning" },
         { id: "HLS", family: "tropical", pil: "HLS", name: "Tropical Cyclone Local Statement" }
     ];
     var PRODUCT_BY_ID = {};
     PRODUCTS.forEach(function (p) { PRODUCT_BY_ID[p.id] = p; });
 
-    // SAME event codes for the EAS side; EC and FW have none in the 47 CFR 11.31 table.
-    var SAME = { TO: "TOA", SV: "SVA", WS: "WSA", HW: "HWA", FA: "FFA", CF: "CFA", HU: "HUA", TR: "TRA", SS: "SSA" };
+    // SAME event codes for the EAS side; EC and FW have none in the 47 CFR 11.31 table. Warnings
+    // are keyed phen.sig. NWR carries the Ice Storm Warning on WSW, and Extreme Cold has no code.
+    var SAME = { TO: "TOA", SV: "SVA", WS: "WSA", HW: "HWA", FA: "FFA", CF: "CFA", HU: "HUA", TR: "TRA", SS: "SSA",
+        "WS.W": "WSW", "BZ.W": "BZW", "IS.W": "WSW", "HW.W": "HWW",
+        "HU.W": "HUW", "TR.W": "TRW", "SS.W": "SSW" };
 
     var WATCH_NAME = { TO: "Tornado Watch", SV: "Severe Thunderstorm Watch" };
 
@@ -675,21 +683,22 @@
 
     // ---- Office zone watches (GFE hazard formatters) ----
 
+    // Keyed phen.sig. A warning's upg names the watch it replaces in an UPG segment.
     var ZONE_HAZARDS = {
-        WS: {
+        "WS.A": {
             hdln: "Winter Storm Watch", header: ["URGENT - WINTER WEATHER MESSAGE"],
             bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
             cta: "A Winter Storm Watch means there is a potential for significant snow, sleet, or ice "
                 + "accumulations that may impact travel. Continue to monitor the latest forecasts.",
             impacts: "Travel could be very difficult."
         },
-        EC: {
+        "EC.A": {
             hdln: "Extreme Cold Watch", header: ["URGENT - WEATHER MESSAGE"],
             bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
             cta: "Dress in layers including a hat, face mask, and gloves if you must go outside.",
             impacts: "The dangerously cold wind chills could cause frostbite on exposed skin in as little as 10 minutes."
         },
-        HW: {
+        "HW.A": {
             hdln: "High Wind Watch", header: ["URGENT - WEATHER MESSAGE"],
             bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
             cta: "A High Wind Watch means there is the potential for a hazardous high wind event. Sustained "
@@ -698,7 +707,7 @@
             impacts: "Damaging winds could blow down trees and power lines. Widespread power outages are "
                 + "possible. Travel could be difficult, especially for high profile vehicles."
         },
-        FA: {
+        "FA.A": {
             hdln: "Flood Watch", header: ["URGENT - IMMEDIATE BROADCAST REQUESTED", "Flood Watch"],
             bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
             cta: "You should monitor later forecasts and be alert for possible Flood Warnings. Those living "
@@ -706,31 +715,83 @@
             impacts: "Excessive runoff may result in flooding of rivers, creeks, streams, and other low-lying "
                 + "and flood-prone locations."
         },
-        FW: {
+        "FW.A": {
             hdln: "Fire Weather Watch", header: ["URGENT - FIRE WEATHER MESSAGE"], attribution: true,
             bullets: ["AFFECTED AREA", "WINDS", "RELATIVE HUMIDITY", "IMPACTS"],
             cta: "A Fire Weather Watch means that critical fire weather conditions are forecast to occur. "
                 + "Listen for later forecasts and possible Red Flag Warnings.",
             impacts: "Any fires that develop will likely spread rapidly. Outdoor burning is not recommended."
         },
-        CF: {
+        "CF.A": {
             hdln: "Coastal Flood Watch", header: ["Coastal Hazard Message"],
             bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
             cta: "A Coastal Flood Watch means that conditions favorable for flooding are expected to develop. "
                 + "Coastal residents should be alert for later statements or warnings, and take action to "
                 + "protect property.",
             impacts: "Flooding of lots, parks, and roads with only isolated road closures expected."
+        },
+        "WS.W": {
+            hdln: "Winter Storm Warning", header: ["URGENT - WINTER WEATHER MESSAGE"], upg: "WS",
+            bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
+            cta: "If you must travel, keep an extra flashlight, food, and water in your vehicle in case of an "
+                + "emergency. The latest road conditions for the state you are calling from can be obtained by "
+                + "calling 5 1 1.",
+            impacts: function (f) {
+                return f.ice ? "Power outages and tree damage are likely due to the ice. Travel could be nearly impossible."
+                    : "Travel could be very difficult.";
+            }
+        },
+        "BZ.W": {
+            hdln: "Blizzard Warning", header: ["URGENT - WINTER WEATHER MESSAGE"], upg: "WS",
+            bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
+            cta: "Travel should be restricted to emergencies only. If you must travel, have a winter survival kit "
+                + "with you. If you get stranded, stay with your vehicle.",
+            impacts: "Travel could be very difficult to impossible. Widespread blowing snow could significantly "
+                + "reduce visibility."
+        },
+        "IS.W": {
+            hdln: "Ice Storm Warning", header: ["URGENT - WINTER WEATHER MESSAGE"], upg: "WS",
+            bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
+            cta: "Travel should be restricted to emergencies only. Prepare for extended power outages. The latest "
+                + "road conditions for the state you are calling from can be obtained by calling 5 1 1.",
+            impacts: "Expect power outages and tree damage due to the ice. Travel could be impossible."
+        },
+        "EC.W": {
+            hdln: "Extreme Cold Warning", header: ["URGENT - WEATHER MESSAGE"], upg: "EC",
+            bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
+            cta: "Dress in layers including a hat, face mask, and gloves if you must go outside.\n\n"
+                + "Make frequent checks on older family, friends, and neighbors. Ensure portable heaters are used "
+                + "correctly. Do not use generators or grills inside.",
+            impacts: function (f) {
+                return "The dangerously cold wind chills " + (f.windChill ? "as low as " + f.windChill + " below zero " : "")
+                    + "could cause frostbite on exposed skin in as little as 10 minutes.";
+            }
+        },
+        "HW.W": {
+            hdln: "High Wind Warning", header: ["URGENT - WEATHER MESSAGE"], upg: "HW",
+            bullets: ["WHAT", "WHERE", "WHEN", "IMPACTS"],
+            cta: "A High Wind Warning means a hazardous high wind event is expected or occurring. Sustained wind "
+                + "speeds of at least 40 mph or gusts of 58 mph or more can lead to property damage.",
+            impacts: "Damaging winds will blow down trees and power lines. Widespread power outages are expected. "
+                + "Travel will be difficult, especially for high profile vehicles."
         }
     };
+
+    function hazardKey(phen, sig) {
+        return String(phen).indexOf(".") === -1 ? phen + "." + (sig || "A") : phen;
+    }
 
     function num(v, fallback) {
         var s = v == null ? "" : String(v).trim();
         return s ? s : "!** " + fallback + " **!";
     }
 
-    /** Hazard Services' default WHAT sentence for a watch, built from the panel's numbers. */
+    /** Hazard Services' default WHAT sentence, built from the panel's numbers. A bare phen is the watch. */
     function whatText(phen, f) {
         f = f || {};
+        var key = hazardKey(phen);
+        if (key.slice(-2) === ".W") return warningWhat(key, f);
+        phen = key.slice(0, 2);
         if (phen === "WS") {
             var gust = f.gust ? " Winds could gust as high as " + f.gust + " mph." : "";
             if (f.ice) {
@@ -750,6 +811,34 @@
         if (phen === "CF") {
             return num(f.surgeLo, "low") + " to " + num(f.surgeHi, "high") + " feet of inundation above ground level "
                 + "possible in low-lying areas near shorelines and tidal waterways.";
+        }
+        return "";
+    }
+
+    // The warning forms say "expected" where the watch says "possible".
+    function warningWhat(key, f) {
+        var gust = f.gust ? " Winds gusting as high as " + f.gust + " mph." : "";
+        var snow = "between " + num(f.snowLo, "low") + " and " + num(f.snowHi, "high") + " inches";
+        if (key === "WS.W") {
+            return f.ice
+                ? "Heavy mixed precipitation expected. Total snow and sleet accumulations " + snow
+                    + " and ice accumulations of " + f.ice + "." + gust
+                : "Heavy snow expected. Total snow accumulations " + snow + "." + gust;
+        }
+        if (key === "BZ.W") {
+            return "Blizzard conditions expected. Total snow accumulations " + snow + ". Winds gusting as high as "
+                + num(f.gust, "gust") + " mph.";
+        }
+        if (key === "IS.W") {
+            return "Significant icing expected. " + (f.snowLo || f.snowHi
+                ? "Total snow and sleet accumulations " + snow + " and ice accumulations of " + num(f.ice, "ice") + "."
+                : "Total ice accumulations of " + num(f.ice, "ice") + ".") + gust;
+        }
+        if (key === "EC.W") return "Dangerously cold wind chills as low as " + num(f.windChill, "value") + " below expected.";
+        if (key === "HW.W") {
+            return (f.dir ? f.dir.charAt(0).toUpperCase() + f.dir.slice(1).toLowerCase() + " winds " : "Winds ")
+                + num(f.windLo, "low") + " to " + num(f.windHi, "high") + " mph with gusts up to "
+                + num(f.gust, "gust") + " mph expected.";
         }
         return "";
     }
@@ -781,10 +870,15 @@
      * o: { phen, wfo, wmo, pil, city (wfoCity), office (wfoCityState), issued, start, end, previousEnd,
      *      tz, dstLess, productClass, etn, action, zones [{state, fips, name, partOfParentRegion, cities}],
      *      stateNames, fields {...}, text {what, where, when, impacts, details, cta, wrapup}, overview,
-     *      synopsis, includeCities }
+     *      synopsis, includeCities, sig (A/W), upgrade {etn, start, end} }
+     *
+     * A warning's UPG is the GFE upgrade segment: the watch's UPG line over the warning's NEW
+     * line, with the warning's headline and text.
      */
     function buildZoneWatch(o) {
-        var hz = ZONE_HAZARDS[o.phen];
+        var sig = o.sig || "A";
+        var hz = ZONE_HAZARDS[hazardKey(o.phen, sig)];
+        var act = o.action === "UPG" && sig !== "A" ? "NEW" : o.action;
         var tx = o.text || {};
         var t = o.wmo + " K" + o.wfo + " " + ddhhmm(o.issued) + "\n" + o.pil + o.wfo + "\n\n"
             + hz.header.join("\n") + "\nNational Weather Service " + o.office + "\n"
@@ -795,10 +889,15 @@
         if (o.synopsis && o.synopsis.trim()) t += wrap("." + o.synopsis.replace(/^\./, "").trim(), LINE_GFE) + "\n\n";
 
         var codes = o.zones.map(function (z) { return z.state + "Z" + z.fips; });
-        var purge = (o.action === "CAN" || o.action === "EXP")
+        var purge = (act === "CAN" || act === "EXP")
             ? civil.expireTime(o.issued, 1) : gfePurge(o.issued, o.end, 12);
-        t += ugcLine(codes, purge, true) + "\n"
-            + vtec({ productClass: o.productClass, action: o.action, office: "K" + o.wfo, phen: o.phen, sig: "A",
+        t += ugcLine(codes, purge, true) + "\n";
+        if (act !== o.action) {
+            var up = o.upgrade || {};
+            t += vtec({ productClass: o.productClass, action: "UPG", office: "K" + o.wfo, phen: hz.upg, sig: "A",
+                etn: up.etn || o.etn, issued: o.issued, start: up.start || o.start, end: up.end || o.end }) + "\n";
+        }
+        t += vtec({ productClass: o.productClass, action: act, office: "K" + o.wfo, phen: o.phen, sig: sig,
                 etn: o.etn, issued: o.issued, start: o.start, end: o.end }) + "\n"
             + wrap(o.zones.map(function (z) { return z.name; }).join("-") + "-", LINE, ["-"]) + "\n";
         if (o.includeCities !== false) {
@@ -808,11 +907,11 @@
         }
         t += stamp(o.issued, o.tz, o.dstLess) + "\n\n";
 
-        var h = { name: hz.hdln, phen: o.phen, sig: "A", action: o.action, start: o.start, end: o.end };
+        var h = { name: hz.hdln, phen: o.phen, sig: sig, action: act, start: o.start, end: o.end };
         t += wrap("..." + headline(h, o.issued, o.tz, o.dstLess) + "...", LINE_GFE) + "\n\n";
 
-        if (o.action === "CAN" || o.action === "EXP") {
-            var body = o.action === "CAN"
+        if (act === "CAN" || act === "EXP") {
+            var body = act === "CAN"
                 ? "The National Weather Service in " + o.city + " has cancelled the " + hz.hdln + "."
                 : "The " + hz.hdln + " " + actionWords("EXP", o.issued, o.end) + " "
                     + timingPhrase(h, o.issued, o.tz, o.dstLess) + ".";
@@ -823,19 +922,19 @@
 
         if (hz.attribution) {
             var when = timingPhrase(h, o.issued, o.tz, o.dstLess);
-            var attr = o.action === "CON"
+            var attr = act === "CON"
                 ? "The " + hz.hdln + " remains in effect" + (when ? " " + when : "") + "."
-                : (o.action === "EXT" ? "The " + hz.hdln + " is now in effect" + (when ? " " + when : "") + "."
+                : (act === "EXT" ? "The " + hz.hdln + " is now in effect" + (when ? " " + when : "") + "."
                     : "The National Weather Service in " + o.city + " has issued a " + hz.hdln
                         + ", which is in effect" + (when ? " " + when : "") + ".");
             t += wrap(attr, LINE_GFE) + "\n\n";
         }
 
         var auto = {
-            WHAT: whatText(o.phen, o.fields),
+            WHAT: whatText(hazardKey(o.phen, sig), o.fields),
             WHERE: whereText(o.zones, o.stateNames),
             WHEN: sentence(timingPhrase(h, o.issued, o.tz, o.dstLess)),
-            IMPACTS: hz.impacts,
+            IMPACTS: typeof hz.impacts === "function" ? hz.impacts(o.fields || {}) : hz.impacts,
             "AFFECTED AREA": whereText(o.zones, o.stateNames),
             WINDS: o.fields && o.fields.windLo
                 ? (o.fields.dir ? o.fields.dir.charAt(0).toUpperCase() + o.fields.dir.slice(1).toLowerCase() + " " : "")

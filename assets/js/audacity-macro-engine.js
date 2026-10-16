@@ -98,12 +98,11 @@
                     cfg.log('JIT disabled (install failed): ' + (e && e.message));
                 }
                 const [pm, mm] = await Promise.all([
-                    fetch(cfg.pluginDir + 'manifest.json').then(r => r.json()).catch(() => []),
+                    loadPluginManifest().catch(() => null),
                     fetch(cfg.macroDir + 'manifest.json').then(r => r.json()).catch(() => []),
                 ]);
-                pluginManifest = pm;
                 macroManifest = await discoverMacros(mm);
-                cfg.log(`ready: ${pm.length} plugins, ${macroManifest.length} macros`);
+                cfg.log(`ready: ${pm ? pm.length : 'NO'} plugins, ${macroManifest.length} macros`);
                 return M;
             });
         }
@@ -159,16 +158,59 @@
         return e ? e.file : null;
     }
 
+    function assetError(what, why, missing) {
+        const e = new Error(`Couldn't download ${what} (${why}). Check your connection and try again.`);
+        e.name = missing ? 'AssetMissing' : 'AssetError';
+        return e;
+    }
+    function isAssetError(e) { return !!e && (e.name === 'AssetError' || e.name === 'AssetMissing'); }
+    async function fetchAsset(url, what) {
+        let r;
+        try { r = await fetch(url); } catch (e) { throw assetError(what, 'network error: ' + ((e && e.message) || e)); }
+        if (!r.ok) throw assetError(what, 'HTTP ' + r.status, r.status === 404);
+        const buf = new Uint8Array(await r.arrayBuffer());
+        if (!buf.length) throw assetError(what, 'empty response');
+        return buf;
+    }
+    async function loadPluginManifest() {
+        if (pluginManifest) return pluginManifest;
+        const buf = await fetchAsset(cfg.pluginDir + 'manifest.json', 'the plugin list');
+        let list;
+        try { list = JSON.parse(new TextDecoder().decode(buf)); } catch (e) { throw assetError('the plugin list', 'invalid JSON'); }
+        if (!Array.isArray(list) || !list.length) throw assetError('the plugin list', 'empty list');
+        pluginManifest = list;
+        return list;
+    }
+
+    let nativeLoad = null;
+    function ensureNativePlugins() {
+        if (global.EASNativePlugins || cfg.disableNativePlugins) return Promise.resolve();
+        if (nativeLoad) return nativeLoad;
+        nativeLoad = new Promise((resolve) => {
+            try {
+                if (typeof document === 'undefined' || !document.createElement) { resolve(); return; }
+                const s = document.createElement('script');
+                s.src = cfg.pluginDir.replace(/audacity_plugins\/$/, 'js/') + 'native-plugins.js';
+                s.onload = () => resolve();
+                s.onerror = () => { cfg.log('native plugin ports unavailable; using the emulator'); resolve(); };
+                document.head.appendChild(s);
+            } catch (e) { resolve(); }
+        });
+        return nativeLoad;
+    }
+
     async function fetchPlugin(file) {
         if (dllCache.has(file)) return dllCache.get(file);
-        const buf = new Uint8Array(await fetch(cfg.pluginDir + file).then(r => r.arrayBuffer()));
+        const buf = await fetchAsset(cfg.pluginDir + file, `plugin ${file}`);
+        if (buf.length < 64 || buf[0] !== 0x4d || buf[1] !== 0x5a) throw assetError(`plugin ${file}`, `not a Windows DLL (${buf.length} bytes)`);
         dllCache.set(file, buf);
         return buf;
     }
     const noiseCache = new Map();
     async function fetchNoise(file) {
         if (noiseCache.has(file)) return noiseCache.get(file);
-        const buf = new Uint8Array(await fetch(cfg.noiseDir + file).then(r => r.arrayBuffer()));
+        const buf = await fetchAsset(cfg.noiseDir + file, `audio file ${file}`);
+        if (buf.length < 44 || String.fromCharCode(buf[0], buf[1], buf[2], buf[3]) !== 'RIFF') throw assetError(`audio file ${file}`, `not a WAV file (${buf.length} bytes)`);
         noiseCache.set(file, buf);
         return buf;
     }
@@ -196,7 +238,7 @@
     }
     async function fetchMacroText(file) {
         if (macroTextCache.has(file)) return macroTextCache.get(file);
-        const t = await fetch(cfg.macroDir + file).then(r => r.text());
+        const t = new TextDecoder().decode(await fetchAsset(cfg.macroDir + file, `macro ${file}`));
         macroTextCache.set(file, t);
         return t;
     }
@@ -260,7 +302,10 @@
                 if (stack.length >= MACRO_MAX_DEPTH) { cfg.log(`  [skip] nested macro "${name}" (nested deeper than ${MACRO_MAX_DEPTH})`); continue; }
                 let sub;
                 try { sub = await fetchMacroText(file); }
-                catch (e) { cfg.log(`  [skip] nested macro "${name}" (fetch failed: ${(e && e.message) || e})`); continue; }
+                catch (e) {
+                    if (e && e.name === 'AssetError') throw e;
+                    cfg.log(`  [skip] nested macro "${name}" (fetch failed: ${(e && e.message) || e})`); continue;
+                }
                 cfg.log(`  [macro] expanding "${name}" -> ${file}`);
                 stack.push(key);
                 await expandMacroLines(sub, stack, out);
@@ -360,6 +405,26 @@
         return out;
     }
 
+    function nativeFor(entry) {
+        const NP = global.EASNativePlugins;
+        return !!(entry && NP && !cfg.disableNativePlugins && NP.has(entry.file));
+    }
+
+    async function runNativePlugin(file, paramStr, pcm, sr, onBlock, guard) {
+        const inst = global.EASNativePlugins.create(file, sr, paramStr);
+        const N = pcm.length, BS = cfg.block;
+        const out = new Float32Array(N);
+        const src = pcm instanceof Float32Array ? pcm : Float32Array.from(pcm);
+        let lastYield = Date.now();
+        for (let pos = 0; pos < N; pos += BS) {
+            const n = Math.min(BS, N - pos);
+            inst.process(src.subarray(pos, pos + n), out.subarray(pos, pos + n), n);
+            if (onBlock) onBlock((pos + n) / N);
+            if (Date.now() - lastYield > 30) { await yieldToUI(); lastYield = Date.now(); if (guard) guard.check(); }
+        }
+        return out;
+    }
+
     async function runLadspaPlugin(dllBytes, paramStr, pcm, sr, onBlock, guard) {
         const dp = M._malloc(dllBytes.length);
         M.HEAPU8.set(dllBytes, dp);
@@ -399,7 +464,10 @@
         return out;
     }
 
-    const PB_WARMUP = { mdacombo: 131072, roughrider2: 131072, dbluecrusher: 131072, sc4: 262144, allpassphase: 65536 };
+    const PB_WARMUP = {
+        mdacombo: 131072, roughrider2: 131072, dbluecrusher: 131072, sc4: 262144, allpassphase: 65536,
+        dustbunny: 32768, silhouette: 32768, derez: 32768, ulawencode: 4096, ulawdecode: 4096,
+    };
     let pbPool = null;
     function pbIsNode() { return typeof process !== 'undefined' && process.versions && process.versions.node && typeof window === 'undefined'; }
     function getPbPool() {
@@ -473,8 +541,11 @@
             const h = (m) => {
                 if (!m || m.type !== 'done' || m.id !== msg.id) return;
                 x.offMsg(h);
-                if (m.error) rej(new Error(`plugin worker chunk ${msg.id}: ${m.error}`));
-                else res(m);
+                if (m.error) {
+                    const err = new Error(`plugin worker chunk ${msg.id}: ${m.error}`);
+                    if (m.loadRc !== undefined) err.loadRc = m.loadRc;
+                    rej(err);
+                } else res(m);
             };
             x.onMsg(h);
             x.w.postMessage(msg, transfer);
@@ -515,6 +586,10 @@
         } catch (e) {
             terminatePluginPool();
             if (isCancelError(e)) throw e;
+            if (e && e.loadRc !== undefined) {
+                cfg.log(`  [parallel] ${cmd} plugin load failed in worker (rc=${e.loadRc}); running serially`);
+                return null;
+            }
             pbFailure = (e && e.message) || String(e);
             pbPool = false;
             cfg.log('plugin parallel failed, serial fallback for this session: ' + pbFailure);
@@ -1519,6 +1594,7 @@
         const entry = resolvePluginEntry(cmd);
         const runOne = async (chan, subReport) => {
             if (!entry) return applyBuiltin(cmd, params, chan, proj.sr);
+            if (nativeFor(entry)) return await runNativePlugin(entry.file, params, chan, proj.sr, subReport, proj.guard);
             const dllBytes = await fetchPlugin(entry.file);
             const ladspa = entry.kind === 'ladspa';
             const par = await runPluginChunked(dllBytes, params, chan, proj.sr, cmd, ladspa, proj.guard);
@@ -1531,7 +1607,7 @@
             const idx = sel[s];
             const track = proj.tracks[idx];
             const subReport = (f) => report((s + f) / sel.length);
-            if (entry) cfg.log(`  [emulated ${entry.kind === 'ladspa' ? 'LADSPA' : 'VST'}] ${entry.file}${sel.length > 1 ? ` [track ${idx}]` : ''}`);
+            if (entry) cfg.log(`  [${nativeFor(entry) ? 'native' : 'emulated'} ${entry.kind === 'ladspa' ? 'LADSPA' : 'VST'}] ${entry.file}${sel.length > 1 ? ` [track ${idx}]` : ''}`);
             if (isStereo(track)) {
                 const L = await runOne(track.L, (f) => subReport(f * 0.5));
                 const R = await runOne(track.R, (f) => subReport(0.5 + f * 0.5));
@@ -1691,9 +1767,10 @@
             if (st !== null || en !== null) {
                 const relEnd = (mgetStr(params,'RelativeTo')||'').includes('End');
                 const s = (st??0)*proj.sr, e = (en??0)*proj.sr;
-                proj.selRange = relEnd
+                const r = relEnd
                     ? [Math.max(0, Math.round(proj.length - e)), Math.max(0, Math.round(proj.length - s))]
-                    : [Math.max(0, Math.round(s)), Math.round(e)];
+                    : [Math.max(0, Math.round(s)), Math.max(0, Math.round(e))];
+                proj.selRange = r[0] <= r[1] ? r : [r[1], r[0]];
             }
             const tr = mget(params,'Track');
             if (tr !== null) { const ti = Math.round(tr); if (ti >= 0 && ti < proj.tracks.length) proj.selected = new Set([ti]); }
@@ -1719,15 +1796,27 @@
             proj.selected = new Set([0]);
             return;
         }
-        case 'Tone': case 'Chirp': {
-            const sig = genTone(params, proj.length, proj.sr);
-            for (const i of proj.selected) proj.tracks[i] = sig.slice();
-            cfg.log(`  [generator] ${cmd}`); return;
-        }
-        case 'Noise': {
-            const sig = genNoise(params, proj.length);
-            for (const i of proj.selected) proj.tracks[i] = sig.slice();
-            cfg.log(`  [generator] Noise`); return;
+        case 'Tone': case 'Chirp': case 'Noise': {
+            const make = (n) => (cmd === 'Noise' ? genNoise(params, n) : genTone(params, n, proj.sr));
+            if (!proj.selRange) {
+                const sig = make(proj.length);
+                for (const i of proj.selected) proj.tracks[i] = sig.slice();
+                cfg.log(`  [generator] ${cmd}`); return;
+            }
+            const [a, b] = proj.selRange;
+            const sig = make(Math.max(0, b - a));
+            const place = (c) => {
+                const out = c.length >= b ? c : (() => { const x = new Float32Array(b); x.set(c); return x; })();
+                out.set(sig, a);
+                return out;
+            };
+            for (const i of proj.selected) {
+                const t = proj.tracks[i];
+                proj.tracks[i] = isStereo(t) ? { L: place(t.L), R: place(t.R) } : place(t);
+            }
+            proj.length = Math.max(proj.length, b);
+            proj.selRange = null;
+            cfg.log(`  [generator] ${cmd} [${a}..${b}]`); return;
         }
         case 'Silence': {
             for (const i of proj.selected) {
@@ -1863,7 +1952,10 @@
                 proj.length = Math.max(proj.length, npcm.length);
                 proj.selRange = null;
                 cfg.log(`  [project] Import2 ${base} (${npcm.length} smp @ ${proj.sr}Hz, cropped to project)`);
-            } catch (e) { cfg.log(`  [skip] Import2 ${base} (not in ${cfg.noiseDir})`); }
+            } catch (e) {
+                if (e && e.name === 'AssetError') throw e;
+                cfg.log(`  [skip] Import2 ${base} (not in ${cfg.noiseDir})`);
+            }
             return;
         }
         if (PROJECT_NOOPS.has(cmd)) { cfg.log(`  [project-op] ${cmd}`); return; }
@@ -1874,6 +1966,8 @@
         opts = opts || {};
         const guard = makeGuard(opts.signal || null);
         await guard.race(ready());
+        await guard.race(loadPluginManifest());
+        await guard.race(ensureNativePlugins());
         const onProgress = opts.onProgress || null;
         const onStep = opts.onStep || null;
         const proj = { sr, length: pcm.length, tracks: [new Float32Array(pcm)], pans: [0], selected: new Set([0]), clipboard: null, selRange: null, undoStack: [], redoStack: [], undoEnabled: false, guard };
@@ -1924,7 +2018,7 @@
 
     global.AudacityMacroEngine = {
         config: cfg, ready, listMacros, loadMacroList, resolvePlugin, resolvePluginEntry, resetPluginPool,
-        cancel, isCancelError, pluginPoolStatus,
+        cancel, isCancelError, isAssetError, pluginPoolStatus,
         applyMacroText, applyMacroFile, fetchMacroText, expandMacroSteps, expandMacroFlat,
         registerCustomMacro, unregisterCustomMacro, listCustomMacros,
     };

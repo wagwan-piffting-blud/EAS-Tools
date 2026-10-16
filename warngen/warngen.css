@@ -66,6 +66,22 @@
     --wg-map-marine-fill: #83a59822;
     --wg-map-zone-stroke: #8f7a3f;
     --wg-map-zone-fill: #d5b06022;
+    --wg-map-state-stroke: #d5d9df;
+    --wg-map-cwa-stroke: #c9a227;
+    --wg-map-tz-stroke: #e07bb0;
+    --wg-map-interstate-stroke: #e06c5a;
+    --wg-map-highway-stroke: #b08a5c;
+    --wg-map-river-stroke: #5d9bd6;
+    --wg-map-lake-fill: #5d9bd640;
+    --wg-map-latlon-stroke: #6a7480;
+    --wg-map-label-city: #eceff3;
+    --wg-map-label-county: #a9b2bc;
+    --wg-map-label-grid: #9aa4b0;
+    --wg-map-label-halo: #14171c;
+    --wg-map-shield-i-bg: #2a5bb8;
+    --wg-map-shield-i-text: #ffffff;
+    --wg-map-shield-us-bg: #f2f2f2;
+    --wg-map-shield-us-text: #111111;
 
     --wg-overlay: rgba(0, 0, 0, 0.65);
     --wg-modal-shadow: rgba(0, 0, 0, 0.6);
@@ -300,6 +316,53 @@ body.mode-areas .leaflet-interactive {
 .meta-bar input[type="number"]:focus {
     outline: none;
     border-color: var(--wg-info);
+}
+
+.meta-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+}
+
+/* Searchable office/template pickers (assets/css/searchable-select.css), themed from the palette */
+.wg-combo {
+    --ss-bg: var(--wg-control-bg);
+    --ss-text: var(--wg-text);
+    --ss-border: var(--wg-border-strong);
+    --ss-accent: var(--wg-info);
+    --ss-accent-text: var(--wg-surface-sunken);
+    --ss-pop-bg: var(--wg-surface-panel);
+    --ss-search-bg: var(--wg-surface-sunken);
+    --ss-muted: var(--wg-text-dim);
+    --ss-font: inherit;
+    --ss-font-size: 13px;
+    --ss-btn-padding: 4px 10px;
+    min-width: 0;
+}
+
+.wg-combo .ss-combo__btn {
+    font-weight: normal;
+    border-radius: 2px;
+}
+
+.wg-combo .ss-combo__pop {
+    box-shadow: 0 8px 24px var(--wg-modal-shadow);
+}
+
+.wg-template-combo {
+    width: 340px;
+}
+
+.meta-bar .wg-combo {
+    --ss-bg: var(--wg-surface-sunken);
+    --ss-border: var(--wg-border-input);
+    --ss-font-size: 12px;
+    --ss-btn-padding: 2px 6px;
+}
+
+.wg-office-combo {
+    width: 240px;
 }
 
 .meta-note {
@@ -1112,6 +1175,16 @@ body:not(.iw-mode) #iw-panel,
         overflow-x: hidden;
     }
 
+    .wg-template-combo,
+    .wg-office-combo {
+        width: auto;
+        flex: 1 1 200px;
+    }
+
+    .meta-field {
+        flex: 1 1 260px;
+    }
+
     #map,
     .output-pane,
     .impacted-bar,
@@ -1233,6 +1306,22 @@ body:not(.iw-mode) #iw-panel,
         --wg-map-marine-fill: #2a6b5b33;
         --wg-map-zone-stroke: #6d5730;
         --wg-map-zone-fill: #8a610033;
+        --wg-map-state-stroke: #30353c;
+        --wg-map-cwa-stroke: #8f6400;
+        --wg-map-tz-stroke: #a8326e;
+        --wg-map-interstate-stroke: #c0392b;
+        --wg-map-highway-stroke: #8a5a2b;
+        --wg-map-river-stroke: #2f6fb3;
+        --wg-map-lake-fill: #2f6fb340;
+        --wg-map-latlon-stroke: #8c939c;
+        --wg-map-label-city: #1b1d21;
+        --wg-map-label-county: #4f5761;
+        --wg-map-label-grid: #4f5761;
+        --wg-map-label-halo: #ffffff;
+        --wg-map-shield-i-bg: #1f4fa8;
+        --wg-map-shield-i-text: #ffffff;
+        --wg-map-shield-us-bg: #ffffff;
+        --wg-map-shield-us-text: #111111;
 
         --wg-overlay: rgba(0, 0, 0, 0.45);
         --wg-modal-shadow: rgba(0, 0, 0, 0.2);
@@ -1248,10 +1337,112 @@ html.wg-satellite {
     --wg-map-issued-stroke: #8fb4ff;
     --wg-map-marine-stroke: #7fd6d9;
     --wg-map-zone-stroke: #f0cc70;
+    --wg-map-state-stroke: #ffffff;
+    --wg-map-cwa-stroke: #ffd24a;
+    --wg-map-tz-stroke: #ff8fd1;
+    --wg-map-interstate-stroke: #ff6b5a;
+    --wg-map-highway-stroke: #f0c27a;
+    --wg-map-river-stroke: #7fc4ff;
+    --wg-map-lake-fill: #7fc4ff33;
+    --wg-map-latlon-stroke: #c8d0da;
 }
 
 html.wg-satellite #map {
     background: #1b2430;
+}
+
+.wg-map-labels {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+
+.wg-map-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    white-space: nowrap;
+    font: 600 11px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--wg-map-label-city);
+    text-shadow: 0 0 2px var(--wg-map-label-halo), 0 0 2px var(--wg-map-label-halo), 0 0 3px var(--wg-map-label-halo);
+}
+
+.wg-map-label-dot::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    margin-right: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0 1px var(--wg-map-label-halo);
+    vertical-align: middle;
+}
+
+.wg-map-label-county {
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: 0.02em;
+    color: var(--wg-map-label-county);
+}
+
+.wg-map-label-grid {
+    font-weight: 400;
+    font-size: 10px;
+    color: var(--wg-map-label-grid);
+}
+
+.wg-map-label-shield-i,
+.wg-map-label-shield-us,
+.wg-map-label-shield-state {
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    text-shadow: none;
+}
+
+.wg-map-label-shield-i {
+    background: var(--wg-map-shield-i-bg);
+    color: var(--wg-map-shield-i-text);
+    box-shadow: inset 0 2px 0 #c8312a;
+}
+
+.wg-map-label-shield-us,
+.wg-map-label-shield-state {
+    background: var(--wg-map-shield-us-bg);
+    color: var(--wg-map-shield-us-text);
+    box-shadow: inset 0 0 0 1px var(--wg-map-shield-us-text);
+}
+
+.wg-map-label-shield-state {
+    border-radius: 8px;
+}
+
+html.wg-satellite .wg-map-label {
+    color: #ffffff;
+    text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 3px #000;
+}
+
+html.wg-satellite .wg-map-label-county,
+html.wg-satellite .wg-map-label-grid {
+    color: #dfe5ec;
+}
+
+html.wg-satellite .wg-map-label-dot::before {
+    box-shadow: 0 0 0 1px #000;
+}
+
+html.wg-satellite .wg-map-label-shield-i,
+html.wg-satellite .wg-map-label-shield-us,
+html.wg-satellite .wg-map-label-shield-state {
+    text-shadow: none;
+}
+
+html.wg-satellite .wg-map-label-shield-us,
+html.wg-satellite .wg-map-label-shield-state {
+    color: #111111;
 }
 
 /* Reduced motion */

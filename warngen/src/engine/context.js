@@ -268,8 +268,108 @@
             dateUtil:    renderDateUtil,
             timeFormat:  Utils.timeFormat,
             list:        Utils.list,
-            mathUtil:    Utils.mathUtil
+            mathUtil:    Utils.mathUtil,
+            hazSimp:     makeHazSimp(renderDateUtil)
         };
+    }
+
+    // Hazard Services' hydro WHERE and headline wording, for the templates' hazard
+    // simplification (WHAT/WHERE/WHEN) layout.
+    var HS_SPECIAL_REGIONS = {
+        BB: "Big Bend", CP: "central Panhandle", DS: "Deep South", EP: "eastern Panhandle",
+        ER: "east central Upper", EU: "eastern Upper", MI: "Middle", NP: "northern Panhandle",
+        NR: "north central Upper", PA: "the Panhandle of", PD: "the Piedmont of", SP: "southern Panhandle",
+        SR: "south central Upper", UP: "Upstate", WP: "western Panhandle", WU: "western Upper",
+        NN: "north", NE: "northeast", EE: "east", SE: "southeast", SS: "south", SW: "southwest", WW: "west",
+        NW: "northwest", EA: "east", NO: "north", SO: "south", WE: "west", WS: "southwest", ES: "southeast",
+        WN: "northwest", EN: "northeast", NC: "north central", EC: "east central", WC: "west central",
+        SC: "south central", CC: "central"
+    };
+    var HS_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+    function hsDirections(set, ern) {
+        set = (set || []).map(function (d) { return String(d).toUpperCase(); });
+        if (set.length === 1 && HS_SPECIAL_REGIONS[set[0]]) return HS_SPECIAL_REGIONS[set[0]];
+        var w = (set.indexOf("NORTH") !== -1 ? "north" : (set.indexOf("SOUTH") !== -1 ? "south" : ""))
+            + (set.indexOf("EAST") !== -1 ? "east" : (set.indexOf("WEST") !== -1 ? "west" : ""));
+        if (set.indexOf("CENTRAL") !== -1) return w ? w + " central" : "central";
+        return w && ern ? w + "ern" : w;
+    }
+
+    function hsList(items) {
+        if (items.length < 2) return items.join("");
+        return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+    }
+
+    function makeHazSimp(dateUtil) {
+        return {
+            /** "715 PM CDT this evening", the expire time as the headline gives it. */
+            until: function (expire, now, tz) {
+                function f(d, fmt, round) { return round ? dateUtil.format(d, fmt, 15, tz) : dateUtil.format(d, fmt, tz); }
+                function day(d, round) {
+                    var s = f(d, "yyyyMMdd", round);
+                    return Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)) / 86400000;
+                }
+                var h = f(expire, "h", true), mm = f(expire, "mm", true), ap = f(expire, "a", true);
+                var hm = +f(expire, "H", true) * 60 + +mm;
+                var time = mm !== "00" ? h + mm + " " + ap : (h !== "12" ? h + " " + ap : (ap === "PM" ? "noon" : "midnight"));
+                var diff = day(expire, true) - day(now, false);
+                var dow = HS_DAYS.indexOf(f(expire, "EEEE", true));
+                var words;
+                if (diff <= 0) {
+                    words = hm <= 360 ? "early this morning" : (hm < 720 ? "this morning"
+                        : (hm === 720 ? "today" : (hm < 1080 ? "this afternoon" : "this evening")));
+                } else if (hm === 0) {
+                    words = diff === 1 ? "tonight" : HS_DAYS[(dow + 6) % 7] + " night";
+                } else {
+                    words = HS_DAYS[dow];
+                }
+                return time + " " + f(expire, "z", true) + " " + words;
+            },
+            /**
+             * "A portion of northeast Missouri, including the following county, Ralls." The
+             * noun is "county" in a new product and "area" in a cancellation or expiration,
+             * where the phrase runs on from "is cancelled for" in lower case.
+             */
+            where: function (areas, noun, lower) {
+                var s = whereText(areas, noun);
+                return lower ? s.charAt(0).toLowerCase() + s.slice(1) : s;
+            }
+        };
+
+        function whereText(areas, noun) {
+            var groups = [];
+            var byKey = {};
+            var parishes = 0;
+            (areas || []).forEach(function (a) {
+                var region = hsDirections(a.partOfParentRegion, false);
+                var label = (region ? region + " " : "") + (a.parentRegion || "");
+                if (!byKey[label]) {
+                    byKey[label] = { label: label, state: a.parentRegion, region: region, names: [] };
+                    groups.push(byKey[label]);
+                }
+                var part = hsDirections(a.partOfArea, true);
+                byKey[label].names.push((part ? part + " " : "") + a.name);
+                if (a.stateabbr === "LA") parishes++;
+            });
+            var count = (areas || []).length;
+            var kind = noun === "area" ? ["area", "areas"]
+                : (parishes === count ? ["parish", "parishes"] : (parishes ? ["county", "counties and parishes"] : ["county", "counties"]));
+            var lead = "including the following " + (count === 1 ? kind[0] : kind[1]) + ", ";
+            if (groups.length === 1) return "A portion of " + groups[0].label + ", " + lead + hsList(groups[0].names) + ".";
+            var states = [];
+            var regions = {};
+            groups.forEach(function (g) {
+                if (!regions[g.state]) { regions[g.state] = []; states.push(g.state); }
+                if (g.region) regions[g.state].push(g.region);
+            });
+            var summary = hsList(states.map(function (s) {
+                return (regions[s].length ? hsList(regions[s]) + " " : "") + s;
+            }));
+            return "Portions of " + summary + ", " + lead + groups.map(function (g, i) {
+                return (i === 0 ? "in " : "In ") + g.label + ", " + hsList(g.names) + ".";
+            }).join(" ");
+        }
     }
 
     var STATE_NAMES = {

@@ -114,11 +114,74 @@ async function initCrawlEditor() {
         'easyplus_gray': { topLeft: { x: 0, y: 720 } },
         'easyplus_gray_2plus': { topLeft: { x: 0, y: 820 } },
         'dasdec': { topLeft: { x: 9999, y: 9999 } },
+        'dasdec_black': { topLeft: { x: 9999, y: 9999 } },
+        'dasdec_blue': { topLeft: { x: 9999, y: 9999 } },
         'eas_1cg': { topLeft: { x: 9999, y: 9999 } },
         'atari_800xl': { topLeft: { x: 9999, y: 9999 } }
     });
 
     const DASDEC_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
+    const DASDEC_SAFE_MARGIN = 16;
+    const DASDEC_LEGACY_COLUMNS = 35;
+    const DASDEC_TITLE_LINE = 'Emergency Alert System';
+    const DASDEC_STYLES = Object.freeze({
+        dasdec: Object.freeze({
+            backgroundImage: 'assets/screens/dasdec.png',
+            backgroundColor: '#454563',
+            fontFamily: 'Luxi Mono',
+            fontSize: 25,
+            tracking: 0,
+            wrap: 'width',
+            columns: 0,
+            wrapWidth: 576,
+            title: '',
+            bodyLines: 10,
+            titleY: 35,
+            bodyY: 79,
+            lineHeight: 34,
+            counterY: 427,
+            textBaseline: 'alphabetic',
+            flowingText: true
+        }),
+        dasdec_black: Object.freeze({
+            backgroundImage: '',
+            backgroundColor: '#000000',
+            fontFamily: 'Luxi Mono',
+            fontSize: 25,
+            tracking: 0,
+            wrap: 'columns',
+            columns: 36,
+            wrapWidth: 0,
+            title: DASDEC_TITLE_LINE,
+            bodyLines: 11,
+            titleY: 77,
+            bodyY: 112,
+            lineHeight: 30,
+            counterY: 450,
+            flowingText: true
+        }),
+        dasdec_blue: Object.freeze({
+            backgroundImage: '',
+            backgroundColor: '#0000FF',
+            fontFamily: 'Arial Bold',
+            fontSize: 25,
+            tracking: 0,
+            wrap: 'width',
+            columns: 0,
+            wrapWidth: 576,
+            title: DASDEC_TITLE_LINE,
+            bodyLines: 12,
+            titleY: 33,
+            bodyY: 77,
+            lineHeight: 31,
+            counterY: 453,
+            flowingText: true
+        })
+    });
+
+    function isDasdecSource(source) {
+        return typeof source === 'string' && Object.prototype.hasOwnProperty.call(DASDEC_STYLES, source);
+    }
     const EAS_1CG_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
     const EAS_1CG_BACKGROUND_COLOR = '#545454';
     const EAS_1CG_TEXT_COLOR = '#FFFFFF';
@@ -2769,6 +2832,40 @@ async function initCrawlEditor() {
         return { type, source };
     }
 
+    const ALERT_PICKER_SOURCES = new Set(['easyplus', 'easyplus_gray', 'atari_800xl']);
+
+    function premadeUsesAlertPickers(value) {
+        const descriptor = parseBackgroundSelectionValue(value);
+        if (!descriptor) {
+            return false;
+        }
+        return descriptor.type === SCREEN_TYPE || ALERT_PICKER_SOURCES.has(descriptor.source);
+    }
+
+    function syncEasyplusSettingsVisibility(value) {
+        const settings = document.getElementById('easyplusSettings');
+        if (!settings) {
+            return;
+        }
+        settings.style.display = premadeUsesAlertPickers(value) ? 'block' : 'none';
+    }
+
+    let alertPickersSuppressed = false;
+
+    function readAlertPickerChoice() {
+        if (alertPickersSuppressed) {
+            return { originator: '', eventCode: '' };
+        }
+        const read = (id) => {
+            const node = document.getElementById(id);
+            return node && typeof node.value === 'string' ? node.value.trim() : '';
+        };
+        return {
+            originator: read('easyplusOriginator'),
+            eventCode: read('easyplusEventCode')
+        };
+    }
+
     function setNumericInputValue(id, value, options = {}) {
         const input = document.getElementById(id);
         if (!input || !Number.isFinite(value)) {
@@ -2960,7 +3057,7 @@ async function initCrawlEditor() {
             initialTopLeft = getPremadeTopLeft(descriptor.source);
         }
 
-        if (descriptor.source === 'dasdec') {
+        if (isDasdecSource(descriptor.source)) {
             updateCrawlControlsFromAsset({
                 width: DASDEC_RENDER_DIMENSIONS.width,
                 height: DASDEC_RENDER_DIMENSIONS.height,
@@ -3175,11 +3272,93 @@ async function initCrawlEditor() {
         return img;
     }
 
-    function formatDasdecPages(rawText) {
-        const maxLineLength = 35;
-        const maxLinesPerPage = 14;
+    function dasdecStyleFor(source) {
+        return isDasdecSource(source) ? DASDEC_STYLES[source] : DASDEC_STYLES.dasdec;
+    }
 
-        const lines = rawText.replace(/; /g, ';\n').split('\n');
+    function dasdecFont(style, fontSize) {
+        const family = /[^a-zA-Z0-9_-]/.test(style.fontFamily)
+            ? `"${style.fontFamily.replace(/(["\\])/g, '\\$1')}"`
+            : style.fontFamily;
+        return `normal ${fontSize}px ${family}`;
+    }
+
+    function measureTrackedText(ctx, text, spacing) {
+        if ('letterSpacing' in ctx) {
+            ctx.letterSpacing = '0px';
+        }
+        const glyphCount = Array.from(text).length;
+        if (!glyphCount) {
+            return 0;
+        }
+        return ctx.measureText(text).width + spacing * (glyphCount - 1);
+    }
+
+    function drawTrackedText(ctx, text, centerX, y, spacing) {
+        const value = String(text ?? '');
+        if (!value) {
+            return;
+        }
+        let x = centerX - measureTrackedText(ctx, value, spacing) / 2;
+        ctx.textAlign = 'left';
+        if (!spacing) {
+            ctx.fillText(value, x, y);
+            return;
+        }
+        if ('letterSpacing' in ctx) {
+            ctx.letterSpacing = `${spacing}px`;
+            ctx.fillText(value, x, y);
+            ctx.letterSpacing = '0px';
+            return;
+        }
+        for (const glyph of value) {
+            ctx.fillText(glyph, x, y);
+            x += ctx.measureText(glyph).width + spacing;
+        }
+    }
+
+    let dasdecMeasureContext = null;
+
+    async function createDasdecMeasure(style, fontSize) {
+        const font = dasdecFont(style, fontSize);
+        await ensureFontsReady();
+        await document.fonts.load(font);
+        if (!dasdecMeasureContext) {
+            dasdecMeasureContext = document.createElement('canvas').getContext('2d');
+        }
+        const ctx = dasdecMeasureContext;
+        const spacing = fontSize * style.tracking;
+        return (text) => {
+            ctx.font = font;
+            return measureTrackedText(ctx, String(text ?? ''), spacing);
+        };
+    }
+
+    async function dasdecLineFits(style) {
+        const measure = await createDasdecMeasure(style, style.fontSize);
+        if (style.wrap === 'width') {
+            return (line) => measure(line) <= style.wrapWidth;
+        }
+        let columns = style.columns;
+        if (!columns) {
+            const spacing = style.fontSize * style.tracking;
+            const safeWidth = DASDEC_RENDER_DIMENSIONS.width - DASDEC_SAFE_MARGIN * 2;
+            const advance = measure('M');
+            columns = advance > 0
+                ? Math.max(1, Math.floor((safeWidth + spacing) / (advance + spacing)))
+                : DASDEC_LEGACY_COLUMNS;
+        }
+        return (line) => line.length <= columns;
+    }
+
+    function formatDasdecPages(rawText, options = {}) {
+        const fits = typeof options.fits === 'function'
+            ? options.fits
+            : (line) => line.length <= DASDEC_LEGACY_COLUMNS;
+        const bodyLines = Math.max(1, Math.round(options.bodyLines || 13));
+        const title = options.title || '';
+
+        const lines = String(rawText ?? '').replace(/; /g, ';\n').split('\n');
         const formattedLines = [];
 
         lines.forEach((line) => {
@@ -3187,8 +3366,9 @@ async function initCrawlEditor() {
             let currentLine = '';
 
             words.forEach((word) => {
-                if ((currentLine.length + word.length + 1) <= maxLineLength) {
-                    currentLine += (currentLine ? ' ' : '') + word;
+                const candidate = currentLine ? `${currentLine} ${word}` : word;
+                if (!currentLine || fits(candidate)) {
+                    currentLine = candidate;
                 } else {
                     formattedLines.push(currentLine);
                     currentLine = word;
@@ -3201,12 +3381,15 @@ async function initCrawlEditor() {
         });
 
         const pages = [];
-        const totalPages = Math.ceil(formattedLines.length / (maxLinesPerPage - 1));
+        const totalPages = Math.ceil(formattedLines.length / bodyLines);
 
-        for (let i = 0; i < formattedLines.length; i += (maxLinesPerPage - 1)) {
-            const pageContent = formattedLines.slice(i, i + (maxLinesPerPage - 1));
-            while (pageContent.length < (maxLinesPerPage - 1)) {
+        for (let i = 0; i < formattedLines.length; i += bodyLines) {
+            const pageContent = formattedLines.slice(i, i + bodyLines);
+            while (pageContent.length < bodyLines) {
                 pageContent.push('');
+            }
+            if (title) {
+                pageContent.unshift(title);
             }
             pageContent.push(`${pages.length + 1}/${totalPages}`);
             pages.push(pageContent);
@@ -3215,7 +3398,8 @@ async function initCrawlEditor() {
         return pages;
     }
 
-    async function formatDasdec(rawHeader, e2tMode) {
+    async function formatDasdec(rawHeader, e2tMode, source) {
+        const style = isDasdecSource(source) ? DASDEC_STYLES[source] : null;
         let fullText = '';
 
         if (e2tMode === true) {
@@ -3237,7 +3421,13 @@ async function initCrawlEditor() {
                 const endTime = (dasdecMatch[6] || '').trim().toUpperCase();
                 const sender = (dasdecMatch[7] || '').trim().toUpperCase();
 
-                fullText = `${originator}\nhas issued ${article} ${event}\nfor the following counties or areas:\n${fips}\nat ${startTime}\non ${date}\nEffective until ${endTime}.\nMessage from ${sender}.`;
+                if (style && style.flowingText) {
+                    const issuer = (dasdecMatch[1] || '').trim();
+                    const senderText = (dasdecMatch[7] || '').trim();
+                    fullText = `${issuer} has issued ${article} ${event} for the following counties or areas:\n${fips}\nat ${startTime}\non ${date}\nEffective until ${endTime}.\nMessage from ${senderText}.`;
+                } else {
+                    fullText = `${originator}\nhas issued ${article} ${event}\nfor the following counties or areas:\n${fips}\nat ${startTime}\non ${date}\nEffective until ${endTime}.\nMessage from ${sender}.`;
+                }
             } else {
                 fullText = formattedText;
             }
@@ -3247,12 +3437,19 @@ async function initCrawlEditor() {
             fullText = rawHeader;
         }
 
-        const pages = formatDasdecPages(fullText);
-        return pages;
+        if (!style) {
+            return formatDasdecPages(fullText);
+        }
+
+        return formatDasdecPages(fullText, {
+            fits: await dasdecLineFits(style),
+            bodyLines: style.bodyLines,
+            title: style.title
+        });
     }
 
-    async function formatDasdecEAS2Text(rawHeader) {
-        const pages = await formatDasdec(rawHeader, true);
+    async function formatDasdecEAS2Text(rawHeader, source) {
+        const pages = await formatDasdec(rawHeader, true, source);
         if (!Array.isArray(pages)) {
             return [];
         }
@@ -3262,45 +3459,66 @@ async function initCrawlEditor() {
             .filter((page) => page.length);
     }
 
-    async function generateDasdecScreenImage(headerText) {
+    const dasdecBackgroundImages = new Map();
+
+    function loadDasdecBackgroundImage(src) {
+        if (!src) {
+            return Promise.resolve(null);
+        }
+        if (!dasdecBackgroundImages.has(src)) {
+            dasdecBackgroundImages.set(src, loadImageFromSource(src).then((img) => {
+                if (!img) {
+                    dasdecBackgroundImages.delete(src);
+                }
+                return img;
+            }));
+        }
+        return dasdecBackgroundImages.get(src);
+    }
+
+    async function generateDasdecScreenImage(pageLines, source) {
+        const style = dasdecStyleFor(source);
         const canvas = document.createElement('canvas');
         canvas.width = DASDEC_RENDER_DIMENSIONS.width;
         canvas.height = DASDEC_RENDER_DIMENSIONS.height;
         const ctx = canvas.getContext('2d');
-
-        ctx.fillStyle = '#2e3251';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.strokeStyle = '#7a2f4c';
         const verticalScale = canvas.height / 480;
-        ctx.lineWidth = Math.max(1, Math.round(10 * verticalScale));
-        ctx.strokeRect(0, 0, canvas.width, canvas.height);
 
-        const fontSize = Math.max(8, Math.round(28 * verticalScale));
-        const fontStyle = 'normal';
-        const fontFamily = 'Luxi Mono';
-        const sanitizedFontFamily = /[^a-zA-Z0-9_-]/.test(fontFamily)
-            ? `"${fontFamily.replace(/(["\\])/g, '\\$1')}"`
-            : fontFamily;
-        const font = `${fontStyle} ${fontSize}px ${sanitizedFontFamily}`;
+        ctx.fillStyle = style.backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const background = await loadDasdecBackgroundImage(style.backgroundImage);
+        if (background) {
+            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+        }
 
-        await ensureFontsReady();
+        const lines = (Array.isArray(pageLines) ? pageLines.flat() : [pageLines]).map((line) => String(line ?? ''));
+        const title = style.title && lines.length > 1 ? lines[0] : '';
+        const body = lines.slice(style.title ? 1 : 0, Math.max(0, lines.length - 1));
+        const counter = lines.length ? lines[lines.length - 1] : '';
+
+        const safeWidth = canvas.width - DASDEC_SAFE_MARGIN * 2;
+        let fontSize = Math.max(8, style.fontSize * verticalScale);
+        const measure = await createDasdecMeasure(style, fontSize);
+        const widest = lines.reduce((max, line) => Math.max(max, measure(line)), 0);
+        if (widest > safeWidth) {
+            fontSize = Math.max(8, Math.floor(fontSize * (safeWidth / widest) * 100) / 100);
+        }
+        const font = dasdecFont(style, fontSize);
         await document.fonts.load(font);
+        const spacing = fontSize * style.tracking;
 
         ctx.font = font;
-        ctx.textBaseline = 'middle';
-        ctx.textAlign = 'center';
-
-        const lines = headerText.flat();
-        const lineHeight = fontSize + Math.max(1, Math.round(4 * verticalScale));
-        let y = Math.max(0, Math.round(10 * verticalScale));
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textBaseline = style.textBaseline || 'middle';
 
         const centerX = canvas.width / 2;
-        lines.forEach((line) => {
-            const textY = y + lineHeight / 2;
-            ctx.fillText(line, centerX, textY);
-            y += lineHeight;
+        if (title) {
+            drawTrackedText(ctx, title, centerX, style.titleY * verticalScale, spacing);
+        }
+        body.forEach((line, index) => {
+            drawTrackedText(ctx, line, centerX, (style.bodyY + index * style.lineHeight) * verticalScale, spacing);
         });
+        drawTrackedText(ctx, counter, centerX, style.counterY * verticalScale, spacing);
 
         const img = new Image();
         img.src = canvas.toDataURL('image/png');
@@ -3578,7 +3796,7 @@ async function initCrawlEditor() {
         return detail.endsOnStartDay ? time : `${time} ${detail.endDateText}`;
     }
 
-    async function formatAtari(rawHeader, e2tMode) {
+    async function formatAtari(rawHeader, e2tMode, alertChoice) {
         const source = String(rawHeader ?? '').trim();
 
         if (e2tMode === true) {
@@ -3596,6 +3814,22 @@ async function initCrawlEditor() {
             } catch (error) {
                 console.error('Failed to parse the EAS header for the Atari 800XL screen:', error);
             }
+        }
+
+        const pickedEventCode = e2tMode !== true && alertChoice ? String(alertChoice.eventCode || '').trim() : '';
+        const pickedEventName = pickedEventCode ? mapEasyplusEventCodeToFullName(pickedEventCode) : '';
+        if (pickedEventName) {
+            const pickedOriginator = String(alertChoice.originator || '').trim();
+            const originatorName = pickedOriginator
+                ? mapEasyplusOriginatorToFullName(pickedOriginator).replace(/A Primary/gi, 'Primary').trim()
+                : '';
+            return {
+                eventText: atariEventText(pickedEventName),
+                severity: atariSeverityFor(pickedEventName),
+                areaText: ATARI_GENERIC_AREA,
+                untilText: ATARI_INDEFINITE,
+                senderText: (crawlSenderOverride() || originatorName).toUpperCase()
+            };
         }
 
         const fallbackEvent = atariEventText(source);
@@ -3665,6 +3899,32 @@ async function initCrawlEditor() {
             } catch (error) {
                 console.error('Failed to parse the EAS header for the custom screen:', error);
             }
+        }
+
+        const picked = headerMode ? null : readAlertPickerChoice();
+        const pickedEventCode = picked ? picked.eventCode.toUpperCase() : '';
+        const pickedEvent = pickedEventCode ? stripArticle(mapEasyplusEventCodeToFullName(pickedEventCode)) : '';
+        if (pickedEvent) {
+            const originatorCode = picked.originator.toUpperCase();
+            const originator = originatorCode
+                ? mapEasyplusOriginatorToFullName(originatorCode).replace(/A Primary/gi, 'Primary').trim()
+                : '';
+            return {
+                EVENT: pickedEvent,
+                EVENT_CODE: pickedEventCode,
+                ARTICLE: screenArticle(pickedEvent),
+                ORIGINATOR: originator,
+                ORIGINATOR_CODE: originatorCode,
+                LOCATIONS: 'Your Area',
+                START: '',
+                END: '',
+                END_DATE: '',
+                UNTIL: 'Further Notice',
+                SENDER: crawlSenderOverride() || '',
+                HEADLINE: pickedEventCode === 'EAN' || pickedEventCode === 'EAT' ? 'NATIONAL ALERT' : 'EMERGENCY ALERT SYSTEM',
+                TEXT: crawlText,
+                SEVERITY: atariSeverityFor(pickedEvent)
+            };
         }
 
         const fallbackEvent = collapse(headerMode ? rawHeader : crawlText);
@@ -3827,16 +4087,11 @@ async function initCrawlEditor() {
             if (premadeSelect) {
                 const descriptor = parseBackgroundSelectionValue(premadeSelect.value);
                 if (descriptor) {
-                    if (descriptor.source !== 'dasdec') {
+                    if (!isDasdecSource(descriptor.source)) {
                         stopDasdecRotationState();
                     }
 
-                    if (descriptor.source !== 'easyplus' && descriptor.source !== 'easyplus_gray') {
-                        const easyplusSettings = document.getElementById('easyplusSettings');
-                        if (easyplusSettings) {
-                            easyplusSettings.style.display = 'none';
-                        }
-                    }
+                    syncEasyplusSettingsVisibility(premadeSelect.value);
 
                     if (descriptor.type === SCREEN_TYPE) {
                         const screen = getScreen(descriptor.source);
@@ -3917,8 +4172,6 @@ async function initCrawlEditor() {
                     }
 
                     else if (descriptor.source === 'easyplus') {
-                        const easyplusSettings = document.getElementById('easyplusSettings');
-                        easyplusSettings.style.display = 'block';
                         const originator = document.getElementById('easyplusOriginator').value;
                         const eventCode = document.getElementById('easyplusEventCode').value;
                         const media = await generateEasyPlusBackgroundImage('mode1', originator, eventCode);
@@ -3936,14 +4189,14 @@ async function initCrawlEditor() {
                         }
                     }
 
-                    else if (descriptor.source === 'dasdec') {
+                    else if (isDasdecSource(descriptor.source)) {
                         stopDasdecRotationState();
                         window.__dasdecBackground = null;
                         const rawHeader = document.getElementById('crawlMode').value === "header" ? document.getElementById('crawlRawHeader').value : document.getElementById('crawlText').value;
-                        let pages = await formatDasdec(rawHeader, document.getElementById('crawlMode').value === "header" ? true : false);
+                        let pages = await formatDasdec(rawHeader, document.getElementById('crawlMode').value === "header" ? true : false, descriptor.source);
                         pages = Array.isArray(pages) ? pages : [];
 
-                        const renderedPages = (await Promise.all(pages.map((page) => generateDasdecScreenImage(page)))).filter(Boolean);
+                        const renderedPages = (await Promise.all(pages.map((page) => generateDasdecScreenImage(page, descriptor.source)))).filter(Boolean);
 
                         if (renderedPages.length) {
                             const rotationDelayMs = 4000;
@@ -4016,7 +4269,7 @@ async function initCrawlEditor() {
                         const rawHeader = crawlModeValue === 'header'
                             ? document.getElementById('crawlRawHeader').value
                             : document.getElementById('crawlText').value;
-                        const model = await formatAtari(rawHeader, crawlModeValue === 'header');
+                        const model = await formatAtari(rawHeader, crawlModeValue === 'header', readAlertPickerChoice());
                         const frames = (await Promise.all([
                             generateAtariScreenImage(model, { showEvent: true }),
                             generateAtariScreenImage(model, { showEvent: false })
@@ -4188,7 +4441,7 @@ async function initCrawlEditor() {
             : null;
         const source = descriptor ? descriptor.source : '';
         const isScreen = Boolean(descriptor && descriptor.type === SCREEN_TYPE);
-        const usesCrawlText = isScreen || source === 'dasdec' || source === 'eas_1cg' || source === 'atari_800xl';
+        const usesCrawlText = isScreen || isDasdecSource(source) || source === 'eas_1cg' || source === 'atari_800xl';
         const screen = isScreen ? getScreen(source) : null;
         return [
             controls.crawlBackgroundMode,
@@ -4560,10 +4813,11 @@ async function initCrawlEditor() {
         const backgroundModeSelect = document.getElementById('crawlBackgroundMode');
         const premadeSelect = document.getElementById('crawlBackgroundPremadeSelect');
         const usingHeaderMode = crawlModeSelect && crawlModeSelect.value === 'header';
+        const premadeDescriptor = premadeSelect ? parseBackgroundSelectionValue(premadeSelect.value) : null;
+        const dasdecSource = premadeDescriptor && isDasdecSource(premadeDescriptor.source) ? premadeDescriptor.source : '';
         const usingDasdecBackground = backgroundModeSelect
             && backgroundModeSelect.value === 'premade'
-            && premadeSelect
-            && premadeSelect.value.includes('dasdec');
+            && Boolean(dasdecSource);
         const usingEas1cgBackground = backgroundModeSelect
             && backgroundModeSelect.value === 'premade'
             && premadeSelect
@@ -4599,7 +4853,7 @@ async function initCrawlEditor() {
                 return;
             }
             try {
-                const pages = await formatDasdecEAS2Text(rawHeader);
+                const pages = await formatDasdecEAS2Text(rawHeader, dasdecSource);
                 if (Array.isArray(pages) && pages.length) {
                     const formattedPages = pages.map((page) => {
                         if (Array.isArray(page)) {
@@ -4644,7 +4898,7 @@ async function initCrawlEditor() {
                 return;
             }
             try {
-                const model = await formatAtari(rawHeader, usingHeaderMode);
+                const model = await formatAtari(rawHeader, usingHeaderMode, readAlertPickerChoice());
                 const screenLines = formatAtariScreenLines(model);
                 if (screenLines.length) {
                     textToCopy = screenLines.join('\n').trim();
@@ -5355,12 +5609,7 @@ async function initCrawlEditor() {
     }
 
     document.getElementById('crawlBackgroundPremadeSelect').addEventListener('change', (event) => {
-        const easyplusSettings = document.getElementById('easyplusSettings');
-        if (event.target.value.includes('easyplus')) {
-            easyplusSettings.style.display = 'block';
-        } else {
-            easyplusSettings.style.display = 'none';
-        }
+        syncEasyplusSettingsVisibility(event.target.value);
     });
 
     document.getElementById('crawlBackgroundPremadeSelect').dispatchEvent(new Event('change', { bubbles: true }));
@@ -5464,7 +5713,7 @@ async function initCrawlEditor() {
     bootstrapCrawl();
 
     if (window.EASBridge) {
-        const PREMADE_STATIC_SOURCES = new Set(['dasdec', 'eas_1cg']);
+        const PREMADE_STATIC_SOURCES = new Set(['dasdec', 'dasdec_black', 'dasdec_blue', 'eas_1cg']);
         function sendEndecModesToNative() {
             const modes = allEndecModes().filter((mode) => mode.toLowerCase() !== 'json');
             const modeList = [{ value: '', label: 'None (Default)' }];
@@ -5526,7 +5775,13 @@ async function initCrawlEditor() {
                 setVal('easyplusEventCode', params?.easyplusEventCode);
                 setVal('crawlRepetitions', params?.repetitions);
 
-                const assets = await loadCrawlBackgroundAssets('premade');
+                alertPickersSuppressed = params?.alertPickers !== true;
+                let assets;
+                try {
+                    assets = await loadCrawlBackgroundAssets('premade');
+                } finally {
+                    alertPickersSuppressed = false;
+                }
                 const descriptor = parseBackgroundSelectionValue(premade);
                 const source = descriptor ? descriptor.source : '';
 

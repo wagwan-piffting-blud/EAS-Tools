@@ -1,5 +1,40 @@
 # EAS Tools Changelog
 
+2026-10-16:
+
+- Implement the suggestions in GitHub issue #126, which include adding searching of WarnGen office and templates, searching of counties in the encoder, and the option to save generated radar images locally as a PNG or SVG. Added more DASDEC screen variants and made it more accurate to real hardware. Thanks to GitHub user @InternOfCEOs for suggesting these changes.
+
+- Also tackle issue #131, meaning that pre-roll and post-roll audio options are now available in the encoder. Again, thank you to GitHub user @InternOfCEOs for suggesting this change.
+
+- Update spfy wasm build to version 2026.10.15.
+
+- Add native handling of some Audacity plugins that were previously handled by DLLs. This change improves the performance and reliability of the audio splicer tool, as it allows for more efficient processing of audio files and reduces the likelihood of the macro taking longer than usual to complete. The following Audacity plugins are now handled natively:
+  - mda Combo
+  - mda Degrade
+  - mda De-ess
+  - mda Overdrive
+  - mda TalkBox
+  - Airwindows Silhouette
+  - Airwindows DustBunny
+  - Airwindows DeRez
+  - Airwindows uLawEncode
+  - Airwindows uLawDecode
+  - Steve Harris' chebstortion
+
+- WarnGen now has more mapping layers. Thanks to Discord user ectransit for the suggestion. You can now choose to include or exclude the following layers when making a WarnGen alert (to help place the alert "in context" with the surrounding area):
+  - Satellite imagery
+  - State lines
+  - CWA lines
+  - County names
+  - City locations
+  - Interstates
+  - Highways
+  - Time zones
+  - Rivers/Lakes
+  - Lat/lon grid
+
+---
+
 2026-10-10:
 
 - Update documentation slightly. Nothing major.

@@ -165,6 +165,37 @@
   #set ($report = "gauge reports indicated !**EVENT TYPE**!." )
 #end
 ### GP end
+#set($hsOn = $bullets.contains("hazSimp"))
+#if(${hsOn})
+#set($hsCause = "excessive rainfall")
+#if(${ic} == "SM")
+#set($hsCause = "snowmelt")
+#elseif(${ic} == "RS")
+#set($hsCause = "rain and snowmelt")
+#elseif(${ic} == "IJ")
+#set($hsCause = "an ice jam")
+#elseif(${ic} == "IC")
+#set($hsCause = "an ice jam and rain")
+#elseif(${ic} == "DR")
+#set($hsCause = "a dam floodgate release")
+#end
+#set($hsKind = "Flooding")
+#if($bullets.contains("small"))
+#set($hsKind = "Small stream flooding")
+#elseif($bullets.contains("uss"))
+#set($hsKind = "Urban and small stream flooding")
+#elseif($bullets.contains("arroyo"))
+#set($hsKind = "Arroyo and small stream flooding")
+#end
+#set($hsImpacts = "Minor flooding in low-lying and poor drainage areas.")
+#if($bullets.contains("arroyo"))
+#set($hsImpacts = "Minor flooding in low-lying and poor drainage areas. Rises in small streams and normally dry arroyos.")
+#end
+#set($hsUntil = ${hazSimp.until($expire, $now, $localtimezone)})
+#set($hsNl = "
+")
+#set($hsIndent = "${hsNl}    ")
+#end
 ##########################################
 ## FLOOD ADVISORY FOLLOW-UP HEADER INFO ##
 ##########################################
@@ -215,6 +246,28 @@ ${dateUtil.format(${now}, ${timeFormat.header}, ${localtimezone})}
 ## FLOOD ADVISORY CAN ##
 ########################
 #if(${action}=="CAN")
+#if(${hsOn})
+...FLOOD ADVISORY IS CANCELLED...
+
+The Flood Advisory is cancelled for ${hazSimp.where($areas, "area", true)}
+
+#if($bullets.contains("recedingWater") && $bullets.contains("rainEnded"))
+The heavy rain has ended and flood waters have receded, no longer posing a threat to property. Please continue to heed any road closures.
+#elseif($bullets.contains("recedingWater"))
+Flood waters have receded, and are no longer expected to pose a threat to property. Please continue to heed any road closures.
+#elseif($bullets.contains("rainEnded"))
+The heavy rain has ended, and flooding is no longer expected to pose a threat.
+#else
+!** SELECT ONE BELOW
+The heavy rain has ended. Therefore, the flooding threat has ended.
+The heavy rain has ended and flood water is receding. Therefore, the flooding threat has ended.
+The flood water is receding, and the threat for flooding has ended.
+**!
+#end
+
+&&
+
+#else
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE.##
 #end
@@ -248,10 +301,39 @@ The flood water is receding, and the threat for flooding has ended.
 #end
 
 #end
+#end
 ########################
 ## FLOOD ADVISORY EXP ##
 ########################
 #if(${action}=="EXP")
+#if(${hsOn})
+#if(${now.compareTo(${expire})} > -1)
+...FLOOD ADVISORY HAS EXPIRED...
+
+The Flood Advisory has expired for ${hazSimp.where($areas, "area", true)}
+#else
+...FLOOD ADVISORY WILL EXPIRE AT ${hsUntil.toUpperCase()}...
+
+The Flood Advisory will expire at ${hsUntil} for ${hazSimp.where($areas, "area", true)}
+#end
+
+#if($bullets.contains("recedingWater") && $bullets.contains("rainEnded"))
+The heavy rain has ended and flood waters have receded, no longer posing a threat to property. Please continue to heed any road closures.
+#elseif($bullets.contains("recedingWater"))
+Flood waters have receded, and are no longer expected to pose a threat to property. Please continue to heed any road closures.
+#elseif($bullets.contains("rainEnded"))
+The heavy rain has ended, and flooding is no longer expected to pose a threat.
+#else
+!** SELECT ONE BELOW
+The heavy rain has ended. Therefore, the flooding threat has ended.
+The heavy rain has ended and flood water is receding. Therefore, the flooding threat has ended.
+The flood water is receding, and the threat for flooding has ended.
+**!
+#end
+
+&&
+
+#else
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE.##
 #end
@@ -289,10 +371,53 @@ The flood water is receding, and the threat for flooding has ended.
 **!
 #end
 #end
+#end
 ########################
 ## FLOOD ADVISORY CON ##
 ########################
 #if(${action}=="CON" || (${action}=="COR" && ${CORCAN}=="false"))
+#if(${hsOn})
+...FLOOD ADVISORY REMAINS IN EFFECT UNTIL ${hsUntil.toUpperCase()}...
+
+* WHAT...${hsKind} caused by ${hsCause} continues.
+
+* WHERE...${hazSimp.where($areas)}
+
+* WHEN...#secondBullet(${dateUtil},${expire},${timeFormat},${localtimezone},${secondtimezone})
+
+
+* IMPACTS...${hsImpacts}
+
+* ADDITIONAL DETAILS...
+#if(${ic} == "DR")
+  - Flooding will continue !** Specify location(s) **! due to an upstream dam floodgate release.
+#else
+  - #thirdBullet(${dateUtil},${event},${timeFormat},${localtimezone},${secondtimezone}), ${report}. ${rainAmount}
+#end
+#if($bullets.contains("drainages"))
+#set($hsDrain = "#drainages(${riverdrainages})")
+#if(${hsDrain.trim()} != "")
+  - ${hsDrain.trim().split($hsNl).join($hsIndent)}
+#end
+#end
+#if($bullets.contains("addRainfall"))
+  - Additional rainfall amounts of !** EDIT AMOUNT **! inches are expected over the area. This additional rain will result in minor flooding.
+#end
+#if($bullets.contains("specificPlace"))
+  - Minor flooding is occurring near !** ENTER LOCATION **!.
+#end
+#if($bullets.contains("listofcities"))
+#set($hsCities = "#locationsList('' 'this flooding' 0 ${cityList} ${otherPoints} ${areas} ${dateUtil} ${timeFormat} 0)")
+#if(${cityList.size()} > 0)
+  - Some locations that will experience flooding include...
+    ${hsCities.trim().split($hsNl).join($hsIndent)}
+#else
+  - ${hsCities.trim().split($hsNl).join($hsIndent)}
+#end
+#end
+  - http://www.weather.gov/safety/flood
+
+#else
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE.##
 #end
@@ -391,6 +516,7 @@ Minor flooding is occurring near !** ENTER LOCATION **!.
 #if($bullets.contains("drainages"))
 #drainages(${riverdrainages})
 
+#end
 #end
 #####################
 ## CALL TO ACTIONS ##

@@ -62,6 +62,38 @@
 #else
 	#set($advType = "")
 #end
+#set($hsOn = $bullets.contains("hazSimp"))
+#if(${hsOn})
+#set($hsCause = "excessive rainfall")
+#if(${ic} == "SM")
+#set($hsCause = "snowmelt")
+#elseif(${ic} == "RS")
+#set($hsCause = "rain and snowmelt")
+#elseif(${ic} == "IJ")
+#set($hsCause = "an ice jam")
+#elseif(${ic} == "IC")
+#set($hsCause = "an ice jam and rain")
+#elseif(${ic} == "DM")
+#set($hsCause = "a levee failure")
+#elseif(${ic} == "DR")
+#set($hsCause = "a dam floodgate release")
+#elseif(${ic} == "GO")
+#set($hsCause = "a glacier-dammed lake outburst")
+#end
+#set($hsKind = "Flooding")
+#set($hsImpacts = "Flooding of rivers, creeks, streams, and other low-lying and flood-prone locations is imminent or occurring.")
+#if($bullets.contains("smallstreams"))
+#set($hsKind = "Small stream flooding")
+#set($hsImpacts = "Flooding of small rivers, creeks, streams, and other low-lying and flood-prone locations is imminent or occurring.")
+#elseif($bullets.contains("urbansmallstreams"))
+#set($hsKind = "Urban and small stream flooding")
+#set($hsImpacts = "Flooding of small rivers, creeks, streams, and other low-lying and flood-prone locations is imminent or occurring. It will take several hours for all the water from these storms to work through local drainage systems in urban areas.")
+#end
+#set($hsUntil = ${hazSimp.until($expire, $now, $localtimezone)})
+#set($hsNl = "
+")
+#set($hsIndent = "${hsNl}    ")
+#end
 ##
 ######################################################################################
 ${WMOId} ${vtecOffice} ${BBBId}
@@ -145,6 +177,21 @@ ${dateUtil.format(${now}, ${timeFormat.header}, ${localtimezone})}
 ################################
 
 #if(${action}=="EXP" || ${action}=="CAN")
+#if(${hsOn})
+#if(${action}=="CAN")
+...FLOOD WARNING IS CANCELLED...
+
+The Flood Warning is cancelled for ${hazSimp.where($areas, "area", true)}
+#elseif(${now.compareTo(${expire})} >= 0)
+...FLOOD WARNING HAS EXPIRED...
+
+The Flood Warning has expired for ${hazSimp.where($areas, "area", true)}
+#else
+...FLOOD WARNING WILL EXPIRE AT ${hsUntil.toUpperCase()}...
+
+The Flood Warning will expire at ${hsUntil} for ${hazSimp.where($areas, "area", true)}
+#end
+#else
 ...THE FLOOD WARNING ${advType}##
 #if(${hycType} != "")
 FOR <L>${hycType}</L> ##
@@ -158,6 +205,7 @@ ${expcanHLTag} #headlineLocList(${areas} true true true false, "ALL")...
 #end
 ### GP end
 
+#end
 ## SLIGHTLY DIFFERENT VARIABLE FOR PARTIAL CANCELLATION HEADLINE
 #elseif(${action}=="CANCON" || ${CORCAN}=="true")
 ...THE FLOOD WARNING ${advType}##
@@ -192,6 +240,12 @@ The heavy rain has ended, and flooding is no longer expected to pose a threat.
 #else
 
 !** The heavy rain has ended. !** OR **! The flood water is receding. Therefore, the flooding threat has ended. **!
+#end
+#if(${hsOn})
+#if(${action}=="EXP" || ${action}=="CAN")
+
+&&
+#end
 #end
 
 #printcoords(${areaPoly})
@@ -247,6 +301,13 @@ ${dateUtil.format(${now}, ${timeFormat.header}, ${localtimezone})}
 ## CONTINUATION STATEMENT ##
 ############################
 #if(${action}=="CANCON" || ${action}=="CON" || ${action}=="COR" || ${CORCAN}=="true")
+#set($hsCon = false)
+#if(${hsOn})
+#if(${action}=="CON" || (${action}=="COR" && ${CORCAN}=="false"))
+#set($hsCon = true)
+#end
+#end
+#if(!${hsCon})
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE.##
 #end
@@ -265,6 +326,7 @@ REMAINS IN EFFECT UNTIL #headlineExpire(${dateUtil},${expire},${timeFormat},${lo
 #end
 ### GP end
 
+#end
 ################################################
 ######## MAIN PARAGRAPH ###########
 #################################
@@ -301,6 +363,56 @@ REMAINS IN EFFECT UNTIL #headlineExpire(${dateUtil},${expire},${timeFormat},${lo
 #elseif($bullets.contains("emergencyManagement"))
   #set($reportBy = "emergency management reported")
 #end
+#if(${hsCon})
+#if($bullets.contains("thunder"))
+#set($hsReport = "${reportBy} slow moving thunderstorms with very heavy rainfall across the warned area.${rainAmount}${floodReason}")
+#elseif($bullets.contains("plainRain"))
+#set($hsReport = "${reportBy} an area of very heavy rainfall across the warned area.${rainAmount}${floodReason}")
+#elseif($bullets.contains("floodOccurring"))
+#set($hsReport = "${reportBy} ${floodType} across the warned area.${rainAmount}${floodReason} !** ENTER SPECIFIC REPORTS OF FLOODING AND EXPECTED RAINFALL AMOUNTS **!")
+#elseif($bullets.contains("genericFlood"))
+#set($hsReport = "!** ENTER REASON AND FORECAST FOR FLOOD **!")
+#else
+#set($hsReport = "!** YOU DID NOT SELECT AN /EVENT/ BULLET**!")
+#end
+
+...FLOOD WARNING REMAINS IN EFFECT UNTIL ${hsUntil.toUpperCase()}...
+
+* WHAT...${hsKind} caused by ${hsCause} continues.
+
+* WHERE...${hazSimp.where($areas)}
+
+* WHEN...#secondBullet(${dateUtil},${expire},${timeFormat},${localtimezone},${secondtimezone})
+
+
+* IMPACTS...${hsImpacts}
+
+* ADDITIONAL DETAILS...
+  - #thirdBullet(${dateUtil},${event},${timeFormat},${localtimezone},${secondtimezone}), ${hsReport}
+#if($bullets.contains("drainages"))
+#set($hsDrain = "#drainages(${riverdrainages})")
+#if(${hsDrain.trim()} != "")
+  - ${hsDrain.trim().split($hsNl).join($hsIndent)}
+#end
+#end
+#if($bullets.contains("addRainfall"))
+  - Additional rainfall amounts of !** EDIT AMOUNT **! are possible in the warned area.
+#end
+#if($bullets.contains("specificStream"))
+  - Flood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to !**LOCATION**!. The flood crest is expected to reach !**LOCATION(S)**! by !**TIME(S)**!.
+#end
+#if($bullets.contains("listofcities"))
+#set($hsCities = "#locationsList('' 'this flooding' 0 ${cityList} ${otherPoints} ${areas} ${dateUtil} ${timeFormat} 0)")
+#if(${cityList.size()} > 0)
+  - Some locations that will experience flooding include...
+    ${hsCities.trim().split($hsNl).join($hsIndent)}
+#else
+  - ${hsCities.trim().split($hsNl).join($hsIndent)}
+#end
+#end
+  - http://www.weather.gov/safety/flood
+
+#else
 #if(${productClass}=="T")
 THIS IS A TEST MESSAGE. ##
 #end
@@ -390,6 +502,7 @@ Flood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to !**LOC
 #if($bullets.contains("drainages"))
 #drainages(${riverdrainages})
 
+#end
 #end
 
 ## parse file command here is to pull in mile marker info

@@ -139,6 +139,8 @@ Must be paired with proper vm code (which are commented out in arealFloodWarning
   <bullet bulletName="dm" bulletText="Levee Failure" bulletGroup="ic" parseString=".DM." showString=".DM."/>
   <bullet bulletName="dr" bulletText="Dam Floodgate Release" bulletGroup="ic" parseString=".DR." showString=".DR."/>
   <bullet bulletName="go" bulletText="Glacial Lake Outburst" bulletGroup="ic" parseString=".GO." showString=".GO."/>
+  <bullet bulletText="*********** FORMAT ***********" bulletType="title"/>
+  <bullet bulletName="hazSimp" bulletText="Hazard Simplification format (WHAT/WHERE/WHEN)" parseString="&quot;* WHAT&quot;,&quot;* WHERE&quot;"/>
   <bullet bulletText="****** CANCELLATION OPTIONS **********" bulletType="title"/>
   <bullet bulletName="recedingWater" bulletText="Receding water" />
   <bullet bulletName="rainEnded" bulletText="Heavy rain ended" />
@@ -161,6 +163,8 @@ Must be paired with proper vm code (which are commented out in arealFloodWarning
   <bullet bulletName="dm" bulletText="Levee Failure" bulletGroup="ic" parseString=".DM." showString=".DM."/>
   <bullet bulletName="dr" bulletText="Dam Floodgate Release" bulletGroup="ic" parseString=".DR." showString=".DR."/>
   <bullet bulletName="go" bulletText="Glacial Lake Outburst" bulletGroup="ic" parseString=".GO." showString=".GO."/>
+  <bullet bulletText="*********** FORMAT ***********" bulletType="title"/>
+  <bullet bulletName="hazSimp" bulletText="Hazard Simplification format (WHAT/WHERE/WHEN)" parseString="&quot;* WHAT&quot;,&quot;* WHERE&quot;"/>
   <bullet bulletText="******* EXPIRATION OPTIONS **********" bulletType="title"/>
   <bullet bulletName="recedingWater" bulletText="Water receding" />
   <bullet bulletName="rainEnded" bulletText="Heavy rain ended" />
@@ -204,6 +208,8 @@ Must be paired with proper vm code (which are commented out in arealFloodWarning
   <bullet bulletName="rain2" bulletText="Two inches so far" bulletGroup="rainAmt" parseString="TWO INCHES OF RAIN HAVE ALREADY FALLEN"/>
   <bullet bulletName="rain3" bulletText="Three inches so far" bulletGroup="rainAmt" parseString="THREE INCHES OF RAIN HAVE ALREADY FALLEN"/>
   <bullet bulletName="rainEdit" bulletText="User defined amount" bulletGroup="rainAmt" parseString="INCHES OF RAIN HAVE FALLEN"/>
+  <bullet bulletText="*********** FORMAT ***********" bulletType="title"/>
+  <bullet bulletName="hazSimp" bulletText="Hazard Simplification format (WHAT/WHERE/WHEN)" parseString="&quot;* WHAT&quot;,&quot;* WHERE&quot;"/>
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;"/>
 <!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->
@@ -265,6 +271,8 @@ Must be paired with proper vm code (which are commented out in arealFloodWarning
   <bullet bulletName="rain2" bulletText="Two inches so far" bulletGroup="rainAmt" parseString="TWO INCHES OF RAIN HAVE ALREADY FALLEN"/>
   <bullet bulletName="rain3" bulletText="Three inches so far" bulletGroup="rainAmt" parseString="THREE INCHES OF RAIN HAVE ALREADY FALLEN"/>
   <bullet bulletName="rainEdit" bulletText="User defined amount" bulletGroup="rainAmt" parseString="INCHES OF RAIN HAVE FALLEN"/>
+  <bullet bulletText="*********** FORMAT ***********" bulletType="title"/>
+  <bullet bulletName="hazSimp" bulletText="Hazard Simplification format (WHAT/WHERE/WHEN)" parseString="&quot;* WHAT&quot;,&quot;* WHERE&quot;"/>
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;"/>
 <!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->

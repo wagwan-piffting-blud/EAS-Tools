@@ -764,7 +764,7 @@ function humanizeEAS(eas, endec_emulation_mode=null, canadian_mode=false, timezo
         }
         case 'DAS2PLUS': {
             let orgText = normalOriginator;
-            if (originator === 'EAS') orgText = 'A broadcast or cable system';
+            if (originator === 'EAS') orgText = 'An EAS Participant';
             else if (originator === 'CIV') orgText = 'A civil authority';
             else if (originator === 'PEP') orgText = 'THE PRIMARY ENTRY POINT EAS SYSTEM';
             const das = processDASFipsString(fipsContext.strFips, true);

@@ -107,6 +107,8 @@ ${dateUtil.format(${now}, ${timeFormat.header}, ${localtimezone})}
 ...THIS MESSAGE IS FOR TEST PURPOSES ONLY...
 
 #end
+#set($hsOn = $bullets.contains("hazSimp"))
+#if(!${hsOn})
 #headlineext(${officeLoc}, ${backupSite}, ${extend})
 
 #################################
@@ -142,6 +144,7 @@ THIS IS A TEST MESSAGE. ##
 #end
 #secondBullet(${dateUtil},${expire},${timeFormat},${localtimezone},${secondtimezone})
 
+#end
 #set($report = "!**YOU DID NOT SELECT EITHER A /SOURCE/ BULLET OR AN /EVENT/ BULLET.!**!")
 #set($rainAmount = "")
 #if($bullets.contains("doppler"))
@@ -217,6 +220,83 @@ THIS IS A TEST MESSAGE. ##
   #set($rainAmount = "!** RAINFALL AMOUNTS **! inches of rain have fallen.")
 #end
 
+#if(${hsOn})
+#############################################################
+## HAZARD SIMPLIFICATION LAYOUT (Hazard Services FLW)      ##
+#############################################################
+#set($hsCause = "excessive rainfall")
+#if($bullets.contains("sm"))
+#set($hsCause = "snowmelt")
+#elseif($bullets.contains("dm"))
+#set($hsCause = "a levee failure")
+#elseif($bullets.contains("dr"))
+#set($hsCause = "a dam floodgate release")
+#elseif($bullets.contains("rs"))
+#set($hsCause = "rain and snowmelt")
+#elseif($bullets.contains("ij"))
+#set($hsCause = "an ice jam")
+#elseif($bullets.contains("ic"))
+#set($hsCause = "an ice jam and rain")
+#elseif($bullets.contains("go"))
+#set($hsCause = "a glacier-dammed lake outburst")
+#end
+#set($hsKind = "Flooding")
+#set($hsImpacts = "Flooding of rivers, creeks, streams, and other low-lying and flood-prone locations is imminent or occurring.")
+#if($bullets.contains("smallstreams"))
+#set($hsKind = "Small stream flooding")
+#set($hsImpacts = "Flooding of small rivers, creeks, streams, and other low-lying and flood-prone locations is imminent or occurring.")
+#elseif($bullets.contains("urbansmallstreams"))
+#set($hsKind = "Urban and small stream flooding")
+#set($hsImpacts = "Flooding of small rivers, creeks, streams, and other low-lying and flood-prone locations is imminent or occurring. It will take several hours for all the water from these storms to work through local drainage systems in urban areas.")
+#end
+#set($hsVerb = "is expected")
+#set($hsEffect = "in effect")
+#if(${action} == "EXT")
+#set($hsVerb = "continues")
+#set($hsEffect = "now in effect")
+#end
+#set($hsHeadline = "Flood Warning ${hsEffect} until ${hazSimp.until($expire, $now, $localtimezone)}")
+#set($hsNl = "
+")
+#set($hsIndent = "${hsNl}    ")
+
+...${hsHeadline.toUpperCase()}...
+
+* WHAT...${hsKind} caused by ${hsCause} ${hsVerb}.
+
+* WHERE...${hazSimp.where($areas)}
+
+* WHEN...#secondBullet(${dateUtil},${expire},${timeFormat},${localtimezone},${secondtimezone})
+
+
+* IMPACTS...${hsImpacts}
+
+* ADDITIONAL DETAILS...
+  - #thirdBullet(${dateUtil},${event},${timeFormat},${localtimezone},${secondtimezone}), ${report} ${rainAmount}
+#if($bullets.contains("drainages"))
+#set($hsDrain = "#drainages(${riverdrainages})")
+#if(${hsDrain.trim()} != "")
+  - ${hsDrain.trim().split($hsNl).join($hsIndent)}
+#end
+#end
+#if($bullets.contains("addRainfall"))
+  - Additional rainfall amounts of !** EDIT AMOUNT **! are possible in the warned area.
+#end
+#if($bullets.contains("specificStream"))
+  - Flood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to !**LOCATION**!. The flood crest is expected to reach !**LOCATION(S)**! by !**TIME(S)**!.
+#end
+#if($bullets.contains("listofcities"))
+#set($hsCities = "#locationsList('' 'flooding' 0 ${cityList} ${otherPoints} ${areas} ${dateUtil} ${timeFormat} 0)")
+#if(${cityList.size()} > 0)
+  - Some locations that will experience flooding include...
+    ${hsCities.trim().split($hsNl).join($hsIndent)}
+#else
+  - ${hsCities.trim().split($hsNl).join($hsIndent)}
+#end
+#end
+  - http://www.weather.gov/safety/flood
+
+#else
 #################################
 ######## THIRD BULLET ###########
 #################################
@@ -301,6 +381,7 @@ Additional rainfall amounts of !** EDIT AMOUNT **! are possible in the warned ar
 #if($bullets.contains("specificStream"))
 Flood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to !**LOCATION**!. The flood crest is expected to reach !**LOCATION(S)**! by !**TIME(S)**!.
 
+#end
 #end
 ## parse file commands here pull in mile marker and/or point marker info
 ## #parse("mileMarkers.vm")

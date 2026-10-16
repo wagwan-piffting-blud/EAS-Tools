@@ -283,6 +283,29 @@
         return NORMAL_DELIMS;
     }
 
+    // Hazard Services' ADDITIONAL DETAILS items: a "  - " line and its "    " continuations
+    // wrap at 65 columns with a four-space hanging indent.
+    var DASH_ITEM_RE = /^( {2}- | {4})/;
+    var DASH_INDENT = "    ";
+    var DASH_WIDTH = 65;
+
+    function wrapDashLine(line) {
+        var head = DASH_ITEM_RE.exec(line)[1];
+        var words = line.slice(head.length).split(" ").filter(function (w) { return w.length > 0; });
+        var out = [];
+        var cur = head + (words.shift() || "");
+        words.forEach(function (w) {
+            if (visible(cur + " " + w).length > DASH_WIDTH) {
+                out.push(cur);
+                cur = DASH_INDENT + w;
+            } else {
+                cur += " " + w;
+            }
+        });
+        out.push(cur);
+        return out.join("\n");
+    }
+
     /**
      * WrapUtil.wrap at 69 columns. Lock tags take no width; from a "* " line to the next
      * blank line, lines get the two-space bullet indent.
@@ -292,12 +315,19 @@
         var lines = text.split("\n");
         var out = [];
         var inBullet = false;
+        var inDash = false;
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i];
             var unlocked = visible(line);
             if (unlocked.trim().length === 0) {
                 inBullet = false;
+                inDash = false;
                 out.push(line);
+                continue;
+            }
+            if (inBullet && unlocked.indexOf("  - ") === 0) inDash = true;
+            if (inDash && DASH_ITEM_RE.test(line)) {
+                out.push(unlocked.length <= DASH_WIDTH ? line : wrapDashLine(line));
                 continue;
             }
             var wasInBullet = inBullet;

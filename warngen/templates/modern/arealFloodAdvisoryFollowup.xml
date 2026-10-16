@@ -127,6 +127,8 @@ Must be paired with proper vm code (also commented out in arealFloodAdvisoryFoll
   <bullet bulletText="*********** OPTIONAL SPECIFIC TYPE (locked)  *********** " bulletType="title"/>
   <bullet bulletName="rapidRiver" bulletText="Rapid river rises" bulletGroup="hyCond" parseString="FOR RAPID RIVER RISES" showString="RAPID RIVER RISES"/>
   <bullet bulletName="poorDrainage" bulletText="Minor flooding for poor drainage" bulletGroup="hyCond" parseString="MINOR FLOODING OF POOR DRAINAGE AREAS" showString="MINOR FLOODING OF POOR DRAINAGE AREAS"/>
+  <bullet bulletText="*********** FORMAT ***********" bulletType="title"/>
+  <bullet bulletName="hazSimp" bulletText="Hazard Simplification format (WHAT/WHERE/WHEN)" parseString="&quot;* WHAT&quot;,&quot;* WHERE&quot;"/>
   <bullet bulletText="****** CANCELLATION OPTIONS **********" bulletType="title"/>
   <bullet bulletName="recedingWater" bulletText="Receding water" />
   <bullet bulletName="rainEnded" bulletText="Heavy rain ended" />
@@ -150,6 +152,8 @@ Must be paired with proper vm code (also commented out in arealFloodAdvisoryFoll
   <bullet bulletText="*********** OPTIONAL SPECIFIC TYPE (locked) *********** " bulletType="title"/>
   <bullet bulletName="rapidRises" bulletText="Rapid river rises" bulletGroup="optType" parseString="FOR RAPID RISES" showString="FOR RAPID RISES"/>
   <bullet bulletName="poorDrainage" bulletText="Minor flooding for poor drainage" bulletGroup="optType" parseString="MINOR FLOODING IN POOR DRAINAGE AREAS" showString="MINOR FLOODING IN POOR DRAINAGE AREAS"/>
+  <bullet bulletText="*********** FORMAT ***********" bulletType="title"/>
+  <bullet bulletName="hazSimp" bulletText="Hazard Simplification format (WHAT/WHERE/WHEN)" parseString="&quot;* WHAT&quot;,&quot;* WHERE&quot;"/>
   <bullet bulletText="******* EXPIRATION OPTIONS **********" bulletType="title"/>
   <bullet bulletName="recedingWater" bulletText="Water receding" />
   <bullet bulletName="rainEnded" bulletText="Heavy rain ended" />
@@ -192,6 +196,8 @@ Must be paired with proper vm code (also commented out in arealFloodAdvisoryFoll
   <bullet bulletName="rain2" bulletText="Two inches so far" bulletGroup="rainAmt" parseString="TWO INCHES OF RAIN HAVE ALREADY FALLEN"/>
   <bullet bulletName="rain3" bulletText="Three inches so far" bulletGroup="rainAmt" parseString="THREE INCHES OF RAIN HAVE ALREADY FALLEN"/>
   <bullet bulletName="rainEdit" bulletText="User defined amount" bulletGroup="rainAmt" parseString="INCHES OF RAIN HAVE FALLEN"/>
+  <bullet bulletText="*********** FORMAT ***********" bulletType="title"/>
+  <bullet bulletName="hazSimp" bulletText="Hazard Simplification format (WHAT/WHERE/WHEN)" parseString="&quot;* WHAT&quot;,&quot;* WHERE&quot;"/>
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;"/>
 <!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->
@@ -249,6 +255,8 @@ Must be paired with proper vm code (also commented out in arealFloodAdvisoryFoll
   <bullet bulletName="rain2" bulletText="Two inches so far" bulletGroup="rainAmt" parseString="TWO INCHES OF RAIN HAVE ALREADY FALLEN"/>
   <bullet bulletName="rain3" bulletText="Three inches so far" bulletGroup="rainAmt" parseString="THREE INCHES OF RAIN HAVE ALREADY FALLEN"/>
   <bullet bulletName="rainEdit" bulletText="User defined amount" bulletGroup="rainAmt" parseString="INCHES OF RAIN HAVE FALLEN"/>
+  <bullet bulletText="*********** FORMAT ***********" bulletType="title"/>
+  <bullet bulletName="hazSimp" bulletText="Hazard Simplification format (WHAT/WHERE/WHEN)" parseString="&quot;* WHAT&quot;,&quot;* WHERE&quot;"/>
   <bullet bulletText="*********** ADDITIONAL INFO ***********" bulletType="title"/>
   <bullet bulletName="listofcities" bulletText="Select for a list of cities" bulletGroup="pcast" parseString="&quot;LOCATIONS&quot;,&quot;INCLUDE...&quot;"/>
 <!-- <bullet bulletName="pathcast" bulletText="* Use storm track for pathcast (for thunderstorms) *" bulletGroup="pcast" parseString="OVER THE FOLLOWING LOCATIONS..."/> -->

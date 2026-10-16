@@ -29,6 +29,7 @@
         <link rel="stylesheet" href="assets/css/dracula.css">
         <link rel="stylesheet" href="assets/css/elegant.css">
         <link rel="stylesheet" href="assets/css/style.css">
+        <link rel="stylesheet" href="assets/css/searchable-select.css">
         <style>
             .tool-loading {
                 display: flex;
@@ -246,7 +247,16 @@
                     <button type="button" data-encoder-add-loc>Add</button>
                     <br>
                     <br>
-                    (Click a county in the table below to remove it)
+                    <label for="locSearch">Or search every location and press Enter to add it (uses the Region above):</label>
+                    <div class="loc-search">
+                        <input type="text" id="locSearch" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="locSearchList" aria-describedby="locSearchHint" autocomplete="off" spellcheck="false" placeholder="e.g. Travis TX, Orange County, 36071">
+                        <ul id="locSearchList" class="loc-search__list" role="listbox" aria-label="Matching locations" hidden></ul>
+                    </div>
+                    <span id="locSearchHint" class="visually-hidden">Type a county, state, province or code. Use the up and down arrows to choose a match and Enter to add it; focus stays here so you can keep adding.</span>
+                    <span id="locSearchCount" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></span>
+                    <br>
+                    <br>
+                    (Use a location's Remove button, or click its row, to remove it)
                     <button type="button" data-encoder-clear-locs>Clear All Locations</button>
                     <br>
                     <table id="fips">
@@ -256,6 +266,7 @@
                                 <td>State</td>
                                 <td>Region</td>
                                 <td>FIPS Code</td>
+                                <td><span class="visually-hidden">Remove</span></td>
                             </tr>
                         </tbody>
                         <tbody id="container"></tbody>
@@ -415,6 +426,44 @@
                     <button type="button" id="announcementGainReset">Reset</button>
                     <p class="inline-note">Applies to TTS and custom audio. 0 dB keeps the usual level; +6 dB lets a full-scale announcement reach the top of the exported WAV, and anything above that clips.</p>
                 </div>
+                <div id="prePostAudioContainer" role="group" aria-labelledby="prePostAudioHeading">
+                    <br>
+                    <strong id="prePostAudioHeading">Pre-Alert and Post-Alert Audio:</strong>
+                    <br>
+                    <label for="preHeaderAudio">Pre-alert audio (plays before the SAME headers):</label>
+                    <select id="preHeaderAudio" name="preHeaderAudio">
+                        <option value="none" selected>None</option>
+                        <option value="custom">Custom upload...</option>
+                    </select>
+                    <span id="preHeaderAudioFileRow" hidden>
+                        <br>
+                        <label for="preHeaderAudioFile">Pre-alert audio file:</label>
+                        <input type="file" id="preHeaderAudioFile" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    </span>
+                    <span id="preHeaderGapRow" hidden>
+                        <br>
+                        <label for="silencePreHeaderToHeaders">Silence between the pre-alert audio and the header tones (0-30000 ms.):</label>
+                        <input type="number" id="silencePreHeaderToHeaders" name="silencePreHeaderToHeaders" min="0" max="30000" step="50" value="1000">
+                    </span>
+                    <br>
+                    <label for="postEomAudio">Post-alert audio (plays after the EOM tones):</label>
+                    <select id="postEomAudio" name="postEomAudio">
+                        <option value="none" selected>None</option>
+                        <option value="custom">Custom upload...</option>
+                    </select>
+                    <span id="postEomAudioFileRow" hidden>
+                        <br>
+                        <label for="postEomAudioFile">Post-alert audio file:</label>
+                        <input type="file" id="postEomAudioFile" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    </span>
+                    <span id="postEomGapRow" hidden>
+                        <br>
+                        <label for="silenceEomToPostEom">Silence between the EOM tones and the post-alert audio (0-30000 ms.):</label>
+                        <input type="number" id="silenceEomToPostEom" name="silenceEomToPostEom" min="0" max="30000" step="50" value="1000">
+                    </span>
+                    <p class="inline-note">Built-in recordings are played at their own level. Choosing a built-in pre-alert recording also picks its matching post-alert recording when post-alert audio is None.</p>
+                </div>
+                <div id="encoderAnnouncer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
                 <div id="silenceTimingContainer" role="group" aria-labelledby="silenceTimingHeading">
                     <br>
                     <strong id="silenceTimingHeading">Silence Timing (0-30000 ms. each; defaults come from the selected ENDEC):</strong>
@@ -608,17 +657,19 @@
                             <option value="easyplus:easyplus">EASyPLUS</option>
                             <option value="easyplus:easyplus_gray">EASyPLUS Gray</option>
                             <option value="dasdec:dasdec">DASDEC</option>
+                            <option value="dasdec:dasdec_black">DASDEC (black)</option>
+                            <option value="dasdec:dasdec_blue">DASDEC (blue)</option>
                             <option value="gorman:eas_1cg">Gorman Redlich EAS-1CG</option>
                             <option value="atari:atari_800xl">Atari 800XL Override Screen</option>
                         </select>
                         <div id="easyplusSettings" style="display: none;">
                             <br>
-                            <label for="easyplusOriginator">EASyPLUS Originator:</label>
+                            <label for="easyplusOriginator">Originator:</label>
                             <select id="easyplusOriginator">
                                 <!-- will be populated by js -->
                             </select>
                             <br>
-                            <label for="easyplusEventCode">EASyPLUS Event Code:</label>
+                            <label for="easyplusEventCode">Event Code:</label>
                             <select id="easyplusEventCode">
                                 <!-- will be populated by js -->
                             </select>
@@ -970,6 +1021,9 @@
                 <label for="shouldRepeat">Include "Repeating..." line: </label>
                 <input type="checkbox" id="shouldRepeat" name="shouldRepeat">
                 <br>
+                <label for="keepTimeZones">Read time zones ("1 AM Central Daylight Time"): </label>
+                <input type="checkbox" id="keepTimeZones" name="keepTimeZones">
+                <br>
                 <br>
                 <label for="productToNormalize">Enter raw VTEC/AWIPS product text:</label>
                 <br>
@@ -1185,7 +1239,7 @@
 
                 const TOOL_ASSETS = {
                     encoder: {
-                        scripts: [...CODEMIRROR_SCRIPTS, 'assets/js/wavefile.js'],
+                        scripts: [...CODEMIRROR_SCRIPTS, 'assets/js/wavefile.js', 'assets/js/searchable-select.js'],
                         module: 'assets/js/encoder-bundle.js',
                     },
                     crawl: {
@@ -1201,6 +1255,7 @@
                             'assets/js/jit-wasm-encoder.js',
                             'assets/js/jit-compiler.js',
                             'assets/js/worker-pool.js',
+                            'assets/js/native-plugins.js',
                             'assets/js/audacity-macro-engine.js',
                         ],
                         module: 'assets/js/splicer-bundle.js',

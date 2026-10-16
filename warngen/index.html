@@ -6,6 +6,7 @@
         <title>WarnGen</title>
         <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
         <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
+        <link rel="stylesheet" href="../assets/css/searchable-select.css">
         <link rel="stylesheet" href="warngen.css">
     </head>
     <body class="app-body">
@@ -15,11 +16,13 @@
                 <option value="legacy" selected>Legacy/CRS</option>
                 <option value="modern">Modern/BMH (Impact-Based)</option>
             </select>
-            <label for="template-select">Template:</label>
-            <select id="template-select">
-                <option value="severeThunderstormWarning.vm">Severe Thunderstorm Warning (legacy)</option>
-                <option value="tornadoWarning.vm">Tornado Warning (legacy)</option>
-            </select>
+            <span class="meta-field">
+                <label for="template-select">Template:</label>
+                <select id="template-select">
+                    <option value="severeThunderstormWarning.vm">Severe Thunderstorm Warning (legacy)</option>
+                    <option value="tornadoWarning.vm">Tornado Warning (legacy)</option>
+                </select>
+            </span>
             <label class="checkbox-label">
                 <input type="checkbox" id="allcaps-cb">
                 All caps
@@ -55,11 +58,6 @@
                 title="Show the text WarnGen locks as uneditable, the way the AWIPS Text Workstation does">
                 <input type="checkbox" id="lockedtext-cb" checked>
                 Locked text
-            </label>
-            <label class="checkbox-label"
-                title="Show USGS aerial and satellite imagery under the map">
-                <input type="checkbox" id="satellite-cb">
-                Satellite
             </label>
             <button id="start-draw-btn" class="primary-btn">Draw polygon</button>
             <button id="clear-poly-btn">Clear</button>
@@ -135,9 +133,59 @@
             <button type="button" id="radar-pal-btn" class="mini-btn" disabled
                 title="Load a GRLevelX .pal color table for the selected product">Color table</button>
             <input type="file" id="radar-pal-file" accept=".pal,.txt" style="display:none">
+            <button type="button" id="radar-save-png-btn" class="mini-btn" disabled
+                aria-label="Save PNG radar image"
+                title="Save the selected product and tilt as a PNG image with a legend, georeferenced to Web Mercator">Save PNG</button>
+            <button type="button" id="radar-save-svg-btn" class="mini-btn" disabled
+                aria-label="Save SVG radar image"
+                title="Save the selected product and tilt as an editable SVG vector image with a legend">Save SVG</button>
             <button type="button" id="radar-clear-btn" class="mini-btn" disabled>Remove</button>
             <span id="radar-info" class="motion-label" aria-live="polite"></span>
             <span id="radar-probe" class="motion-label"></span>
+        </div>
+        <div class="storm-bar layers-bar" role="group" aria-labelledby="layers-title">
+            <strong id="layers-title">Map layers:</strong>
+            <label class="checkbox-label"
+                title="Show USGS aerial and satellite imagery under the map">
+                <input type="checkbox" id="satellite-cb">
+                Satellite
+            </label>
+            <label class="checkbox-label" title="State borders and coastlines">
+                <input type="checkbox" id="layer-states-cb" data-basemap="states">
+                States
+            </label>
+            <label class="checkbox-label" title="County Warning Area borders, one per forecast office">
+                <input type="checkbox" id="layer-cwa-cb" data-basemap="cwa">
+                CWAs
+            </label>
+            <label class="checkbox-label" title="County and parish names">
+                <input type="checkbox" id="layer-countynames-cb" data-basemap="countyNames">
+                County names
+            </label>
+            <label class="checkbox-label" title="City names, thinned to the larger places as you zoom out">
+                <input type="checkbox" id="layer-cities-cb" data-basemap="cities">
+                Cities
+            </label>
+            <label class="checkbox-label" title="Interstate highways">
+                <input type="checkbox" id="layer-interstates-cb" data-basemap="interstates">
+                Interstates
+            </label>
+            <label class="checkbox-label" title="US and state highways">
+                <input type="checkbox" id="layer-highways-cb" data-basemap="highways">
+                Highways
+            </label>
+            <label class="checkbox-label" title="Time zone boundaries (AWIPS mapdata.timezones)">
+                <input type="checkbox" id="layer-timezones-cb" data-basemap="timezones">
+                Time zones
+            </label>
+            <label class="checkbox-label" title="Major rivers and lakes (AWIPS mapdata.majorrivers and mapdata.lake)">
+                <input type="checkbox" id="layer-hydro-cb" data-basemap="hydro">
+                Rivers &amp; lakes
+            </label>
+            <label class="checkbox-label" title="Latitude and longitude lines, spaced to the zoom level">
+                <input type="checkbox" id="layer-latlon-cb" data-basemap="latlon">
+                Lat/lon lines
+            </label>
         </div>
         <div id="synth-overlay" class="modal-overlay" hidden>
             <div id="synth-dialog" class="modal-box synth-box" role="dialog" aria-modal="true"
@@ -191,11 +239,12 @@
         </div>
         <div class="meta-bar">
             <strong>Product:</strong>
-            <label>Office
+            <span class="meta-field">
+                <label for="office-select">Office</label>
                 <select id="office-select">
                     <option value="OAX" selected>KOAX Omaha/Valley NE</option>
                 </select>
-            </label>
+            </span>
             <label class="vtec-only"
                 title="CAVE mode. Test products carry /T. in VTEC and the templates add TEST wording">Mode
                 <select id="mode-select">
@@ -378,6 +427,7 @@
         <script src="src/geo/portions.js"></script>
         <script src="src/geo/highways.js"></script>
         <script src="src/geo/insets.js"></script>
+        <script src="src/geo/basemap.js"></script>
         <script src="src/config/xmlParser.js"></script>
         <script src="src/ui/BulletPanel.js"></script>
         <script src="src/radar/bzip2.js"></script>
@@ -385,6 +435,8 @@
         <script src="src/radar/palette.js"></script>
         <script src="src/radar/layer.js"></script>
         <script src="src/radar/synth.js"></script>
+        <script src="src/radar/export.js"></script>
+        <script src="../assets/js/searchable-select.js"></script>
         <script>
             // Fragments are #parse()d by the product templates and are never rendered directly.
             var MODERN_FRAGMENTS = [
@@ -530,12 +582,14 @@
             }
 
             // Watches come from SPC software, GHG and GFE rather than WarnGen (watches.js, tropical.js).
+            // The GFE zone warnings ride the same "watch:" values and panel.
             var WATCH_PREFIX = "watch:";
             var SPC_OFFICE = "SPC";
             var WATCH_GROUPS = { spc: "Watches (SPC)", wcn: "Watches (office)", zone: "Watches (office)", tropical: "Tropical (office)" };
             var WATCH_OPTIONS = WarngenWatches.PRODUCTS.map(function (p) {
                 var tag = p.family === "spc" ? "SEL/WOU/WWP" : (p.family === "wcn" ? "WCN" : p.pil);
-                return { value: WATCH_PREFIX + p.id, label: p.name + " (" + tag + ")", group: WATCH_GROUPS[p.family] };
+                return { value: WATCH_PREFIX + p.id, label: p.name + " (" + tag + ")",
+                    group: p.sig === "W" ? "Warnings (office)" : WATCH_GROUPS[p.family] };
             });
 
             function watchIdOf(tmpl) {
@@ -953,6 +1007,7 @@
                             shortPathcast: document.getElementById("shortpathcast-cb").checked,
                             lockedText: document.getElementById("lockedtext-cb").checked,
                             satellite: document.getElementById("satellite-cb").checked,
+                            basemap: basemapState(),
                             bearing: document.getElementById("motion-bearing").value,
                             speed: document.getElementById("motion-speed").value,
                             centroidAuto: document.getElementById("centroid-auto-cb").checked,
@@ -1019,6 +1074,7 @@
                 showLockedText = document.getElementById("lockedtext-cb").checked;
                 chk("satellite-cb", f.satellite);
                 setSatellite(!!f.satellite);
+                applyBasemapState(f.basemap);
                 set("motion-bearing", f.bearing);
                 set("motion-speed", f.speed);
                 chk("centroid-auto-cb", f.centroidAuto);
@@ -2085,14 +2141,20 @@
                 { id: "other", label: "Other watches in effect", type: "text", show: ["spc"], hint: "e.g. 101 102" },
                 { id: "replaces", label: "Replaces watch #", type: "text", show: ["spc"] },
                 { id: "forecaster", label: "Forecaster", type: "text", show: ["spc"] },
-                { id: "snowLo", label: "Snow from (in)", type: "number", show: ["WS"] },
-                { id: "snowHi", label: "Snow to (in)", type: "number", show: ["WS"] },
-                { id: "ice", label: "Ice accumulation", type: "text", show: ["WS"], hint: "e.g. one tenth of an inch" },
-                { id: "windChill", label: "Wind chill (below zero)", type: "number", show: ["EC"] },
-                { id: "dir", label: "Wind direction", type: "text", show: ["HW", "FW"], hint: "e.g. west" },
-                { id: "windLo", label: "Wind from (mph)", type: "number", show: ["HW", "FW"] },
-                { id: "windHi", label: "Wind to (mph)", type: "number", show: ["HW", "FW"] },
-                { id: "gust", label: "Gusts (mph)", type: "number", show: ["WS", "HW", "FW"] },
+                { id: "upgEtn", label: "Upgraded watch ETN", type: "number", show: ["WS.W", "BZ.W", "IS.W", "EC.W", "HW.W"],
+                    act: "UPG", hint: "blank = same as warning" },
+                { id: "upgStart", label: "Watch valid from", type: "datetime-local", show: ["WS.W", "BZ.W", "IS.W", "EC.W", "HW.W"],
+                    act: "UPG" },
+                { id: "upgEnd", label: "Watch until", type: "datetime-local", show: ["WS.W", "BZ.W", "IS.W", "EC.W", "HW.W"],
+                    act: "UPG" },
+                { id: "snowLo", label: "Snow from (in)", type: "number", show: ["WS", "WS.W", "BZ.W", "IS.W"] },
+                { id: "snowHi", label: "Snow to (in)", type: "number", show: ["WS", "WS.W", "BZ.W", "IS.W"] },
+                { id: "ice", label: "Ice accumulation", type: "text", show: ["WS", "WS.W", "IS.W"], hint: "e.g. one tenth of an inch" },
+                { id: "windChill", label: "Wind chill (below zero)", type: "number", show: ["EC", "EC.W"] },
+                { id: "dir", label: "Wind direction", type: "text", show: ["HW", "FW", "HW.W"], hint: "e.g. west" },
+                { id: "windLo", label: "Wind from (mph)", type: "number", show: ["HW", "FW", "HW.W"] },
+                { id: "windHi", label: "Wind to (mph)", type: "number", show: ["HW", "FW", "HW.W"] },
+                { id: "gust", label: "Gusts (mph)", type: "number", show: ["WS", "HW", "FW", "WS.W", "BZ.W", "IS.W", "HW.W"] },
                 { id: "rh", label: "Minimum humidity (%)", type: "number", show: ["FW"] },
                 { id: "flash", label: "Flash flooding", type: "check", show: ["FA"] },
                 { id: "surgeLo", label: "Inundation from (ft)", type: "number", show: ["CF"] },
@@ -2147,6 +2209,7 @@
                     var row = document.createElement("div");
                     row.className = "civil-row" + (fd.type === "textarea" ? " civil-row-top" : "");
                     row.dataset.show = fd.show.join(" ");
+                    if (fd.act) row.dataset.act = fd.act;
                     var input;
                     if (fd.type === "check") {
                         var lab = document.createElement("label");
@@ -2213,6 +2276,7 @@
                 spc: ["NEW", "CON", "CAN"],
                 wcn: ["NEW", "CON", "CANCON", "EXA", "EXT", "CAN", "EXP"],
                 zone: ["NEW", "CON", "EXT", "EXA", "CAN", "EXP"],
+                zoneWarning: ["NEW", "UPG", "CON", "EXT", "EXA", "CAN", "EXP"],
                 tropical: ["NEW"]
             };
 
@@ -2237,14 +2301,18 @@
                 var actionSel = document.getElementById("action-select");
                 var prev = pendingAction || actionSel.value;
                 pendingAction = null;
-                fillSelect(actionSel, WATCH_ACTIONS[p.family], function (a) {
-                    return (ACTION_LABELS[a] || a).replace("warning", "watch");
+                var warning = p.sig === "W";
+                var actions = WATCH_ACTIONS[warning ? "zoneWarning" : p.family];
+                fillSelect(actionSel, actions, function (a) {
+                    if (a === "UPG") return "UPG -- upgrade watch to warning";
+                    return warning ? (ACTION_LABELS[a] || a) : (ACTION_LABELS[a] || a).replace("warning", "watch");
                 });
-                actionSel.value = WATCH_ACTIONS[p.family].indexOf(prev) !== -1 ? prev : WATCH_ACTIONS[p.family][0];
+                actionSel.value = actions.indexOf(prev) !== -1 ? prev : actions[0];
                 document.getElementById("followup-bar").style.display = "none";
                 document.querySelectorAll("#iw-form .civil-row").forEach(function (row) {
                     var show = row.dataset.show.split(" ");
-                    row.hidden = !(show.indexOf(p.family) !== -1 || show.indexOf(id) !== -1);
+                    row.hidden = !(show.indexOf(p.family) !== -1 || show.indexOf(id) !== -1)
+                        || (!!row.dataset.act && row.dataset.act !== actionSel.value);
                 });
                 document.getElementById("iw-title").textContent = p.name;
                 document.getElementById("watch-panel").style.display = "none";
@@ -2481,14 +2549,16 @@
                             partOfParentRegion: pr.partOfParentRegion, cities: f.cities ? zoneCities(h, 4) : [] };
                     });
                     text = WarngenWatches.buildZoneWatch({
-                        phen: p.phen, wfo: siteId, wmo: siteWmo(site, p.pil, "WWUS40"), pil: p.pil, city: site.wfoCity,
+                        phen: p.phen, sig: p.sig, wfo: siteId, wmo: siteWmo(site, p.pil, "WWUS40"), pil: p.pil, city: site.wfoCity,
                         office: site.wfoCityState, issued: issued, start: start, end: end, tz: tz.abbr, dstLess: tz.dstLess,
                         productClass: productClass, etn: etn, action: action, zones: zones, stateNames: stateNames,
                         includeCities: f.cities, overview: f.overview, synopsis: f.synopsis,
                         fields: { snowLo: f.snowLo, snowHi: f.snowHi, ice: f.ice, gust: f.gust, windChill: f.windChill,
                             dir: f.dir, windLo: f.windLo, windHi: f.windHi, flash: f.flash, surgeLo: f.surgeLo,
                             surgeHi: f.surgeHi, rh: f.rh },
-                        text: { what: f.what, where: f.where, impacts: f.impacts, details: f.details, cta: f.cta, wrapup: f.wrapup }
+                        text: { what: f.what, where: f.where, impacts: f.impacts, details: f.details, cta: f.cta, wrapup: f.wrapup },
+                        upgrade: { etn: parseInt(f.upgEtn, 10) || etn, start: parseLocalInput(f.upgStart),
+                            end: parseLocalInput(f.upgEnd) }
                     }).text;
                     tag = p.pil + siteId;
                 } else {
@@ -2532,7 +2602,16 @@
                 lastRawOutput = text;
                 rebuildFillInPanel(extractFillIns(lastRawOutput));
                 applyFillInsAndFormat();
-                var same = WarngenWatches.SAME[p.phen || (f.wcnPhen || "")];
+                var sameKey = p.sig ? p.id : (p.phen || (fam === "wcn" ? f.wcnPhen || "" : ""));
+                if (fam === "tropical") {
+                    var live = o2.hazards.filter(function (h) { return h.action !== "CAN" && h.action !== "UPG"; })
+                        .map(function (h) { return h.phen + "." + h.sig; });
+                    sameKey = ["HU.W", "SS.W", "TR.W", "HU.A", "SS.A", "TR.A"].filter(function (k) {
+                        return live.indexOf(k) !== -1;
+                    })[0] || "";
+                    if (sameKey.slice(-2) === ".A") sameKey = sameKey.slice(0, 2);
+                }
+                var same = WarngenWatches.SAME[sameKey];
                 setStatus("Rendered " + p.name + " for " + hits.length + " " + resolved.srcSpec.nouns
                     + " [" + tag + (same ? ", SAME " + same : "") + "]", false,
                     mapCommandBusy ? "" : renderSpeech("Rendered " + p.name + " for " + hits.length + " " + resolved.srcSpec.nouns));
@@ -2904,6 +2983,285 @@
                 });
             }
 
+            // D2D-style map overlays. They sit above the counties and the polygon, as maps do in
+            // CAVE, but take no pointer events, so clicks and tooltips still reach the areas.
+            ["basemapLinePane", "basemapLabelPane"].forEach(function (name, i) {
+                var pane = map.createPane(name);
+                pane.style.zIndex = i ? 450 : 410;
+                pane.style.pointerEvents = "none";
+            });
+            var basemapRenderer = L.canvas({ pane: "basemapLinePane", padding: 0.5 });
+            var basemapLabels = WarngenBasemap.createLabelLayer(L, { pane: "basemapLabelPane" });
+            var BASEMAP_FILES = {
+                timezones: ["data/basemap/timezones.geojson"],
+                hydro: ["data/basemap/lakes.geojson", "data/basemap/rivers.geojson"]
+            };
+            var BASEMAP_STYLES = {
+                states: { color: "--wg-map-state-stroke", weight: 1.6 },
+                cwa: { color: "--wg-map-cwa-stroke", weight: 1.5 },
+                timezones: { color: "--wg-map-tz-stroke", weight: 2, dashArray: "8 5" },
+                interstates: { color: "--wg-map-interstate-stroke", weight: 2 },
+                highways: { color: "--wg-map-highway-stroke", weight: 1 },
+                hydro: { color: "--wg-map-river-stroke", weight: 1, fillColor: "--wg-map-lake-fill" },
+                latlon: { color: "--wg-map-latlon-stroke", weight: 1, dashArray: "2 4" }
+            };
+            var basemapLayers = {};
+            var basemapLoading = {};
+            var basemapCache = {};
+
+            function basemapStyle(key) {
+                var s = BASEMAP_STYLES[key];
+                return {
+                    color: mapColor(s.color),
+                    weight: s.weight,
+                    opacity: 0.9,
+                    dashArray: s.dashArray || null,
+                    fill: !!s.fillColor,
+                    fillColor: s.fillColor ? mapColor(s.fillColor) : null,
+                    fillOpacity: 1
+                };
+            }
+
+            function basemapGeoLayer(key, data) {
+                return L.geoJSON(data, {
+                    pane: "basemapLinePane",
+                    renderer: basemapRenderer,
+                    interactive: false,
+                    style: function (feature) {
+                        var style = basemapStyle(key);
+                        if (!feature || !/Polygon/.test(feature.geometry.type)) style.fill = false;
+                        return style;
+                    }
+                });
+            }
+
+            function highwaysOfClass(classes) {
+                return {
+                    type: "FeatureCollection",
+                    features: highwaysGeojson.features.filter(function (f) { return classes.indexOf(f.properties.cls) !== -1; })
+                };
+            }
+
+            function countyBorderLayer(key, groupOf) {
+                return countiesReady.then(function () {
+                    var lines = WarngenBasemap.groupBorders(countyGeojson, groupOf);
+                    return basemapGeoLayer(key, { type: "MultiLineString", coordinates: lines });
+                });
+            }
+
+            function buildBasemapLayer(key) {
+                if (key === "states") return countyBorderLayer(key, function (f) { return f.properties.state; });
+                if (key === "cwa") return countyBorderLayer(key, function (f) { return f.properties.cwa || f.properties.state; });
+                if (key === "interstates") return Promise.resolve(basemapGeoLayer(key, highwaysOfClass(["interstate"])));
+                if (key === "highways") return Promise.resolve(basemapGeoLayer(key, highwaysOfClass(["us", "state"])));
+                if (key === "latlon") return Promise.resolve(L.layerGroup());
+                if (BASEMAP_FILES[key]) {
+                    return Promise.all(BASEMAP_FILES[key].map(function (url) {
+                        return fetch(url).then(function (r) {
+                            if (!r.ok) throw new Error(url + " " + r.status);
+                            return r.json();
+                        });
+                    })).then(function (parts) {
+                        var group = L.layerGroup();
+                        parts.forEach(function (data) { basemapGeoLayer(key, data).addTo(group); });
+                        return group;
+                    });
+                }
+                return Promise.resolve(null);
+            }
+
+            function drawLatLonLines() {
+                var layer = basemapLayers.latlon;
+                if (!layer || !map.hasLayer(layer)) return;
+                layer.clearLayers();
+                var b = map.getBounds();
+                var grid = WarngenBasemap.gridLines({ west: b.getWest(), east: b.getEast(), south: b.getSouth(), north: b.getNorth() }, map.getZoom());
+                var style = Object.assign(basemapStyle("latlon"), { pane: "basemapLinePane", renderer: basemapRenderer, interactive: false });
+                grid.lines.forEach(function (g) {
+                    L.polyline(g.coords.map(function (p) { return [p[1], p[0]]; }), style).addTo(layer);
+                });
+            }
+            map.on("moveend", drawLatLonLines);
+
+            function countyLabelPoints() {
+                if (basemapCache.counties || !countyGeojson) return basemapCache.counties || [];
+                basemapCache.counties = countyGeojson.features.map(function (f) {
+                    var p = WarngenBasemap.labelAnchor(f);
+                    return p && { lon: p[0], lat: p[1], text: f.properties.name };
+                }).filter(Boolean);
+                return basemapCache.counties;
+            }
+
+            function citiesByRank() {
+                if (basemapCache.cities || !cityDBAll.length) return basemapCache.cities || [];
+                basemapCache.cities = cityDBAll.filter(function (c) { return c.lev != null; }).sort(function (a, b) {
+                    return (a.lev - b.lev) || ((b.pop || 0) - (a.pop || 0));
+                });
+                return basemapCache.cities;
+            }
+
+            function highwayShieldPoints() {
+                if (basemapCache.shields || !highwaysGeojson.features.length) return basemapCache.shields || [];
+                basemapCache.shields = highwaysGeojson.features.map(function (f) {
+                    var p = f.geometry && WarngenBasemap.lineMidpoint(f.geometry);
+                    var pr = f.properties;
+                    if (!p || !pr.num) return null;
+                    var text = pr.cls === "interstate" ? "I-" + pr.num : (pr.cls === "us" ? "US " + pr.num : (pr.state || "") + " " + pr.num);
+                    return { lon: p[0], lat: p[1], text: text.trim(), cls: pr.cls };
+                }).filter(Boolean);
+                return basemapCache.shields;
+            }
+
+            function inView(view, lon, lat) {
+                return lon >= view.west && lon <= view.east && lat >= view.south && lat <= view.north;
+            }
+
+            // How far down warngenlev a zoom level reaches; collisions thin out the rest.
+            function cityLevelLimit(zoom) {
+                if (zoom < 6) return 0;
+                if (zoom < 7.5) return 1;
+                if (zoom < 9) return 2;
+                if (zoom < 10.5) return 3;
+                return 4;
+            }
+
+            var BASEMAP_LABELS = {
+                cities: function (view, zoom) {
+                    var limit = cityLevelLimit(zoom);
+                    var out = [];
+                    citiesByRank().forEach(function (c) {
+                        if (limit === 0 ? (c.lev !== 1 || c.pop < 150000) : c.lev > limit) return;
+                        if (!inView(view, c.lon, c.lat)) return;
+                        out.push({
+                            lat: c.lat, lon: c.lon, text: c.name, cls: "wg-map-label-city", dot: true, align: "left",
+                            priority: (c.lev === 1 ? 10 : c.lev * 10) + 1 - Math.min(c.pop || 0, 9e6) / 9e6
+                        });
+                    });
+                    return out;
+                },
+                countyNames: function (view, zoom) {
+                    if (zoom < 7) return [];
+                    return countyLabelPoints().filter(function (c) { return inView(view, c.lon, c.lat); }).map(function (c) {
+                        return { lat: c.lat, lon: c.lon, text: c.text, cls: "wg-map-label-county", priority: 15 };
+                    });
+                },
+                interstates: function (view, zoom) {
+                    if (zoom < 6.5) return [];
+                    return highwayShieldPoints().filter(function (s) {
+                        return s.cls === "interstate" && inView(view, s.lon, s.lat);
+                    }).map(function (s) {
+                        return { lat: s.lat, lon: s.lon, text: s.text, cls: "wg-map-label-shield-i", priority: 12 };
+                    });
+                },
+                highways: function (view, zoom) {
+                    if (zoom < 8.5) return [];
+                    return highwayShieldPoints().filter(function (s) {
+                        return s.cls !== "interstate" && inView(view, s.lon, s.lat);
+                    }).map(function (s) {
+                        return { lat: s.lat, lon: s.lon, text: s.text, cls: "wg-map-label-shield-" + s.cls, priority: 25 };
+                    });
+                },
+                latlon: function (view, zoom) {
+                    var size = map.getSize();
+                    var grid = WarngenBasemap.gridLines(view, zoom);
+                    return grid.lines.map(function (g) {
+                        var text = WarngenBasemap.gridLabel(g.kind, g.value, grid.step);
+                        return g.kind === "lat"
+                            ? { lat: g.value, lon: view.west, screen: { x: 4 }, align: "left", text: text, cls: "wg-map-label-grid", priority: 0 }
+                            : { lat: view.south, lon: g.value, screen: { y: size.y - 10 }, text: text, cls: "wg-map-label-grid", priority: 0 };
+                    });
+                }
+            };
+
+            function syncBasemapLabels() {
+                if (basemapLabels.hasProviders() && !map.hasLayer(basemapLabels)) basemapLabels.addTo(map);
+                if (!basemapLabels.hasProviders() && map.hasLayer(basemapLabels)) map.removeLayer(basemapLabels);
+            }
+
+            function basemapCheckbox(key) {
+                return document.querySelector('[data-basemap="' + key + '"]');
+            }
+
+            function setBasemapLayer(key, on) {
+                var cb = basemapCheckbox(key);
+                var labels = BASEMAP_LABELS[key];
+                if (!on) {
+                    if (basemapLayers[key]) map.removeLayer(basemapLayers[key]);
+                    if (labels) {
+                        basemapLabels.setProvider(key, null);
+                        syncBasemapLabels();
+                    }
+                    return;
+                }
+                if (labels) {
+                    basemapLabels.setProvider(key, labels);
+                    syncBasemapLabels();
+                }
+                if (!BASEMAP_STYLES[key]) return;
+                if (basemapLayers[key]) {
+                    basemapLayers[key].addTo(map);
+                    drawLatLonLines();
+                    return;
+                }
+                if (!basemapLoading[key]) {
+                    basemapLoading[key] = buildBasemapLayer(key).then(function (layer) {
+                        basemapLayers[key] = layer;
+                        return layer;
+                    }, function (err) {
+                        basemapLoading[key] = null;
+                        throw err;
+                    });
+                }
+                basemapLoading[key].then(function (layer) {
+                    if (!layer || !cb.checked) return;
+                    layer.addTo(map);
+                    drawLatLonLines();
+                }, function () {
+                    cb.checked = false;
+                    setBasemapLayer(key, false);
+                    setStatus("Couldn't load the " + cb.parentNode.textContent.trim() + " map layer.", true);
+                    saveState();
+                });
+            }
+
+            function restyleBasemap() {
+                Object.keys(basemapLayers).forEach(function (key) {
+                    var layer = basemapLayers[key];
+                    if (!layer) return;
+                    if (layer.resetStyle) {
+                        layer.resetStyle();
+                        return;
+                    }
+                    layer.eachLayer(function (l) {
+                        if (l.resetStyle) l.resetStyle();
+                        else if (l.setStyle) l.setStyle(basemapStyle(key));
+                    });
+                });
+            }
+
+            function basemapState() {
+                var state = {};
+                Array.prototype.forEach.call(document.querySelectorAll("[data-basemap]"), function (cb) {
+                    if (cb.checked) state[cb.getAttribute("data-basemap")] = true;
+                });
+                return state;
+            }
+
+            function applyBasemapState(state) {
+                Array.prototype.forEach.call(document.querySelectorAll("[data-basemap]"), function (cb) {
+                    var key = cb.getAttribute("data-basemap");
+                    cb.checked = !!(state && state[key]);
+                    setBasemapLayer(key, cb.checked);
+                });
+            }
+
+            Array.prototype.forEach.call(document.querySelectorAll("[data-basemap]"), function (cb) {
+                cb.addEventListener("change", function () {
+                    setBasemapLayer(cb.getAttribute("data-basemap"), cb.checked);
+                    saveState();
+                });
+            });
+
             // Radar sits above the basemap but under counties and the polygon.
             map.createPane("radarPane").style.zIndex = 350;
             var radarLayer = WarngenRadarLayer.create(L, {
@@ -2957,7 +3315,8 @@
             }
 
             function setRadarControls(enabled) {
-                ["radar-product", "radar-tilt", "radar-opacity", "radar-show-cb", "radar-pal-btn", "radar-clear-btn"].forEach(function (id) {
+                ["radar-product", "radar-tilt", "radar-opacity", "radar-show-cb", "radar-pal-btn", "radar-save-png-btn",
+                    "radar-save-svg-btn", "radar-clear-btn"].forEach(function (id) {
                     radarEl(id).disabled = !enabled;
                 });
             }
@@ -3209,6 +3568,83 @@
                 }).catch(function (err) {
                     setStatus("Couldn't read that color table: " + (err && err.message ? err.message : err), true);
                 });
+            });
+
+            function radarExportView() {
+                if (!radarVolume) return null;
+                var sweep = radarVolume.sweeps[Number(radarEl("radar-tilt").value)];
+                var moment = radarEl("radar-product").value;
+                if (!sweep || !moment) return null;
+                return { sweep: sweep, moment: moment, table: radarLayer.tableFor(moment) };
+            }
+
+            function buildRadarPng() {
+                var view = radarExportView();
+                if (!view) return Promise.reject(new Error("Load or generate a radar volume first."));
+                var out = WarngenRadarExport.png(radarVolume, view.sweep, view.moment, view.table);
+                if (!out) return Promise.reject(new Error("That tilt has no " + view.moment + " data."));
+                return new Promise(function (resolve, reject) {
+                    out.canvas.toBlob(function (blob) {
+                        if (!blob) {
+                            reject(new Error("The browser couldn't encode the PNG."));
+                            return;
+                        }
+                        blob.arrayBuffer().then(function (buf) {
+                            var bytes = WarngenRadarExport.withPngText(new Uint8Array(buf), out.text);
+                            resolve({ blob: new Blob([bytes], { type: "image/png" }), name: out.fileName, result: out });
+                        }, reject);
+                    }, "image/png");
+                });
+            }
+
+            function buildRadarSvg() {
+                var view = radarExportView();
+                if (!view) throw new Error("Load or generate a radar volume first.");
+                var out = WarngenRadarExport.svg(radarVolume, view.sweep, view.moment, view.table);
+                if (!out) throw new Error("That tilt has no " + view.moment + " data.");
+                return { blob: new Blob([out.text], { type: "image/svg+xml" }), name: out.fileName, result: out };
+            }
+
+            function saveRadarFile(file, detail) {
+                var url = URL.createObjectURL(file.blob);
+                var a = document.createElement("a");
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () {
+                    URL.revokeObjectURL(url);
+                    a.remove();
+                }, 500);
+                setStatus("Saved " + file.name + " (" + detail + ").", false);
+            }
+
+            function radarExportFailed(err) {
+                setStatus("Couldn't save the radar image: " + (err && err.message ? err.message : err), true);
+            }
+
+            radarEl("radar-save-png-btn").addEventListener("click", function () {
+                setStatus("Rendering radar PNG…", false);
+                setTimeout(function () {
+                    buildRadarPng().then(function (file) {
+                        saveRadarFile(file, file.result.canvas.width + "×" + file.result.canvas.height +
+                            " px, Web Mercator, georeference in the PNG text chunks");
+                    }, radarExportFailed);
+                }, 30);
+            });
+            radarEl("radar-save-svg-btn").addEventListener("click", function () {
+                setStatus("Building radar SVG…", false);
+                setTimeout(function () {
+                    var file;
+                    try {
+                        file = buildRadarSvg();
+                    } catch (err) {
+                        radarExportFailed(err);
+                        return;
+                    }
+                    saveRadarFile(file, file.result.paths + " wedges in " + file.result.bands + " color bands, "
+                        + Math.round(file.blob.size / 1024) + " KB");
+                }, 30);
             });
 
             function hatchLayerOptions(strokeVar, fillVar) {
@@ -3488,6 +3924,7 @@
                 zoneLayer.setStyle(hatchStyle("--wg-map-zone-stroke", "--wg-map-zone-fill"));
                 countyLayer.setStyle(countyStyle);
                 hitLayer.setStyle(hitStyle);
+                restyleBasemap();
 
                 var shape = drawShapeOptions();
                 if (currentPolygon) currentPolygon.setStyle(shape);
@@ -5347,6 +5784,20 @@
             document.getElementById("centroid-lat").addEventListener("input", doRender);
             document.getElementById("centroid-lon").addEventListener("input", doRender);
             updateBearingLabel();
+
+            if (window.EASSearchableSelect) {
+                EASSearchableSelect.enhance(document.getElementById("template-select"), {
+                    placeholder: "Search templates…",
+                    emptyText: "No templates match.",
+                    className: "wg-combo wg-template-combo"
+                });
+                EASSearchableSelect.enhance(document.getElementById("office-select"), {
+                    placeholder: "Search by office, city or state…",
+                    emptyText: "No offices match.",
+                    matchValue: true,
+                    className: "wg-combo wg-office-combo"
+                });
+            }
 
             document.getElementById("era-select").addEventListener("change", function () {
                 rebuildTemplateOptions();

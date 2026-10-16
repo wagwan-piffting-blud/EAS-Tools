@@ -330,6 +330,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     if (isMacroCancelError(err)) {
                         macroWaveformCancelledKey = key;
                         persistStatus('Macro processing cancelled.', true);
+                    } else if (isMacroAssetError(err)) {
+                        persistStatus(err.message, false);
                     } else {
                         console.error('Macro waveform render failed', err);
                     }
@@ -3230,9 +3232,17 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return !!err && err.name === 'AbortError' && /Macro processing cancelled/.test(String(err.message));
     }
 
+    function isMacroAssetError(err) {
+        return !!err && (err.name === 'AssetError' || err.name === 'AssetMissing');
+    }
+
     function reportErrorStatus(message, err) {
         if (isMacroCancelError(err)) {
             if (typeof persistStatus === 'function') persistStatus('Macro processing cancelled.', true);
+            return;
+        }
+        if (isMacroAssetError(err)) {
+            if (typeof persistStatus === 'function') persistStatus(err.message, false);
             return;
         }
         if (typeof persistStatus === 'function') {
@@ -4773,6 +4783,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             setMacroProgress(1, '');
             if (isMacroCancelError(err)) {
                 persistStatus('Macro processing cancelled.', true);
+                throw err;
+            }
+            if (isMacroAssetError(err)) {
+                persistStatus(err.message, false);
                 throw err;
             }
             const what = id === 'CHAIN' ? 'Macro chain' : (id.startsWith('AUD:') ? `Audacity macro '${id.slice(4)}'` : `Macro '${id}'`);
