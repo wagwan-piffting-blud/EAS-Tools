@@ -1,0 +1,1694 @@
+{
+ "_comment": [
+  "Hand-reviewed corrections to us_highways.geojson (Natural Earth roads), applied by repair_highways.mjs.",
+  "Found with audit_highways.py against AWIPS mapdata.interstate, then checked one by one: concurrencies,",
+  "Maine's 2004 renumbering and routes newer than the AWIPS table were left alone.",
+  "Key: cls:num:lon:lat:lon:lat of the feature's first and last vertex as it was BEFORE the fix, 3 decimals.",
+  "relabel: becomes that interstate; mmOffset is re-derived from the route's neighbouring segments.",
+  "reclass: becomes a US or state route (num kept unless given). drop: removed."
+ ],
+ "fixes": {
+  "interstate:69:-95.532:35.455:-95.395:35.727": {
+   "was": "OK Interstate 69",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:9:-72.379:41.342:-72.670:41.670": {
+   "was": "CT Interstate 9",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:55:-74.757:39.156:-75.096:39.836": {
+   "was": "NJ Interstate 55",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:101:-70.858:42.959:-71.424:42.985": {
+   "was": "NH Interstate 101",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:3:-70.510:41.743:-71.020:42.227": {
+   "was": "MA Interstate 3",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:2:-72.593:42.629:-71.713:42.517": {
+   "was": "MA Interstate 2",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:220:-79.779:35.469:-79.727:35.238": {
+   "was": "NC Interstate 220",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "73",
+   "note": "I-73/US 220 in Randolph County; tagged with the US number"
+  },
+  "interstate:51:-89.330:36.090:-89.152:36.342": {
+   "was": "TN Interstate 51",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:10:-84.742:43.827:-83.949:43.593": {
+   "was": "MI Interstate 10",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:75:-96.768:32.900:-96.609:33.670": {
+   "was": "TX Interstate 75",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:77:-97.720:26.188:-97.748:26.294": {
+   "was": "TX Interstate 77",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "69E",
+   "note": "I-69E/US 77 in the Rio Grande Valley; tagged with the US number"
+  },
+  "interstate:69:-93.922:29.745:-94.144:30.042": {
+   "was": "TX Interstate 69",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:101:-124.000:40.441:-124.094:40.920": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:17:-74.370:41.446:-75.459:42.049": {
+   "was": "NY Interstate 17",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:422:-80.960:41.215:-80.628:40.958": {
+   "was": "OH Interstate 422",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:22:-77.633:40.781:-76.836:40.291": {
+   "was": "PA Interstate 22",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:131:-85.678:43.014:-85.515:43.883": {
+   "was": "MI Interstate 131",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:131:-85.515:43.883:-85.409:44.212": {
+   "was": "MI Interstate 131",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:31:-86.198:43.232:-86.413:43.954": {
+   "was": "MI Interstate 31",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:52:-80.234:36.097:-80.297:35.793": {
+   "was": "NC Interstate 52",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:70:-77.454:35.219:-77.072:35.113": {
+   "was": "NC Interstate 70",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:53:-91.430:44.926:-91.767:45.411": {
+   "was": "WI Interstate 53",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:18:-89.450:43.032:-89.285:43.099": {
+   "was": "WI Interstate 18",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:141:-88.058:44.511:-88.051:44.654": {
+   "was": "WI Interstate 141",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:51:-89.659:44.944:-89.655:45.218": {
+   "was": "WI Interstate 51",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:29:-89.634:44.878:-89.443:44.895": {
+   "was": "WI Interstate 29",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:51:-89.634:44.878:-89.678:44.956": {
+   "was": "WI Interstate 51",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:20:-93.575:42.445:-92.561:42.478": {
+   "was": "IA Interstate 20",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:20:-92.345:42.457:-91.348:42.460": {
+   "was": "IA Interstate 20",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:20:-92.561:42.478:-92.340:42.457": {
+   "was": "IA Interstate 20",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:212:-93.538:44.812:-93.420:44.864": {
+   "was": "MN Interstate 212",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:82:-88.785:33.487:-88.660:33.491": {
+   "was": "MS Interstate 82",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:44:-94.439:35.467:-94.325:35.472": {
+   "was": "AR Interstate 44",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "40",
+   "note": "Fort Smith; I-44 never enters Arkansas"
+  },
+  "interstate:540:-94.224:36.422:-94.222:35.524": {
+   "was": "AR Interstate 540",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "49",
+   "note": "I-540 in NW Arkansas became I-49 in 2014"
+  },
+  "interstate:69:-95.813:34.875:-95.532:35.455": {
+   "was": "OK Interstate 69",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:64:-97.062:36.389:-96.959:36.240": {
+   "was": "OK Interstate 64",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:189:-73.187:44.454:-73.079:45.023": {
+   "was": "VT Interstate 189",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "89",
+   "note": "54 km near Burlington; I-189 is a 2-mile spur"
+  },
+  "interstate:41:-88.051:44.654:-87.622:45.098": {
+   "was": "WI Interstate 41",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US 41 north of Green Bay; I-41 ends at Green Bay"
+  },
+  "interstate:85:-99.479:27.531:-99.439:27.760": {
+   "was": "TX Interstate 85",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "35",
+   "note": "Laredo"
+  },
+  "interstate:2D:-116.875:32.542:-116.694:32.527": {
+   "was": "undefined Interstate 2D",
+   "action": "drop",
+   "note": "Mexican federal highway 2D near Tecate"
+  },
+  "interstate:78:-117.343:33.176:-117.085:33.121": {
+   "was": "CA Interstate 78",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:101:-120.679:35.642:-121.846:37.343": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:880:-121.928:37.507:-121.846:37.343": {
+   "was": "CA Interstate 880",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "680",
+   "note": "San Jose east side is I-680"
+  },
+  "state:2:-134.701:60.210:-135.390:59.243": {
+   "was": "undefined Highway 2",
+   "action": "drop",
+   "note": "Klondike Highway in British Columbia/Yukon"
+  },
+  "interstate:2:-142.986:63.318:-142.616:63.298": {
+   "was": "undefined Interstate 2",
+   "action": "reclass",
+   "cls": "state",
+   "note": "Alaska Route 2 (unsigned Interstate A-2)"
+  },
+  "interstate:16:-122.652:47.755:-122.555:47.272": {
+   "was": "WA Interstate 16",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:16:-122.555:47.272:-122.460:47.225": {
+   "was": "WA Interstate 16",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:512:-122.479:47.163:-122.180:47.172": {
+   "was": "WA Interstate 512",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:101:-122.920:47.014:-123.032:47.059": {
+   "was": "WA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:12:-120.690:46.722:-120.509:46.630": {
+   "was": "WA Interstate 12",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:2:-72.025:44.414:-72.029:44.417": {
+   "was": "undefined Interstate 2",
+   "action": "drop",
+   "note": "0 km stub at St. Johnsbury, VT tagged I-2"
+  },
+  "interstate:12:-119.016:46.453:-119.061:46.248": {
+   "was": "WA Interstate 12",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:26:-123.067:45.616:-122.677:45.517": {
+   "was": "OR Interstate 26",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:5:-122.677:45.517:-122.557:45.531": {
+   "was": "OR Interstate 5",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "84",
+   "note": "Banfield Freeway, Portland"
+  },
+  "interstate:12:-119.061:46.248:-118.913:46.058": {
+   "was": "WA Interstate 12",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:730:-119.327:45.913:-118.912:46.058": {
+   "was": "OR Interstate 730",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:2:-92.132:46.779:-91.902:46.602": {
+   "was": "WI Interstate 2",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:416:-75.987:44.306:-75.981:44.299": {
+   "was": "NY Interstate 416",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "81",
+   "note": "Watertown; there is no I-416"
+  },
+  "interstate:2:-71.713:42.517:-71.516:42.514": {
+   "was": "MA Interstate 2",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:25:-70.513:41.743:-70.730:41.783": {
+   "was": "MA Interstate 25",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:90:-73.784:42.514:-73.781:42.634": {
+   "was": "NY Interstate 90",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "87",
+   "note": "Thruway south of exit 24 is I-87 only"
+  },
+  "interstate:53:-91.420:44.766:-91.430:44.926": {
+   "was": "WI Interstate 53",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:2:-72.656:41.766:-72.110:41.547": {
+   "was": "CT Interstate 2",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:10:-84.904:43.865:-84.786:43.865": {
+   "was": "MI Interstate 10",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:10:-84.786:43.865:-84.742:43.827": {
+   "was": "MI Interstate 10",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:62:-78.859:42.929:-78.810:42.813": {
+   "was": "NY Interstate 62",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:20:-111.799:43.853:-111.578:43.997": {
+   "was": "ID Interstate 20",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:15:-77.107:41.644:-77.101:42.170": {
+   "was": "PA Interstate 15",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:6:-74.370:41.446:-74.128:41.307": {
+   "was": "NY Interstate 6",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:87:-73.823:41.062:-73.722:41.024": {
+   "was": "NY Interstate 87",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "287",
+   "note": "Cross Westchester Expressway east of Elmsford"
+  },
+  "interstate:75:-83.730:42.986:-83.678:43.011": {
+   "was": "MI Interstate 75",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "69",
+   "note": "I-69 through Flint"
+  },
+  "interstate:20:-112.057:43.499:-111.799:43.853": {
+   "was": "ID Interstate 20",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:475:-83.718:42.952:-83.730:42.986": {
+   "was": "MI Interstate 475",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "75",
+   "note": "I-75 west of Flint; I-475 is the east-side loop"
+  },
+  "interstate:27:-73.007:40.783:-72.494:40.892": {
+   "was": "NY Interstate 27",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:208:-74.219:41.021:-74.087:40.922": {
+   "was": "NJ Interstate 208",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:131:-85.678:42.971:-85.678:43.014": {
+   "was": "MI Interstate 131",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:96:-84.544:42.816:-84.525:42.816": {
+   "was": "MI Interstate 96",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "69",
+   "note": "I-69 north of Lansing"
+  },
+  "interstate:127:-84.492:42.677:-84.525:42.816": {
+   "was": "MI Interstate 127",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:23:-83.756:42.525:-83.718:42.952": {
+   "was": "MI Interstate 23",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:10:-83.241:42.471:-83.060:42.368": {
+   "was": "MI Interstate 10",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:94:-88.042:43.028:-88.038:42.972": {
+   "was": "WI Interstate 94",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "894",
+   "note": "Milwaukee, Zoo Interchange south (I-894/I-41)"
+  },
+  "interstate:94:-88.038:42.972:-87.931:42.966": {
+   "was": "WI Interstate 94",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "43",
+   "note": "Milwaukee, Hale Interchange to I-94 (I-43/I-894)"
+  },
+  "interstate:101:-124.092:40.918:-124.029:41.347": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:23:-83.742:42.306:-83.756:42.525": {
+   "was": "MI Interstate 23",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:127:-84.435:42.278:-84.492:42.677": {
+   "was": "MI Interstate 127",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:131:-85.638:42.236:-85.678:42.971": {
+   "was": "MI Interstate 131",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:23:-83.683:41.726:-83.685:42.227": {
+   "was": "MI Interstate 23",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:299:-122.362:40.609:-122.275:40.630": {
+   "was": "CA Interstate 299",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:11:-80.677:41.154:-80.759:41.823": {
+   "was": "OH Interstate 11",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:20:-89.202:42.281:-89.016:42.222": {
+   "was": "IL Interstate 20",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:20:-93.906:42.445:-93.575:42.445": {
+   "was": "IA Interstate 20",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:31:-86.251:41.623:-86.338:41.731": {
+   "was": "IN Interstate 31",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:90:-89.016:42.222:-89.016:41.904": {
+   "was": "IL Interstate 90",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "39",
+   "note": "South of Cherry Valley I-39 runs alone"
+  },
+  "interstate:55:-87.524:41.648:-87.639:41.847": {
+   "was": "IL Interstate 55",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "90",
+   "note": "Chicago Skyway"
+  },
+  "interstate:80:-87.856:41.755:-87.743:41.568": {
+   "was": "IL Interstate 80",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "294",
+   "note": "Tri-State Tollway; shares only a few miles with I-80"
+  },
+  "interstate:80:-87.304:41.566:-87.325:41.469": {
+   "was": "IN Interstate 80",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "65",
+   "note": "Gary, south of the Borman"
+  },
+  "interstate:30:-82.684:40.786:-82.415:40.779": {
+   "was": "OH Interstate 30",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:294:-88.196:41.488:-87.898:41.785": {
+   "was": "IL Interstate 294",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "55",
+   "note": "Stevenson Expressway near Bolingbrook; I-294 ends far north of here"
+  },
+  "interstate:219:-79.043:40.003:-78.432:40.439": {
+   "was": "PA Interstate 219",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:61:-90.563:41.594:-90.569:41.870": {
+   "was": "IA Interstate 61",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:13:-75.502:39.164:-75.632:39.334": {
+   "was": "DE Interstate 13",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:30:-80.740:41.036:-80.590:40.654": {
+   "was": "OH Interstate 30",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:50:-76.310:38.973:-76.158:38.980": {
+   "was": "MD Interstate 50",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:50:-76.603:38.982:-76.401:39.006": {
+   "was": "MD Interstate 50",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:395:-119.813:39.579:-120.039:39.774": {
+   "was": "NV Interstate 395",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:50:-76.931:38.918:-76.601:38.982": {
+   "was": "MD Interstate 50",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:295:-76.931:38.918:-76.778:39.115": {
+   "was": "MD Interstate 295",
+   "action": "reclass",
+   "cls": "state",
+   "note": "MD 295 Baltimore-Washington Parkway"
+  },
+  "interstate:50:-77.006:38.909:-76.931:38.918": {
+   "was": "DC Interstate 50",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:70:-97.595:40.821:-97.044:40.823": {
+   "was": "NE Interstate 70",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "80",
+   "note": "York, NE; there is no I-70 in Nebraska"
+  },
+  "interstate:50:-82.066:39.326:-81.568:39.281": {
+   "was": "OH Interstate 50",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:101:-122.557:38.086:-123.211:39.242": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:101:-123.715:39.864:-123.998:40.437": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:101:-122.507:37.865:-122.557:38.087": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:74:-84.518:39.090:-84.470:39.140": {
+   "was": "OH Interstate 74",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "71",
+   "note": "I-71 through Cincinnati; I-74 ends at I-75"
+  },
+  "interstate:101:-122.407:37.768:-122.484:37.825": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:99:-121.190:37.797:-121.473:38.556": {
+   "was": "CA Interstate 99",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:295:-77.358:37.153:-77.426:37.203": {
+   "was": "VA Interstate 295",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "95",
+   "note": "South of Petersburg, where I-85 joins I-95"
+  },
+  "interstate:40:-90.699:38.711:-90.197:38.626": {
+   "was": "MO Interstate 40",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "64",
+   "note": "I-64/US 40 in St. Louis County; tagged with the US number"
+  },
+  "interstate:81:-97.642:38.878:-97.670:39.119": {
+   "was": "KS Interstate 81",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "135",
+   "note": "I-135/US 81 at Salina; tagged with the US number"
+  },
+  "interstate:1:-121.886:36.566:-122.017:36.983": {
+   "was": "CA Interstate 1",
+   "action": "reclass",
+   "cls": "state",
+   "note": "SR 1, Monterey Bay"
+  },
+  "interstate:71:-94.356:38.612:-94.575:39.096": {
+   "was": "MO Interstate 71",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "49",
+   "note": "US 71 south of Kansas City became I-49 in 2012"
+  },
+  "interstate:29:-79.467:36.540:-79.347:36.582": {
+   "was": "VA Interstate 29",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:41:-87.561:37.811:-87.575:37.867": {
+   "was": "KY Interstate 41",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:26:-82.257:36.596:-82.177:36.629": {
+   "was": "VA Interstate 26",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "81",
+   "note": "Bristol, VA; I-26 never enters Virginia"
+  },
+  "interstate:29:-79.774:36.045:-79.467:36.540": {
+   "was": "NC Interstate 29",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:52:-80.561:36.458:-80.234:36.097": {
+   "was": "NC Interstate 52",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:64:-78.736:35.806:-77.878:35.979": {
+   "was": "NC Interstate 64",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:80:-86.112:37.061:-84.623:37.099": {
+   "was": "KY Interstate 80",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:235:-97.310:37.608:-96.846:37.903": {
+   "was": "KS Interstate 235",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "35",
+   "note": "Kansas Turnpike east of Wichita"
+  },
+  "interstate:41:-87.479:36.839:-87.443:37.214": {
+   "was": "KY Interstate 41",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:220:-79.826:35.616:-79.812:36.031": {
+   "was": "NC Interstate 220",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "73",
+   "note": "I-73/US 220 near Asheboro; tagged with the US number"
+  },
+  "interstate:99:-119.830:36.759:-121.190:37.797": {
+   "was": "CA Interstate 99",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:99:-119.408:36.330:-119.830:36.759": {
+   "was": "CA Interstate 99",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:99:-119.219:35.602:-119.408:36.330": {
+   "was": "CA Interstate 99",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:65:-93.245:37.122:-93.241:37.245": {
+   "was": "MO Interstate 65",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:95:-115.164:36.174:-115.294:36.311": {
+   "was": "NV Interstate 95",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:99:-119.042:35.351:-119.219:35.602": {
+   "was": "CA Interstate 99",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:45W:-89.002:36.445:-88.891:36.525": {
+   "was": "KY Interstate 45W",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:277:-80.927:35.100:-80.865:35.220": {
+   "was": "NC Interstate 277",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "77",
+   "note": "South Charlotte; I-277 is the downtown loop"
+  },
+  "interstate:99:-118.957:35.022:-119.042:35.351": {
+   "was": "CA Interstate 99",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:58:-119.042:35.351:-118.168:35.076": {
+   "was": "CA Interstate 58",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:58:-118.168:35.076:-118.163:35.047": {
+   "was": "CA Interstate 58",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:64:-97.317:36.394:-97.062:36.389": {
+   "was": "OK Interstate 64",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:244:-95.975:36.162:-95.219:36.561": {
+   "was": "OK Interstate 244",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "44",
+   "note": "Will Rogers Turnpike"
+  },
+  "interstate:75:-95.975:36.162:-95.924:36.278": {
+   "was": "OK Interstate 75",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:75:-95.987:36.146:-95.975:36.162": {
+   "was": "OK Interstate 75",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "244",
+   "note": "I-244/US 75 in Tulsa"
+  },
+  "interstate:64:-96.959:36.240:-96.355:36.221": {
+   "was": "OK Interstate 64",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:75:-96.008:36.113:-95.987:36.146": {
+   "was": "OK Interstate 75",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "244",
+   "note": "I-244/US 75 in Tulsa"
+  },
+  "interstate:75:-96.011:36.011:-96.008:36.113": {
+   "was": "OK Interstate 75",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:14:-118.509:34.333:-118.163:35.047": {
+   "was": "CA Interstate 14",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:101:-120.653:35.290:-120.678:35.644": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:101:-120.204:34.538:-120.653:35.290": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:101:-119.209:34.286:-120.204:34.538": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:101:-118.467:34.159:-119.209:34.286": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:134:-118.467:34.159:-118.375:34.154": {
+   "was": "CA Interstate 134",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:134:-118.375:34.154:-118.137:34.151": {
+   "was": "CA Interstate 134",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:44:-94.325:35.472:-94.222:35.524": {
+   "was": "AR Interstate 44",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "540",
+   "note": "I-540 in Fort Smith; no I-44 in Arkansas"
+  },
+  "interstate:431:-86.599:34.734:-86.564:34.758": {
+   "was": "AL Interstate 431",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:210:-117.804:34.066:-117.295:34.064": {
+   "was": "CA Interstate 210",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "10",
+   "note": "Ontario; the source shifted labels one route north here"
+  },
+  "interstate:91:-117.564:33.878:-117.358:33.990": {
+   "was": "CA Interstate 91",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:91:-117.974:33.857:-117.702:33.868": {
+   "was": "CA Interstate 91",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:91:-118.092:33.784:-118.094:33.942": {
+   "was": "CA Interstate 91",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "605",
+   "note": "San Gabriel River Freeway at Cerritos"
+  },
+  "interstate:73:-117.734:33.644:-118.038:33.774": {
+   "was": "CA Interstate 73",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "405",
+   "note": "San Diego Freeway through Costa Mesa"
+  },
+  "interstate:67:-92.232:34.781:-91.248:35.583": {
+   "was": "AR Interstate 67",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:40:-92.232:34.781:-92.270:34.710": {
+   "was": "AR Interstate 40",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "30",
+   "note": "I-30 across the Arkansas River at Little Rock"
+  },
+  "interstate:85:-84.491:33.763:-84.388:33.739": {
+   "was": "GA Interstate 85",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "20",
+   "note": "West of downtown Atlanta; I-85 is on the Downtown Connector only"
+  },
+  "interstate:78:-90.030:35.132:-88.705:34.283": {
+   "was": "MS Interstate 78",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "22",
+   "note": "US 78 became I-22 in 2016"
+  },
+  "interstate:78:-88.705:34.283:-88.186:34.213": {
+   "was": "MS Interstate 78",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "22",
+   "note": "US 78 became I-22 in 2016"
+  },
+  "interstate:78:-88.186:34.213:-87.986:34.097": {
+   "was": "AL Interstate 78",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "22",
+   "note": "US 78 became I-22 in 2016"
+  },
+  "interstate:210:-117.295:34.064:-117.001:33.946": {
+   "was": "CA Interstate 210",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "10",
+   "note": "Redlands; the source shifted labels one route north here"
+  },
+  "interstate:530:-92.270:34.710:-91.958:34.206": {
+   "was": "AR Interstate 530",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:82:-88.660:33.491:-88.278:33.491": {
+   "was": "MS Interstate 82",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:60:-111.967:33.380:-111.491:33.381": {
+   "was": "AZ Interstate 60",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:1D:-117.071:32.525:-117.107:32.522": {
+   "was": "undefined Interstate 1D",
+   "action": "drop",
+   "note": "Mexican federal highway 1D, Tijuana"
+  },
+  "interstate:1D:-117.020:32.529:-117.132:32.772": {
+   "was": "CA Interstate 1D",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "5",
+   "note": "San Diego Freeway in Chula Vista, tagged with a Mexican route number"
+  },
+  "state:2D:-117.017:32.525:-116.875:32.542": {
+   "was": "undefined Highway 2D",
+   "action": "drop",
+   "note": "Mexican federal highway 2D, Tijuana"
+  },
+  "interstate:281:-98.498:33.901:-98.520:33.942": {
+   "was": "TX Interstate 281",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "44",
+   "note": "I-44/US 281 at Wichita Falls; tagged with the US number"
+  },
+  "interstate:111:-115.457:32.662:-115.501:32.773": {
+   "was": "CA Interstate 111",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:69:-96.609:33.670:-96.544:33.833": {
+   "was": "TX Interstate 69",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:202:-81.415:30.257:-81.389:30.257": {
+   "was": "FL Interstate 202",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:202:-81.582:30.250:-81.431:30.257": {
+   "was": "FL Interstate 202",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:528:-80.746:28.402:-80.722:28.406": {
+   "was": "FL Interstate 528",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:528:-80.819:28.413:-80.746:28.402": {
+   "was": "FL Interstate 528",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:528:-81.408:28.434:-80.833:28.448": {
+   "was": "FL Interstate 528",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:528:-81.472:28.422:-81.408:28.434": {
+   "was": "FL Interstate 528",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:59:-95.348:29.769:-95.091:30.351": {
+   "was": "TX Interstate 59",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "69",
+   "note": "Eastex Freeway, signed I-69/US 59"
+  },
+  "interstate:59:-95.853:29.517:-95.365:29.743": {
+   "was": "TX Interstate 59",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "69",
+   "note": "Southwest Freeway, signed I-69/US 59"
+  },
+  "interstate:181:-97.392:27.819:-97.291:27.927": {
+   "was": "TX Interstate 181",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:836:-80.347:25.782:-80.210:25.784": {
+   "was": "FL Interstate 836",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:836:-80.385:25.775:-80.347:25.782": {
+   "was": "FL Interstate 836",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:83:-97.720:26.188:-98.180:26.207": {
+   "was": "TX Interstate 83",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "2",
+   "note": "I-2/US 83 in the Rio Grande Valley; tagged with the US number"
+  },
+  "interstate:416:-76.023:44.393:-75.987:44.306": {
+   "was": "NY Interstate 416",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:202:-81.431:30.257:-81.415:30.257": {
+   "was": "FL Interstate 202",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:77:-97.501:25.878:-97.720:26.188": {
+   "was": "TX Interstate 77",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "69E",
+   "note": "I-69E/US 77 in the Rio Grande Valley; tagged with the US number"
+  },
+  "interstate:267:-77.185:38.897:-77.560:39.095": {
+   "was": "VA Interstate 267",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:32:-76.947:39.300:-76.830:39.154": {
+   "was": "MD Interstate 32",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:12:-96.928:32.675:-96.890:32.902": {
+   "was": "TX Interstate 12",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:408:-97.069:32.829:-97.067:32.685": {
+   "was": "TX Interstate 408",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:55:-87.696:41.627:-87.613:41.736": {
+   "was": "IL Interstate 55",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "57",
+   "note": "Dan Ryan south of the I-94 split is I-57"
+  },
+  "interstate:14:-83.742:42.309:-83.433:42.380": {
+   "was": "MI Interstate 14",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:22:-80.630:40.389:-80.153:40.439": {
+   "was": "PA Interstate 22",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:590:-77.647:43.049:-77.610:43.101": {
+   "was": "NY Interstate 590",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "390",
+   "note": "Rochester west side is I-390"
+  },
+  "interstate:12:-75.234:43.105:-75.186:43.282": {
+   "was": "NY Interstate 12",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:128:-70.978:42.519:-70.636:42.611": {
+   "was": "MA Interstate 128",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:213:-71.221:42.726:-71.141:42.747": {
+   "was": "MA Interstate 213",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:3:-71.331:42.611:-71.475:43.044": {
+   "was": "NH Interstate 3",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:90:-73.842:42.696:-73.781:42.634": {
+   "was": "NY Interstate 90",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "87",
+   "note": "Thruway south of exit 24 is I-87 only"
+  },
+  "interstate:2:-106.464:31.613:-106.280:31.695": {
+   "was": "undefined Interstate 2",
+   "action": "drop",
+   "note": "Mexican federal highway 2, Ciudad Juarez"
+  },
+  "interstate:289:-101.836:33.630:-101.836:33.630": {
+   "was": "TX Interstate 289",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:36:-105.262:40.005:-105.000:39.808": {
+   "was": "CO Interstate 36",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:71:-117.620:33.880:-117.800:34.060": {
+   "was": "CA Interstate 71",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:57:-117.906:33.855:-117.816:34.020": {
+   "was": "CA Interstate 57",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:405:-117.868:33.770:-118.037:33.773": {
+   "was": "CA Interstate 405",
+   "action": "reclass",
+   "cls": "state",
+   "num": "22",
+   "note": "SR 22 Garden Grove Freeway; the source shifted labels one route"
+  },
+  "interstate:118:-118.853:34.285:-118.462:34.288": {
+   "was": "CA Interstate 118",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:215:-118.142:34.159:-118.469:34.297": {
+   "was": "CA Interstate 215",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "210",
+   "note": "Foothill Freeway; I-215 is in the Inland Empire"
+  },
+  "interstate:10:-118.013:34.039:-117.556:34.022": {
+   "was": "CA Interstate 10",
+   "action": "reclass",
+   "cls": "state",
+   "num": "60",
+   "note": "SR 60 Pomona Freeway at Diamond Bar; the source shifted labels one route north"
+  },
+  "interstate:125:-117.021:32.692:-117.028:32.843": {
+   "was": "CA Interstate 125",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:56:-117.227:32.942:-117.093:32.956": {
+   "was": "CA Interstate 56",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:780:-122.218:38.039:-122.066:37.997": {
+   "was": "CA Interstate 780",
+   "action": "reclass",
+   "cls": "state",
+   "num": "4",
+   "note": "SR 4 at Martinez; I-780 is the Benicia spur"
+  },
+  "interstate:92:-122.341:37.516:-122.065:37.674": {
+   "was": "CA Interstate 92",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:85:-122.060:37.332:-121.770:37.247": {
+   "was": "CA Interstate 85",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:217:-122.746:45.425:-122.786:45.511": {
+   "was": "OR Interstate 217",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:5:-122.557:45.536:-122.222:45.548": {
+   "was": "OR Interstate 5",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "84",
+   "note": "Columbia River Highway east of Portland"
+  },
+  "interstate:395:-119.200:46.159:-119.120:46.248": {
+   "was": "WA Interstate 395",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:167:-122.251:47.305:-122.215:47.462": {
+   "was": "WA Interstate 167",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:5:-122.322:47.594:-122.176:47.580": {
+   "was": "WA Interstate 5",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "90",
+   "note": "Mercer Island"
+  },
+  "interstate:520:-122.320:47.644:-122.187:47.633": {
+   "was": "WA Interstate 520",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:509:-122.322:47.469:-122.328:47.621": {
+   "was": "WA Interstate 509",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:18:-122.308:47.288:-121.883:47.508": {
+   "was": "WA Interstate 18",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:17:-122.017:36.983:-121.976:37.225": {
+   "was": "CA Interstate 17",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:10:-117.296:33.944:-116.989:33.939": {
+   "was": "CA Interstate 10",
+   "action": "reclass",
+   "cls": "state",
+   "num": "60",
+   "note": "SR 60 Moreno Valley Freeway; the source shifted labels one route north"
+  },
+  "interstate:10:-117.556:34.022:-117.296:33.944": {
+   "was": "CA Interstate 10",
+   "action": "reclass",
+   "cls": "state",
+   "num": "60",
+   "note": "SR 60 Pomona Freeway at Jurupa Valley; the source shifted labels one route north"
+  },
+  "interstate:215:-117.951:34.130:-118.137:34.151": {
+   "was": "CA Interstate 215",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "210",
+   "note": "Foothill Freeway; I-215 is in the Inland Empire"
+  },
+  "interstate:215:-117.804:34.066:-117.951:34.130": {
+   "was": "CA Interstate 215",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "210",
+   "note": "Foothill Freeway; I-215 is in the Inland Empire"
+  },
+  "interstate:47:-118.269:33.769:-118.213:33.786": {
+   "was": "CA Interstate 47",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:17:-121.976:37.225:-121.942:37.315": {
+   "was": "CA Interstate 17",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:85:-122.060:37.332:-122.055:37.410": {
+   "was": "CA Interstate 85",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:237:-122.055:37.410:-121.885:37.443": {
+   "was": "CA Interstate 237",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:518:-122.322:47.469:-122.274:47.462": {
+   "was": "WA Interstate 518",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:167:-122.246:47.194:-122.251:47.305": {
+   "was": "WA Interstate 167",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:520:-122.187:47.633:-122.100:47.670": {
+   "was": "WA Interstate 520",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:90:-90.072:29.894:-90.065:29.971": {
+   "was": "LA Interstate 90",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:70:-80.443:26.147:-80.347:26.121": {
+   "was": "FL Interstate 70",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "75",
+   "note": "Alligator Alley/I-595 junction, Broward County; there is no I-70 in Florida"
+  },
+  "interstate:96:-83.806:42.288:-83.742:42.306": {
+   "was": "MI Interstate 96",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "94",
+   "note": "Ann Arbor; I-96 doesn't reach it"
+  },
+  "interstate:32:-76.778:39.114:-76.634:39.060": {
+   "was": "MD Interstate 32",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:32:-76.830:39.154:-76.778:39.114": {
+   "was": "MD Interstate 32",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:295:-76.778:39.115:-76.622:39.228": {
+   "was": "MD Interstate 295",
+   "action": "reclass",
+   "cls": "state",
+   "note": "MD 295 Baltimore-Washington Parkway"
+  },
+  "interstate:95:-74.597:40.192:-74.698:40.192": {
+   "was": "NJ Interstate 95",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "195",
+   "note": "Hamilton Township; I-195"
+  },
+  "interstate:1:-74.865:40.189:-74.698:40.192": {
+   "was": "PA Interstate 1",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:6:-70.510:41.743:-69.992:41.783": {
+   "was": "MA Interstate 6",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:2:-148.768:65.496:-147.713:64.833": {
+   "was": "undefined Interstate 2",
+   "action": "reclass",
+   "cls": "state",
+   "note": "Alaska Route 2 (unsigned Interstate A-2)"
+  },
+  "interstate:23:-118.870:34.175:-118.853:34.285": {
+   "was": "CA Interstate 23",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:52:-117.177:32.845:-117.028:32.843": {
+   "was": "CA Interstate 52",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:54:-117.093:32.647:-117.021:32.692": {
+   "was": "CA Interstate 54",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:64:-96.355:36.221:-95.975:36.162": {
+   "was": "OK Interstate 64",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:81:-97.328:32.747:-97.483:33.120": {
+   "was": "TX Interstate 81",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:75:-96.791:32.794:-96.768:32.900": {
+   "was": "TX Interstate 75",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:358:-97.445:27.788:-97.236:27.612": {
+   "was": "TX Interstate 358",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:355:-88.069:41.943:-88.047:42.218": {
+   "was": "IL Interstate 355",
+   "action": "reclass",
+   "cls": "state",
+   "num": "53",
+   "note": "IL 53 freeway north of I-290; I-355 ends at I-290"
+  },
+  "interstate:90:-90.172:29.907:-90.072:29.894": {
+   "was": "LA Interstate 90",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:4:-84.188:39.759:-84.136:39.779": {
+   "was": "OH Interstate 4",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:74:-86.034:39.800:-86.031:39.746": {
+   "was": "IN Interstate 74",
+   "action": "relabel",
+   "cls": "interstate",
+   "num": "465",
+   "note": "Indianapolis east side; I-74 shares only the south leg of I-465"
+  },
+  "interstate:7:-80.637:40.385:-80.590:40.654": {
+   "was": "OH Interstate 7",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:1:-80.477:25.453:-80.318:25.666": {
+   "was": "FL Interstate 1",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:50:-76.401:39.006:-76.310:38.973": {
+   "was": "MD Interstate 50",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:322:-77.859:40.819:-77.633:40.781": {
+   "was": "PA Interstate 322",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:589:-82.547:27.958:-82.552:28.723": {
+   "was": "FL Interstate 589",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:101:-122.484:37.825:-122.507:37.865": {
+   "was": "CA Interstate 101",
+   "action": "reclass",
+   "cls": "us",
+   "note": "US route freeway tagged as an interstate"
+  },
+  "interstate:91:-117.702:33.868:-117.564:33.878": {
+   "was": "CA Interstate 91",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  },
+  "interstate:125:-116.928:32.545:-117.027:32.693": {
+   "was": "CA Interstate 125",
+   "action": "reclass",
+   "cls": "state",
+   "note": "state route freeway tagged as an interstate"
+  }
+ }
+}

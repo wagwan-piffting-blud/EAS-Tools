@@ -101,6 +101,7 @@
         var polyBbox = Intersect.bbox(ring);
 
         var byRoute = {};
+        var classRank = { interstate: 0, us: 1, state: 2 };
 
         highwaysDb.features.forEach(function (feat) {
             if (!feat.geometry) return;
@@ -133,7 +134,13 @@
                 }
 
                 var stateSuffix = feat.properties.state || "";
-                var key = feat.properties.cls + "|" + feat.properties.num + "|" + stateSuffix;
+                // Grouped by the text the bulletin prints: US and state routes both read
+                // "Highway N", and Natural Earth sometimes files one road under both classes.
+                // Mileposts restart at state lines, so the state stays in the key.
+                var key = feat.properties.displayName + "|" + stateSuffix;
+                if (byRoute[key] && classRank[feat.properties.cls] < classRank[byRoute[key].cls]) {
+                    byRoute[key].cls = feat.properties.cls;
+                }
                 if (!byRoute[key]) {
                     byRoute[key] = {
                         cls:         feat.properties.cls,
@@ -158,7 +165,6 @@
             }
         });
 
-        var classRank = { interstate: 0, us: 1, state: 2 };
         var out = [];
         Object.keys(byRoute).forEach(function (k) { out.push(byRoute[k]); });
         out.sort(function (a, b) {
@@ -173,19 +179,41 @@
         return out;
     }
 
+    var STATE_NAMES = {
+        AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado",
+        CT: "Connecticut", DE: "Delaware", DC: "the District of Columbia", FL: "Florida", GA: "Georgia",
+        HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky",
+        LA: "Louisiana", ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota",
+        MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire",
+        NJ: "New Jersey", NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota",
+        OH: "Ohio", OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+        SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont", VA: "Virginia",
+        WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming", PR: "Puerto Rico"
+    };
+
     function formatHighwayBullet(hits, leadIn) {
         if (!hits || hits.length === 0) return null;
         leadIn = leadIn || "This includes the following highways...";
         var lines = [leadIn];
+        // A route that crosses a state line in the polygon gets one line per state, since
+        // mileposts restart there; naming the state keeps the two lines apart.
+        var statesByName = {};
         hits.forEach(function (h) {
+            (statesByName[h.displayName] = statesByName[h.displayName] || {})[h.state] = true;
+        });
+        hits.forEach(function (h) {
+            var name = h.displayName;
+            if (Object.keys(statesByName[name]).length > 1 && STATE_NAMES[h.state]) {
+                name += " in " + STATE_NAMES[h.state];
+            }
             var span = h.mileEnd - h.mileStart;
             var mid  = Math.round((h.mileStart + h.mileEnd) / 2);
             if (!h.strict) {
-                lines.push(" " + h.displayName + " near mile marker " + mid + ".");
+                lines.push(" " + name + " near mile marker " + mid + ".");
             } else if (span < 2) {
-                lines.push(" " + h.displayName + " near mile marker " + h.mileEnd + ".");
+                lines.push(" " + name + " near mile marker " + h.mileEnd + ".");
             } else {
-                lines.push(" " + h.displayName + " between mile markers "
+                lines.push(" " + name + " between mile markers "
                          + h.mileStart + " and " + h.mileEnd + ".");
             }
         });

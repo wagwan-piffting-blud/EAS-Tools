@@ -1,5 +1,13 @@
 # EAS Tools Changelog
 
+2026-10-17:
+
+- Update TTS voice list page to include the most current version of the VoiceText voices. Thanks to GitHub user @jakescooty for reminding me to update the list, as it was using the incorrect versions.
+
+- Update highway information for WarnGen. This mainly removes some erroneous entries that were found after testing.
+
+---
+
 2026-10-16:
 
 - Implement the suggestions in GitHub issue #126, which include adding searching of WarnGen office and templates, searching of counties in the encoder, and the option to save generated radar images locally as a PNG or SVG. Added more DASDEC screen variants and made it more accurate to real hardware. Thanks to GitHub user @InternOfCEOs for suggesting these changes.
