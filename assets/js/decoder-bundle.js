@@ -5900,7 +5900,7 @@ async function fetchAndStore() {
         });
     }
 
-    loadStoredCustomAlarms();
+    const customAlarmsLoaded = loadStoredCustomAlarms();
 
     const autoRecordToggle = document.getElementById('decoder-auto-record');
     if (autoRecordToggle) {
@@ -6099,6 +6099,105 @@ async function fetchAndStore() {
                 } else {
                     stopWeatherRadioAlarm();
                 }
+            }
+        });
+
+        const sendCustomAlarmState = () => {
+            const names = {};
+            CUSTOM_ALARM_SLOTS.forEach((slot) => { names[slot.key] = customAlarmNames.get(slot.key) || ''; });
+            const statusElement = document.getElementById("decoder-custom-beep-status");
+            window.EASBridge.send('decoder:customAlarms', {
+                enabled: areCustomAlarmsEnabled(),
+                names: names,
+                status: statusElement ? statusElement.textContent : '',
+                maxBytes: CUSTOM_ALARM_MAX_BYTES
+            });
+        };
+
+        window.EASBridge.on('decoder:requestCustomAlarms', () => {
+            customAlarmsLoaded.finally(sendCustomAlarmState);
+        });
+
+        window.EASBridge.on('decoder:setCustomAlarmsEnabled', (params) => {
+            const toggle = document.getElementById("decoder-alarm-beep-customization");
+            if (toggle) {
+                toggle.checked = !!params?.enabled;
+                toggle.dispatchEvent(new Event('change'));
+            }
+            sendCustomAlarmState();
+        });
+
+        window.EASBridge.on('decoder:saveCustomAlarm', async (params) => {
+            const slot = CUSTOM_ALARM_SLOTS.find((entry) => entry.key === params?.slot);
+            if (!slot || !params?.base64) return;
+            try {
+                const binary = atob(params.base64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                if (bytes.byteLength > CUSTOM_ALARM_MAX_BYTES) {
+                    renderCustomAlarmStatus("Skipped " + slot.label + " (is larger than " + Math.round(CUSTOM_ALARM_MAX_BYTES / (1024 * 1024)) + " MB).");
+                    return;
+                }
+                const buffer = await decodeCustomAlarmBytes(bytes.buffer);
+                if (!buffer) {
+                    renderCustomAlarmStatus("Skipped " + slot.label + " (could not be decoded as audio).");
+                    return;
+                }
+                const name = String(params.name || "custom sound");
+                await customAlarmDbPut(slot.key, { name: name, type: String(params.type || ""), bytes: bytes.buffer, savedAt: Date.now() });
+                customAlarmBuffers.set(slot.key, buffer);
+                customAlarmNames.set(slot.key, name);
+                renderCustomAlarmStatus("Saved.");
+            } catch (error) {
+                console.warn("Unable to save the custom decoder alarm for " + slot.label + ":", error);
+                renderCustomAlarmStatus("Skipped " + slot.label + " (" + ((error && error.message) || "could not be saved") + ").");
+            } finally {
+                sendCustomAlarmState();
+            }
+        });
+
+        window.EASBridge.on('decoder:clearCustomAlarms', () => {
+            clearCustomAlarms().finally(sendCustomAlarmState);
+        });
+
+        window.EASBridge.on('decoder:previewCustomAlarm', (params) => {
+            const severity = { warning: "Warning", watch: "Watch", advisory: "Advisory" }[params?.slot] || "Advisory";
+            stopWeatherRadioAlarm();
+            try { decodeContext.resume(); } catch (error) { }
+            resolveAlarmSound(severity).then(({ buffer, peakGain }) => {
+                if (!buffer) return;
+                const gain = decodeContext.createGain();
+                gain.gain.value = peakGain;
+                const source = decodeContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(gain);
+                gain.connect(decodeContext.destination);
+                source.onended = () => { try { gain.disconnect(); } catch (error) { } };
+                source.start();
+            });
+        });
+
+        window.EASBridge.on('decoder:handoffAudio', async (params) => {
+            const requestId = params?.requestId ?? 0;
+            if (!lastSourceAudio) {
+                window.EASBridge.send('decoder:handoffAudioData', { requestId, ok: false, error: 'only for alerts decoded from a file or recording' });
+                return;
+            }
+            try {
+                const bytes = new Uint8Array(await lastSourceAudio.arrayBuffer());
+                let binary = '';
+                for (let i = 0; i < bytes.length; i += 0x8000) {
+                    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+                }
+                window.EASBridge.send('decoder:handoffAudioData', {
+                    requestId,
+                    ok: true,
+                    name: lastSourceAudio.name || 'decoded-audio.wav',
+                    type: lastSourceAudio.type || 'audio/wav',
+                    base64: btoa(binary)
+                });
+            } catch (err) {
+                window.EASBridge.send('decoder:handoffAudioData', { requestId, ok: false, error: (err && err.message) || String(err) });
             }
         });
 

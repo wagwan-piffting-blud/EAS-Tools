@@ -1,5 +1,5 @@
 import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain } from './common-functions.js';
-import { createSendMenu, receive, audioFile } from './handoff.js';
+import { createSendMenu, receive, handIn, audioFile } from './handoff.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -4033,7 +4033,7 @@ async function fetchAndStore() {
                 }
 
                 await generateEas();
-                window.EASBridge.send('encoder:generateState', { active: false, success: true });
+                window.EASBridge.send('encoder:generateState', { active: false, success: true, header: alertInfo ? alertInfo.header : '' });
             } catch (err) {
                 console.error('[EASBridge] Generate error:', err);
                 window.EASBridge.send('encoder:status', { text: 'ERROR: ' + err.message });
@@ -4164,6 +4164,70 @@ async function fetchAndStore() {
 
         window.EASBridge.on('encoder:setTimeToNow', () => {
             stime();
+        });
+
+        const bytesToBase64 = (bytes) => {
+            let binary = '';
+            const step = 0x8000;
+            for (let i = 0; i < bytes.length; i += step) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + step));
+            }
+            return btoa(binary);
+        };
+
+        window.EASBridge.on('encoder:parseHeader', (params) => {
+            const requestId = params?.requestId ?? 0;
+            const resolved = resolveHeaderInput(String(params?.header || '').trim());
+            if (!resolved.ok) {
+                window.EASBridge.send('encoder:headerParsed', { requestId, ok: false, error: resolved.error || 'That header could not be read.' });
+                return;
+            }
+            const parsed = parseSameHeaderParam(resolved.header);
+            if (!parsed) {
+                window.EASBridge.send('encoder:headerParsed', { requestId, ok: false, error: 'That header could not be read.' });
+                return;
+            }
+            window.EASBridge.send('encoder:headerParsed', {
+                requestId,
+                ok: true,
+                header: resolved.header,
+                origin: parsed.origin || '',
+                event: parsed.event || '',
+                locations: (parsed.locations || []).filter((code) => /^\d{6}$/.test(code)),
+                duration: parsed.duration || '',
+                issue: parsed.issue || '',
+                station: parsed.station || '',
+                notes: resolved.notes || []
+            });
+        });
+
+        window.EASBridge.on('encoder:handoffToDecoder', () => {
+            if (!lastWavBlob) {
+                window.EASBridge.send('encoder:status', { text: '[WARN] Generate an alert first.' });
+                return;
+            }
+            handIn('decoder', { audio: audioFile(lastWavBlob, 'eas-encoder-alert.wav') }, { what: 'Alert audio' });
+        });
+
+        window.EASBridge.on('encoder:handoffSplicerAlert', () => {
+            const payload = splicerAlertPayload();
+            if (!payload) {
+                window.EASBridge.send('encoder:splicerAlert', { ok: false });
+                return;
+            }
+            const pcm = payload.alert.pcm;
+            const pcm16 = new Int16Array(pcm.length);
+            for (let i = 0; i < pcm.length; i++) {
+                const s = Math.max(-1, Math.min(1, pcm[i]));
+                pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+            }
+            window.EASBridge.send('encoder:splicerAlert', {
+                ok: true,
+                sampleRate: payload.alert.sampleRate,
+                parts: payload.alert.parts,
+                info: payload.alert.info,
+                pcm16: bytesToBase64(new Uint8Array(pcm16.buffer))
+            });
         });
 
         const _origAddStatus = addStatus;

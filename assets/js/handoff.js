@@ -38,7 +38,17 @@ function deliver(tool) {
         });
 }
 
+export function handIn(tool, payload, { what = 'Result' } = {}) {
+    if (!payload) return false;
+    inbox.set(tool, { payload, note: what + ' received.' });
+    deliver(tool);
+    return true;
+}
+
 export function sendTo(tool, payload, { what = 'Result' } = {}) {
+    if (payload && typeof window !== 'undefined' && typeof window.EASNativeHandoff === 'function') {
+        return window.EASNativeHandoff(tool, payload, what) !== false;
+    }
     const tab = tabButton(tool);
     if (!tab || !payload) return false;
     inbox.set(tool, { payload, note: what + ' sent to ' + toolName(tool) + '.' });
@@ -219,5 +229,5 @@ export function createSendMenu({ doc = document, label = 'Send to…', title = '
 }
 
 if (typeof window !== 'undefined') {
-    window.EASHandoff = { sendTo, receive, createSendMenu, canSendTo, toolName, announce, audioFile };
+    window.EASHandoff = { sendTo, handIn, receive, createSendMenu, canSendTo, toolName, announce, audioFile };
 }

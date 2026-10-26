@@ -12,6 +12,8 @@
 
 - NOTE to native app users: The native apps will be updated to version 3.7.0 some time in the next few days, which will include all of the changes made in this update, hopefully including a native port/version of the Splicer tool. Please be patient as the app store review process can take some time.
 
+- Some more small JS changes to help augment 3.7.0 rollout.
+
 ---
 
 2026-10-17:

@@ -2,7 +2,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 import { createSendMenu, receive } from './handoff.js';
 import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady } from '../E2T/EAS2Text-NG.js';
 import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec, Input, BlobSource, CanvasSink, ALL_FORMATS } from './mediabunny/mediabunny.min.js';
-import { SCREEN_TYPE, openScreenBuilder, listScreens, getScreen, adoptScreen, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices } from './crawl-screen-builder.js';
+import { SCREEN_TYPE, SCREEN_TOKENS, MAX_SCREEN_PAGES, EVERY_PAGE, openScreenBuilder, listScreens, getScreen, adoptScreen, saveScreen, deleteScreen, parseScreenJson, normalizeScreen, createScreenTemplate, renderScreenCanvas, screenElementBounds, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices } from './crawl-screen-builder.js';
 
 async function initCrawlEditor() {
     let crawlTextEditor = null;
@@ -3228,7 +3228,7 @@ async function initCrawlEditor() {
     function getFileFromInput(inputId) {
         const input = document.getElementById(inputId);
         if (!input || !input.files || !input.files[0]) {
-            return null;
+            return (window.__nativeCrawlFiles && window.__nativeCrawlFiles[inputId]) || null;
         }
         return input.files[0];
     }
@@ -4819,8 +4819,7 @@ async function initCrawlEditor() {
     };
 
     function crawlFileToken(inputId) {
-        const input = document.getElementById(inputId);
-        const file = input && input.files ? input.files[0] : null;
+        const file = getFileFromInput(inputId);
         return file ? `${file.name}:${file.size}:${file.lastModified}` : '';
     }
 
@@ -6389,16 +6388,157 @@ async function initCrawlEditor() {
             const options = Array.from(sel.options).map((o) => ({ value: o.value, label: o.textContent }));
             window.EASBridge.send('crawl:premadeList', { options: options });
         }
+        function sendStylePresetsToNative() {
+            const groups = CRAWL_STYLE_PRESET_GROUPS.map((group) => ({
+                label: group.label,
+                presets: group.presets.map((preset) => ({ id: preset.id, label: preset.label, settings: preset.settings }))
+            }));
+            window.EASBridge.send('crawl:stylePresets', { groups: groups });
+        }
+        async function loadNativeCrawlFile(inputId, params) {
+            window.__nativeCrawlFiles = window.__nativeCrawlFiles || {};
+            const token = String(params.token || params.path);
+            const current = window.__nativeCrawlFiles[inputId];
+            if (current && current.__nativeToken === token) return current;
+            const path = String(params.path);
+            const fileUrl = path.startsWith('file://') ? path : 'file://' + path;
+            const url = window.Capacitor && typeof window.Capacitor.convertFileSrc === 'function' ? window.Capacitor.convertFileSrc(fileUrl) : fileUrl;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Could not read the background video (HTTP ' + response.status + ').');
+            const blob = await response.blob();
+            const file = new File([blob], params.name || 'background-video.mp4', { type: params.type || blob.type || 'video/mp4', lastModified: Date.now() });
+            file.__nativeToken = token;
+            window.__nativeCrawlFiles[inputId] = file;
+            return file;
+        }
+        function setOverrideSender(params) {
+            const input = document.getElementById('crawlOverrideSender');
+            if (input && typeof params?.overrideSender === 'string') input.value = params.overrideSender;
+        }
         resourcesReady.then(sendEndecModesToNative).catch(() => sendEndecModesToNative());
         sendCrawlFontsToNative();
         sendPremadeListToNative();
+        sendStylePresetsToNative();
+
+        window.EASBridge.on('crawl:importScreen', (params) => {
+            try {
+                const screen = saveScreen(parseScreenJson(String(params?.json || '')));
+                refreshCustomScreenOptions();
+                syncCustomScreenData();
+                sendPremadeListToNative();
+                window.EASBridge.send('crawl:screenImported', { ok: true, value: `${SCREEN_TYPE}:${screen.id}`, name: screen.name || '' });
+            } catch (err) {
+                window.EASBridge.send('crawl:screenImported', { ok: false, error: (err && err.message) || String(err) });
+            }
+        });
+
+        window.EASBridge.on('crawl:requestScreenBuilderData', () => {
+            window.EASBridge.send('crawl:screenBuilderData', {
+                tokens: SCREEN_TOKENS.map((token) => ({ name: token.name, description: token.description })),
+                templates: templateChoices(),
+                fonts: crawlScreenFontChoices(),
+                maxPages: MAX_SCREEN_PAGES,
+                everyPage: EVERY_PAGE
+            });
+        });
+
+        window.EASBridge.on('crawl:screenTemplate', async (params) => {
+            const requestId = params?.requestId ?? 0;
+            try {
+                const layout = await createScreenTemplate(String(params?.kind || 'blank'));
+                window.EASBridge.send('crawl:screenLayout', { requestId, layout });
+            } catch (err) {
+                window.EASBridge.send('crawl:screenLayout', { requestId, layout: null, error: (err && err.message) || String(err) });
+            }
+        });
+
+        window.EASBridge.on('crawl:normalizeScreen', (params) => {
+            const requestId = params?.requestId ?? 0;
+            try {
+                window.EASBridge.send('crawl:screenLayout', { requestId, layout: parseScreenJson(String(params?.json || '')) });
+            } catch (err) {
+                window.EASBridge.send('crawl:screenLayout', { requestId, layout: null, error: (err && err.message) || String(err) });
+            }
+        });
+
+        window.EASBridge.on('crawl:getScreen', (params) => {
+            const requestId = params?.requestId ?? 0;
+            const descriptor = parseBackgroundSelectionValue(String(params?.value || ''));
+            const screen = descriptor && descriptor.type === SCREEN_TYPE ? getScreen(descriptor.source) : null;
+            window.EASBridge.send('crawl:screenLayout', { requestId, layout: screen, error: screen ? '' : 'That screen is not saved on this device.' });
+        });
+
+        window.EASBridge.on('crawl:renderScreenPreview', async (params) => {
+            const requestId = params?.requestId ?? 0;
+            try {
+                const setVal = (id, val) => { const node = document.getElementById(id); if (node && val != null) node.value = val; };
+                setVal('crawlMode', params?.crawlMode || 'custom');
+                setVal('crawlRawHeader', params?.header != null ? params.header : '');
+                setVal('crawlText', params?.text != null ? params.text : '');
+                setVal('endecMode', params?.endecMode != null ? params.endecMode : '');
+                setVal('easyplusOriginator', params?.easyplusOriginator);
+                setVal('easyplusEventCode', params?.easyplusEventCode);
+                setOverrideSender(params);
+                const screen = normalizeScreen(params?.layout);
+                alertPickersSuppressed = params?.alertPickers !== true;
+                let tokens;
+                try {
+                    tokens = await buildCustomScreenTokens(screen);
+                } finally {
+                    alertPickersSuppressed = false;
+                }
+                const canvas = await renderScreenCanvas(screen, tokens, {
+                    page: params?.page || 0,
+                    chunk: params?.chunk || 0,
+                    showTokens: params?.showTokens === true,
+                    hideFlashing: params?.hideFlashing === true
+                });
+                window.EASBridge.send('crawl:screenPreview', {
+                    requestId,
+                    image: canvas.toDataURL('image/png'),
+                    width: screen.width,
+                    height: screen.height,
+                    bounds: screenElementBounds(screen, tokens, {
+                        page: params?.page || 0,
+                        chunk: params?.chunk || 0,
+                        showTokens: params?.showTokens === true
+                    })
+                });
+            } catch (err) {
+                window.EASBridge.send('crawl:screenPreview', { requestId, image: '', error: (err && err.message) || String(err) });
+            }
+        });
+
+        window.EASBridge.on('crawl:saveScreen', (params) => {
+            try {
+                const screen = saveScreen(normalizeScreen(params?.layout));
+                refreshCustomScreenOptions();
+                syncCustomScreenData();
+                sendPremadeListToNative();
+                window.EASBridge.send('crawl:screenSaved', { ok: true, value: `${SCREEN_TYPE}:${screen.id}`, id: screen.id, name: screen.name, use: params?.use === true });
+            } catch (err) {
+                window.EASBridge.send('crawl:screenSaved', { ok: false, error: (err && err.message) || String(err) });
+            }
+        });
+
+        window.EASBridge.on('crawl:deleteScreen', (params) => {
+            const value = String(params?.value || '');
+            const descriptor = parseBackgroundSelectionValue(value);
+            if (descriptor && descriptor.type === SCREEN_TYPE) {
+                deleteScreen(descriptor.source);
+                refreshCustomScreenOptions();
+                syncCustomScreenData();
+            }
+            sendPremadeListToNative();
+        });
 
         window.EASBridge.on('crawl:convertHeader', async (params) => {
             const rawHeader = params?.header;
             if (!rawHeader) return;
             try {
+                setOverrideSender(params);
                 const endecMode = params?.endecMode || null;
-                const text = await header_to_readable(rawHeader, false, '', endecMode);
+                const text = await header_to_readable(rawHeader, false, '', endecMode, crawlSenderOverride());
                 window.EASBridge.send('crawl:headerConverted', { text: text || '' });
 
                 try {
@@ -6431,6 +6571,7 @@ async function initCrawlEditor() {
                 setVal('easyplusOriginator', params?.easyplusOriginator);
                 setVal('easyplusEventCode', params?.easyplusEventCode);
                 setVal('crawlRepetitions', params?.repetitions);
+                setOverrideSender(params);
 
                 alertPickersSuppressed = params?.alertPickers !== true;
                 let assets;
@@ -6507,6 +6648,19 @@ async function initCrawlEditor() {
                 setVal('crawlMode', premadeMode ? (params.crawlMode || nativePremadeCrawlMode || 'custom') : 'custom');
                 if (params.header != null) setVal('crawlRawHeader', params.header);
                 if (params.endecMode != null) setVal('endecMode', params.endecMode);
+                setOverrideSender(params);
+                setChk('crawlTopLeftManual', params.topLeftManual);
+                setVal('crawlTopLeftPixelX', params.topLeftX);
+                setVal('crawlTopLeftPixelY', params.topLeftY);
+                setVal('crawlBackgroundVideoFit', params.videoFit);
+                setVal('crawlVideoBarPosition', params.videoBarPosition);
+                setVal('crawlVideoBarY', params.videoBarY);
+                setVal('crawlVideoBarHeight', params.videoBarHeight);
+                setVal('crawlVideoBarOpacity', params.videoBarOpacity);
+                if (params.bgMode === 'video') {
+                    if (!params.bgVideoPath) throw new Error('Choose a background video first.');
+                    await loadNativeCrawlFile('crawlBackgroundVideoFile', { path: params.bgVideoPath, name: params.bgVideoName, type: params.bgVideoType, token: params.bgVideoToken });
+                }
                 setVal('crawlRepetitions', params.repetitions);
                 setVal('crawlExportGifFps', params.gifFps);
                 setVal('crawlExportVideoFps', params.videoFps);
@@ -6573,6 +6727,7 @@ async function initCrawlEditor() {
                 }
             } catch (err) {
                 console.error('[EASBridge] crawl:export error:', err);
+                window.EASBridge.send('crawl:exportError', { message: (err && err.message) || String(err) });
                 window.EASBridge.send('crawl:exportComplete', {});
             }
         });
@@ -6586,6 +6741,7 @@ async function initCrawlEditor() {
             resourcesReady.then(sendEndecModesToNative).catch(() => sendEndecModesToNative());
             sendCrawlFontsToNative();
             sendPremadeListToNative();
+            sendStylePresetsToNative();
         });
 
         console.log('[EASBridge] Crawl bridge handlers registered');

@@ -714,6 +714,24 @@ export async function renderScreenCanvas(layout, tokens, options = {}) {
     return canvas;
 }
 
+export function screenElementBounds(layout, tokens, options = {}) {
+    const screen = normalizeScreen(layout);
+    const ctx = document.createElement('canvas').getContext('2d');
+    const page = Math.round(clampNumber(options.page, 0, screen.pageCount - 1, 0));
+    const chunk = Math.max(0, Math.round(Number(options.chunk) || 0));
+    const base = resolveTokens(screen, tokens);
+    const resolved = base.PAGE === undefined ? pageResolved(base, page + 1, screen.pageCount) : base;
+    return screen.elements.filter((element) => elementOnPage(element, page)).map((element) => {
+        if (element.type !== 'text') {
+            return { id: element.id, x: element.x, y: element.y, width: Math.max(4, element.width), height: Math.max(4, element.height) };
+        }
+        ctx.save();
+        const laid = layoutText(ctx, element, resolved, options.showTokens === true, chunk);
+        ctx.restore();
+        return { id: element.id, ...laid.bounds };
+    });
+}
+
 function canvasToImage(canvas) {
     return new Promise((resolve) => {
         const img = new Image();
