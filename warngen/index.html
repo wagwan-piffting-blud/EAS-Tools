@@ -2629,6 +2629,19 @@
                 return borrowed;
             }
 
+            function canconBullets(cfg, phen) {
+                var can = WarngenXmlParser.bulletsFor(cfg, "CAN", phen);
+                var con = WarngenXmlParser.bulletsFor(cfg, "CON", phen);
+                var seen = {};
+                can.forEach(function (b) { if (b.name) seen[b.name] = true; });
+                var rest = con.filter(function (b) { return !b.name || !seen[b.name]; });
+                if (!rest.some(function (b) { return b.name; })) return can;
+                return can.concat([
+                    { type: "title", text: "" },
+                    { type: "title", text: "******** CONTINUING AREAS (CON SEGMENT) ********" }
+                ], rest);
+            }
+
             function rebuildBulletPanel(bulletOverrides) {
                 var era = document.getElementById("era-select").value;
                 var tmpl = document.getElementById("template-select").value;
@@ -2705,11 +2718,14 @@
                 });
 
                 // CANCON is a partial cancellation: the template emits a CAN segment for the
-                // dropped counties and a CON segment for the rest, so it borrows CAN's bullets.
+                // dropped counties and a CON segment for the rest, so it carries both groups'
+                // bullets. CAN-only bullets would leave the CON segment with no basis, threats,
+                // locations or CTAs to print.
                 var bulletAction = (action === "CANCON") ? "CAN" : action;
 
-                var panelBullets = withCwaAirports(
-                    cfg, WarngenXmlParser.bulletsFor(cfg, bulletAction, currentPhenomena));
+                var panelBullets = withCwaAirports(cfg, action === "CANCON"
+                    ? canconBullets(cfg, currentPhenomena)
+                    : WarngenXmlParser.bulletsFor(cfg, bulletAction, currentPhenomena));
 
                 // BulletListManager.recreateBulletsFromFollowup: a followup's bullets come from
                 // the original product's text. showString hides the ones that don't apply,
@@ -5916,6 +5932,29 @@
                     } catch (e) { fail(e); }
                 }
             });
+
+            (function () {
+                var handoff = null;
+                try { handoff = window.parent !== window ? window.parent.EASHandoff : null; } catch (e) { handoff = null; }
+                if (!handoff) return;
+                var noProduct = function () { return lastFormattedOutput.trim() ? "" : "draw a polygon to build a product first"; };
+                var normalized = function () {
+                    if (typeof window.normalizeNwsBulletin !== "function") return lastFormattedOutput;
+                    return window.normalizeNwsBulletin(lastFormattedOutput) || "";
+                };
+                var menu = handoff.createSendMenu({
+                    doc: document,
+                    label: "Send to…",
+                    title: "Open this product in another tool",
+                    items: [
+                        { tool: "encoder", label: "SAME Encoder (product as header)", what: "Product", unavailable: noProduct, payload: function () { return { header: lastFormattedOutput }; } },
+                        { tool: "normalizer", label: "Product Normalizer", what: "Product", unavailable: noProduct, payload: function () { return { text: lastFormattedOutput }; } },
+                        { tool: "crawl", label: "Text Crawl Generator (normalized text)", what: "Product", unavailable: noProduct, payload: function () { return { text: normalized() }; } },
+                    ],
+                });
+                menu.button.className += " secondary-btn";
+                document.getElementById("copy-btn").insertAdjacentElement("afterend", menu.element);
+            })();
 
             document.getElementById("download-btn").addEventListener("click", function () {
                 var text = document.getElementById("output").textContent || "";

@@ -2,6 +2,7 @@ import { CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEM
 // normalizeNwsBulletin / runNwsNormalizer live in normalizer-core.js (the single source; WarnGen loads it as a classic
 // script), which puts them on window
 import './normalizer-core.js';
+import { createSendMenu, receive } from './handoff.js';
 
 (async function () {
     let normalizerTextEditor = null;
@@ -28,7 +29,6 @@ import './normalizer-core.js';
 
         normalizerEditor.on('change', () => {
             normalizerEditor.save();
-            window.ttsText = normalizerEditor.getValue().trim();
         });
 
         normalizerTextEditor = normalizerEditor;
@@ -59,6 +59,35 @@ import './normalizer-core.js';
     }
 
     document.getElementById("normalizeButton").addEventListener("click", run);
+
+    const normalizedText = () => {
+        const output = document.getElementById("normalizedProduct");
+        return output ? (output.value || output.textContent || "").trim() : "";
+    };
+    const noOutput = () => normalizedText() ? "" : "normalize a product first";
+    const normalizerSendMenu = createSendMenu({
+        label: "Send to…",
+        title: "Open the normalized product in another tool",
+        items: [
+            { tool: "encoder", label: "SAME Encoder (as TTS text)", what: "Normalized product", unavailable: noOutput, payload: () => ({ text: normalizedText() }) },
+            { tool: "splicer", label: "Audio Splicer (as TTS text)", what: "Normalized product", unavailable: noOutput, payload: () => ({ text: normalizedText() }) },
+            { tool: "crawl", label: "Text Crawl Generator (as crawl text)", what: "Normalized product", unavailable: noOutput, payload: () => ({ text: normalizedText() }) },
+        ],
+    });
+    document.getElementById("normalizeCopyToClipboard").insertAdjacentElement("afterend", normalizerSendMenu.element);
+
+    receive("normalizer", (payload) => {
+        if (typeof payload.text !== "string") return;
+        if (window.normalizerEditor) {
+            window.normalizerEditor.setValue(payload.text);
+            window.normalizerEditor.save();
+        } else {
+            const input = document.getElementById("productToNormalize");
+            if (input) input.value = payload.text;
+        }
+        run();
+        requestAnimationFrame(() => window.__ensureTextEditorsRefreshed?.("normalizer"));
+    });
     document.getElementById("normalizeCopyToClipboard").addEventListener("click", () => {
         const output = document.getElementById("normalizedProduct");
         if (!output) return;

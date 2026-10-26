@@ -1,4 +1,5 @@
 import { CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
+import { createSendMenu } from './handoff.js';
 
 const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.PhonemeTools;
 
@@ -27,7 +28,6 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
 
         phonemeEditor.on('change', () => {
             phonemeEditor.save();
-            window.ttsText = phonemeEditor.getValue().trim();
         });
 
         phonemeTextEditor = phonemeEditor;
@@ -257,6 +257,17 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
             alert("Failed to copy to clipboard: " + err);
         }
     };
+
+    const noOutput = () => out.textContent.trim() ? "" : "convert something first";
+    const phonemeSendMenu = createSendMenu({
+        label: "Send to…",
+        title: "Use the converted output as TTS text in another tool",
+        items: [
+            { tool: "encoder", label: "SAME Encoder (as TTS text)", what: "Phoneme output", unavailable: noOutput, payload: () => ({ text: out.textContent.trim() }) },
+            { tool: "splicer", label: "Audio Splicer (as TTS text)", what: "Phoneme output", unavailable: noOutput, payload: () => ({ text: out.textContent.trim() }) },
+        ],
+    });
+    document.getElementById("phonemeCopyToClipboard").insertAdjacentElement("afterend", phonemeSendMenu.element);
 
     if (window.EASBridge) {
         window.EASBridge.on('phoneme:convert', (params) => {

@@ -60,7 +60,7 @@
             }
         </style>
         <!-- Cloudflare Web Analytics -->
-        <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "de7f295c3b7d43e1a9a771246a7fdc65"}'></script>
+        <script async src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "de7f295c3b7d43e1a9a771246a7fdc65"}'></script>
         <!-- End Cloudflare Web Analytics -->
     </head>
     <body>
@@ -511,6 +511,14 @@
                     <option value="4">Preset #4</option>
                     <option value="5">Preset #5</option>
                 </select>
+                <br>
+                <label for="crawlStylePreset">Built-in Style Preset:</label>
+                <select id="crawlStylePreset" aria-describedby="crawlStylePresetNote">
+                    <option value="" selected>Choose a style...</option>
+                    <!-- will be populated by js -->
+                </select>
+                <button type="button" id="applyCrawlStylePreset">Apply Style</button>
+                <p id="crawlStylePresetNote" class="inline-note">Sets the background, font, colors and ENDEC mode a system is known for. Settings a style does not cover keep their current values.</p>
                 <hr class="shorter-hr">
                 <label for="crawlMode">Select Crawl Text Source:</label>
                 <select id="crawlMode">
@@ -631,6 +639,7 @@
                         <option value="solid" selected>Solid Color Background</option>
                         <!--<option value="transparent">Transparent Background</option>--> <!-- disabled for the time being because codec support is spotty/limited all around -->
                         <option value="image">Custom Image Background</option>
+                        <option value="video">Custom Video Background</option>
                         <option value="premade">Premade/Common Background Images</option>
                     </select>
                     <div id="crawlScreenBuilderRow">
@@ -647,6 +656,35 @@
                         <br>
                         <label for="crawlBackgroundImageFile">Upload Background Image File:</label>
                         <input type="file" id="crawlBackgroundImageFile" accept="image/*">
+                    </div>
+                    <div id="crawlBackgroundVideoDiv" style="display: none;">
+                        <br>
+                        <label for="crawlBackgroundVideoFile">Upload Background Video File:</label>
+                        <input type="file" id="crawlBackgroundVideoFile" accept="video/*" aria-describedby="crawlBackgroundVideoNote">
+                        <br>
+                        <label for="crawlBackgroundVideoFit">Video Scaling:</label>
+                        <select id="crawlBackgroundVideoFit">
+                            <option value="stretch" selected>Stretch to the crawl size</option>
+                            <option value="contain">Fit inside (bars use the background color)</option>
+                            <option value="cover">Fill (crop the edges)</option>
+                        </select>
+                        <br>
+                        <label for="crawlVideoBarPosition">Crawl Bar Position:</label>
+                        <select id="crawlVideoBarPosition">
+                            <option value="top" selected>Top</option>
+                            <option value="bottom">Bottom</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                        <br>
+                        <label for="crawlVideoBarY">Crawl Bar Distance From Top (pixels, Custom only):</label>
+                        <input type="number" id="crawlVideoBarY" min="0" max="2160" value="0" disabled>
+                        <br>
+                        <label for="crawlVideoBarHeight">Crawl Bar Height (pixels, 0 fits the text):</label>
+                        <input type="number" id="crawlVideoBarHeight" min="0" max="2160" value="0">
+                        <br>
+                        <label for="crawlVideoBarOpacity">Crawl Bar Opacity (percentage, 0-100):</label>
+                        <input type="number" id="crawlVideoBarOpacity" min="0" max="100" value="100">
+                        <p id="crawlBackgroundVideoNote" class="inline-note">The crawl runs in a bar over the video, colored with the Background Color above. Choosing a video sizes the crawl to the video; you can change the size afterwards. The video plays muted and loops while the crawl runs, and exports loop it for the length of the crawl. MP4 (H.264) and WebM work in most browsers.</p>
                     </div>
                     <div id="crawlBackgroundPremadeDiv" style="display: none;">
                         <br>
@@ -744,230 +782,6 @@
             </section>
             <section id="splicer-panel" class="tool-panel" aria-labelledby="tab-splicer">
                 <h2 class="section-heading">Audio Splicer</h2>
-                <hr>
-                <div class="splice-grid">
-                    <div class="waveform-card">
-                        <canvas id="spliceWaveform" width="1000" height="200" role="img" aria-label="Audio waveform preview. Use the timestamp inputs and macro controls below to edit segments without dragging."></canvas>
-                        <div class="waveform-meta">
-                            <div>
-                                Selection:
-                                <span data-selection-start>0.00s</span>
-                                &rarr;
-                                <span data-selection-end>0.00s</span>
-                                (<span data-selection-length>0.00s</span>)
-                            </div>
-                            <div class="waveform-actions">
-                                <button type="button" disabled data-splice-play>Play Selection</button>
-                                <button type="button" disabled data-splice-playAll>Play All</button>
-                                <button type="button" disabled data-splice-stop>Stop</button>
-                            </div>
-                        </div>
-                        <br>
-                        <div class="guide">
-                            <strong>Guide:</strong> Load audio files or generate TTS to build your project. Use the controls to manipulate segments in the timeline. Export your final audio as a WAV file.
-
-                            Waveform controls:
-                            <ul id="desktop-controls">
-                                <li>Click and drag on the waveform to select a region.</li>
-                                <li>Shift+Click and drag while zoomed to pan the view.</li>
-                                <li>Use the mouse wheel to zoom in/out of the waveform.</li>
-                                <li>Use the buttons below the waveform to play/pause/stop audio, either selection or all.</li>
-                                <li>Use the splice action buttons to edit the selected region.</li>
-                            </ul>
-                            <ul id="mobile-controls">
-                                <li>Tap and drag on the waveform to select a region.</li>
-                                <li>Use two fingers to pinch zoom in/out of the waveform.</li>
-                                <li>Use one finger to drag and pan the view while zoomed.</li>
-                                <li>Use the buttons below the waveform to play/pause/stop audio, either selection or all.</li>
-                                <li>Use the splice action buttons to edit the selected region.</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="splice-controls">
-                        <div>
-                            <label for="spliceFile">Load Audio File:</label>
-                            <br>
-                            <input id="spliceFile" type="file" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a" data-splice-file style="display: none;">
-                            <button type="button" data-splice-load>Load File</button>
-                            <span data-splice-file-status class="status-line"></span>
-                        </div>
-                        <div id="spliceTTSGenerator">
-                            <br>
-                            <label for="ttsText2" class="ttsText">Or, enter text below to generate speech:</label>
-                            <br class="ttsText">
-                            <textarea id="ttsText2" class="ttsText" placeholder="Type the message to speak..."></textarea>
-                            <br class="ttsText">
-                            <br class="ttsText">
-                            <label for="ttsVoice2">Select Voice:</label>
-                            <select id="ttsVoice2" name="ttsVoice2">
-                                <option value="wasm" selected>[WASM] WebAssembly (local) Voice (takes longer time depending on text length)</option>
-                                <option value="nanotts">[NanoTTS] WebAssembly (local) Voice #2 (faster, but less natural)</option>
-                                <option value="" data-spfy-voice-slot disabled>[Speechify] Loading voice list...</option>
-                                <option value="acuvoice">[AcuVoice] WebAssembly (local) AcuVoice - Roger (~160 MB one-time download)</option>
-                                <option value="espeak:en-us">[eSpeak] eSpeak NG (local) - English (US) (~1.3 MB one-time download)</option>
-                                <option value="espeak:en-us+m3">[eSpeak] eSpeak NG (local) - English (US), Male 3</option>
-                                <option value="espeak:en-us+f2">[eSpeak] eSpeak NG (local) - English (US), Female 2</option>
-                                <option value="espeak:en-us+whisper">[eSpeak] eSpeak NG (local) - English (US), Whisper</option>
-                                <option value="espeak:en-us+croak">[eSpeak] eSpeak NG (local) - English (US), Croak</option>
-                                <option value="espeak:en-us+klatt">[eSpeak] eSpeak NG (local) - English (US), Klatt formant</option>
-                                <option value="espeak:en">[eSpeak] eSpeak NG (local) - English (UK)</option>
-                                <option value="espeak:es-419">[eSpeak] eSpeak NG (local) - Spanish (Latin America)</option>
-                                <option value="espeak:fr">[eSpeak] eSpeak NG (local) - French</option>
-                            </select>
-                            <div id="ttsRatePitchControls2">
-                                <br>
-                                <label for="ttsRate2">Speech Speed:</label>
-                                <input type="range" id="ttsRate2" name="ttsRate2" min="-10" max="10" value="0" step="1">
-                                <label for="ttsRate2Number" class="visually-hidden">Speech speed value, minus ten to ten</label>
-                                <input type="number" class="slider-number" id="ttsRate2Number" name="ttsRate2Number" min="-10" max="10" value="0" step="1">
-                                <button type="button" id="ttsRateReset2">Reset</button>
-                                <br>
-                                <br>
-                                <label for="ttsPitch2">Speech Pitch:</label>
-                                <input type="range" id="ttsPitch2" name="ttsPitch2" min="-10" max="10" value="0" step="1">
-                                <label for="ttsPitch2Number" class="visually-hidden">Speech pitch value, minus ten to ten</label>
-                                <input type="number" class="slider-number" id="ttsPitch2Number" name="ttsPitch2Number" min="-10" max="10" value="0" step="1">
-                                <button type="button" id="ttsPitchReset2">Reset</button>
-                                <div id="ttsVolume2Row">
-                                    <br>
-                                    <label for="ttsVolume2">Speech Volume:</label>
-                                    <input type="range" id="ttsVolume2" name="ttsVolume2" min="-10" max="10" value="0" step="1">
-                                    <label for="ttsVolume2Number" class="visually-hidden">Speech volume value, minus ten to ten</label>
-                                    <input type="number" class="slider-number" id="ttsVolume2Number" name="ttsVolume2Number" min="-10" max="10" value="0" step="1">
-                                    <button type="button" id="ttsVolume2Reset">Reset</button>
-                                    <p id="ttsVolume2Note" class="inline-note" hidden>Balabolka voices can only be made quieter than normal, so positive volume has no effect on them. VoiceText voices can go up to five times normal.</p>
-                                </div>
-                            </div>
-                            <div id="shouldBitcrushSpeechifyContainer2" style="display: none;">
-                                <br>
-                                <label for="shouldBitcrushSpeechify2">"VM-Sounding" Speechify Output:</label>
-                                <input type="checkbox" id="shouldBitcrushSpeechify2" name="shouldBitcrushSpeechify2"></input>
-                            </div>
-                            <br class="splicerOverrideTZ">
-                            <br class="splicerOverrideTZ">
-                            <label for="useSplicerOverrideTZ" class="splicerOverrideTZ">Override Timezone (can only be used with EMNet):</label>
-                            <select id="useSplicerOverrideTZ" name="useSplicerOverrideTZ" class="splicerOverrideTZ">
-                                <option value="UTC">UTC</option>
-                                <option value="AST">AST (Atlantic Standard Time)</option>
-                                <option value="EST">EST (Eastern Standard Time)</option>
-                                <option value="EDT">EDT (Eastern Daylight Time)</option>
-                                <option value="CST">CST (Central Standard Time)</option>
-                                <option value="CDT">CDT (Central Daylight Time)</option>
-                                <option value="MST">MST (Mountain Standard Time)</option>
-                                <option value="MDT">MDT (Mountain Daylight Time)</option>
-                                <option value="PST">PST (Pacific Standard Time)</option>
-                                <option value="PDT">PDT (Pacific Daylight Time)</option>
-                                <option value="AKST">AKST (Alaska Standard Time)</option>
-                                <option value="AKDT">AKDT (Alaska Daylight Time)</option>
-                                <option value="HST">HST (Hawaii-Aleutian Standard Time)</option>
-                                <option value="HDT">HDT (Hawaii-Aleutian Daylight Time)</option>
-                                <option value="SST">SST (Samoa Standard Time)</option>
-                                <option value="CHST">CHST (Chamorro Standard Time)</option>
-                            </select>
-                        <br>
-                        <button type="button" data-splice-tts-generate>Generate &amp; Append</button>
-                        <span data-splice-tts-status class="status-line"></span>
-                    </div>
-                    <br>
-                    <div>
-                        <label for="spliceSilence">Insert Silence (seconds):</label><br>
-                        <input id="spliceSilence" type="number" step="0.1" min="0.1" value="0.2" data-splice-silence>
-                        <button type="button" data-splice-add-silence>Add Silence</button>
-                        <span data-splice-silence-status class="status-line"></span>
-                    </div>
-                    <label for="spliceLoudness">Adjust Loudness (dB, -60 to +12):</label>
-                    <input id="spliceLoudness" type="number" step="0.1" min="-60" max="12" value="0" data-splice-loudness>
-                    <br>
-                    <div>
-                        <label for="enable-static-noise">Enable Static Noise:</label>
-                        <input type="checkbox" id="enable-static-noise" data-splice-enable-static-noise>
-                        <br>
-                        <div id="staticNoiseOptions" style="display: none;">
-                            <br>
-                            <label for="static-noise-level">Static Noise Level (0-1, 1 being max):</label>
-                            <input type="number" id="static-noise-level" data-splice-static-noise-level min="0" max="1" step="0.01" value="0.14">
-                            <br>
-                            <label for="static-noise-fade-depth">Static Noise Fade Depth (0-1):</label>
-                            <input type="number" id="static-noise-fade-depth" data-splice-static-noise-fade-depth min="0" max="1" step="0.01" value="0.45">
-                            <br>
-                            <label for="static-noise-fade-rate">Static Noise Fade Rate (Hz, 0 to disable):</label>
-                            <input type="number" id="static-noise-fade-rate" data-splice-static-noise-fade-rate min="0" max="1" step="0.01" value="0.6">
-                        </div>
-                        <br>
-                        <label for="enable-60hz-hum">Enable 60Hz Hum:</label>
-                        <input type="checkbox" id="enable-60hz-hum" data-splice-enable-60hz-hum>
-                        <br>
-                        <div id="humOptions" style="display: none;">
-                            <br>
-                            <label for="hum-level">60Hz Hum Level (0-1, 1 being max):</label>
-                            <input type="number" id="hum-level" data-splice-hum-level min="0" max="1" step="0.01" value="0.01">
-                        </div>
-                        <br>
-                        <label for="enable-bitcrush">Enable Bitcrush / Alias:</label>
-                        <input type="checkbox" id="enable-bitcrush" data-splice-enable-bitcrush>
-                        <br>
-                        <div id="bitcrushOptions" style="display: none;">
-                            <br>
-                            <label for="bitcrush-bits">Bit Depth (1-16, lower = crunchier):</label>
-                            <input type="number" id="bitcrush-bits" data-splice-bitcrush-bits min="1" max="16" step="1" value="8">
-                            <br>
-                            <label for="bitcrush-downsample">Downsample / Alias Factor (1 = off, higher = more aliasing):</label>
-                            <input type="number" id="bitcrush-downsample" data-splice-bitcrush-downsample min="1" max="64" step="1" value="1">
-                        </div>
-                        <br>
-                        <label for="enable-vmify">Enable "VM-Sounding" Effect:</label>
-                        <input type="checkbox" id="enable-vmify" data-splice-enable-vmify>
-                        <br>
-                        <div id="vmifyOptions" style="display: none;">
-                            <br>
-                            <label for="vmify-intensity">"VM-Sounding" Intensity (0-3, 1 = default):</label>
-                            <input type="number" id="vmify-intensity" data-splice-vmify-intensity min="0" max="3" step="0.01" value="1">
-                        </div>
-                        <br>
-                    </div>
-                    <div>
-                        <label for="spliceMacros">Apply Macro:</label>
-                        <br>
-                        <select id="spliceMacros" data-splice-macro-select>
-                            <!-- The macro list will be loaded by JS -->
-                        </select>
-                        <div id="spliceMacroLevel" data-splice-macro-level hidden>
-                            <br>
-                            <label for="spliceMacroStrength">Macro Strength (%, 0-100; lower blends in more of the unprocessed audio):</label>
-                            <input id="spliceMacroStrength" type="number" min="0" max="100" step="1" value="100" data-splice-macro-strength>
-                            <br>
-                            <label for="spliceMacroVolume">Macro Volume (dB, -24 to +12):</label>
-                            <input id="spliceMacroVolume" type="number" min="-24" max="12" step="1" value="0" data-splice-macro-volume>
-                        </div>
-                        <br>
-                        <br>
-                        <button type="button" data-splice-chain-editor-btn>Macro Chain Editor</button>
-                        <button type="button" disabled data-splice-preview-macro>Play Macro Preview</button>
-                        <br>
-                        <input id="spliceMacroUpload" type="file" accept=".txt,text/plain" data-splice-macro-upload style="display: none;">
-                        <button type="button" data-splice-macro-upload-btn>Upload Custom Macro</button>
-                        <button type="button" disabled data-splice-macro-remove-btn>Remove Custom Macro</button>
-                    </div>
-                    <div class="splice-action-grid">
-                        <button type="button" disabled data-splice-split-selection>Split at Selection</button>
-                        <button type="button" disabled data-splice-join-all>Join All Segments</button>
-                        <button type="button" disabled data-splice-trim>Trim to Selection</button>
-                        <button type="button" disabled data-splice-delete>Delete Selection</button>
-                        <button type="button" disabled data-splice-split>Save Selection as Segment</button>
-                        <button type="button" disabled data-splice-export>Export WAV</button>
-                        <button type="button" disabled data-splice-export-macro>Export WAV with Macro</button>
-                        <button type="button" disabled data-splice-clear>Clear Project</button>
-                        </div>
-                        <div class="splice-storage">
-                            Status: <span data-splice-persist>Waiting...</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="splice-timeline">
-                    <h3>Segment Timeline</h3>
-                    <p class="splice-timeline__hint">Segments are cached locally on-device so you can resume where you left off.</p>
-                    <ul data-splice-segments class="splice-segment-list"></ul>
-                </div>
             </section>
             <section id="phoneme-panel" class="tool-panel" aria-labelledby="tab-phoneme">
                 <h2 class="section-heading">Phoneme Converter/Generator</h2>
@@ -1160,6 +974,7 @@
                             src: 'warngen/',
                             title: 'WarnGen',
                             minHeight: '1070px',
+                            persist: true,
                         },
                     },
                     muxer: {
@@ -1437,7 +1252,7 @@
                         deactivateTool(currentTool);
                     }
                     Object.keys(iframeInstances).forEach((tool) => {
-                        if (tool !== target) unloadIframe(tool);
+                        if (tool !== target && !panels[tool]?.iframe?.persist) unloadIframe(tool);
                     });
                     if (panels[target]?.iframe) ensureIframe(target);
                     ensureToolLoaded(target);

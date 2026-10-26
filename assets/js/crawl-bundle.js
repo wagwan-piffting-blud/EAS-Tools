@@ -1,6 +1,7 @@
 import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
+import { createSendMenu, receive } from './handoff.js';
 import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady } from '../E2T/EAS2Text-NG.js';
-import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec } from './mediabunny/mediabunny.min.js';
+import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec, Input, BlobSource, CanvasSink, ALL_FORMATS } from './mediabunny/mediabunny.min.js';
 import { SCREEN_TYPE, openScreenBuilder, listScreens, getScreen, adoptScreen, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices } from './crawl-screen-builder.js';
 
 async function initCrawlEditor() {
@@ -42,6 +43,7 @@ async function initCrawlEditor() {
     const MOBILE_CANVAS_MEDIA_QUERY = '(max-width: 1079px)';
     const MOBILE_CANVAS_WIDTH_RATIO = 0.9;
     const MOBILE_CANVAS_HEIGHT_RATIO = 0.3;
+    const DESKTOP_CANVAS_HEIGHT_RATIO = 0.7;
     const mobileCanvasMediaQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
         ? window.matchMedia(MOBILE_CANVAS_MEDIA_QUERY)
         : null;
@@ -61,25 +63,38 @@ async function initCrawlEditor() {
         };
     }
 
-    function calculateResponsiveCanvasSize(width, height) {
-        if (!isMobileCanvasViewport()) {
+    function getDesktopCanvasLimits(canvas) {
+        const container = canvas && canvas.parentElement;
+        const width = container ? container.clientWidth : 0;
+        const docElement = typeof document !== 'undefined' ? document.documentElement : null;
+        const viewportHeight = Math.max(0, window.innerHeight || 0, docElement ? docElement.clientHeight : 0);
+        if (!width || !viewportHeight) {
             return null;
         }
+        return {
+            width,
+            height: Math.max(1, Math.round(viewportHeight * DESKTOP_CANVAS_HEIGHT_RATIO))
+        };
+    }
+
+    function calculateResponsiveCanvasSize(width, height, canvas) {
+        const mobile = isMobileCanvasViewport();
         const safeWidth = Number.isFinite(width) && width > 0 ? width : 0;
         const safeHeight = Number.isFinite(height) && height > 0 ? height : 0;
         if (!safeWidth || !safeHeight) {
             return null;
         }
 
-        const { width: maxWidth, height: maxHeight } = getMobileCanvasLimits();
-        if (!maxWidth || !maxHeight) {
+        const limits = mobile ? getMobileCanvasLimits() : getDesktopCanvasLimits(canvas);
+        if (!limits || !limits.width || !limits.height) {
             return null;
         }
+        const { width: maxWidth, height: maxHeight } = limits;
 
         const widthScale = maxWidth / safeWidth;
         const heightScale = maxHeight / safeHeight;
         const scale = Math.min(1, widthScale, heightScale);
-        if (!Number.isFinite(scale) || scale <= 0) {
+        if (!Number.isFinite(scale) || scale <= 0 || (!mobile && scale >= 1)) {
             return null;
         }
 
@@ -93,7 +108,7 @@ async function initCrawlEditor() {
         if (!canvas || !Number.isFinite(width) || !Number.isFinite(height)) {
             return;
         }
-        const responsiveSize = calculateResponsiveCanvasSize(width, height);
+        const responsiveSize = calculateResponsiveCanvasSize(width, height, canvas);
         if (responsiveSize) {
             canvas.style.width = `${responsiveSize.width}px`;
             canvas.style.height = `${responsiveSize.height}px`;
@@ -214,7 +229,8 @@ async function initCrawlEditor() {
     const ATARI_FLASH_INTERVAL_MS = 500;
     const ATARI_GENERIC_AREA = 'YOUR AREA';
     const ATARI_INDEFINITE = 'FURTHER NOTICE';
-    const ALLOWED_CRAWL_BACKGROUND_MODES = new Set(['solid', 'transparent', 'image', 'premade']);
+    const ALLOWED_CRAWL_BACKGROUND_MODES = new Set(['solid', 'transparent', 'image', 'video', 'premade']);
+    const CRAWL_VIDEO_FITS = new Set(['stretch', 'contain', 'cover']);
 
     function normalizeCrawlBackgroundMode(value) {
         return ALLOWED_CRAWL_BACKGROUND_MODES.has(value) ? value : 'solid';
@@ -601,6 +617,242 @@ async function initCrawlEditor() {
         ctx.restore();
     }
 
+    function mediaDimensions(media) {
+        if (!media) {
+            return { width: 0, height: 0 };
+        }
+        return {
+            width: media.videoWidth || media.naturalWidth || media.displayWidth || media.width || 0,
+            height: media.videoHeight || media.naturalHeight || media.displayHeight || media.height || 0
+        };
+    }
+
+    function videoLetterboxFill(generator) {
+        return generator && !generator._transparentBg && generator.bgColor ? generator.bgColor : '#000000';
+    }
+
+    function drawMediaFitted(ctx, media, width, height, fit, fill) {
+        const source = mediaDimensions(media);
+        if (!source.width || !source.height || !CRAWL_VIDEO_FITS.has(fit) || fit === 'stretch') {
+            ctx.drawImage(media, 0, 0, width, height);
+            return;
+        }
+        const scale = fit === 'cover'
+            ? Math.max(width / source.width, height / source.height)
+            : Math.min(width / source.width, height / source.height);
+        const drawWidth = source.width * scale;
+        const drawHeight = source.height * scale;
+        if (fit === 'contain') {
+            const previousFill = ctx.fillStyle;
+            ctx.fillStyle = fill || '#000000';
+            ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = previousFill;
+        }
+        ctx.drawImage(media, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+    }
+
+    function drawCrawlBar(ctx, bar, width, scaleY) {
+        if (!ctx || !bar || !(bar.opacity > 0) || !(bar.height > 0)) {
+            return;
+        }
+        const scale = Number.isFinite(scaleY) && scaleY > 0 ? scaleY : 1;
+        ctx.save();
+        ctx.globalAlpha = bar.opacity;
+        ctx.fillStyle = bar.color;
+        ctx.fillRect(0, Math.round(bar.y * scale), width, Math.round(bar.height * scale));
+        ctx.restore();
+    }
+
+    function seekVideoElement(video, time) {
+        return new Promise((resolve) => {
+            let timer = null;
+            const done = () => {
+                clearTimeout(timer);
+                video.removeEventListener('seeked', done);
+                video.removeEventListener('error', done);
+                resolve();
+            };
+            timer = setTimeout(done, 3000);
+            video.addEventListener('seeked', done);
+            video.addEventListener('error', done);
+            video.currentTime = time;
+        });
+    }
+
+    function waitForVideoData(video) {
+        return new Promise((resolve) => {
+            const haveCurrentData = typeof HTMLMediaElement !== 'undefined' ? HTMLMediaElement.HAVE_CURRENT_DATA : 2;
+            if (video.readyState >= haveCurrentData) {
+                resolve(true);
+                return;
+            }
+            const finish = (ok) => {
+                video.removeEventListener('loadeddata', onData);
+                video.removeEventListener('error', onError);
+                resolve(ok);
+            };
+            const onData = () => finish(true);
+            const onError = () => finish(false);
+            video.addEventListener('loadeddata', onData);
+            video.addEventListener('error', onError);
+        });
+    }
+
+    function backgroundVideoHolder() {
+        let holder = document.getElementById('crawlBackgroundVideoHolder');
+        if (!holder) {
+            holder = document.createElement('div');
+            holder.id = 'crawlBackgroundVideoHolder';
+            holder.setAttribute('aria-hidden', 'true');
+            holder.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;';
+            (document.getElementById('crawl-panel') || document.body).appendChild(holder);
+        }
+        return holder;
+    }
+
+    function createBackgroundVideoElement(url) {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.defaultMuted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.preload = 'auto';
+        video.disablePictureInPicture = true;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('disablepictureinpicture', '');
+        video.setAttribute('tabindex', '-1');
+        video.style.cssText = 'display:block;width:1px;height:1px;';
+        backgroundVideoHolder().appendChild(video);
+        video.src = url;
+        return video;
+    }
+
+    async function loadBackgroundVideoFromFile(file) {
+        if (!file) return null;
+        const url = URL.createObjectURL(file);
+        const video = createBackgroundVideoElement(url);
+        video.__objectUrl = url;
+        video.__sourceFile = file;
+        const ok = await waitForVideoData(video);
+        if (!ok || !video.videoWidth || !video.videoHeight) {
+            releaseBackgroundVideo(video);
+            addStatus('Could not play that video file in this browser. Try an MP4 (H.264) or WebM (VP9) file.', 'ERROR');
+            return null;
+        }
+        return video;
+    }
+
+    function releaseBackgroundVideo(video) {
+        if (!video) return;
+        try { video.pause(); } catch (err) { }
+        video.removeAttribute('src');
+        try { video.load(); } catch (err) { }
+        video.remove();
+        if (video.__objectUrl) {
+            URL.revokeObjectURL(video.__objectUrl);
+            video.__objectUrl = null;
+        }
+    }
+
+    function createVideoFrameProvider(video, fps, totalFrames) {
+        const provider = { current: null, prepare, dispose };
+        let opening = null;
+        let decoder = null;
+        let iterator = null;
+        let iteratorNext = -1;
+        let fallbackVideo = null;
+
+        async function openDecoder() {
+            const file = video.__sourceFile;
+            if (!file || typeof VideoDecoder === 'undefined') return null;
+            let input = null;
+            try {
+                input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+                const track = await input.getPrimaryVideoTrack();
+                if (!track || !(await track.canDecode())) {
+                    input.dispose();
+                    return null;
+                }
+                const start = await track.getFirstTimestamp();
+                const duration = (await track.computeDuration()) - start;
+                if (!(duration > 0)) {
+                    input.dispose();
+                    return null;
+                }
+                return { input, sink: new CanvasSink(track, { poolSize: 2 }), start, duration };
+            } catch (err) {
+                console.warn('Falling back to seeking for the background video:', err);
+                if (input) {
+                    try { input.dispose(); } catch (disposeErr) { }
+                }
+                return null;
+            }
+        }
+
+        async function closeIterator() {
+            if (!iterator) return;
+            const previous = iterator;
+            iterator = null;
+            try { await previous.return(); } catch (err) { }
+        }
+
+        async function prepareDecoded(index) {
+            if (!iterator || index !== iteratorNext) {
+                await closeIterator();
+                const { start, duration } = decoder;
+                const timestamps = function* () {
+                    for (let i = index; i < Math.max(totalFrames, index + 1); i++) {
+                        yield start + ((i / fps) % duration);
+                    }
+                };
+                iterator = decoder.sink.canvasesAtTimestamps(timestamps());
+            }
+            const { value } = await iterator.next();
+            iteratorNext = index + 1;
+            if (value && value.canvas) {
+                provider.current = value.canvas;
+            }
+        }
+
+        async function prepareSeeked(index) {
+            if (!fallbackVideo) {
+                fallbackVideo = createBackgroundVideoElement(video.currentSrc || video.src);
+                fallbackVideo.loop = false;
+                await waitForVideoData(fallbackVideo);
+            }
+            const duration = Number.isFinite(fallbackVideo.duration) && fallbackVideo.duration > 0 ? fallbackVideo.duration : 0;
+            await seekVideoElement(fallbackVideo, duration ? (index / fps) % duration : 0);
+            provider.current = fallbackVideo;
+        }
+
+        async function prepare(index) {
+            if (!opening) opening = openDecoder();
+            decoder = await opening;
+            if (decoder) {
+                await prepareDecoded(index);
+            } else {
+                await prepareSeeked(index);
+            }
+        }
+
+        function dispose() {
+            closeIterator();
+            if (decoder && decoder.input) {
+                try { decoder.input.dispose(); } catch (err) { }
+            }
+            decoder = null;
+            if (fallbackVideo) {
+                try { fallbackVideo.pause(); } catch (err) { }
+                fallbackVideo.removeAttribute('src');
+                fallbackVideo.remove();
+                fallbackVideo = null;
+            }
+            provider.current = null;
+        }
+
+        return provider;
+    }
+
     function drawGeneratorBackground(ctx, generator, width, height) {
         if (!ctx || !generator) {
             return;
@@ -627,7 +879,7 @@ async function initCrawlEditor() {
                 ? HTMLMediaElement.HAVE_CURRENT_DATA
                 : 2;
             if (video.readyState >= haveCurrentData) {
-                ctx.drawImage(video, 0, 0, safeWidth, safeHeight);
+                drawMediaFitted(ctx, video, safeWidth, safeHeight, generator.bgVideoFit, videoLetterboxFill(generator));
                 return;
             }
         }
@@ -1169,6 +1421,12 @@ async function initCrawlEditor() {
 
         const clipWidth = width - inset * 2;
         const shouldClip = inset > 0 && clipWidth > 0;
+        const videoFrames = generator.bgVideo && !getDasdecPageForFrame
+            ? createVideoFrameProvider(generator.bgVideo, fps, totalFrames)
+            : null;
+        const overlayBar = generator.bgVideo && typeof generator._overlayBarRect === 'function'
+            ? generator._overlayBarRect()
+            : null;
 
         const clearFrame = (frameIndex) => {
             ctx.save();
@@ -1190,8 +1448,15 @@ async function initCrawlEditor() {
                     drewCustomBackground = true;
                 }
             }
+            if (!drewCustomBackground && videoFrames && videoFrames.current) {
+                drawMediaFitted(ctx, videoFrames.current, width, height, generator.bgVideoFit, videoLetterboxFill(generator));
+                drewCustomBackground = true;
+            }
             if (!drewCustomBackground && shouldDrawGeneratorBackground) {
                 drawGeneratorBackground(ctx, generator, width, height);
+            }
+            if (overlayBar) {
+                drawCrawlBar(ctx, overlayBar, width, scaleY);
             }
             ctx.restore();
             ctx.globalCompositeOperation = 'source-over';
@@ -1258,16 +1523,22 @@ async function initCrawlEditor() {
             }
         };
 
-        const drawFrame = (frameIndex) => {
+        const drawFrame = async (frameIndex) => {
             if (frameIndex !== nextIndex) {
                 throw new Error(`Frames must be drawn in order (expected ${nextIndex}, got ${frameIndex})`);
+            }
+            if (videoFrames) {
+                await videoFrames.prepare(frameIndex);
             }
             paint(frameIndex);
             advance();
             nextIndex++;
         };
 
-        const renderAt = (frameIndex) => {
+        const renderAt = async (frameIndex) => {
+            if (videoFrames) {
+                await videoFrames.prepare(frameIndex);
+            }
             reset();
             for (let i = 0; i < frameIndex; i++) advance();
             paint(frameIndex);
@@ -1275,6 +1546,9 @@ async function initCrawlEditor() {
         };
 
         const destroy = () => {
+            if (videoFrames) {
+                videoFrames.dispose();
+            }
             if (canvas.parentNode) {
                 canvas.parentNode.removeChild(canvas);
             }
@@ -1416,10 +1690,10 @@ async function initCrawlEditor() {
                 sampleIndices.add(Math.min(totalFrames - 1, page * paletteSource.dasdecFramesPerPage));
             }
             const sampleBuffers = [];
-            sampleIndices.forEach((index) => {
-                paletteSource.renderAt(index);
+            for (const index of sampleIndices) {
+                await paletteSource.renderAt(index);
                 sampleBuffers.push(paletteSource.ctx.getImageData(0, 0, width, height).data.buffer);
-            });
+            }
             paletteSource.destroy();
             paletteSource = null;
 
@@ -1459,7 +1733,7 @@ async function initCrawlEditor() {
                 const frames = [];
                 const chunkEnd = Math.min(totalFrames, chunkStart + chunkSize);
                 for (let i = chunkStart; i < chunkEnd; i++) {
-                    frameSource.drawFrame(i);
+                    await frameSource.drawFrame(i);
                     frames.push(frameSource.ctx.getImageData(0, 0, width, height).data.buffer);
                 }
                 const slot = chunkIndex;
@@ -1535,7 +1809,22 @@ async function initCrawlEditor() {
         return Math.max(2_000_000, Math.min(25_000_000, estimated));
     }
 
-    async function encodeVideoWithMediabunny(frameSource, { codec, container, bitrate, isCancelled, reportProgress, updateEta }) {
+    const ENCODER_FRAME_STALL_MS = 15000;
+    const ENCODER_FINALIZE_STALL_MS = 60000;
+
+    function withEncoderWatchdog(promise, ms) {
+        let timer = null;
+        const watchdog = new Promise((_, reject) => {
+            timer = setTimeout(() => {
+                const error = new Error('The video encoder stopped responding.');
+                error.encoderStalled = true;
+                reject(error);
+            }, ms);
+        });
+        return Promise.race([promise, watchdog]).finally(() => clearTimeout(timer));
+    }
+
+    async function encodeVideoWithMediabunny(frameSource, { codec, container, bitrate, hardwareAcceleration = 'no-preference', isCancelled, reportProgress, updateEta }) {
         const { canvas, fps, totalFrames, transparentOutput } = frameSource;
         const format = container === 'mp4'
             ? new Mp4OutputFormat({ fastStart: 'in-memory' })
@@ -1546,10 +1835,11 @@ async function initCrawlEditor() {
             bitrate,
             keyFrameInterval: 1,
             alpha: transparentOutput ? 'keep' : 'discard',
-            latencyMode: 'quality'
+            latencyMode: 'quality',
+            hardwareAcceleration
         });
         output.addVideoTrack(source, { frameRate: fps });
-        await output.start();
+        await withEncoderWatchdog(output.start(), ENCODER_FRAME_STALL_MS);
 
         try {
             for (let i = 0; i < totalFrames; i++) {
@@ -1557,8 +1847,8 @@ async function initCrawlEditor() {
                     await output.cancel();
                     return null;
                 }
-                frameSource.drawFrame(i);
-                await source.add(i / fps, 1 / fps);
+                await frameSource.drawFrame(i);
+                await withEncoderWatchdog(source.add(i / fps, 1 / fps), ENCODER_FRAME_STALL_MS);
                 reportProgress((i + 1) / totalFrames);
                 updateEta(i + 1);
                 if ((i + 1) % EXPORT_FRAMES_PER_YIELD === 0) {
@@ -1566,9 +1856,13 @@ async function initCrawlEditor() {
                 }
             }
             source.close();
-            await output.finalize();
+            await withEncoderWatchdog(output.finalize(), ENCODER_FINALIZE_STALL_MS);
         } catch (error) {
-            try { await output.cancel(); } catch (_) { }
+            if (error && error.encoderStalled) {
+                output.cancel().catch(() => { });
+            } else {
+                try { await output.cancel(); } catch (_) { }
+            }
             throw error;
         }
 
@@ -1618,7 +1912,7 @@ async function initCrawlEditor() {
                             continue;
                         }
                         const index = nextFrame++;
-                        frameSource.drawFrame(index);
+                        await frameSource.drawFrame(index);
                         const buffer = ctx.getImageData(0, 0, width, height).data.buffer;
                         inFlight++;
                         worker.postMessage({ type: 'frame', index, buffer }, [buffer]);
@@ -1702,14 +1996,14 @@ async function initCrawlEditor() {
             const bitrate = computeVideoBitrate(width, height, fps);
 
             let codec = null;
+            const candidates = transparentOutput
+                ? ['vp9']
+                : requestedFormat === 'mp4'
+                    ? ['avc']
+                    : requestedFormat === 'webm'
+                        ? ['vp9', 'vp8']
+                        : ['avc', 'vp9', 'vp8'];
             if (hasWebCodecs) {
-                const candidates = transparentOutput
-                    ? ['vp9']
-                    : requestedFormat === 'mp4'
-                        ? ['avc']
-                        : requestedFormat === 'webm'
-                            ? ['vp9', 'vp8']
-                            : ['avc', 'vp9', 'vp8'];
                 try {
                     codec = await getFirstEncodableVideoCodec(candidates, { width, height, bitrate });
                 } catch (probeError) {
@@ -1729,23 +2023,79 @@ async function initCrawlEditor() {
 
             let container = codec === 'avc' ? 'mp4' : 'webm';
             let blob = null;
-            const reportProgress = createExportProgressReporter('Video export');
-            const updateEta = createExportEtaTracker('Video export', frameSource.totalFrames);
+            let reportProgress = createExportProgressReporter('Video export');
+            let updateEta = createExportEtaTracker('Video export', frameSource.totalFrames);
             reportProgress(0);
 
+            const restartFrameSource = (extra = {}) => {
+                frameSource.destroy();
+                frameSource = createCrawlFrameSource(generator, canvas, { ...baseOptions, ...extra });
+                reportProgress = createExportProgressReporter('Video export');
+                updateEta = createExportEtaTracker('Video export', frameSource.totalFrames);
+                reportProgress(0);
+            };
+
+            const encodeWithWebCodecs = (attemptCodec, hardwareAcceleration) => encodeVideoWithMediabunny(frameSource, {
+                codec: attemptCodec,
+                container: attemptCodec === 'avc' ? 'mp4' : 'webm',
+                bitrate,
+                hardwareAcceleration,
+                isCancelled,
+                reportProgress,
+                updateEta
+            });
+
+            const rethrowUnlessStalled = (error) => {
+                if (!error || !error.encoderStalled || isCancelled()) {
+                    throw error;
+                }
+                console.warn('Video encoder stalled:', error);
+            };
+
+            let stalled = false;
             if (codec) {
-                blob = await encodeVideoWithMediabunny(frameSource, {
-                    codec, container, bitrate, isCancelled, reportProgress, updateEta
-                });
-            } else {
-                if (requestedFormat === 'webm') {
+                try {
+                    blob = await encodeWithWebCodecs(codec, 'no-preference');
+                } catch (error) {
+                    rethrowUnlessStalled(error);
+                    stalled = true;
+                }
+            }
+
+            if (stalled) {
+                let softwareCodec = null;
+                try {
+                    softwareCodec = await getFirstEncodableVideoCodec(candidates, { width, height, bitrate, hardwareAcceleration: 'prefer-software' });
+                } catch (_) {
+                    softwareCodec = null;
+                }
+                if (softwareCodec) {
+                    addStatus('The browser\'s hardware video encoder stopped responding; restarting the export with its software encoder.', 'WARN');
+                    restartFrameSource();
+                    try {
+                        blob = await encodeWithWebCodecs(softwareCodec, 'prefer-software');
+                        codec = softwareCodec;
+                        container = softwareCodec === 'avc' ? 'mp4' : 'webm';
+                        stalled = false;
+                    } catch (error) {
+                        rethrowUnlessStalled(error);
+                    }
+                }
+                if (stalled && transparentOutput) {
+                    throw new Error('The video encoder stopped responding. Transparent video needs a working VP9 encoder; pick a solid background color to export MP4 instead.');
+                }
+            }
+
+            if (!codec || stalled) {
+                if (stalled) {
+                    addStatus('The browser\'s video encoder stopped responding; restarting the export with the built-in H.264 encoder (slower, MP4 only).', 'WARN');
+                } else if (requestedFormat === 'webm') {
                     addStatus('WebM encoding is not available in this browser; using the software H.264 encoder (MP4) instead.', 'WARN');
                 } else {
                     addStatus('This browser lacks WebCodecs; using the software H.264 encoder (slower, MP4 only).', 'WARN');
                 }
                 container = 'mp4';
-                frameSource.destroy();
-                frameSource = createCrawlFrameSource(generator, canvas, { ...baseOptions, readPixels: true });
+                restartFrameSource({ readPixels: true });
                 blob = await encodeVideoWithSoftwareH264(frameSource, {
                     bitrate, isCancelled, reportProgress, updateEta
                 });
@@ -1930,6 +2280,10 @@ async function initCrawlEditor() {
         }
 
         _computeTopLeftTranslation(blockWidth, lineCount) {
+            const barRect = this._overlayBarRect();
+            if (barRect) {
+                return { x: 0, y: barRect.y + barRect.height / 2 - this.canvas.height / 2 };
+            }
             if (!this._topLeftActive) {
                 return { x: 0, y: 0 };
             }
@@ -2064,6 +2418,12 @@ async function initCrawlEditor() {
         }
 
         _attachResponsiveViewportListener() {
+            if (typeof ResizeObserver === 'function' && this.container) {
+                this._containerResizeObserver = new ResizeObserver(() => this._syncCanvasDisplaySize());
+                this._containerResizeObserver.observe(this.container);
+            }
+            this._windowResizeHandler = () => this._syncCanvasDisplaySize();
+            window.addEventListener('resize', this._windowResizeHandler);
             if (!mobileCanvasMediaQuery) {
                 return;
             }
@@ -2077,6 +2437,14 @@ async function initCrawlEditor() {
         }
 
         _detachResponsiveViewportListener() {
+            if (this._containerResizeObserver) {
+                this._containerResizeObserver.disconnect();
+                this._containerResizeObserver = null;
+            }
+            if (this._windowResizeHandler) {
+                window.removeEventListener('resize', this._windowResizeHandler);
+                this._windowResizeHandler = null;
+            }
             if (!mobileCanvasMediaQuery || !this._responsiveViewportHandler) {
                 return;
             }
@@ -2445,7 +2813,8 @@ async function initCrawlEditor() {
                     ? HTMLMediaElement.HAVE_CURRENT_DATA
                     : 2;
                 if (video.readyState >= haveCurrentData) {
-                    this.ctx.drawImage(video, 0, 0, width, height);
+                    drawMediaFitted(this.ctx, video, width, height, this.bgVideoFit, videoLetterboxFill(this));
+                    drawCrawlBar(this.ctx, this._overlayBarRect(), width, 1);
                     return;
                 }
             }
@@ -2468,8 +2837,64 @@ async function initCrawlEditor() {
             this.bgImage = image;
         }
 
-        setBgVideo(video) {
-            this.bgVideo = video;
+        setBgVideo(video, fit = 'stretch') {
+            const previous = this.bgVideo;
+            this.bgVideo = video || null;
+            this.bgVideoFit = CRAWL_VIDEO_FITS.has(fit) ? fit : 'stretch';
+            if (previous && previous !== this.bgVideo) {
+                try { previous.pause(); } catch (err) { }
+            }
+            if (this.bgVideo && this.isAnimating) {
+                this._playBgVideo();
+            }
+        }
+
+        setOverlayBar(bar) {
+            this.overlayBar = bar ? {
+                position: ['top', 'bottom', 'custom'].includes(bar.position) ? bar.position : 'top',
+                y: Number.isFinite(Number(bar.y)) ? Math.max(0, Number(bar.y)) : 0,
+                height: Number.isFinite(Number(bar.height)) ? Math.max(0, Number(bar.height)) : 0,
+                color: bar.color || '#000000',
+                opacity: Number.isFinite(Number(bar.opacity)) ? Math.max(0, Math.min(1, Number(bar.opacity))) : 1
+            } : null;
+            this.startFromRightInitialized = false;
+            this._resetFrameHistory();
+        }
+
+        _overlayBarRect() {
+            const bar = this.overlayBar;
+            const canvasHeight = this.canvas && Number.isFinite(this.canvas.height) ? this.canvas.height : 0;
+            if (!bar || !canvasHeight) {
+                return null;
+            }
+            const lineCount = Math.max(1, (this.text || '').split('\n').length);
+            const autoHeight = Math.round(lineCount * (this.fontSize + 10) + this.fontSize * 0.6);
+            const height = Math.min(canvasHeight, bar.height > 0 ? bar.height : autoHeight);
+            let y = 0;
+            if (bar.position === 'bottom') {
+                y = canvasHeight - height;
+            } else if (bar.position === 'custom') {
+                y = Math.min(Math.max(0, bar.y), canvasHeight - height);
+            }
+            return { y, height, color: bar.color, opacity: bar.opacity };
+        }
+
+        _playBgVideo() {
+            const video = this.bgVideo;
+            if (!video || !video.paused) return;
+            const played = video.play();
+            if (played && typeof played.catch === 'function') {
+                played.catch((err) => console.warn('The background video could not start:', err));
+            }
+        }
+
+        _pauseBgVideo(rewind = false) {
+            const video = this.bgVideo;
+            if (!video) return;
+            try { video.pause(); } catch (err) { }
+            if (rewind && video.currentTime !== 0) {
+                video.currentTime = 0;
+            }
         }
 
         setOutlineColor(color) {
@@ -2666,6 +3091,7 @@ async function initCrawlEditor() {
                 this.lastTimestamp = null;
                 this._restartDelayRemaining = 0;
                 this._resetFrameHistory();
+                this._playBgVideo();
                 requestAnimationFrame((timestamp) => this.animate(timestamp));
             }
         }
@@ -2674,6 +3100,13 @@ async function initCrawlEditor() {
             const lines = (this.text || '').split('\n');
             this.isAnimating = false;
             this.lastTimestamp = null;
+            const video = this.bgVideo;
+            if (video && video.currentTime !== 0) {
+                video.addEventListener('seeked', () => {
+                    if (!this.isAnimating && this.bgVideo === video) this.stop();
+                }, { once: true });
+            }
+            this._pauseBgVideo(true);
 
             this.ctx.font = `${this.fontStyle || 'normal'} ${this.fontSize}px "${this.fontFamily || 'Arial'}"`;
             this.ctx.textAlign = 'center';
@@ -2710,12 +3143,14 @@ async function initCrawlEditor() {
             this.isAnimating = false;
             this.lastTimestamp = null;
             this._restartDelayRemaining = 0;
+            this._pauseBgVideo();
         }
 
         unpause() {
             if (!this.isAnimating) {
                 this.isAnimating = true;
                 this.lastTimestamp = null;
+                this._playBgVideo();
                 requestAnimationFrame((timestamp) => this.animate(timestamp));
             }
         }
@@ -2851,6 +3286,7 @@ async function initCrawlEditor() {
     }
 
     let alertPickersSuppressed = false;
+    let nativePremadeCrawlMode = '';
 
     function readAlertPickerChoice() {
         if (alertPickersSuppressed) {
@@ -4080,6 +4516,16 @@ async function initCrawlEditor() {
             };
         }
 
+        if (mode === 'video') {
+            const video = await loadBackgroundVideoFromFile(getFileFromInput('crawlBackgroundVideoFile'));
+            return {
+                image: null,
+                video,
+                width: video ? video.videoWidth : null,
+                height: video ? video.videoHeight : null
+            };
+        }
+
         if (mode === 'premade') {
             window.__dasdecBackground = null;
             const premadeSelect = document.getElementById('crawlBackgroundPremadeSelect');
@@ -4103,14 +4549,19 @@ async function initCrawlEditor() {
                                 const flashingImage = new Image();
                                 flashingImage.src = frames[0].src;
                                 await waitForBackgroundImageLoad(flashingImage);
+                                const pagesDriveLength = rendered.pageCount > 1 && !screen.crawl.enabled;
+                                const repetitionsEl = document.getElementById('crawlRepetitions');
+                                const repetitions = Math.max(1, Math.min(10, Math.round(Number(repetitionsEl ? repetitionsEl.value : 1) || 1)));
                                 window.__dasdecBackground = {
                                     pages: frames,
-                                    rotationDelayMs: rendered.flashIntervalMs,
-                                    drivesTotalFrames: false,
+                                    rotationDelayMs: rendered.rotationDelayMs,
+                                    drivesTotalFrames: pagesDriveLength,
+                                    repetitions: pagesDriveLength ? repetitions : undefined,
+                                    totalDisplays: pagesDriveLength ? repetitions * frames.length : undefined,
                                     width: rendered.width,
                                     height: rendered.height
                                 };
-                                const rotationState = createPageRotationState(frames, rendered.flashIntervalMs, flashingImage);
+                                const rotationState = createPageRotationState(frames, rendered.rotationDelayMs, flashingImage);
                                 window.__dasdecRotationState = rotationState;
                                 rotationState.resume();
                                 return {
@@ -4313,11 +4764,16 @@ async function initCrawlEditor() {
         return { image: null, width: null, height: null };
     }
 
-    function applyBackgroundToGenerator(generator, mode, assets) {
+    function applyBackgroundToGenerator(generator, mode, assets, videoFit) {
         if (!generator) return;
         const resolvedAssets = assets || {};
+        const previousVideo = generator.bgVideo;
+        const nextVideo = mode === 'video' && resolvedAssets.video ? resolvedAssets.video : null;
         generator.setBgImage(null);
-        generator.setBgVideo(null);
+        generator.setBgVideo(nextVideo, videoFit);
+        if (previousVideo && previousVideo !== nextVideo) {
+            releaseBackgroundVideo(previousVideo);
+        }
 
         if (resolvedAssets.image && (mode === 'image' || mode === 'premade')) {
             generator.setBgImage(resolvedAssets.image);
@@ -4352,6 +4808,7 @@ async function initCrawlEditor() {
     let crawlApplyTimer = null;
     let crawlApplyRunning = null;
     let crawlBootstrapped = false;
+    let lastAutoSizedVideo = null;
     const crawlAssetCache = {
         fontKey: null,
         fontFamily: null,
@@ -4403,6 +4860,11 @@ async function initCrawlEditor() {
             crawlInset: value('crawlInset'),
             crawlRestartDelay: value('crawlRestartDelay'),
             crawlBackgroundMode,
+            crawlBackgroundVideoFit: value('crawlBackgroundVideoFit') || 'stretch',
+            crawlVideoBarPosition: value('crawlVideoBarPosition') || 'top',
+            crawlVideoBarY: value('crawlVideoBarY'),
+            crawlVideoBarHeight: value('crawlVideoBarHeight'),
+            crawlVideoBarOpacity: value('crawlVideoBarOpacity'),
             crawlBackgroundPremade: value('crawlBackgroundPremadeSelect'),
             easyplusOriginator: value('easyplusOriginator'),
             easyplusEventCode: value('easyplusEventCode'),
@@ -4448,10 +4910,12 @@ async function initCrawlEditor() {
             controls.crawlBackgroundPremade,
             isScreen ? `${screen ? screen.updated : 'missing'}:${controls.endecMode}` : '',
             crawlFileToken('crawlBackgroundImageFile'),
+            controls.crawlBackgroundMode === 'video' ? crawlFileToken('crawlBackgroundVideoFile') : '',
             controls.easyplusOriginator,
             controls.easyplusEventCode,
             usesCrawlText ? `${controls.crawlMode}:${controls.rawHeader}:${controls.text}` : '',
-            usesCrawlText ? `${controls.useLocalTZ}:${controls.useOverrideTZ}:${controls.overrideSender}` : ''
+            usesCrawlText ? `${controls.useLocalTZ}:${controls.useOverrideTZ}:${controls.overrideSender}` : '',
+            usesCrawlText ? controls.repetitions : ''
         ].join('|');
     }
 
@@ -4517,6 +4981,10 @@ async function initCrawlEditor() {
 
         const token = ++crawlApplyToken;
         const controls = readCrawlControls();
+        const barYInput = document.getElementById('crawlVideoBarY');
+        if (barYInput) {
+            barYInput.disabled = controls.crawlVideoBarPosition !== 'custom';
+        }
 
         const resolvedFontFamily = await resolveCrawlFontForApply(controls);
         await ensureFontsReady();
@@ -4547,6 +5015,11 @@ async function initCrawlEditor() {
             appliedAutoSizing = updateCrawlControlsFromAsset(autoMeta, { generator, premade: true });
         }
 
+        if (controls.crawlBackgroundMode === 'video' && backgroundAssets.video && backgroundAssets.video !== lastAutoSizedVideo) {
+            lastAutoSizedVideo = backgroundAssets.video;
+            appliedAutoSizing = updateCrawlControlsFromAsset({ width: backgroundAssets.width, height: backgroundAssets.height }, { generator });
+        }
+
         ['crawlTopLeftPixelX', 'crawlTopLeftPixelY', 'crawlInset', 'crawlWidth', 'crawlHeight'].forEach((id) => {
             const input = document.getElementById(id);
             if (!input || input.value === undefined) return;
@@ -4563,7 +5036,15 @@ async function initCrawlEditor() {
             applyCrawlSizeToGenerator(generator);
         }
 
-        applyBackgroundToGenerator(generator, controls.crawlBackgroundMode, backgroundAssets);
+        applyBackgroundToGenerator(generator, controls.crawlBackgroundMode, backgroundAssets, controls.crawlBackgroundVideoFit);
+        const opacityPercent = Number(controls.crawlVideoBarOpacity);
+        generator.setOverlayBar(controls.crawlBackgroundMode === 'video' && backgroundAssets.video ? {
+            position: controls.crawlVideoBarPosition,
+            y: controls.crawlVideoBarY,
+            height: controls.crawlVideoBarHeight,
+            color: controls.bgColor,
+            opacity: Number.isFinite(opacityPercent) && controls.crawlVideoBarOpacity !== '' ? opacityPercent / 100 : 1
+        } : null);
 
         if (resolvedText !== null) {
             generator.setText(resolvedText);
@@ -4653,7 +5134,8 @@ async function initCrawlEditor() {
         'crawlWidth', 'crawlHeight', 'crawlInset', 'crawlTopLeftManual',
         'crawlTopLeftPixelX', 'crawlTopLeftPixelY',
         'crawlKerning', 'crawlTextWidth', 'crawlRestartDelay', 'crawlRepetitions',
-        'crawlBackgroundMode', 'crawlBackgroundImageFile', 'crawlBackgroundPremadeSelect',
+        'crawlBackgroundMode', 'crawlBackgroundImageFile', 'crawlBackgroundVideoFile', 'crawlBackgroundVideoFit', 'crawlBackgroundPremadeSelect',
+        'crawlVideoBarPosition', 'crawlVideoBarY', 'crawlVideoBarHeight', 'crawlVideoBarOpacity',
         'easyplusOriginator', 'easyplusEventCode'
     ];
 
@@ -4937,9 +5419,10 @@ async function initCrawlEditor() {
         const bgColorInput = document.getElementById('crawlBgColor');
         const crawlBackgroundColorDiv = document.getElementById('crawlBackgroundColorDiv');
         const crawlBackgroundImageDiv = document.getElementById('crawlBackgroundImageDiv');
+        const crawlBackgroundVideoDiv = document.getElementById('crawlBackgroundVideoDiv');
         const crawlBackgroundPremadeDiv = document.getElementById('crawlBackgroundPremadeDiv');
         const crawlGetAndSetDiv = document.getElementById('crawlGetAndSetDiv');
-        const showGetSetControls = mode === 'image';
+        const showGetSetControls = mode === 'image' || mode === 'video';
 
         if (crawlGetAndSetDiv) {
             crawlGetAndSetDiv.style.display = showGetSetControls ? 'block' : 'none';
@@ -4947,6 +5430,9 @@ async function initCrawlEditor() {
 
         crawlBackgroundImageDiv.style.display = 'none';
         crawlBackgroundColorDiv.style.display = 'none';
+        if (crawlBackgroundVideoDiv) {
+            crawlBackgroundVideoDiv.style.display = 'none';
+        }
         if (crawlBackgroundPremadeDiv) {
             crawlBackgroundPremadeDiv.style.display = 'none';
         }
@@ -4954,6 +5440,14 @@ async function initCrawlEditor() {
         if (mode === 'image') {
             bgColorInput.disabled = true;
             crawlBackgroundImageDiv.style.display = 'block';
+        }
+
+        else if (mode === 'video') {
+            bgColorInput.disabled = false;
+            crawlBackgroundColorDiv.style.display = 'block';
+            if (crawlBackgroundVideoDiv) {
+                crawlBackgroundVideoDiv.style.display = 'block';
+            }
         }
 
         else if (mode === 'solid') {
@@ -5135,17 +5629,21 @@ async function initCrawlEditor() {
             const modeSelect = document.getElementById('crawlBackgroundMode');
             if (!modeSelect) return;
             const mode = modeSelect.value;
-            if (mode !== 'image') {
-                alert('Select a custom image background before syncing dimensions.');
+            if (mode !== 'image' && mode !== 'video') {
+                alert('Select a custom image or video background before syncing dimensions.');
                 return;
             }
-            const media = await loadImageFromInput('crawlBackgroundImageFile');
+            const loadedVideo = mode === 'video' && window.crawlGenerator ? window.crawlGenerator.bgVideo : null;
+            const media = mode === 'image'
+                ? await loadImageFromInput('crawlBackgroundImageFile')
+                : loadedVideo;
             if (!media) {
                 alert('Please choose a background file first.');
                 return;
             }
-            const width = Math.round(media.naturalWidth / 2) * 2;
-            const height = Math.round(media.naturalHeight / 2) * 2;
+            const size = mediaDimensions(media);
+            const width = Math.round(size.width / 2) * 2;
+            const height = Math.round(size.height / 2) * 2;
             if (!width || !height) {
                 alert('Unable to determine media dimensions.');
                 return;
@@ -5180,7 +5678,7 @@ async function initCrawlEditor() {
 
     const CRAWL_SETTING_PREFIXES = ['crawl', 'easyplus', 'vds'];
     const CRAWL_SETTING_EXPLICIT_IDS = new Set(['endecMode']);
-    const CRAWL_SETTING_EXCLUDED_IDS = new Set(['crawlUserPreset']);
+    const CRAWL_SETTING_EXCLUDED_IDS = new Set(['crawlUserPreset', 'crawlStylePreset']);
     const LEGACY_CRAWL_SETTING_ID_MAP = {
         crawlText: 'text',
         crawlSpeed: 'speed',
@@ -5636,6 +6134,105 @@ async function initCrawlEditor() {
         }
     });
 
+    const CRAWL_STYLE_PRESET_GROUPS = Object.freeze([
+        {
+            label: 'Alert screens',
+            presets: [
+                {
+                    id: 'easyplus',
+                    label: 'EASyPLUS',
+                    settings: {
+                        crawlBackgroundMode: 'premade',
+                        crawlBackgroundPremadeSelect: 'easyplus:easyplus',
+                        crawlWidth: '1920',
+                        crawlHeight: '1080',
+                        crawlFontFamily: 'VCREAS_4.5',
+                        crawlFontSize: '84',
+                        crawlFontStyle: 'normal',
+                        crawlTextColor: '#ABABAB',
+                        crawlOutlineWidth: '0',
+                        crawlUseVDSMode: false
+                    }
+                },
+                {
+                    id: 'easyplus_gray',
+                    label: 'EASyPLUS Gray',
+                    settings: {
+                        crawlBackgroundMode: 'premade',
+                        crawlBackgroundPremadeSelect: 'easyplus:easyplus_gray',
+                        crawlWidth: '1920',
+                        crawlHeight: '1080',
+                        crawlFontFamily: 'VCREAS_4.5',
+                        crawlFontSize: '84',
+                        crawlFontStyle: 'normal',
+                        crawlTextColor: '#FFFFFF',
+                        crawlOutlineColor: '#000000',
+                        crawlOutlineWidth: '5',
+                        crawlOutlineJoin: 'miter',
+                        crawlUseVDSMode: false
+                    }
+                },
+                { id: 'dasdec', label: 'DASDEC', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'dasdec:dasdec', endecMode: 'DAS2PLUS' } },
+                { id: 'dasdec_black', label: 'DASDEC (black)', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'dasdec:dasdec_black', endecMode: 'DAS2PLUS' } },
+                { id: 'dasdec_blue', label: 'DASDEC (blue)', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'dasdec:dasdec_blue', endecMode: 'DAS2PLUS' } },
+                { id: 'eas_1cg', label: 'Gorman Redlich EAS-1CG', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'gorman:eas_1cg', endecMode: 'GORMAN' } },
+                { id: 'atari_800xl', label: 'Atari 800XL Override Screen', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'atari:atari_800xl' } }
+            ]
+        },
+        {
+            label: 'Crawl fonts by system',
+            presets: [
+                { id: 'vds', label: 'VDS (VDSwiss, VDS mode on)', settings: { crawlFontFamily: 'VDSwiss V1', crawlFontStyle: 'normal', crawlUseVDSMode: true } },
+                { id: 'verizon', label: 'Verizon (Akzidenz)', settings: { crawlFontFamily: 'Akzidenz', crawlFontStyle: 'normal', crawlUseVDSMode: false } },
+                { id: 'texscan', label: 'Texscan', settings: { crawlFontFamily: 'Texscan', crawlFontStyle: 'normal', crawlUseVDSMode: false } },
+                { id: 'xbob4', label: 'XBOB-4 (8x13 bitmap)', settings: { crawlFontFamily: 'XBOB-4 8x13', crawlFontStyle: 'normal', crawlUseVDSMode: false } },
+                { id: 'ross_mc1', label: 'Ross MC1 (PJF CharGen)', settings: { crawlFontFamily: 'PJF CharGen', crawlFontStyle: 'normal', crawlUseVDSMode: false } },
+                { id: 'bevelled', label: 'Bevelled (Arial Bold)', settings: { crawlFontFamily: 'Arial Bold', crawlFontStyle: 'normal', crawlUseVDSMode: false } }
+            ]
+        }
+    ]);
+
+    function findCrawlStylePreset(id) {
+        for (const group of CRAWL_STYLE_PRESET_GROUPS) {
+            const preset = group.presets.find((entry) => entry.id === id);
+            if (preset) {
+                return preset;
+            }
+        }
+        return null;
+    }
+
+    function applyCrawlStylePreset(id) {
+        const preset = findCrawlStylePreset(id);
+        if (!preset) {
+            return false;
+        }
+        applySettingsToControls({ ...getCurrentSettings(), ...preset.settings }, { showStatus: false });
+        if (preset.settings.crawlBackgroundPremadeSelect) {
+            syncEasyplusSettingsVisibility(preset.settings.crawlBackgroundPremadeSelect);
+        }
+        scheduleCrawlApply(0);
+        addStatus(`Applied the built-in "${preset.label}" style. Settings it does not cover kept their values.`);
+        return true;
+    }
+
+    const crawlStylePresetSelect = document.getElementById('crawlStylePreset');
+    const applyCrawlStylePresetButton = document.getElementById('applyCrawlStylePreset');
+    if (crawlStylePresetSelect && applyCrawlStylePresetButton) {
+        CRAWL_STYLE_PRESET_GROUPS.forEach((group) => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = group.label;
+            group.presets.forEach((preset) => optgroup.appendChild(new Option(preset.label, preset.id)));
+            crawlStylePresetSelect.appendChild(optgroup);
+        });
+        applyCrawlStylePresetButton.addEventListener('click', () => {
+            if (!applyCrawlStylePreset(crawlStylePresetSelect.value)) {
+                addStatus('Choose a built-in style first.', 'WARN');
+                crawlStylePresetSelect.focus();
+            }
+        });
+    }
+
     const CRAWL_PRESET_FILE_TYPE = 'eas-tools-crawl-preset';
 
     function extractPresetSettings(parsed) {
@@ -5710,7 +6307,66 @@ async function initCrawlEditor() {
         }
     });
 
-    bootstrapCrawl();
+    async function receiveHandoff(payload) {
+        const modeInput = document.getElementById('crawlMode');
+        if (!modeInput) return;
+        if (payload.header) {
+            const headerInput = document.getElementById('crawlRawHeader');
+            if (!headerInput) return;
+            modeInput.value = 'header';
+            modeInput.dispatchEvent(new Event('change'));
+            headerInput.value = String(payload.header).trim();
+            headerInput.dispatchEvent(new Event('input'));
+            parseEASHeaderAndUpdateEasyPlusSettings(headerInput.value);
+            addStatus('Loaded a header from another tool.');
+        } else if (typeof payload.text === 'string') {
+            modeInput.value = 'custom';
+            modeInput.dispatchEvent(new Event('change'));
+            if (!window.crawlEditor) {
+                await initCrawlEditor();
+                attachCrawlEditorListener();
+            }
+            window.crawlEditor.setValue(payload.text);
+            addStatus('Loaded crawl text from another tool.');
+        }
+        await flushCrawlApply();
+    }
+
+    bootstrapCrawl().then(() => receive('crawl', receiveHandoff));
+
+    const crawlSendMenu = createSendMenu({
+        label: 'Send to…',
+        title: 'Open the crawl text or header in another tool',
+        items: [
+            {
+                tool: 'encoder',
+                label: 'SAME Encoder (crawl text as TTS)',
+                what: 'Crawl text',
+                unavailable: () => (window.crawlGenerator && window.crawlGenerator.getCrawlText()) ? '' : 'the crawl has no text yet',
+                payload: () => ({ text: window.crawlGenerator.getCrawlText() }),
+            },
+            {
+                tool: 'splicer',
+                label: 'Audio Splicer (crawl text as TTS)',
+                what: 'Crawl text',
+                unavailable: () => (window.crawlGenerator && window.crawlGenerator.getCrawlText()) ? '' : 'the crawl has no text yet',
+                payload: () => ({ text: window.crawlGenerator.getCrawlText() }),
+            },
+            {
+                tool: 'encoder',
+                label: 'SAME Encoder (header)',
+                what: 'Header',
+                unavailable: () => {
+                    const mode = document.getElementById('crawlMode');
+                    const header = document.getElementById('crawlRawHeader');
+                    if (!mode || mode.value !== 'header') return 'only in EAS header mode';
+                    return header && header.value.trim() ? '' : 'enter a header first';
+                },
+                payload: () => ({ header: document.getElementById('crawlRawHeader').value.trim() }),
+            },
+        ],
+    });
+    document.getElementById('copyCrawlText').insertAdjacentElement('afterend', crawlSendMenu.element);
 
     if (window.EASBridge) {
         const PREMADE_STATIC_SOURCES = new Set(['dasdec', 'dasdec_black', 'dasdec_blue', 'eas_1cg']);
@@ -5767,7 +6423,8 @@ async function initCrawlEditor() {
                 const setVal = (id, val) => { if (el(id) && val != null) el(id).value = val; };
                 setVal('crawlBackgroundMode', 'premade');
                 setVal('crawlBackgroundPremadeSelect', premade);
-                setVal('crawlMode', params?.crawlMode || 'custom');
+                nativePremadeCrawlMode = params?.crawlMode || 'custom';
+                setVal('crawlMode', nativePremadeCrawlMode);
                 setVal('crawlRawHeader', params?.header != null ? params.header : '');
                 setVal('crawlText', params?.text != null ? params.text : '');
                 setVal('endecMode', params?.endecMode != null ? params.endecMode : '');
@@ -5846,7 +6503,10 @@ async function initCrawlEditor() {
                 setVal('crawlBackgroundMode', params.bgMode || 'solid');
                 setChk('crawlUseVDSMode', params.vdsMode);
                 setVal('vdsFrameDelay', params.vdsFrameDelay);
-                setVal('crawlMode', 'custom');
+                const premadeMode = (params.bgMode || 'solid') === 'premade';
+                setVal('crawlMode', premadeMode ? (params.crawlMode || nativePremadeCrawlMode || 'custom') : 'custom');
+                if (params.header != null) setVal('crawlRawHeader', params.header);
+                if (params.endecMode != null) setVal('endecMode', params.endecMode);
                 setVal('crawlRepetitions', params.repetitions);
                 setVal('crawlExportGifFps', params.gifFps);
                 setVal('crawlExportVideoFps', params.videoFps);

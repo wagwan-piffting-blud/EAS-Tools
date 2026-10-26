@@ -1,4 +1,17 @@
+import * as SM from './splicer/model.js';
+import * as SR from './splicer/render.js';
+import * as SG from './splicer/generators.js';
+import * as SW from './splicer/wav.js';
+import * as SE from './splicer/encode.js';
+import * as SZ from './splicer/zip.js';
+import * as SL from './splicer/limiter.js';
+import { openAlertDialog } from './splicer/alert-ui.js';
+import { createEditor } from './splicer/editor.js';
+import { buildPanel } from './splicer/layout.js';
 import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME, PIPER_DEFAULT_VOICE_ID as PIPER_VOICE, resamplePcm, resamplePcmSinc, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost } from './common-functions.js';
+import { createSendMenu, receive, audioFile } from './handoff.js';
+
+buildPanel(document.getElementById('splicer-panel'));
 
 (async function () {
     let splicerTextEditor = null;
@@ -9,6 +22,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const splicerEditor = createTtsTextEditor({
             textareaId: 'ttsText2',
             ariaLabel: 'Text to convert to speech',
+            width: '100%',
+            height: 'auto',
             theme: USES_DARK_THEME ? CODEMIRROR_DARK_THEME_NAME : CODEMIRROR_LIGHT_THEME_NAME,
         });
         if (!splicerEditor) return null;
@@ -23,10 +38,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
 (async function () {
     const panel = document.getElementById('splicer-panel');
-    const canvas = document.getElementById('spliceWaveform');
-    if (!panel || !canvas) return;
+    if (!panel) return;
 
-    const ctx = canvas.getContext('2d');
     const fileInput = panel.querySelector('[data-splice-file]');
     const ttsInput = panel.querySelector('#ttsText2') || panel.querySelector('.ttsText');
     const ttsButton = panel.querySelector('[data-splice-tts-generate]') || panel.querySelector('#spliceTTSGenerator button');
@@ -36,21 +49,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const silenceInput = panel.querySelector('[data-splice-silence]');
     const silenceStatus = panel.querySelector('[data-splice-silence-status]');
     const silenceBtn = panel.querySelector('[data-splice-add-silence]');
-    const splitSelectionBtn = panel.querySelector('[data-splice-split-selection]');
-    const joinAllBtn = panel.querySelector('[data-splice-join-all]');
-    const playBtn = panel.querySelector('[data-splice-play]');
-    const playAllBtn = panel.querySelector('[data-splice-playAll]');
-    const stopBtn = panel.querySelector('[data-splice-stop]');
-    const trimBtn = panel.querySelector('[data-splice-trim]');
-    const deleteBtn = panel.querySelector('[data-splice-delete]');
-    const splitBtn = panel.querySelector('[data-splice-split]');
     const exportBtn = panel.querySelector('[data-splice-export]');
     const clearBtn = panel.querySelector('[data-splice-clear]');
     const persistLabel = panel.querySelector('[data-splice-persist]');
-    const segmentsList = panel.querySelector('[data-splice-segments]');
-    const selStartLabel = panel.querySelector('[data-selection-start]');
-    const selEndLabel = panel.querySelector('[data-selection-end]');
-    const selLenLabel = panel.querySelector('[data-selection-length]');
     const loadFileBtn = panel.querySelector('[data-splice-load]');
     const macroSelect = panel.querySelector('[data-splice-macro-select]');
     const macroUploadInput = panel.querySelector('[data-splice-macro-upload]');
@@ -58,11 +59,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const macroRemoveBtn = panel.querySelector('[data-splice-macro-remove-btn]');
     const previewMacroBtn = panel.querySelector('[data-splice-preview-macro]');
     const exportMacroBtn = panel.querySelector('[data-splice-export-macro]');
+    let sendMenu = null;
     const spliceLoudnessInput = panel.querySelector('[data-splice-loudness]');
     const spliceSilenceInput = panel.querySelector('[data-splice-silence]');
     const previewMacroBtnDefaultText = previewMacroBtn && previewMacroBtn.textContent
-        ? previewMacroBtn.textContent.trim() || 'Play Macro Preview'
-        : 'Play Macro Preview';
+        ? previewMacroBtn.textContent.trim() || 'Preview Macro'
+        : 'Preview Macro';
     let previewMacroBtnWasDisabled = previewMacroBtn ? previewMacroBtn.disabled : false;
     let previewMacroBtnDisabledByTask = false;
     const enableStaticNoiseCheckbox = panel.querySelector('#enable-static-noise');
@@ -83,8 +85,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const shouldBitcrushSpeechifyDiv = panel.querySelector('#shouldBitcrushSpeechifyContainer2');
     const shouldBitcrushSpeechifyCheckbox = panel.querySelector('#shouldBitcrushSpeechify2');
 
-    canvas.style.touchAction = 'none';
-
     const DB_NAME = 'eas-splicer';
     const DB_VERSION = 2;
     const STORE = 'projects';
@@ -92,9 +92,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const CACHE_KEY = 'current';
     const voiceBackendMap = {};
     let enable60HzHum = enable60HzHumCheckbox?.checked === true;
-    let currentSegmentId = null;
-    const segmentPlayButtons = new Map();
-    let pendingSegmentPlay = null;
     let macroPreviewPlayback = null;
     let macroPreviewMarkerInterval = null;
     let macroRenderBlobCache = null;
@@ -105,18 +102,79 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     let macroWaveformPendingKey = null;
     let macroWaveformCancelledKey = null;
     let macroWaveformJobSeq = 0;
+    let macroWaveformJob = null;
     let macroWaveformDebounce = null;
     let macroComboBtn = null;
     let macroRenderActiveCount = 0;
 
     const state = {
         sampleRate: 44100,
-        segments: [],
         pcm: new Float32Array(0),
         selection: { start: 0, end: 0 },
-        viewStart: 0,
-        viewEnd: 0,
-        minViewSpan: 0.05,
+        disk: null,
+    };
+
+    let project = SM.createProject(44100);
+    SM.addTrack(project, 'voice');
+    const editHistory = SM.createHistory(150);
+    let editor = null;
+    let lastOutputSig = null;
+    let lastOutputPcmRef = null;
+
+    const OUTPUT_KEY = 'eas-splicer-output';
+    const outputPrefs = (() => {
+        try {
+            const v = JSON.parse(localStorage.getItem(OUTPUT_KEY) || 'null');
+            if (v && typeof v === 'object') {
+                const bitrates = v.bitrates && typeof v.bitrates === 'object' ? v.bitrates : {};
+                return { format: SE.formatOf(v.format), channels: v.channels === 2 ? 2 : 1, limit: v.limit !== false, bitrates };
+            }
+        } catch (_) {}
+        return { format: 'pcm16', channels: 1, limit: true, bitrates: {} };
+    })();
+    const limitOn = () => outputPrefs.limit !== false;
+    const finishChans = (chans, sr, gain) => (limitOn() ? SL.limitAll(chans, sr, gain) : null);
+    const overNote = (over, limited, format) => {
+        if (!(over > 1.0001)) return '';
+        const db = SL.overDb(over).toFixed(1);
+        if (limited) return ` Peaks up to +${db} dB were limited to prevent clipping.`;
+        if (format === 'float32') return ` Peaks go +${db} dB over full scale.`;
+        return ` Warning: peaks reached +${db} dB and were clipped. Turn on Prevent clipping or lower Master.`;
+    };
+    const saveOutputPrefs = () => {
+        try { localStorage.setItem(OUTPUT_KEY, JSON.stringify(outputPrefs)); } catch (_) {}
+    };
+    const outFormat = () => SE.formatOf(outputPrefs.format);
+    const outBitrate = () => SE.bitrateOf(outFormat(), outputPrefs.bitrates[outFormat()]);
+    const outInfo = () => SE.infoOf(outFormat());
+    const outFileName = (base) => `${base}.${outInfo().ext}`;
+    const outStereo = () => outputPrefs.channels === 2;
+    const stereoPanned = () => outStereo() && SM.isPanned(project);
+    const outputSig = () => outFormat() + ':' + outBitrate() + '|' + (limitOn() ? 'L' : 'C') + '|' + (!outStereo() ? 'M' : (!SM.isPanned(project) ? 'S0'
+        : 'S:' + SM.audibleTracks(project).map((t) => t.id + '=' + SM.clampPan(t.pan)).join(',')));
+    let stereoCache = null;
+    const outputChannels = () => {
+        if (!outStereo()) return [state.pcm];
+        if (!SM.isPanned(project)) return [state.pcm, state.pcm];
+        if (!stereoCache || stereoCache.ref !== state.pcm) {
+            const n = SM.projectLength(project);
+            stereoCache = { ref: state.pcm, chans: ['L', 'R'].map((side) => SM.mixdown(project, 0, n, { ...fxResolve, side })) };
+        }
+        return stereoCache.chans;
+    };
+    const NAMED_PREFIX = 'named:';
+    let editorModeShown = null;
+    let applyingMaster = false;
+    let pendingMasterMacro = null;
+    let masterBypass = false;
+    let openEffectsEditorFn = null;
+    let refreshEffectsEditorFn = null;
+
+    const syncEditorMode = () => {
+        if (!editor || editorModeShown) return;
+        editorModeShown = true;
+        editor.setVisible(true);
+        editor.render();
     };
 
     let audioCtx = null;
@@ -127,12 +185,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     let playStartedAt = 0;
     let pausedPlayback = null;
     let playheadTime = 0;
-    let dragMode = null;
-    let touchSelectionId = null;
-    let pinchState = null;
-    let touchPan = null;
-    let touchPlayhead = null;
-    let gestureMultiTouch = false;
     let cacheDbPromise = null;
     let voiceListLoaded = false;
 
@@ -154,6 +206,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return Math.pow(10, dbfs / 20);
     };
 
+    const exportGainFactor = () => {
+        const g = getExportGain();
+        return Math.abs(g - 1) > EXPORT_GAIN_TOLERANCE ? g : 1;
+    };
+
     const clonePcmWithGain = (pcm, gain = getExportGain()) => {
         if (!pcm || !pcm.length || Math.abs(gain - 1) < EXPORT_GAIN_TOLERANCE) return pcm;
         const out = new Float32Array(pcm.length);
@@ -173,9 +230,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return ['vol', `${suffix}dB`];
     };
 
-    const applyGainToAudioBuffer = (buffer, pcm, gain = getExportGain()) => {
+    const applyGainToAudioBuffer = (buffer, pcm, gain = getExportGain(), ch = 0) => {
         if (!buffer || !pcm) return;
-        const channelData = buffer.getChannelData(0);
+        const channelData = buffer.getChannelData(ch);
         if (!channelData) return;
         if (Math.abs(gain - 1) < EXPORT_GAIN_TOLERANCE) {
             channelData.set(pcm);
@@ -255,6 +312,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const cancelMacroWaveformComputation = () => {
         macroWaveformJobSeq += 1;
         macroWaveformPendingKey = null;
+        if (macroWaveformJob) {
+            macroWaveformJob.abort();
+            macroWaveformJob = null;
+        }
         if (macroWaveformDebounce) {
             clearTimeout(macroWaveformDebounce);
             macroWaveformDebounce = null;
@@ -279,6 +340,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (macroSelect) macroSelect.disabled = busy;
         if (macroComboBtn) macroComboBtn.disabled = busy;
         if (previewMacroBtn) previewMacroBtn.disabled = busy || !state.pcm.length;
+        if (editor) editor.refreshMaster();
     };
 
     const scheduleMacroWaveformUpdate = (immediate = false) => {
@@ -315,21 +377,25 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const macroId = (typeof getSelectedMacroId === 'function' ? getSelectedMacroId() : 'FLAT') || 'FLAT';
         const jobId = ++macroWaveformJobSeq;
         setMacroControlsRendering(true);
+        const job = renderSelectedMacroPcm(pcmRef, sr, macroId, macroProgressCb);
+        macroWaveformJob = job;
 
-        (async () => {
+        job.settled = (async () => {
             try {
                 let processed = null;
                 try {
-                    const out = await trackMacroJob(() => renderSelectedMacroPcm(pcmRef, sr, macroId, macroProgressCb));
+                    const out = await trackMacroJob(() => job);
                     const doneLabel = macroRenderDoneLabel(macroId, true);
                     if (doneLabel) setMacroProgress(1, doneLabel);
                     if (out.pcm !== pcmRef) processed = out;
                     macroWaveformCancelledKey = null;
                 } catch (err) {
                     setMacroProgress(1, '');
-                    if (isMacroCancelError(err)) {
+                    if (isMacroCancelError(err) && jobId !== macroWaveformJobSeq) {
+                        return;
+                    } else if (isMacroCancelError(err)) {
                         macroWaveformCancelledKey = key;
-                        persistStatus('Macro processing cancelled.', true);
+                        cancelStatus('Macro processing cancelled.');
                     } else if (isMacroAssetError(err)) {
                         persistStatus(err.message, false);
                     } else {
@@ -337,6 +403,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     }
                 }
 
+                if (macroWaveformJob === job) macroWaveformJob = null;
                 if (jobId !== macroWaveformJobSeq) return;
                 if (!shouldUseMacroWaveform() || key !== getMacroWaveformKey()) {
                     macroWaveformPendingKey = null;
@@ -393,11 +460,21 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             : (USES_DARK_THEME ? '#f48383' : '#b00000');
     };
 
+    const spokenStatus = (msg, ok = true) => {
+        persistStatus(msg, ok);
+        if (editor) editor.announce(msg);
+    };
+
+    const cancelStatus = (msg) => {
+        if (!macroCancelPending && Date.now() > statusHoldUntil) persistStatus(msg, true);
+    };
+
     let macroProgressUI = null;
     let macroProgressPct = -1;
     const ensureMacroProgress = () => {
         if (macroProgressUI || !persistLabel || !persistLabel.parentNode) return macroProgressUI;
         const wrap = document.createElement('div');
+        wrap.className = 'splice-progress';
         wrap.style.cssText = 'height:4px;background:#333;border-radius:2px;margin-top:3px;overflow:hidden;display:none';
         wrap.setAttribute('role', 'progressbar');
         wrap.setAttribute('aria-label', 'Macro processing progress');
@@ -413,7 +490,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         cancelBtn.type = 'button';
         cancelBtn.textContent = 'Cancel Macro';
         cancelBtn.hidden = true;
-        cancelBtn.style.marginTop = '4px';
         cancelBtn.setAttribute('data-splice-macro-cancel', '');
         cancelBtn.addEventListener('click', cancelMacroJobs);
         wrap.parentNode.insertBefore(cancelBtn, wrap.nextSibling);
@@ -422,6 +498,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     };
     let macroJobsActive = 0;
     let macroCancelSeq = 0;
+    const macroJobCtls = new Set();
+    let macroCancelPending = 0;
+    let statusHoldUntil = 0;
     const macroCancelError = () => {
         const e = new Error('Macro processing cancelled');
         e.name = 'AbortError';
@@ -430,7 +509,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const syncMacroCancelBtn = () => {
         const ui = ensureMacroProgress();
         if (!ui) return;
-        const show = macroJobsActive > 0;
+        const show = macroJobsActive > 0 || macroJobCtls.size > 0;
+        if (!show && macroCancelPending) {
+            const n = macroCancelPending;
+            macroCancelPending = 0;
+            statusHoldUntil = Date.now() + 4000;
+            spokenStatus(n === 1 ? 'Macro processing cancelled.' : `Cancelled ${n} macro jobs.`, true);
+        }
         if (!show) {
             const hadFocus = document.activeElement === ui.cancelBtn;
             ui.cancelBtn.disabled = false;
@@ -450,8 +535,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
     };
     function cancelMacroJobs() {
-        if (!macroJobsActive) return;
+        if (!macroJobsActive && !macroJobCtls.size) return;
         macroCancelSeq++;
+        macroCancelPending = Math.max(1, macroJobCtls.size);
+        for (const ctl of [...macroJobCtls]) ctl.abort();
         if (window.AudacityMacroEngine && window.AudacityMacroEngine.cancel) window.AudacityMacroEngine.cancel();
         const ui = ensureMacroProgress();
         if (ui) {
@@ -482,23 +569,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     const macroProgressCb = ({ step, total, cmd, fraction }) =>
         setMacroProgress(fraction, `Macro ${step}/${total}: ${cmd} (${Math.round(fraction * 100)}%)`);
 
-    const syncSegmentPlayButtons = (activeId = null) => {
-        currentSegmentId = activeId;
-        segmentPlayButtons.forEach((btn, segId) => {
-            if (!btn || !btn.isConnected) return;
-            btn.textContent = segId === currentSegmentId ? 'Pause Section' : 'Play Section';
-        });
-    };
-
     const syncPlayButtons = () => {
-        if (playBtn) {
-            const playingSelection = playingSource && playingMode === 'selection';
-            playBtn.textContent = playingSelection ? 'Pause Selection' : 'Play Selection';
-        }
-        if (playAllBtn) {
-            const playingAll = playingSource && playingMode === 'all';
-            playAllBtn.textContent = playingAll ? 'Pause All' : 'Play All';
-        }
+        if (editor) editor.syncTransport();
     };
 
     const setPreviewMacroButtonState = (label, disabled) => {
@@ -572,7 +644,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
         macroPreviewPlayback.paused = true;
         clearMacroPreviewInterval();
-        setPreviewMacroButtonState('Resume Macro Preview', false);
+        setPreviewMacroButtonState('Resume Preview', false);
         playingSource = null;
         playingMode = null;
         pausedPlayback = null;
@@ -612,23 +684,17 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         playStartedAt = ctxAudio ? ctxAudio.currentTime : 0;
         macroPreviewPlayback.paused = false;
         clearMacroPreviewInterval();
-        setPreviewMacroButtonState('Pause Macro Preview', false);
+        setPreviewMacroButtonState('Pause Preview', false);
         try {
             await audio.play();
         } catch (err) {
             reportErrorStatus(`Failed to resume macro preview audio playback: ${err}`, err);
             macroPreviewPlayback.paused = true;
             clearMacroPreviewInterval();
-            setPreviewMacroButtonState('Resume Macro Preview', false);
+            setPreviewMacroButtonState('Resume Preview', false);
             return false;
         }
         return true;
-    };
-
-    const cancelPendingSegmentPlayback = () => {
-        if (!pendingSegmentPlay) return;
-        pendingSegmentPlay.cancelled = true;
-        pendingSegmentPlay = null;
     };
 
     const getDb = () => {
@@ -651,22 +717,17 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return cacheDbPromise;
     };
 
-    const saveProject = async () => {
+    const saveProject = async (key = CACHE_KEY) => {
         const dbp = getDb();
         if (!dbp) return;
         try {
             const db = await dbp;
+            SM.gcSources(project, editHistory.referencedSources());
             await new Promise((resolve, reject) => {
                 const tx = db.transaction(STORE, 'readwrite');
                 const payload = {
-                    sampleRate: state.sampleRate,
+                    ...SM.serialize(project),
                     savedAt: Date.now(),
-                    segments: state.segments.map((s) => ({
-                        id: s.id,
-                        label: s.label,
-                        pcm: s.pcm.buffer.slice(0),
-                        sourceText: s.sourceText || '',
-                    })),
                     ttsVoiceSelection: voiceSelect ? voiceSelect.value : null,
                     ttsText: ttsInput ? ttsInput.value : null,
                     spliceLoudnessInput: spliceLoudnessInput ? parseFloat(spliceLoudnessInput.value) : 0,
@@ -693,25 +754,32 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                         intensity: vmifyIntensityInput ? vmifyIntensityInput.value : null,
                     },
                 };
-                tx.objectStore(STORE).put(payload, CACHE_KEY);
+                tx.objectStore(STORE).put(payload, key);
                 tx.oncomplete = resolve;
                 tx.onerror = () => reject(tx.error);
             });
-            persistStatus(`Saved locally @ ${new Date().toLocaleTimeString()}.`);
+            if (key === CACHE_KEY && Date.now() > statusHoldUntil) persistStatus(`Saved locally @ ${new Date().toLocaleTimeString()}.`);
         } catch (err) {
             console.error('Failed to save splicer project!', err);
             persistStatus('Local save failed.', false);
+            if (key !== CACHE_KEY) throw err;
         }
     };
 
-    const loadProject = async () => {
+    let saveTimer = null;
+    const scheduleSave = () => {
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => { saveTimer = null; saveProject(); }, 400);
+    };
+
+    const loadProject = async (key = CACHE_KEY) => {
         const dbp = getDb();
         if (!dbp) return null;
         try {
             const db = await dbp;
             return await new Promise((resolve, reject) => {
                 const tx = db.transaction(STORE, 'readonly');
-                const req = tx.objectStore(STORE).get(CACHE_KEY);
+                const req = tx.objectStore(STORE).get(key);
                 req.onsuccess = () => resolve(req.result || null);
                 req.onerror = () => reject(req.error);
             });
@@ -720,6 +788,38 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             persistStatus('Local load failed.', false);
             return null;
         }
+    };
+
+    const listNamedProjects = async () => {
+        const dbp = getDb();
+        if (!dbp) return [];
+        const db = await dbp;
+        const keys = await new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readonly');
+            const req = tx.objectStore(STORE).getAllKeys();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        return keys.filter((k) => typeof k === 'string' && k.startsWith(NAMED_PREFIX)).map((k) => k.slice(NAMED_PREFIX.length)).sort((a, b) => a.localeCompare(b));
+    };
+
+    const deleteNamedProject = async (name) => {
+        const dbp = getDb();
+        if (!dbp) return;
+        const db = await dbp;
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            tx.objectStore(STORE).delete(NAMED_PREFIX + name);
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+        });
+    };
+
+    const projectFromPayload = (payload) => {
+        if (!payload) return null;
+        if (payload.version === 3) return SM.deserialize(payload);
+        if (Array.isArray(payload.segments)) return SM.migrateV2(payload);
+        return null;
     };
 
     const clearCache = async () => {
@@ -798,398 +898,309 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     };
 
     const duration = () => {
-        if (state.disk) {
-            let n = 0;
-            for (const c of state.disk.clips) n += c.length;
-            return n / (state.sampleRate || 44100);
-        }
+        if (state.disk) return SM.projectLength(project) / (project.sampleRate || 44100);
         return state.pcm.length ? state.pcm.length / state.sampleRate : 0;
     };
 
-    const hasAudio = () => (state.disk ? state.disk.clips.length > 0 : state.pcm.length > 0);
+    const hasAudio = () => (state.disk ? SM.projectLength(project) > 0 : state.pcm.length > 0);
 
-    const updateSelectionLabels = () => {
-        const d = duration();
-        const start = clamp(state.selection.start, 0, d);
-        const end = clamp(state.selection.end, 0, d);
-        selStartLabel.textContent = `${start.toFixed(2)}s`;
-        selEndLabel.textContent = `${end.toFixed(2)}s`;
-        selLenLabel.textContent = `${Math.floor((end - start) / 60)}m ${((end - start) % 60).toFixed(0)}s, ${Math.round((end - start) * state.sampleRate).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} samples`;
-    };
-
-    const setSelection = (start, end) => {
-        const d = duration();
-        start = clamp(start, 0, d);
-        end = clamp(end, 0, d);
-        if (end < start) [start, end] = [end, start];
-        state.selection = { start, end };
-        updateSelectionLabels();
-        drawWaveform();
-    };
-
-    const syncViewWindow = () => {
-        const d = duration();
-        if (d <= 0) {
-            state.viewStart = 0;
-            state.viewEnd = 0;
-            return;
-        }
-        let span = state.viewEnd - state.viewStart;
-        if (!Number.isFinite(span) || span <= 0) span = d;
-        span = clamp(span, state.minViewSpan, d);
-        let start = clamp(state.viewStart, 0, Math.max(0, d - state.minViewSpan));
-        let end = start + span;
-        if (end > d) {
-            end = d;
-            start = clamp(end - span, 0, d);
-        }
-        state.viewStart = start;
-        state.viewEnd = end;
-    };
-
-    const resetViewWindow = () => {
-        state.viewStart = 0;
-        state.viewEnd = duration();
-        syncViewWindow();
-    };
-
-    const panViewTo = (center) => {
-        syncViewWindow();
-        const span = Math.max(state.viewEnd - state.viewStart, state.minViewSpan);
-        const d = duration();
-        let start = clamp(center - span / 2, 0, Math.max(0, d - span));
-        let end = start + span;
-        if (end > d) {
-            end = d;
-            start = Math.max(0, d - span);
-        }
-        state.viewStart = start;
-        state.viewEnd = end;
-        drawWaveform();
+    const samePcm = (a, b) => {
+        if (a === b) return true;
+        if (!a || !b || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+        return true;
     };
 
     const rebuildTimeline = ({ preserveMacroWaveform = false } = {}) => {
-        if (state.disk) return;
-        const keepMacroWaveform = preserveMacroWaveform
-            && macroWaveformActiveKey
-            && macroWaveformActiveKey === getMacroWaveformKey();
+        syncEditorMode();
+        const prevPcm = state.pcm;
+        const prevRate = state.sampleRate;
+        state.sampleRate = project.sampleRate;
+        syncRenderedLengths();
+        state.disk = SM.usesDisk(project) ? { big: true } : null;
+        const next = state.disk ? new Float32Array(0) : SM.mixdown(project, 0, SM.projectLength(project), fxResolve);
+        const unchanged = !state.disk && next.length > 0 && prevRate === state.sampleRate && samePcm(prevPcm, next);
+        state.pcm = unchanged ? prevPcm : next;
+        stereoCache = null;
+        const key = getMacroWaveformKey();
+        const keepMacroWaveform = (preserveMacroWaveform || unchanged)
+            && ((macroWaveformActiveKey && macroWaveformActiveKey === key)
+                || (unchanged && macroWaveformPendingKey && macroWaveformPendingKey === key));
         if (!keepMacroWaveform) {
             invalidateMacroWaveformCache(true);
         }
-        const total = state.segments.reduce((sum, seg) => sum + seg.pcm.length, 0);
-        if (state.segments.length === 1) {
-            state.pcm = state.segments[0].pcm;
-        } else {
-            state.pcm = new Float32Array(total);
-            let offset = 0;
-            state.segments.forEach((seg) => {
-                state.pcm.set(seg.pcm, offset);
-                offset += seg.pcm.length;
-            });
-        }
-        if (duration() > 0) {
-            setSelection(0, duration());
-        } else {
-            setSelection(0, 0);
-        }
-        syncViewWindow();
-        updateSegmentsList();
-        drawWaveform();
-        saveProject();
+        if (state.disk) queueMissingFx();
+        macroRenderBlobCache = null;
+        const d = duration();
+        const sel = editor ? editor.selectionSeconds() : { start: 0, end: 0 };
+        state.selection = { start: clamp(sel.start, 0, d), end: clamp(sel.end, 0, d) };
+        if (playheadTime > d) playheadTime = d;
+        lastOutputSig = null;
+        if (editor) editor.render();
+        scheduleSave();
+        setButtonDisabledState(!hasAudio());
         if (!keepMacroWaveform && shouldUseMacroWaveform()) {
             scheduleMacroWaveformUpdate();
         }
     };
 
-    const formatSegmentLabel = (seg, idx) => {
-        const durMins = Math.floor(seg.pcm.length / state.sampleRate / 60);
-        const durSecs = Math.floor((seg.pcm.length / state.sampleRate) % 60);
-        const base = `${idx + 1}. ${seg.label || 'Segment'}`;
-        const text = (seg.sourceText || '').trim();
-        const textPart = text ? ` — "${text.length > 48 ? `${text.slice(0, 48)}...` : text}"` : '';
-        return `${base}${textPart} — ${durMins}m ${durSecs}s (${seg.pcm.length.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} samples)`;
-    };
-
-    const moveSegment = (from, to) => {
-        if (from === to || from < 0 || to < 0 || from >= state.segments.length || to >= state.segments.length) return;
-        const [item] = state.segments.splice(from, 1);
-        state.segments.splice(to, 0, item);
+    const projectChanged = () => {
+        if (playingSource || pausedPlayback) stopPlayback();
+        syncControlsFromMaster();
         rebuildTimeline();
+        if (refreshEffectsEditorFn) refreshEffectsEditorFn();
     };
 
-    const playSegment = async (seg) => {
-        if (!seg?.pcm?.length) return false;
-        cancelPendingSegmentPlayback();
-        if (playingSource) stopPlayback();
+    let fxCache = null;
+    const fxStore = () => fxCache || (fxCache = SR.createRenderCache((IN_APP_WEBVIEW ? 96 : 512) * 1024 * 1024));
+    const fxJobs = new Map();
+    const fxFailed = new Map();
+    let fxLock = Promise.resolve();
+    let fxRebuildTimer = null;
 
-        const pendingState = { cancelled: false, segId: seg.id };
-        pendingSegmentPlay = pendingState;
-        const clearPendingState = () => {
-            if (pendingSegmentPlay === pendingState) pendingSegmentPlay = null;
+    const runExclusive = (fn) => {
+        const ctl = new AbortController();
+        macroJobCtls.add(ctl);
+        syncMacroCancelBtn();
+        const guarded = () => (ctl.signal.aborted ? Promise.reject(macroCancelError()) : fn(ctl.signal));
+        const run = fxLock.then(guarded, guarded);
+        fxLock = run.catch(() => { });
+        const done = () => {
+            macroJobCtls.delete(ctl);
+            syncMacroCancelBtn();
         };
+        run.then(done, done);
+        run.abort = () => ctl.abort();
+        return run;
+    };
 
-        const ctxAudio = getAudioCtx();
-        if (ctxAudio.state === 'suspended') {
+    const clipFxKey = (c) => 'c|' + c.sourceId + '|' + c.offset + '|' + c.length + '|' + project.sampleRate + '|' + SR.chainSig(c.effects);
+    const trackFxKey = (t) => 't|' + project.sampleRate + '|' + SR.chainSig(t.effects) + '|' + t.clips.map((c) => [
+        c.sourceId, c.offset, c.length, c.start, c.gainDb,
+        SM.hasFx(c) ? (fxStore().has(clipFxKey(c)) ? clipFxKey(c) : 'dry>' + SR.chainSig(c.effects)) : '',
+    ].join(':')).join(',');
+
+    const fxLiveKeys = () => {
+        const keys = new Set();
+        for (const t of project.tracks) {
+            for (const c of t.clips) if (SM.hasFx(c)) keys.add(clipFxKey(c));
+            if (SM.hasFx(t)) keys.add(trackFxKey(t));
+        }
+        return keys;
+    };
+
+    const scheduleFxRebuild = () => {
+        if (fxRebuildTimer) clearTimeout(fxRebuildTimer);
+        fxRebuildTimer = setTimeout(() => {
+            fxRebuildTimer = null;
+            rebuildTimeline();
+        }, 60);
+    };
+
+    const queueFxRender = (key, label, input, items) => {
+        if (fxJobs.has(key)) return fxJobs.get(key);
+        const sr = project.sampleRate;
+        const job = runExclusive(async (signal) => {
+            if (!fxLiveKeys().has(key)) return;
             try {
-                await ctxAudio.resume();
+                const data = typeof input === 'function' ? await input() : input;
+                const out = await trackMacroJob(() => renderEffectChain(data, sr, items, ({ step, total, cmd, fraction }) =>
+                    setMacroProgress(fraction, `${label} ${step}/${total}: ${cmd} (${Math.round(fraction * 100)}%)`), signal));
+                let pcm = out.pcm;
+                if (out.sampleRate !== sr) pcm = resamplePcmSinc(pcm, out.sampleRate, sr);
+                if (!pcm || !pcm.length) throw new Error('the effects returned no audio');
+                fxStore().set(key, pcm);
+                setMacroProgress(1, `${label} ready.`);
             } catch (err) {
-                persistStatus('Failed to resume audio context!', false);
+                fxFailed.set(key, err);
+                setMacroProgress(1, '');
+                if (isMacroCancelError(err)) cancelStatus(`${label} cancelled; playing the clip without its effects.`);
+                else reportErrorStatus(`${label} failed; playing without them.`, err);
             }
-        }
-
-        if (pendingState.cancelled) {
-            clearPendingState();
-            return false;
-        }
-
-        const buffer = ctxAudio.createBuffer(1, seg.pcm.length, state.sampleRate);
-        buffer.copyToChannel(seg.pcm, 0);
-
-        const resumeInfo = pausedPlayback && pausedPlayback.mode === 'segment' && pausedPlayback.segId === seg.id ? pausedPlayback : null;
-        const sr = Math.max(1, state.sampleRate || 44100);
-        const segDuration = seg.pcm.length / sr;
-        let samplesBefore = 0;
-        for (let i = 0; i < state.segments.length; i++) {
-            const current = state.segments[i];
-            if (current.id === seg.id) break;
-            samplesBefore += current.pcm.length;
-        }
-        const segmentStartTime = samplesBefore / sr;
-        let startOffset = 0;
-        let len = Math.max(0.001, segDuration);
-        if (resumeInfo) {
-            const resumeFromAbs = clamp(resumeInfo.resumeFrom ?? segmentStartTime, segmentStartTime, segmentStartTime + segDuration);
-            const resumeEndAbs = clamp(resumeInfo.end ?? (segmentStartTime + segDuration), resumeFromAbs, segmentStartTime + segDuration);
-            startOffset = resumeFromAbs - segmentStartTime;
-            len = Math.max(0.001, resumeEndAbs - resumeFromAbs);
-        }
-
-        if (pendingState.cancelled) {
-            clearPendingState();
-            return false;
-        }
-
-        const source = ctxAudio.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctxAudio.destination);
-
-        if (pendingState.cancelled) {
-            try { source.disconnect(); } catch (err) { persistStatus(err, false); }
-            clearPendingState();
-            return false;
-        }
-
-        source.start(0, startOffset, len);
-        playingSource = source;
-        clearPendingState();
-
-        const playbackInterval = setInterval(updatePlaybackMarker, 1);
-
-        playingMode = 'segment';
-        playStartOffset = segmentStartTime + startOffset;
-        playSpan = len;
-        playStartedAt = ctxAudio.currentTime;
-        pausedPlayback = null;
-
-        source.onended = () => {
-            if (playingSource !== source) return;
-            playingSource = null;
-            playingMode = null;
-            pausedPlayback = null;
-            playSpan = 0;
-            playStartOffset = 0;
-            syncSegmentPlayButtons(null);
-            clearInterval(playbackInterval);
-            drawWaveform();
-        };
-        return true;
-    };
-
-    const pauseSegment = async (seg) => {
-        if (!playingSource) {
-            if (pendingSegmentPlay && pendingSegmentPlay.segId === seg?.id) {
-                cancelPendingSegmentPlayback();
-            }
-            return;
-        }
-        const ctxAudio = audioCtx || getAudioCtx();
-        if (ctxAudio.state === 'suspended') await ctxAudio.resume();
-
-        const elapsed = Math.max(0, ctxAudio.currentTime - playStartedAt);
-        const resumeAbs = Math.min(playStartOffset + elapsed, playStartOffset + playSpan);
-        pausedPlayback = {
-            mode: 'segment',
-            segId: seg?.id ?? null,
-            resumeFrom: resumeAbs,
-            end: playStartOffset + playSpan,
-        };
-
-        try {
-            playingSource.onended = null;
-            playingSource.stop();
-        } catch (err) {
-            persistStatus(err, false);
-        }
-
-        playingSource = null;
-        playingMode = null;
-    };
-
-    const updateSegmentsList = () => {
-        segmentsList.innerHTML = '';
-        segmentPlayButtons.clear();
-        if (state.disk) {
-            renderDiskSegments();
-            return;
-        }
-        if (!state.segments.length) {
-            const li = document.createElement('li');
-            li.textContent = 'No segments yet. Load audio or generate TTS to start.';
-            li.style.opacity = '0.8';
-            segmentsList.appendChild(li);
-            return;
-        }
-        state.segments.forEach((seg, idx) => {
-            const li = document.createElement('li');
-            li.draggable = true;
-            li.dataset.index = idx.toString();
-            li.style.display = 'flex';
-            li.style.justifyContent = 'space-between';
-            li.style.alignItems = 'center';
-            li.style.border = '1px solid #1e1e1e';
-            li.style.padding = '8px';
-            li.style.borderRadius = '6px';
-            li.style.background = '#0c0c0c';
-
-            const label = document.createElement('div');
-            label.textContent = formatSegmentLabel(seg, idx);
-            label.style.flex = '1';
-            label.style.marginRight = '24px';
-
-            const playSectionBtn = document.createElement('button');
-            playSectionBtn.type = 'button';
-            playSectionBtn.textContent = 'Play Section';
-            playSectionBtn.disabled = !seg.pcm.length;
-            segmentPlayButtons.set(seg.id, playSectionBtn);
-            if (currentSegmentId === seg.id && playingMode === 'segment' && playingSource) {
-                playSectionBtn.textContent = 'Pause Section';
-            }
-            playSectionBtn.addEventListener('click', async (ev) => {
-                ev.stopPropagation();
-                const isActiveSegment = Boolean(playingSource) && playingMode === 'segment' && currentSegmentId === seg.id;
-                if (isActiveSegment) {
-                    syncSegmentPlayButtons(null);
-                    try {
-                        await pauseSegment(seg);
-                    } catch (err) {
-                        persistStatus(`Failed to pause segment: ${err}.`, false);
-                        syncSegmentPlayButtons(seg.id);
-                    }
-                    return;
-                }
-                try {
-                    const started = await playSegment(seg);
-                    if (started) {
-                        syncSegmentPlayButtons(seg.id);
-                    }
-                } catch (err) {
-                    persistStatus(`Failed to play segment: ${err}.`, false);
-                    syncSegmentPlayButtons(null);
-                }
-            });
-
-            const renameSectionBtn = document.createElement('button');
-            renameSectionBtn.type = 'button';
-            renameSectionBtn.textContent = 'Rename Section';
-            renameSectionBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                const newName = prompt('Enter new name for the segment:', seg.label);
-                if (newName) {
-                    seg.label = newName;
-                    updateSegmentsList();
-                }
-            });
-
-            const moveUpBtn = document.createElement('button');
-            moveUpBtn.type = 'button';
-            moveUpBtn.textContent = 'Move Up';
-            moveUpBtn.disabled = idx === 0;
-            moveUpBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (idx > 0) moveSegment(idx, idx - 1);
-            });
-
-            const moveDownBtn = document.createElement('button');
-            moveDownBtn.type = 'button';
-            moveDownBtn.textContent = 'Move Down';
-            moveDownBtn.disabled = idx === state.segments.length - 1;
-            moveDownBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (idx < state.segments.length - 1) moveSegment(idx, idx + 1);
-            });
-
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.textContent = 'Remove';
-            removeBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                state.segments = state.segments.filter((s) => s.id !== seg.id);
-                rebuildTimeline();
-            });
-
-            const controls = document.createElement('div');
-            controls.style.display = 'flex';
-            controls.style.gap = '6px';
-            controls.appendChild(playSectionBtn);
-            controls.appendChild(renameSectionBtn);
-            controls.appendChild(moveUpBtn);
-            controls.appendChild(moveDownBtn);
-            controls.appendChild(removeBtn);
-
-            li.addEventListener('dragstart', (e) => {
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', idx.toString());
-            });
-
-            li.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                li.style.borderColor = '#3aa0ff';
-            });
-
-            li.addEventListener('dragleave', () => {
-                li.style.borderColor = '#1e1e1e';
-            });
-
-            li.addEventListener('drop', (e) => {
-                e.preventDefault();
-                li.style.borderColor = '#1e1e1e';
-                const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                const to = parseInt(li.dataset.index, 10);
-                moveSegment(from, to);
-            });
-
-            li.appendChild(label);
-            li.appendChild(controls);
-            segmentsList.appendChild(li);
+        }).catch((err) => {
+            fxFailed.set(key, err);
+            cancelStatus(`${label} cancelled; playing the clip without its effects.`);
+        }).finally(() => {
+            fxJobs.delete(key);
+            if (editor) editor.redraw();
+            scheduleFxRebuild();
         });
+        fxJobs.set(key, job);
+        if (editor) editor.redraw();
+        return job;
     };
 
-    const addSegment = (pcm, sampleRate, label, sourceText = '', adopt = false) => {
+    const tooLongForFx = (frames) => {
+        const err = new Error(`effects need the audio in memory; keep it under ${(MACRO_MEM_FRAMES / project.sampleRate / 60).toFixed(1)} minutes`);
+        return frames > MACRO_MEM_FRAMES ? err : null;
+    };
+
+    const fxResolve = {
+        clip: (c) => {
+            const key = clipFxKey(c);
+            const hit = fxStore().get(key);
+            if (hit) return hit.pcm;
+            const src = project.sources.get(c.sourceId);
+            if (!src || fxFailed.has(key)) return null;
+            const input = SM.isDisk(src)
+                ? async () => {
+                    const err = tooLongForFx(c.length);
+                    if (err) throw err;
+                    return readDisk(src, c.offset, c.offset + c.length);
+                }
+                : src.pcm.slice(c.offset, c.offset + c.length);
+            queueFxRender(key, 'Clip effects', input, c.effects.map(SR.cleanItem));
+            return null;
+        },
+        track: (t) => {
+            const key = trackFxKey(t);
+            const hit = fxStore().get(key);
+            if (hit) return hit.pcm;
+            if (fxFailed.has(key)) return null;
+            const onDisk = t.clips.some((c) => SM.isDisk(project.sources.get(c.sourceId)));
+            const input = onDisk ? () => trackBusAsync(t) : SM.trackBus(project, t, fxResolve);
+            queueFxRender(key, `${t.name} track effects`, input, t.effects.map(SR.cleanItem));
+            return null;
+        },
+    };
+
+    const diskFiles = new Map();
+    const diskFile = async (name) => {
+        let f = diskFiles.get(name);
+        if (f) return f;
+        const dir = await opfsHugeDir();
+        f = await (await dir.getFileHandle(name)).getFile();
+        diskFiles.set(name, f);
+        return f;
+    };
+
+    const readDisk = async (src, a, b) => {
+        a = Math.max(0, a);
+        b = Math.min(src.length, b);
+        if (b <= a) return new Float32Array(0);
+        const file = await diskFile(src.file);
+        return new Float32Array(await file.slice(a * 4, b * 4).arrayBuffer());
+    };
+
+    const diskSlices = async (tracks, a, b) => {
+        const slices = new Map();
+        for (const t of tracks) {
+            for (const c of t.clips) {
+                const src = project.sources.get(c.sourceId);
+                if (!SM.isDisk(src)) continue;
+                if (SM.hasFx(c) && fxStore().has(clipFxKey(c))) continue;
+                const s = Math.max(a, c.start), e = Math.min(b, c.start + Math.min(c.length, SM.clipSpan(c)));
+                if (e <= s) continue;
+                const o0 = c.offset + (s - c.start);
+                slices.set(c.id, { pcm: await readDisk(src, o0, o0 + (e - s)), offset: o0 });
+            }
+        }
+        return (c) => slices.get(c.id) || null;
+    };
+
+    const mixRange = async (a, b) => {
+        if (b <= a) return null;
+        const source = await diskSlices(SM.audibleTracks(project), a, b);
+        return SM.mixdown(project, a, b, { ...fxResolve, source });
+    };
+
+    const mixRangeChannels = async (a, b, stereo = outStereo()) => {
+        if (b <= a) return null;
+        if (!stereo) return [await mixRange(a, b)];
+        const source = await diskSlices(SM.audibleTracks(project), a, b);
+        if (!SM.isPanned(project)) {
+            const m = SM.mixdown(project, a, b, { ...fxResolve, source });
+            return [m, m];
+        }
+        return ['L', 'R'].map((side) => SM.mixdown(project, a, b, { ...fxResolve, source, side }));
+    };
+
+    const trackBusAsync = async (t) => {
+        const n = SM.trackEnd(t);
+        const err = tooLongForFx(n);
+        if (err) throw err;
+        const source = await diskSlices([t], 0, n);
+        return SM.trackBus(project, t, { clip: fxResolve.clip, source });
+    };
+
+    const fxPeek = {
+        clip: (c) => {
+            const hit = fxStore().get(clipFxKey(c));
+            return hit ? hit.pcm : null;
+        },
+    };
+
+    const syncRenderedLengths = () => {
+        for (const t of project.tracks) {
+            for (const c of [...t.clips]) {
+                if (!SM.hasFx(c)) continue;
+                const hit = fxStore().get(clipFxKey(c));
+                if (hit && c.outLen !== hit.pcm.length) SM.setRenderedLength(project, c.id, hit.pcm.length);
+            }
+        }
+    };
+
+    const fxMissing = () => {
+        for (const t of SM.audibleTracks(project)) {
+            for (const c of t.clips) {
+                if (!SM.hasFx(c)) continue;
+                const key = clipFxKey(c);
+                if (!fxStore().has(key) && !fxFailed.has(key)) return true;
+            }
+            if (SM.hasFx(t)) {
+                const key = trackFxKey(t);
+                if (!fxStore().has(key) && !fxFailed.has(key)) return true;
+            }
+        }
+        return false;
+    };
+
+    const queueMissingFx = () => {
+        for (const t of SM.audibleTracks(project)) {
+            for (const c of t.clips) if (SM.hasFx(c)) fxResolve.clip(c);
+            if (SM.hasFx(t)) fxResolve.track(t);
+        }
+    };
+
+    const ensureFxReady = async () => {
+        for (let guard = 0; guard < 50; guard++) {
+            if (fxJobs.size) {
+                await Promise.all([...fxJobs.values()]);
+                continue;
+            }
+            if (!fxMissing()) break;
+            queueMissingFx();
+            if (!fxJobs.size) break;
+        }
+        if (fxRebuildTimer) {
+            clearTimeout(fxRebuildTimer);
+            fxRebuildTimer = null;
+            rebuildTimeline();
+        }
+    };
+
+    const addSegment = (pcm, sampleRate, label, sourceText = '', adopt = false, role = 'voice') => {
         if (!pcm || !pcm.length) return;
-        if (!state.sampleRate) state.sampleRate = sampleRate || 44100;
         let finalPcm = pcm;
-        if (sampleRate && sampleRate !== state.sampleRate) {
-            finalPcm = resamplePcm(pcm, sampleRate, state.sampleRate);
+        if (sampleRate && sampleRate !== project.sampleRate) {
+            finalPcm = resamplePcm(pcm, sampleRate, project.sampleRate);
             adopt = true;
         }
-        state.segments.push({
-            id: `seg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-            label: label || 'Segment',
-            pcm: adopt ? finalPcm : new Float32Array(finalPcm),
-            sourceText,
-        });
-        rebuildTimeline();
+        const data = adopt ? finalPcm : new Float32Array(finalPcm);
+        editHistory.push(project, `add ${label || 'audio'}`);
+        let trackId = editor ? editor.targetTrackId(role) : null;
+        if (!trackId || !SM.findTrack(project, trackId)) {
+            const t = project.tracks.find((x) => x.role === role) || project.tracks[0] || SM.addTrack(project, role);
+            trackId = t.id;
+        }
+        const sid = SM.addSource(project, data, label || 'Clip');
+        const clip = SM.appendClip(project, trackId, sid, { label: label || 'Clip', text: sourceText || '' });
+        projectChanged();
+        if (editor && clip) {
+            editor.selectClip(clip.id);
+            const t = SM.findTrack(project, trackId);
+            editor.announce(`Added ${label || 'audio'} clip, ${(clip.length / project.sampleRate).toFixed(2)} seconds, to ${t ? t.name : 'track'}.`);
+        }
     };
 
     const addSilence = () => {
@@ -1203,252 +1214,21 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         addSegment(pcm, state.sampleRate, 'Silence', `Silence ${secs.toFixed(2)}s`);
         if (silenceStatus) silenceStatus.textContent = `Added ${secs.toFixed(2)}s of silence.`;
         setButtonDisabledState(false);
-        resetViewWindow();
         drawWaveform();
-    };
-
-    const newClipId = () => 'clip-' + Date.now() + '-' + Math.random().toString(16).slice(2);
-
-    const splitClipsAt = (clips, tSample) => {
-        const out = [];
-        let tPos = 0;
-        for (const c of clips) {
-            const cEnd = tPos + c.length;
-            if (tSample > tPos && tSample < cEnd) {
-                const cut = tSample - tPos;
-                out.push({ id: newClipId(), label: c.label, start: c.start, length: cut });
-                out.push({ id: newClipId(), label: c.label, start: c.start + cut, length: c.length - cut });
-            } else {
-                out.push(c);
-            }
-            tPos = cEnd;
-        }
-        return out;
-    };
-
-    const clipsWithin = (clips, low, high, keep) => {
-        const out = [];
-        let tPos = 0;
-        for (const c of clips) {
-            const cEnd = tPos + c.length;
-            const inside = tPos >= low && cEnd <= high;
-            if (keep === inside) out.push(c);
-            tPos = cEnd;
-        }
-        return out;
-    };
-
-    const afterDiskEdit = ({ resetSel = false } = {}) => {
-        stopPlayback();
-        const d = duration();
-        if (resetSel || state.selection.end > d || state.selection.start > d) {
-            state.selection = { start: 0, end: d };
-        }
-        if (playheadTime > d) playheadTime = d;
-        resetViewWindow();
-        updateSelectionLabels();
-        updateSegmentsList();
-        drawWaveform();
-    };
-
-    const splitAtSelection = () => {
-        if (state.disk) {
-            const sr = state.sampleRate;
-            const low = Math.floor(state.selection.start * sr);
-            const high = Math.floor(state.selection.end * sr);
-            if (high <= low) { persistStatus('Select a region inside the audio to split.', false); return; }
-            state.disk.clips = splitClipsAt(splitClipsAt(state.disk.clips, high), low);
-            afterDiskEdit();
-            persistStatus('Split at selection.');
-            return;
-        }
-        if (!state.pcm.length) return;
-        const sr = state.sampleRate;
-        const startIdx = Math.floor(state.selection.start * sr);
-        const endIdx = Math.floor(state.selection.end * sr);
-
-        const clampIdx = (idx) => Math.min(Math.max(idx, 0), state.pcm.length);
-        const a = clampIdx(startIdx);
-        const b = clampIdx(endIdx);
-
-        if (a === b) {
-            persistStatus('Select a region inside the audio to split.', false);
-            return;
-        }
-
-        const low = Math.min(a, b);
-        const high = Math.max(a, b);
-
-        const left = state.pcm.slice(0, low);
-        const mid = state.pcm.slice(low, high);
-        const right = state.pcm.slice(high);
-
-        const segments = [];
-        if (left.length) segments.push({ id: `seg-${Date.now()}-l`, label: 'Part 1', pcm: left, sourceText: '' });
-        if (mid.length) segments.push({ id: `seg-${Date.now()}-m`, label: 'Split', pcm: mid, sourceText: 'Split selection' });
-        if (right.length) segments.push({ id: `seg-${Date.now()}-r`, label: 'Part 2', pcm: right, sourceText: '' });
-
-        if (!segments.length) {
-            persistStatus('Nothing to split.', false);
-            return;
-        }
-
-        state.segments = segments;
-        rebuildTimeline();
-        persistStatus('Split created separate segments.');
-    };
-
-    const joinAllSegments = () => {
-        if (state.disk) {
-            persistStatus('Join All is not available for very large files yet.', false);
-            return;
-        }
-        if (!state.segments.length) return;
-        const total = state.segments.reduce((sum, seg) => sum + seg.pcm.length, 0);
-        const joined = new Float32Array(total);
-        let offset = 0;
-        const texts = [];
-        state.segments.forEach((seg) => {
-            joined.set(seg.pcm, offset);
-            offset += seg.pcm.length;
-            if (seg.sourceText) texts.push(seg.sourceText);
-        });
-        const textJoined = texts.join(' | ');
-        state.segments = [{
-            id: `seg-${Date.now()}-joined`,
-            label: 'Joined',
-            pcm: joined,
-            sourceText: textJoined,
-        }];
-        rebuildTimeline();
-        persistStatus('All segments joined into one.');
-    };
-
-    const drawDiskWaveform = (w, h) => {
-        const disk = state.disk;
-        if (!disk || !disk.clips.length) {
-            ctx.fillStyle = '#888';
-            ctx.font = '14px monospace';
-            ctx.fillText('Upload an existing audio file or generate TTS to begin editing.', 12, h / 2);
-            return;
-        }
-        syncViewWindow();
-        const sr = state.sampleRate || 44100;
-        const totalFrames = Math.floor(duration() * sr);
-        const viewSpan = Math.max(state.viewEnd - state.viewStart, state.minViewSpan);
-        const startSample = Math.floor(state.viewStart * sr);
-        const visibleSamples = Math.max(1, Math.floor(viewSpan * sr));
-        const step = Math.max(1, Math.floor(visibleSamples / w));
-        const bucket = disk.bucketFrames;
-        const peaks = disk.peaks;
-        const nB = peaks.length >> 1;
-        const gain = getExportGain();
-        const applyGain = Math.abs(gain - 1) > EXPORT_GAIN_TOLERANCE;
-        ctx.strokeStyle = '#3aa0ff';
-        ctx.beginPath();
-        for (let x = 0; x < w; x++) {
-            const s0 = startSample + x * step;
-            if (s0 >= totalFrames) break;
-            const s1 = Math.min(totalFrames, s0 + step);
-            let min = 1, max = -1;
-            for (const rr of timelineRangeToSource(s0, s1)) {
-                const b0 = (rr.s0 / bucket) | 0;
-                const b1 = Math.min(nB - 1, ((rr.s1 - 1) / bucket) | 0);
-                for (let b = b0; b <= b1; b++) {
-                    const lo = peaks[b * 2], hi = peaks[b * 2 + 1];
-                    if (lo < min) min = lo;
-                    if (hi > max) max = hi;
-                }
-            }
-            if (min > max) { min = 0; max = 0; }
-            if (applyGain) {
-                min *= gain; max *= gain;
-                if (min < -1) min = -1;
-                if (max > 1) max = 1;
-            }
-            const y1 = h / 2 - max * (h / 2);
-            const y2 = h / 2 - min * (h / 2);
-            ctx.moveTo(x + 0.5, y1);
-            ctx.lineTo(x + 0.5, y2);
-        }
-        ctx.stroke();
-        const selStartX = ((state.selection.start - state.viewStart) / viewSpan) * w || 0;
-        const selEndX = ((state.selection.end - state.viewStart) / viewSpan) * w || 0;
-        const selWidth = Math.max(2, selEndX - selStartX);
-        ctx.fillStyle = 'rgba(90, 180, 255, 0.15)';
-        ctx.fillRect(selStartX, 0, selWidth, h);
-        ctx.strokeStyle = 'rgba(90, 180, 255, 0.7)';
-        ctx.strokeRect(selStartX + 0.5, 0.5, selWidth - 1, h - 1);
-        drawPlayhead();
     };
 
     const drawWaveform = () => {
-        const waveformData = getWaveformRenderData();
-        const waveformPcm = waveformData.pcm || new Float32Array(0);
-        const waveformSampleRate = waveformData.sampleRate || state.sampleRate || 44100;
-        const w = canvas.width;
-        const h = canvas.height;
-        const userLightMode = !USES_DARK_THEME;
-        ctx.fillStyle = userLightMode ? '#ffffff' : '#0b0b0b';
-        ctx.fillRect(0, 0, w, h);
-        ctx.strokeStyle = '#222';
-        ctx.beginPath();
-        ctx.moveTo(0, h / 2);
-        ctx.lineTo(w, h / 2);
-        ctx.stroke();
-
-        if (state.disk) {
-            drawDiskWaveform(w, h);
-            return;
+        syncEditorMode();
+        if (!editor) return;
+        const out = getWaveformRenderData();
+        const sig = out.pcm ? `${out.pcm.length}|${getExportGain()}|${macroWaveformActiveKey || ''}` : '';
+        if (sig !== lastOutputSig || out.pcm !== lastOutputPcmRef) {
+            lastOutputSig = sig;
+            lastOutputPcmRef = out.pcm;
+            editor.refreshOutput();
+        } else {
+            editor.tick();
         }
-
-        if (!waveformPcm.length) {
-            ctx.fillStyle = '#888';
-            ctx.font = '14px monospace';
-            ctx.fillText('Upload an existing audio file or generate TTS to begin editing.', 12, h / 2);
-            return;
-        }
-
-        syncViewWindow();
-        const d = duration();
-        const viewSpan = Math.max(state.viewEnd - state.viewStart, state.minViewSpan);
-        const startSample = Math.floor(state.viewStart * waveformSampleRate);
-        const visibleSamples = Math.max(1, Math.floor(viewSpan * waveformSampleRate));
-        const step = Math.max(1, Math.floor(visibleSamples / w));
-        const waveformGain = getExportGain();
-        const applyWaveformGain = Math.abs(waveformGain - 1) > EXPORT_GAIN_TOLERANCE;
-        ctx.strokeStyle = '#3aa0ff';
-        ctx.beginPath();
-        for (let x = 0; x < w; x++) {
-            const start = startSample + x * step;
-            const end = Math.min(waveformPcm.length, start + step);
-            let min = 1, max = -1;
-            for (let i = start; i < end; i++) {
-                let v = waveformPcm[i];
-                if (applyWaveformGain) {
-                    v *= waveformGain;
-                    if (v > 1) v = 1;
-                    else if (v < -1) v = -1;
-                }
-                if (v < min) min = v;
-                if (v > max) max = v;
-            }
-            const y1 = h / 2 - max * (h / 2);
-            const y2 = h / 2 - min * (h / 2);
-            ctx.moveTo(x + 0.5, y1);
-            ctx.lineTo(x + 0.5, y2);
-        }
-        ctx.stroke();
-
-        const selStartX = ((state.selection.start - state.viewStart) / viewSpan) * w || 0;
-        const selEndX = ((state.selection.end - state.viewStart) / viewSpan) * w || 0;
-        const selWidth = Math.max(2, selEndX - selStartX);
-        ctx.fillStyle = 'rgba(90, 180, 255, 0.15)';
-        ctx.fillRect(selStartX, 0, selWidth, h);
-        ctx.strokeStyle = 'rgba(90, 180, 255, 0.7)';
-        ctx.strokeRect(selStartX + 0.5, 0.5, selWidth - 1, h - 1);
-
-        drawPlayhead();
     };
 
     const getMacroPreviewAbsoluteTime = () => {
@@ -1461,12 +1241,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return null;
     };
 
-    const PLAYHEAD_HANDLE_ZONE_PX = 22;
-    const PLAYHEAD_GRAB_PX = 10;
-    const PLAYHEAD_TOUCH_ZONE_PX = 48;
-    const PLAYHEAD_TOUCH_GRAB_PX = 30;
-    const POINTER_IS_COARSE = (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches) || ((navigator.maxTouchPoints || 0) > 0);
-
     const getNeedleTime = () => {
         if (playingSource && playSpan > 0) {
             const macroT = getMacroPreviewAbsoluteTime();
@@ -1478,52 +1252,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return clamp(playheadTime, 0, duration());
     };
 
-    const drawPlayhead = () => {
-        const d = duration();
-        if (d <= 0) return;
-        const viewStart = state.viewStart ?? 0;
-        const viewEnd = state.viewEnd ?? d;
-        const viewSpan = Math.max(0.001, viewEnd - viewStart);
-        const t = getNeedleTime();
-        if (t < viewStart || t > viewEnd) return;
-        const isPlaying = !!playingSource && playSpan > 0;
-        const xr = Math.round(((t - viewStart) / viewSpan) * canvas.width);
-        const lineW = POINTER_IS_COARSE ? 6 : 2;
-        const hw = POINTER_IS_COARSE ? 34 : 7;
-        const hh = POINTER_IS_COARSE ? 26 : 13;
-        ctx.save();
-        ctx.fillStyle = isPlaying ? 'rgba(255, 60, 60, 0.95)' : '#ff9800';
-        ctx.fillRect(xr - Math.floor(lineW / 2), 0, lineW, canvas.height);
-        ctx.beginPath();
-        ctx.moveTo(xr - hw, 0);
-        ctx.lineTo(xr + hw, 0);
-        ctx.lineTo(xr, hh);
-        ctx.closePath();
-        ctx.fill();
-        if (POINTER_IS_COARSE) {
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
-        ctx.restore();
-    };
-
-    const setPlayhead = (t) => {
-        playheadTime = clamp(t, 0, duration());
-        drawWaveform();
-    };
-
-    const isOnPlayheadHandle = (xCss, yCss, rectWidth, zonePx = PLAYHEAD_HANDLE_ZONE_PX, grabPx = PLAYHEAD_GRAB_PX) => {
-        if (yCss > zonePx) return false;
-        const viewStart = state.viewStart ?? 0;
-        const viewEnd = state.viewEnd ?? duration();
-        const viewSpan = Math.max(0.001, viewEnd - viewStart);
-        const t = getNeedleTime();
-        if (t < viewStart || t > viewEnd) return false;
-        const needleXCss = ((t - viewStart) / viewSpan) * rectWidth;
-        return Math.abs(xCss - needleXCss) <= grabPx;
-    };
-
     const updatePlaybackMarker = () => {
         if (!playingSource || playSpan <= 0) return;
         drawWaveform();
@@ -1531,7 +1259,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
 
     const stopPlayback = ({ preserveMacroPreview = false } = {}) => {
-        cancelPendingSegmentPlayback();
         stopDiskPlayback();
         const isMacroPreviewActive = playingMode === 'macro-preview';
         const hasPausedMacroPreview = !!macroPreviewPlayback && !isMacroPreviewActive;
@@ -1551,9 +1278,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         playingMode = null;
         pausedPlayback = null;
         playSpan = 0;
-        syncSegmentPlayButtons(null);
         syncPlayButtons();
-        rebuildTimeline({ preserveMacroWaveform: true });
+        if (!editor) rebuildTimeline({ preserveMacroWaveform: true });
         drawWaveform();
         if (shouldHandleMacroPreview) {
             if (!playingSource && macroAudio) {
@@ -1603,56 +1329,68 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     };
 
     const getPlaybackPcm = () => {
+        if (editor && stereoPanned()) {
+            const chans = outputChannels();
+            const macroId = (typeof getSelectedMacroId === 'function' ? getSelectedMacroId() : 'FLAT') || 'FLAT';
+            const out = masterBypass ? chans : chans.map((c) => applyExportFxToPcm(c, state.sampleRate, macroId));
+            return { pcm: out[0], chans: out, sampleRate: state.sampleRate };
+        }
+        if (editor && masterBypass) return { pcm: state.pcm, sampleRate: state.sampleRate };
+        if (editor && macroWaveformPcm && macroWaveformActiveKey && shouldUseMacroWaveform() && macroWaveformActiveKey === getMacroWaveformKey()) {
+            return { pcm: macroWaveformPcm, sampleRate: macroWaveformSampleRate || state.sampleRate };
+        }
         const macroId = (typeof getSelectedMacroId === 'function' ? getSelectedMacroId() : 'FLAT') || 'FLAT';
-        return applyExportFxToPcm(state.pcm, state.sampleRate, macroId);
+        return { pcm: applyExportFxToPcm(state.pcm, state.sampleRate, macroId), sampleRate: state.sampleRate };
+    };
+
+    const startBufferPlayback = async (mode, start, endPos, src = getPlaybackPcm()) => {
+        const srcDur = src.pcm.length / src.sampleRate;
+        const end = Math.min(endPos, srcDur);
+        const len = Math.max(0.001, end - start);
+        if (start >= srcDur || end <= start) return null;
+        if (playingSource) stopPlayback();
+        const ctxAudio = getAudioCtx();
+        if (ctxAudio.state === 'suspended') await ctxAudio.resume();
+        const chans = src.chans || [src.pcm];
+        const buffer = ctxAudio.createBuffer(chans.length, src.pcm.length, src.sampleRate);
+        const limited = finishChans(chans, src.sampleRate, exportGainFactor());
+        if (limited) limited.chans.forEach((c, ch) => buffer.getChannelData(ch).set(c));
+        else chans.forEach((c, ch) => applyGainToAudioBuffer(buffer, c, getExportGain(), ch));
+        const source = ctxAudio.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctxAudio.destination);
+        source.start(0, start, len);
+        playingSource = source;
+        playingMode = mode;
+        playStartOffset = start;
+        playSpan = len;
+        playStartedAt = ctxAudio.currentTime;
+        const playbackInterval = setInterval(updatePlaybackMarker, 1);
+        pausedPlayback = null;
+        syncPlayButtons();
+        source.onended = () => {
+            playingSource = null;
+            playingMode = null;
+            pausedPlayback = null;
+            playSpan = 0;
+            playStartOffset = 0;
+            clearInterval(playbackInterval);
+            drawWaveform();
+            syncPlayButtons();
+        };
+        return source;
     };
 
     let diskPlayer = null;
 
-    const diskSourceFile = async () => {
-        if (state.disk && state.disk.file) return state.disk.file;
-        const dir = await opfsHugeDir();
-        const fh = (state.disk && state.disk.fh) || await dir.getFileHandle(state.disk.sourceName);
-        const f = await fh.getFile();
-        if (state.disk) state.disk.file = f;
-        return f;
-    };
-
-    const timelineRangeToSource = (a, b) => {
-        const out = [];
-        if (!state.disk) return out;
-        let tPos = 0;
-        for (const c of state.disk.clips) {
-            const cEnd = tPos + c.length;
-            const oa = Math.max(a, tPos), ob = Math.min(b, cEnd);
-            if (oa < ob) out.push({ s0: c.start + (oa - tPos), s1: c.start + (ob - tPos) });
-            tPos = cEnd;
-            if (tPos >= b) break;
-        }
-        return out;
-    };
-
     const materializeTimelineRange = async (aFrame, bFrame) => {
-        const n = bFrame - aFrame;
-        if (n <= 0) return null;
-        let out;
-        try { out = new Float32Array(n); }
-        catch (e) { persistStatus('Not enough memory to apply this effect. Trim to a shorter selection.', false); return null; }
-        const file = await diskSourceFile();
-        const ranges = timelineRangeToSource(aFrame, bFrame);
-        const CHUNK = 1 << 20;
-        let w = 0;
-        for (const r of ranges) {
-            let pos = r.s0;
-            while (pos < r.s1) {
-                const c = Math.min(CHUNK, r.s1 - pos);
-                const buf = await file.slice(pos * 4, (pos + c) * 4).arrayBuffer();
-                out.set(new Float32Array(buf), w);
-                w += c; pos += c;
-                await new Promise((rr) => setTimeout(rr));
-            }
+        if (bFrame - aFrame <= 0) return null;
+        try {
+            return await mixRange(aFrame, bFrame);
+        } catch (e) {
+            persistStatus('Not enough memory to apply this effect. Trim to a shorter selection.', false);
+            return null;
         }
-        return out;
     };
 
     const stopDiskPlayback = () => {
@@ -1670,21 +1408,17 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
     const streamDiskTimeline = async (startTime, endTime, mode) => {
         stopPlayback();
-        const sr = state.sampleRate || 44100;
+        const sr = project.sampleRate || 44100;
         const a = Math.max(0, Math.floor(startTime * sr));
-        const b = Math.min(Math.floor(duration() * sr), Math.floor(endTime * sr));
+        const b = Math.min(SM.projectLength(project), Math.floor(endTime * sr));
         if (b <= a) return;
-        const ranges = timelineRangeToSource(a, b);
-        if (!ranges.length) return;
         const ctxAudio = getAudioCtx();
         if (ctxAudio.state === 'suspended') await ctxAudio.resume();
-        let file;
-        try { file = await diskSourceFile(); } catch (e) { persistStatus('Could not read the audio from storage.', false); return; }
         const gain = getExportGain();
         const applyGain = Math.abs(gain - 1) > EXPORT_GAIN_TOLERANCE;
         const CHUNK = Math.max(1, Math.floor(sr * 2));
 
-        const player = { sources: [], stopped: false, pumping: false, ri: 0, cursor: ranges[0].s0, done: false, scheduleTime: ctxAudio.currentTime + 0.15, marker: null };
+        const player = { sources: [], stopped: false, pumping: false, cursor: a, done: false, scheduleTime: ctxAudio.currentTime + 0.15, marker: null, lim: limitOn() ? SL.createLimiter({ sampleRate: sr }) : null };
         diskPlayer = player;
 
         playingMode = mode;
@@ -1708,26 +1442,23 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             player.pumping = true;
             try {
                 while (!player.stopped && (player.scheduleTime - ctxAudio.currentTime) < 3.0) {
-                    if (player.ri >= ranges.length) { player.done = true; break; }
-                    const r = ranges[player.ri];
-                    if (player.cursor >= r.s1) {
-                        player.ri++;
-                        if (player.ri < ranges.length) player.cursor = ranges[player.ri].s0;
-                        continue;
-                    }
-                    const n = Math.min(CHUNK, r.s1 - player.cursor);
-                    let buf;
-                    try { buf = await file.slice(player.cursor * 4, (player.cursor + n) * 4).arrayBuffer(); }
-                    catch (e) { player.done = true; break; }
+                    if (player.cursor >= b) { player.done = true; break; }
+                    const n = Math.min(CHUNK, b - player.cursor);
+                    let chans;
+                    const ahead = player.lim ? Math.min(player.lim.lookahead, b - player.cursor - n) : 0;
+                    try { chans = await mixRangeChannels(player.cursor, player.cursor + n + ahead, stereoPanned()); }
+                    catch (e) { persistStatus('Could not read the audio from storage.', false); player.done = true; break; }
                     if (player.stopped || diskPlayer !== player) return;
-                    const f32 = new Float32Array(buf);
-                    const abuf = ctxAudio.createBuffer(1, Math.max(1, f32.length), sr);
-                    const chd = abuf.getChannelData(0);
-                    if (applyGain) {
-                        for (let i = 0; i < f32.length; i++) { let v = f32[i] * gain; if (v > 1) v = 1; else if (v < -1) v = -1; chd[i] = v; }
-                    } else {
-                        chd.set(f32);
-                    }
+                    if (player.lim) chans = player.lim.process(chans, 0, n, applyGain ? gain : 1);
+                    const abuf = ctxAudio.createBuffer(chans.length, Math.max(1, chans[0].length), sr);
+                    chans.forEach((f32, ch) => {
+                        const chd = abuf.getChannelData(ch);
+                        if (applyGain && !player.lim) {
+                            for (let i = 0; i < f32.length; i++) { let v = f32[i] * gain; if (v > 1) v = 1; else if (v < -1) v = -1; chd[i] = v; }
+                        } else {
+                            chd.set(f32);
+                        }
+                    });
                     if (player.scheduleTime < ctxAudio.currentTime + 0.02) player.scheduleTime = ctxAudio.currentTime + 0.05;
                     const s = ctxAudio.createBufferSource();
                     s.buffer = abuf;
@@ -1757,68 +1488,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         syncPlayButtons();
     };
 
-    const renderDiskSegments = () => {
-        const sr = state.sampleRate || 44100;
-        const clips = state.disk.clips;
-        let tPos = 0;
-        clips.forEach((clip, idx) => {
-            const clipStartT = tPos / sr;
-            const clipEndT = (tPos + clip.length) / sr;
-            tPos += clip.length;
-            const li = document.createElement('li');
-            li.style.display = 'flex';
-            li.style.justifyContent = 'space-between';
-            li.style.alignItems = 'center';
-            li.style.border = '1px solid #1e1e1e';
-            li.style.padding = '8px';
-            li.style.borderRadius = '6px';
-            li.style.background = '#0c0c0c';
-            li.style.gap = '8px';
-            li.style.flexWrap = 'wrap';
-            const label = document.createElement('div');
-            const secs = clip.length / sr;
-            const mm = Math.floor(secs / 60), ss = Math.floor(secs % 60);
-            label.textContent = (idx + 1) + '. ' + (clip.label || 'Clip') + ' — ' + mm + 'm ' + ss + 's';
-            label.style.flex = '1';
-            label.style.marginRight = '12px';
-            const controls = document.createElement('div');
-            controls.style.display = 'flex';
-            controls.style.gap = '6px';
-            controls.style.flexWrap = 'wrap';
-            controls.style.width = 'auto';
-            controls.style.flexShrink = '0';
-            const mkBtn = (text, disabled, handler) => {
-                const b = document.createElement('button');
-                b.type = 'button';
-                b.textContent = text;
-                b.disabled = !!disabled;
-                b.addEventListener('click', (ev) => { ev.stopPropagation(); handler(); });
-                return b;
-            };
-            controls.appendChild(mkBtn('Play Section', false, async () => {
-                try { await streamDiskTimeline(clipStartT, clipEndT, 'all'); syncPlayButtons(); }
-                catch (err) { persistStatus('Failed to play section: ' + err + '.', false); }
-            }));
-            controls.appendChild(mkBtn('Move Up', idx === 0, () => {
-                const c = state.disk.clips;
-                [c[idx - 1], c[idx]] = [c[idx], c[idx - 1]];
-                afterDiskEdit({ resetSel: true });
-            }));
-            controls.appendChild(mkBtn('Move Down', idx === clips.length - 1, () => {
-                const c = state.disk.clips;
-                [c[idx + 1], c[idx]] = [c[idx], c[idx + 1]];
-                afterDiskEdit({ resetSel: true });
-            }));
-            controls.appendChild(mkBtn('Remove', false, () => {
-                state.disk.clips.splice(idx, 1);
-                afterDiskEdit({ resetSel: true });
-            }));
-            li.appendChild(label);
-            li.appendChild(controls);
-            segmentsList.appendChild(li);
-        });
-    };
-
     const playSelection = async () => {
         if (state.disk) {
             const selStart = state.selection.start;
@@ -1841,36 +1510,8 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const playheadInSelection = playheadTime > selectionStart && playheadTime < selectionEnd;
         const start = resumeInfo ? resumeInfo.resumeFrom : (playheadInSelection ? playheadTime : selectionStart);
         const endPos = resumeInfo ? Math.min(selectionEnd, resumeInfo.end) : selectionEnd;
-        const len = Math.max(0.001, endPos - start);
-        if (start >= duration() || len <= 0) return;
-        if (playingSource) stopPlayback();
-        const ctxAudio = getAudioCtx();
-        if (ctxAudio.state === 'suspended') await ctxAudio.resume();
-        const buffer = ctxAudio.createBuffer(1, state.pcm.length, state.sampleRate);
-        const playbackGain = getExportGain();
-        applyGainToAudioBuffer(buffer, getPlaybackPcm(), playbackGain);
-        const source = ctxAudio.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctxAudio.destination);
-        source.start(0, start, len);
-        playingSource = source;
-        playingMode = 'selection';
-        playStartOffset = start;
-        playSpan = len;
-        playStartedAt = ctxAudio.currentTime;
-        const playbackInterval = setInterval(updatePlaybackMarker, 1);
-        pausedPlayback = null;
-        syncPlayButtons();
-        source.onended = () => {
-            playingSource = null;
-            playingMode = null;
-            pausedPlayback = null;
-            playSpan = 0;
-            playStartOffset = 0;
-            clearInterval(playbackInterval);
-            drawWaveform();
-            syncPlayButtons();
-        };
+        if (start >= duration() || endPos <= start) return;
+        await startBufferPlayback('selection', start, endPos);
     };
 
     const playWholeFile = async () => {
@@ -1885,205 +1526,156 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (!state.pcm.length) return;
         const resumeInfo = pausedPlayback && pausedPlayback.mode === 'all' ? pausedPlayback : null;
         const start = resumeInfo ? resumeInfo.resumeFrom : clamp(playheadTime, 0, duration());
-        const endPos = duration();
-        const len = Math.max(0.001, endPos - start);
-        if (start >= endPos || len <= 0) return;
-        if (playingSource) stopPlayback();
-        const ctxAudio = getAudioCtx();
-        if (ctxAudio.state === 'suspended') await ctxAudio.resume();
-        const buffer = ctxAudio.createBuffer(1, state.pcm.length, state.sampleRate);
-        const playbackGain = getExportGain();
-        applyGainToAudioBuffer(buffer, getPlaybackPcm(), playbackGain);
-        const source = ctxAudio.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctxAudio.destination);
-        source.start(0, start, len);
-        playingSource = source;
-        playingMode = 'all';
-        playStartOffset = start;
-        playSpan = len;
-        playStartedAt = ctxAudio.currentTime;
-        const playbackInterval = setInterval(updatePlaybackMarker, 1);
-        pausedPlayback = null;
-        syncPlayButtons();
-        source.onended = () => {
-            playingSource = null;
-            playingMode = null;
-            pausedPlayback = null;
-            playSpan = 0;
-            playStartOffset = 0;
-            clearInterval(playbackInterval);
-            drawWaveform();
-            syncPlayButtons();
+        const src = getPlaybackPcm();
+        const endPos = Math.max(duration(), src.pcm.length / src.sampleRate);
+        if (start >= endPos) return;
+        await startBufferPlayback('all', start, endPos, src);
+    };
+
+    const pcmToWav = (pcm, sampleRate) => SW.encodeWav([pcm], sampleRate, 'pcm16', exportGainFactor());
+
+    const bindOutputControls = () => {
+        const formatSel = panel.querySelector('#spliceOutFormat');
+        const channelSel = panel.querySelector('#spliceOutChannels');
+        const limBox = panel.querySelector('#spliceOutLimit');
+        if (!formatSel || !channelSel || !limBox) return;
+        const rateRow = panel.querySelector('#spliceOutBitrateRow');
+        const rateSel = panel.querySelector('#spliceOutBitrate');
+        const changed = () => {
+            saveOutputPrefs();
+            macroRenderBlobCache = null;
+            if (playingSource || pausedPlayback) stopPlayback();
         };
-    };
-
-    const deleteSelection = () => {
-        if (state.disk) {
-            const sr = state.sampleRate;
-            const low = Math.floor(state.selection.start * sr);
-            const high = Math.floor(state.selection.end * sr);
-            if (high <= low) return;
-            state.disk.clips = clipsWithin(splitClipsAt(splitClipsAt(state.disk.clips, high), low), low, high, false);
-            afterDiskEdit({ resetSel: true });
-            persistStatus('Deleted selection.');
-            return;
-        }
-        if (!state.pcm.length) return;
-        const sr = state.sampleRate;
-        const startIdx = Math.floor(state.selection.start * sr);
-        const endIdx = Math.floor(state.selection.end * sr);
-        if (endIdx <= startIdx) return;
-        const left = state.pcm.slice(0, startIdx);
-        const right = state.pcm.slice(endIdx);
-        state.segments = [];
-        if (left.length) state.segments.push({ id: 'seg-left', label: 'Left', pcm: left });
-        if (right.length) state.segments.push({ id: 'seg-right', label: 'Right', pcm: right });
-        rebuildTimeline();
-    };
-
-    const trimToSelection = () => {
-        if (state.disk) {
-            const sr = state.sampleRate;
-            const low = Math.floor(state.selection.start * sr);
-            const high = Math.floor(state.selection.end * sr);
-            if (high <= low) return;
-            const kept = clipsWithin(splitClipsAt(splitClipsAt(state.disk.clips, high), low), low, high, true);
-            if (!kept.length) return;
-            state.disk.clips = kept;
-            afterDiskEdit({ resetSel: true });
-            persistStatus('Trimmed to selection.');
-            return;
-        }
-        if (!state.pcm.length) return;
-        const sr = state.sampleRate;
-        const startIdx = Math.floor(state.selection.start * sr);
-        const endIdx = Math.floor(state.selection.end * sr);
-        if (endIdx <= startIdx) return;
-        const chunk = state.pcm.slice(startIdx, endIdx);
-        state.segments = [{ id: 'seg-trim', label: 'Trimmed', pcm: chunk }];
-        rebuildTimeline();
-    };
-
-    const saveSelectionAsSegment = () => {
-        if (state.disk) {
-            const sr = state.sampleRate;
-            const low = Math.floor(state.selection.start * sr);
-            const high = Math.floor(state.selection.end * sr);
-            if (high <= low) return;
-            for (const r of timelineRangeToSource(low, high)) {
-                state.disk.clips.push({ id: newClipId(), label: 'Selection', start: r.s0, length: r.s1 - r.s0 });
-            }
-            afterDiskEdit();
-            persistStatus('Saved selection as a segment.');
-            return;
-        }
-        if (!state.pcm.length) return;
-        const sr = state.sampleRate;
-        const startIdx = Math.floor(state.selection.start * sr);
-        const endIdx = Math.floor(state.selection.end * sr);
-        if (endIdx <= startIdx) return;
-        const chunk = state.pcm.slice(startIdx, endIdx);
-        addSegment(chunk, sr, 'Selection');
-    };
-
-    const pcmToWav = (pcm, sampleRate) => {
-        const exportGain = getExportGain();
-        const applyGain = Math.abs(exportGain - 1) > EXPORT_GAIN_TOLERANCE;
-        const buffer = new ArrayBuffer(44 + pcm.length * 2);
-        const view = new DataView(buffer);
-        const writeString = (offset, str) => {
-            for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+        const syncRates = () => {
+            if (!rateSel || !rateRow) return;
+            const info = outInfo();
+            rateRow.hidden = !info.bitrates;
+            rateSel.replaceChildren(...(info.bitrates || []).map((k) => new Option(`${k} kbps${k === info.bitrate ? ' (default)' : ''}`, String(k))));
+            if (info.bitrates) rateSel.value = String(outBitrate());
         };
-        writeString(0, 'RIFF');
-        view.setUint32(4, 36 + pcm.length * 2, true);
-        writeString(8, 'WAVE');
-        writeString(12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, 1, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        writeString(36, 'data');
-        view.setUint32(40, pcm.length * 2, true);
-        let offset = 44;
-        for (let i = 0; i < pcm.length; i++, offset += 2) {
-            let s = pcm[i];
-            if (applyGain) s *= exportGain;
-            if (s > 1) s = 1;
-            else if (s < -1) s = -1;
-            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        for (const [k, f] of Object.entries(SE.FORMATS)) formatSel.add(new Option(f.label, k));
+        formatSel.value = outFormat();
+        channelSel.value = String(outputPrefs.channels);
+        limBox.checked = limitOn();
+        syncRates();
+        for (const opt of [...formatSel.options]) {
+            SE.canEncode(opt.value).then((ok) => {
+                if (ok) return;
+                opt.disabled = true;
+                opt.hidden = true;
+                if (formatSel.value === opt.value) {
+                    formatSel.value = 'pcm16';
+                    outputPrefs.format = 'pcm16';
+                    syncRates();
+                    changed();
+                }
+            });
         }
-        return new Blob([buffer], { type: 'audio/wav' });
+        formatSel.addEventListener('change', () => {
+            outputPrefs.format = SE.formatOf(formatSel.value);
+            syncRates();
+            changed();
+        });
+        rateSel?.addEventListener('change', () => {
+            outputPrefs.bitrates = { ...outputPrefs.bitrates, [outFormat()]: Number(rateSel.value) };
+            changed();
+        });
+        channelSel.addEventListener('change', () => {
+            outputPrefs.channels = channelSel.value === '2' ? 2 : 1;
+            changed();
+        });
+        limBox.addEventListener('change', () => {
+            outputPrefs.limit = limBox.checked;
+            changed();
+        });
     };
+    bindOutputControls();
 
     const exportWavDisk = async () => {
-        const sr = state.sampleRate || 44100;
-        const totalFrames = Math.floor(duration() * sr);
+        const sr = project.sampleRate || 44100;
+        if (fxJobs.size || fxMissing()) {
+            persistStatus('Finishing clip and track effects before export...');
+            await ensureFxReady();
+        }
+        const totalFrames = SM.projectLength(project);
         if (totalFrames <= 0) return;
+        const fmt = outFormat();
+        const info = outInfo();
         let outFh, writable;
         try {
             const dir = await opfsHugeDir();
-            outFh = await dir.getFileHandle('export.wav', { create: true });
+            outFh = await dir.getFileHandle('export.' + info.ext, { create: true });
             writable = await outFh.createWritable();
         } catch (e) { persistStatus('Could not open device storage for export.', false); return; }
 
-        persistStatus('Exporting WAV...');
-        const dataBytes = totalFrames * 2;
-        const header = new ArrayBuffer(44);
-        const dv = new DataView(header);
-        const ws = (o, str) => { for (let i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); };
-        ws(0, 'RIFF'); dv.setUint32(4, 36 + dataBytes, true); ws(8, 'WAVE');
-        ws(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-        dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
-        ws(36, 'data'); dv.setUint32(40, dataBytes, true);
-
-        const gain = getExportGain();
-        const applyGain = Math.abs(gain - 1) > EXPORT_GAIN_TOLERANCE;
+        persistStatus(`Exporting ${info.name}...`);
+        const nch = outStereo() ? 2 : 1;
+        const gain = exportGainFactor();
+        const lim = limitOn() ? SL.createLimiter({ sampleRate: sr }) : null;
+        let over = 1;
         const CHUNK = 1 << 20;
-        const ranges = timelineRangeToSource(0, totalFrames);
-        let written = 0;
+        let out = null;
         try {
-            await writable.write(new Uint8Array(header));
-            const file = await diskSourceFile();
-            for (const r of ranges) {
-                let pos = r.s0;
-                while (pos < r.s1) {
-                    const n = Math.min(CHUNK, r.s1 - pos);
-                    const buf = await file.slice(pos * 4, (pos + n) * 4).arrayBuffer();
-                    const f32 = new Float32Array(buf);
-                    const i16 = new Int16Array(n);
-                    for (let i = 0; i < n; i++) {
-                        let s = f32[i];
-                        if (applyGain) s *= gain;
-                        if (s > 1) s = 1;
-                        else if (s < -1) s = -1;
-                        i16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-                    }
-                    await writable.write(new Uint8Array(i16.buffer, 0, n * 2));
-                    pos += n;
-                    written += n;
-                    persistStatus('Exporting WAV... ' + Math.round((written / totalFrames) * 100) + '%');
-                    await new Promise((rr) => setTimeout(rr));
+            out = await SE.createWriter(fmt, { sampleRate: sr, channels: nch, frames: totalFrames, bitrate: outBitrate(), sink: writable });
+            for (let pos = 0; pos < totalFrames; pos += CHUNK) {
+                const n = Math.min(CHUNK, totalFrames - pos);
+                const ahead = lim ? Math.min(lim.lookahead, totalFrames - pos - n) : 0;
+                const chans = await mixRangeChannels(pos, pos + n + ahead);
+                if (lim) {
+                    await out.write(lim.process(chans, 0, n, gain), 0, n, 1);
+                } else {
+                    over = Math.max(over, SL.peakRatio(chans, gain));
+                    await out.write(chans, 0, n, gain);
                 }
+                persistStatus(`Exporting ${info.name}... ` + Math.round(((pos + n) / totalFrames) * 100) + '%');
+                await new Promise((rr) => setTimeout(rr));
             }
-            await writable.close();
+            await out.finish();
         } catch (e) {
+            if (out) await out.cancel();
             try { await writable.close(); } catch (_) {}
-            persistStatus('Export failed.', false);
+            reportErrorStatus('Export failed.', e);
             return;
         }
 
         let outFile;
-        try { outFile = await outFh.getFile(); } catch (e) { persistStatus('Export failed while reading back.', false); return; }
+        try { outFile = await outFh.getFile(); } catch (e) { spokenStatus('Export failed while reading back.', false); return; }
         try {
-            await saveFile('splice.wav', outFile, 'audio/wav');
-            persistStatus('WAV exported!', true);
+            await saveFile(outFileName('splice'), outFile, info.mime);
+            spokenStatus(`${info.name} exported!` + overNote(lim ? lim.over : over, !!lim, fmt), true);
         } catch (e) {
-            persistStatus('Export save failed: ' + e + '.', false);
+            spokenStatus('Export save failed: ' + e + '.', false);
         }
+    };
+
+    const renderMixBlob = async () => {
+        if (fxJobs.size || fxMissing()) {
+            persistStatus('Finishing clip and track effects before export...');
+            await ensureFxReady();
+        }
+        const chans = outputChannels();
+        const info = outInfo();
+        const limited = finishChans(chans, state.sampleRate, exportGainFactor());
+        persistStatus(`Exporting ${info.name}...`);
+        let blob;
+        try {
+            blob = await SE.encodeAll(limited ? limited.chans : chans, state.sampleRate, outFormat(),
+                { gain: limited ? 1 : exportGainFactor(), bitrate: outBitrate() });
+        } catch (err) {
+            reportErrorStatus(`${info.name} export failed.`, err);
+            return null;
+        }
+        const over = limited ? limited.over : SL.peakRatio(chans, exportGainFactor());
+        return { blob, info, over, limited };
+    };
+
+    const sendMixToDecoder = async () => {
+        if (state.disk) throw new Error('This project is too large to send. Export it, then load the file in the Decoder.');
+        if (!state.pcm.length) throw new Error('The project is empty.');
+        const mix = await renderMixBlob();
+        if (!mix) return null;
+        persistStatus('Sent the mix to the Decoder.', true);
+        return { audio: audioFile(mix.blob, outFileName('splice'), mix.info.mime) };
     };
 
     const exportWav = async () => {
@@ -2092,10 +1684,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             return;
         }
         if (!state.pcm.length) return;
-        const blob = pcmToWav(state.pcm, state.sampleRate);
-        persistStatus('Exporting WAV...');
-        await saveFile('splice.wav', blob, 'audio/wav');
-        const intervalId2 = setInterval(() => persistStatus('WAV exported!', true), 5);
+        const mix = await renderMixBlob();
+        if (!mix) return;
+        const { blob, info, over, limited } = mix;
+        await saveFile(outFileName('splice'), blob, info.mime);
+        const doneMsg = `${info.name} exported!` + overNote(over, !!limited, outFormat());
+        spokenStatus(doneMsg, true);
+        const intervalId2 = setInterval(() => persistStatus(doneMsg, true), 5);
         await new Promise((resolve) => setTimeout(resolve, 1000));
         clearInterval(intervalId2);
     };
@@ -2220,16 +1815,86 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return root.getDirectoryHandle(HUGE_OPFS_DIR, { create: true });
     };
 
-    const clearDiskSource = async () => {
-        const disk = state.disk;
-        state.disk = null;
-        if (disk && disk.backend === 'opfs') {
-            try {
-                const dir = await opfsHugeDir();
-                if (disk.sourceName) await dir.removeEntry(disk.sourceName).catch(() => {});
-                await dir.removeEntry('export.wav').catch(() => {});
-            } catch (_) { /* dir gone */ }
+    const importingFiles = new Set();
+
+    const savedDiskFiles = async () => {
+        const keep = new Set();
+        const dbp = getDb();
+        if (!dbp) return keep;
+        const db = await dbp;
+        const rows = await new Promise((resolve, reject) => {
+            const req = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        for (const row of rows) for (const s of (row && row.sources) || []) if (s && s.kind === 'disk') keep.add(s.file);
+        return keep;
+    };
+
+    const sweepDiskFiles = async () => {
+        if (!opfsSupported()) return;
+        try {
+            const keep = await savedDiskFiles();
+            for (const name of SM.diskFiles(project)) keep.add(name);
+            for (const name of importingFiles) keep.add(name);
+            const dir = await opfsHugeDir();
+            const names = [];
+            for await (const name of dir.keys()) names.push(name);
+            for (const name of names) {
+                if (keep.has(name)) continue;
+                await dir.removeEntry(name).catch(() => { });
+                diskFiles.delete(name);
+            }
+        } catch (_) { }
+    };
+
+    const missingDiskFiles = async (p) => {
+        const missing = new Set();
+        if (!opfsSupported()) return missing;
+        let dir = null;
+        try { dir = await opfsHugeDir(); } catch (_) { }
+        for (const name of SM.diskFiles(p)) {
+            try { await dir.getFileHandle(name); } catch (_) { missing.add(name); }
         }
+        return missing;
+    };
+
+    const dropMissingDisk = async (p) => {
+        const missing = await missingDiskFiles(p);
+        if (!missing.size) return 0;
+        const gone = (c) => {
+            const s = p.sources.get(c.sourceId);
+            return SM.isDisk(s) && missing.has(s.file);
+        };
+        let n = 0;
+        for (const t of p.tracks) {
+            const before = t.clips.length;
+            t.clips = t.clips.filter((c) => !gone(c));
+            n += before - t.clips.length;
+        }
+        for (const [id, s] of [...p.sources]) if (SM.isDisk(s) && missing.has(s.file)) p.sources.delete(id);
+        return n;
+    };
+
+    const linearResampler = (inRate, outRate) => {
+        const step = inRate / outRate;
+        let t = 0, base = 0, last = 0;
+        return (x) => {
+            const end = base + x.length;
+            const out = new Float32Array(Math.ceil(x.length / step) + 2);
+            let n = 0;
+            while (t + 1 < end) {
+                const i = Math.floor(t);
+                const f = t - i;
+                const s0 = i < base ? last : x[i - base];
+                const s1 = x[i + 1 - base];
+                out[n++] = s0 + (s1 - s0) * f;
+                t += step;
+            }
+            last = x[x.length - 1];
+            base = end;
+            return out.subarray(0, n);
+        };
     };
 
     const decodeMonoChunk = (slice, framesThis, channels, frameBytes, isFloat, isPcmInt, bitsPerSample) => {
@@ -2260,96 +1925,198 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return mono;
     };
 
-    const loadHugeWav = async (file) => {
-        const info = await readWavStructure(file);
-        if (!info) {
-            persistStatus('Could not read this WAV for large-file loading. Re-export it as 16-bit PCM WAV.');
-            return;
-        }
+    const wavLayout = (file, info) => {
+        if (!info) return { error: 'Could not read this WAV for large-file loading. Re-export it as 16-bit PCM WAV.' };
         const { audioFormat, channels, sampleRate, bitsPerSample } = info.fmt;
         const isFloat = audioFormat === 3, isPcmInt = audioFormat === 1;
         if ((!isFloat && !isPcmInt) || !channels || !sampleRate || !bitsPerSample) {
-            persistStatus('This WAV format is not supported for large-file loading. Re-export it as 16-bit PCM WAV.');
-            return;
+            return { error: 'This WAV format is not supported for large-file loading. Re-export it as 16-bit PCM WAV.' };
         }
-        const bytesPerSample = bitsPerSample >> 3;
-        const frameBytes = bytesPerSample * channels;
-        if (frameBytes <= 0) return;
+        const frameBytes = (bitsPerSample >> 3) * channels;
+        if (frameBytes <= 0) return { error: 'This WAV format is not supported for large-file loading. Re-export it as 16-bit PCM WAV.' };
         const dataSize = Math.min(info.dataSize || (file.size - info.dataOffset), file.size - info.dataOffset);
         const numFrames = Math.floor(dataSize / frameBytes);
-        if (numFrames <= 0) { persistStatus('This file has no audio data.'); return; }
+        if (numFrames <= 0) return { error: 'This file has no audio data.' };
+        return { channels, sampleRate, bitsPerSample, isFloat, isPcmInt, frameBytes, numFrames, dataOffset: info.dataOffset };
+    };
 
+    const streamWavToDisk = async (file, L, progressLabel, outRate = project.sampleRate) => {
         let fh, writable;
         try {
             const dir = await opfsHugeDir();
-            fh = await dir.getFileHandle('src-' + Date.now() + '.f32', { create: true });
+            fh = await dir.getFileHandle('src-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7) + '.f32', { create: true });
+            importingFiles.add(fh.name);
             writable = await fh.createWritable();
         } catch (e) {
-            persistStatus('Could not open device storage for the large file.');
-            return;
+            if (fh) importingFiles.delete(fh.name);
+            throw new Error('Could not open device storage for the large file.');
         }
+        const { channels, sampleRate, bitsPerSample, isFloat, isPcmInt, frameBytes, numFrames } = L;
         const sourceName = fh.name;
-
-        const nBuckets = Math.ceil(numFrames / HUGE_PEAK_BUCKET);
-        const peaks = new Float32Array(nBuckets * 2);
-        for (let b = 0; b < nBuckets; b++) { peaks[b * 2] = 1; peaks[b * 2 + 1] = -1; }
+        const resample = sampleRate !== outRate ? linearResampler(sampleRate, outRate) : null;
+        const peakList = [];
+        let lo = 1, hi = -1, inBucket = 0, written = 0;
 
         const CHUNK_FRAMES = 1 << 20;
-        let frame = 0, pos = info.dataOffset;
+        let frame = 0, pos = L.dataOffset;
         try {
             while (frame < numFrames) {
                 const framesThis = Math.min(CHUNK_FRAMES, numFrames - frame);
                 const slice = await file.slice(pos, pos + framesThis * frameBytes).arrayBuffer();
-                const mono = decodeMonoChunk(slice, framesThis, channels, frameBytes, isFloat, isPcmInt, bitsPerSample);
-                await writable.write(new Uint8Array(mono.buffer, 0, framesThis * 4));
-                for (let i = 0; i < framesThis; i++) {
-                    const bi = ((frame + i) / HUGE_PEAK_BUCKET) | 0;
+                let mono = decodeMonoChunk(slice, framesThis, channels, frameBytes, isFloat, isPcmInt, bitsPerSample);
+                if (resample) mono = resample(mono);
+                await writable.write(new Uint8Array(mono.buffer, mono.byteOffset, mono.length * 4));
+                for (let i = 0; i < mono.length; i++) {
                     const v = mono[i];
-                    if (v < peaks[bi * 2]) peaks[bi * 2] = v;
-                    if (v > peaks[bi * 2 + 1]) peaks[bi * 2 + 1] = v;
+                    if (v < lo) lo = v;
+                    if (v > hi) hi = v;
+                    if (++inBucket === HUGE_PEAK_BUCKET) {
+                        peakList.push(lo, hi);
+                        lo = 1; hi = -1; inBucket = 0;
+                    }
                 }
+                written += mono.length;
                 frame += framesThis;
                 pos += framesThis * frameBytes;
-                persistStatus('Loading large file... ' + Math.round((frame / numFrames) * 100) + '%');
+                persistStatus(progressLabel + Math.round((frame / numFrames) * 100) + '%');
                 await new Promise((r) => setTimeout(r));
             }
+            if (inBucket) peakList.push(lo, hi);
             await writable.close();
         } catch (e) {
-            try { await writable.close(); } catch (_) {}
-            await clearDiskSource();
-            persistStatus('Failed while loading the large file.');
+            try { await writable.close(); } catch (_) { }
+            importingFiles.delete(sourceName);
+            sweepDiskFiles();
+            throw new Error('Failed while loading the large file.');
+        }
+        return { file: sourceName, length: written, peaks: Float32Array.from(peakList), bucket: HUGE_PEAK_BUCKET };
+    };
+
+    const loadHugeWav = async (file) => {
+        const L = wavLayout(file, await readWavStructure(file));
+        if (L.error) {
+            persistStatus(L.error);
             return;
         }
+        let disk;
+        try {
+            disk = await streamWavToDisk(file, L, 'Loading large file... ');
+        } catch (e) {
+            persistStatus(e.message || String(e));
+            return;
+        }
+        const sourceName = disk.file;
+        const written = disk.length;
+        const outRate = project.sampleRate;
+        editHistory.push(project, `add ${file.name || 'large file'}`);
+        const sid = SM.addDiskSource(project, disk, file.name || 'File');
+        importingFiles.delete(sourceName);
+        let trackId = editor ? editor.targetTrackId('voice') : null;
+        if (!trackId || !SM.findTrack(project, trackId)) trackId = (project.tracks[0] || SM.addTrack(project, 'voice')).id;
+        const clip = SM.appendClip(project, trackId, sid, { label: file.name || 'File' });
+        projectChanged();
+        if (editor && clip) editor.selectClip(clip.id);
+        const mins = written / outRate / 60;
+        const fxMin = (MACRO_MEM_FRAMES / outRate / 60).toFixed(1);
+        persistStatus('Loaded ' + (file.size / 1048576).toFixed(0) + ' MB (' + mins.toFixed(1) + ' min) from device storage. Editing, playback and export work at any length; effects work on clips, tracks and selections up to ' + fxMin + ' min.', true);
+    };
 
-        state.disk = {
-            backend: 'opfs',
-            sourceName,
-            fh,
-            file: null,
-            frames: numFrames,
-            peaks,
-            bucketFrames: HUGE_PEAK_BUCKET,
-            clips: [{ id: 'clip-0', label: 'File', start: 0, length: numFrames }],
-        };
-        state.sampleRate = sampleRate;
-        state.pcm = new Float32Array(0);
-        state.segments = [];
-        state.selection = { start: 0, end: numFrames / sampleRate };
-        resetViewWindow();
-        updateSelectionLabels();
-        updateSegmentsList();
-        drawWaveform();
-        const mins = numFrames / sampleRate / 60;
-        const fxMin = (MACRO_MEM_FRAMES / sampleRate / 60).toFixed(1);
-        persistStatus('Loaded ' + (file.size / 1048576).toFixed(0) + ' MB (' + mins.toFixed(1) + ' min) in disk mode. Splice, play and export work at any size; effects apply to selections up to ' + fxMin + ' min (trim first for larger).', true);
+    const PROJECT_APP = 'eas-tools-splicer';
+    const PROJECT_FILE_FORMAT = 1;
+
+    const exportProjectFile = async (name) => {
+        const live = SM.referencedSourceIds(project);
+        if (!live.size) {
+            spokenStatus('Add some audio before exporting the project file.', false);
+            return false;
+        }
+        persistStatus('Packing the project...');
+        const sr = project.sampleRate;
+        const sources = [];
+        const entries = [];
+        for (const id of live) {
+            const s = project.sources.get(id);
+            if (!s) continue;
+            const file = `sources/${id}.wav`;
+            const length = SM.srcLength(s);
+            const body = SM.isDisk(s) ? await diskFile(s.file) : new Uint8Array(s.pcm.buffer, s.pcm.byteOffset, s.pcm.byteLength);
+            entries.push({ name: file, blob: new Blob([SW.wavHeader(length, sr, 1, 'float32'), body]) });
+            sources.push({ id, label: s.label || '', meta: s.meta || null, file, length });
+        }
+        const snap = SM.snapshot(project);
+        const doc = { app: PROJECT_APP, format: PROJECT_FILE_FORMAT, version: 3, sampleRate: sr, tracks: snap.tracks, markers: snap.markers, master: snap.master, sources };
+        entries.unshift({ name: 'project.json', blob: new Blob([JSON.stringify(doc)], { type: 'application/json' }) });
+        let zip;
+        try {
+            zip = await SZ.buildZip(entries, { onProgress: (n, total) => persistStatus('Packing the project... ' + Math.round((n / Math.max(1, total)) * 100) + '%') });
+        } catch (err) {
+            spokenStatus(err.message || String(err), false);
+            return false;
+        }
+        const base = String(name || '').trim().replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'splicer-project';
+        await saveFile(base + '.zip', zip, 'application/zip');
+        spokenStatus(`Project file exported: ${sources.length} source${sources.length === 1 ? '' : 's'}, ${(zip.size / 1048576).toFixed(1)} MB.`, true);
+        return true;
+    };
+
+    const importProjectFile = async (file) => {
+        const files = await SZ.readZip(file);
+        const pj = files.get('project.json');
+        if (!pj) throw new Error('this zip is not an EAS Tools Splicer project (it has no project.json)');
+        let doc;
+        try { doc = JSON.parse(await (await SZ.entryBlob(pj)).text()); } catch (_) { doc = null; }
+        if (!doc || doc.app !== PROJECT_APP || doc.version !== 3) throw new Error('this zip is not an EAS Tools Splicer project');
+        if (doc.format > PROJECT_FILE_FORMAT) throw new Error('this project file was made by a newer version of EAS Tools');
+        const sr = Number(doc.sampleRate) > 0 ? Number(doc.sampleRate) : 44100;
+        const diskThreshold = Number(window.EAS_SPLICER_DISK_BYTES) || MAX_LOAD_FILE_BYTES;
+        const made = [];
+        const sources = [];
+        try {
+            for (const s of doc.sources || []) {
+                const entry = files.get(s.file);
+                if (!entry) throw new Error(`the project file is missing ${s.file}`);
+                const blob = await SZ.entryBlob(entry);
+                const crc = await SZ.crc32Blob(blob, (n, total) => persistStatus(`Checking ${s.label || s.file}... ${Math.round((n / Math.max(1, total)) * 100)}%`));
+                if (crc !== entry.crc) throw new Error(`${s.file} is damaged (its checksum does not match)`);
+                const L = wavLayout(blob, await readWavStructure(blob));
+                if (L.error) throw new Error(`${s.file}: ${L.error}`);
+                if (blob.size > diskThreshold && opfsSupported()) {
+                    const disk = await streamWavToDisk(blob, L, `Loading ${s.label || s.file}... `, sr);
+                    made.push(disk.file);
+                    sources.push({ id: s.id, kind: 'disk', label: s.label || '', meta: s.meta || null, file: disk.file, length: disk.length, bucket: disk.bucket, peaks: disk.peaks.buffer });
+                    continue;
+                }
+                const ab = await blob.slice(L.dataOffset, L.dataOffset + L.numFrames * L.frameBytes).arrayBuffer();
+                let pcm = decodeMonoChunk(ab, L.numFrames, L.channels, L.frameBytes, L.isFloat, L.isPcmInt, L.bitsPerSample);
+                if (L.sampleRate !== sr) pcm = resamplePcm(pcm, L.sampleRate, sr);
+                sources.push({ id: s.id, label: s.label || '', meta: s.meta || null, pcm: pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength) });
+            }
+        } catch (err) {
+            for (const n of made) importingFiles.delete(n);
+            if (made.length) sweepDiskFiles();
+            throw err;
+        }
+        const p = SM.deserialize({ version: 3, sampleRate: sr, tracks: doc.tracks, markers: doc.markers, master: doc.master, sources });
+        if (!p.tracks.length) SM.addTrack(p, 'voice');
+        if (recorder) await stopRecording();
+        if (playingSource || pausedPlayback) stopPlayback();
+        project = p;
+        for (const n of made) importingFiles.delete(n);
+        if (project.master) applyMasterToControls(project.master);
+        else project.master = captureMaster();
+        playheadTime = 0;
+        projectChanged();
+        let clips = 0;
+        for (const t of project.tracks) clips += t.clips.length;
+        return { tracks: project.tracks.length, clips };
     };
 
     const handleFile = async (file) => {
         if (!file) return;
-        await clearDiskSource();
         const name = file.name || '';
         const isWav = /\.wav$/i.test(name) || file.type === 'audio/wav' || file.type === 'audio/x-wav';
-        if (file.size > MAX_LOAD_FILE_BYTES) {
+        const diskThreshold = Number(window.EAS_SPLICER_DISK_BYTES) || MAX_LOAD_FILE_BYTES;
+        if (file.size > diskThreshold) {
             if (isWav && opfsSupported()) {
                 await loadHugeWav(file);
                 return;
@@ -2363,8 +2130,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             if (res && res.tooLarge) return;
             if (res && res.pcm) {
                 addSegment(res.pcm, res.sampleRate, name || 'File', '', true);
-                resetViewWindow();
-                drawWaveform();
                 return;
             }
         }
@@ -2381,8 +2146,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             const decoded = await ctxAudio.decodeAudioData(ab);
             const pcm = new Float32Array(decoded.getChannelData(0));
             addSegment(pcm, decoded.sampleRate, name || 'File', '', true);
-            resetViewWindow();
-            drawWaveform();
         } catch (e) {
             persistStatus('Could not decode this audio file.');
         }
@@ -2675,298 +2438,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     };
 
     const bindEvents = () => {
-        canvas.addEventListener('mousedown', (event) => {
-            if (!hasAudio()) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            syncViewWindow();
-            const viewSpan = state.viewEnd - state.viewStart;
-            const t = clamp(state.viewStart + (x / rect.width) * viewSpan, 0, duration());
-            const panState = {
-                startX: event.clientX,
-                viewStart: state.viewStart,
-                viewEnd: state.viewEnd,
-            };
-            if (!event.shiftKey && isOnPlayheadHandle(x, y, rect.width)) {
-                dragMode = 'playhead';
-                if (playingSource) stopPlayback();
-                setPlayhead(t);
-            } else if (event.shiftKey) {
-                dragMode = 'pan';
-            } else {
-                const distStart = Math.abs(t - state.selection.start);
-                const distEnd = Math.abs(t - state.selection.end);
-                dragMode = distStart < distEnd ? 'start' : 'end';
-                setSelection(dragMode === 'start' ? t : state.selection.start, dragMode === 'end' ? t : state.selection.end);
-            }
-
-            const move = (e) => {
-                const nx = e.clientX - rect.left;
-                if (dragMode === 'playhead') {
-                    setPlayhead(clamp(state.viewStart + (nx / rect.width) * viewSpan, 0, duration()));
-                } else if (dragMode === 'pan') {
-                    const deltaPixels = e.clientX - panState.startX;
-                    const deltaTime = (deltaPixels / rect.width) * (panState.viewEnd - panState.viewStart);
-                    let newStart = panState.viewStart - deltaTime;
-                    let newEnd = panState.viewEnd - deltaTime;
-                    const d = duration();
-                    if (newStart < 0) {
-                        newStart = 0;
-                        newEnd = newStart + (panState.viewEnd - panState.viewStart);
-                    }
-                    if (newEnd > d) {
-                        newEnd = d;
-                        newStart = clamp(newEnd - (panState.viewEnd - panState.viewStart), 0, d);
-                    }
-                    state.viewStart = newStart;
-                    state.viewEnd = newEnd;
-                    drawWaveform();
-                } else {
-                    const nt = clamp(state.viewStart + (nx / rect.width) * viewSpan, 0, duration());
-                    if (dragMode === 'start') setSelection(nt, state.selection.end);
-                    else setSelection(state.selection.start, nt);
-                }
-            };
-            const up = () => {
-                dragMode = null;
-                document.removeEventListener('mousemove', move);
-                document.removeEventListener('mouseup', up);
-            };
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up);
-        });
-
-        canvas.addEventListener('mousemove', (event) => {
-            if (dragMode || !hasAudio()) return;
-            const rect = canvas.getBoundingClientRect();
-            const overHandle = isOnPlayheadHandle(event.clientX - rect.left, event.clientY - rect.top, rect.width);
-            canvas.style.cursor = overHandle ? 'ew-resize' : '';
-        });
-
-        canvas.addEventListener('wheel', (event) => {
-            if (!hasAudio()) return;
-            event.preventDefault();
-            syncViewWindow();
-            const rect = canvas.getBoundingClientRect();
-            const xRatio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-            const center = state.viewStart + (state.viewEnd - state.viewStart) * xRatio;
-            const factor = event.deltaY < 0 ? 0.8 : 1.25;
-            const newSpan = clamp((state.viewEnd - state.viewStart) * factor, state.minViewSpan, duration());
-            let newStart = center - newSpan * xRatio;
-            let newEnd = newStart + newSpan;
-            const d = duration();
-            if (newStart < 0) {
-                newStart = 0;
-                newEnd = newSpan;
-            }
-            if (newEnd > d) {
-                newEnd = d;
-                newStart = Math.max(0, d - newSpan);
-            }
-            state.viewStart = newStart;
-            state.viewEnd = newEnd;
-            drawWaveform();
-        }, { passive: false });
-
-        const getTouchById = (touches, id) => {
-            for (let i = 0; i < touches.length; i++) if (touches[i].identifier === id) return touches[i];
-            return null;
-        };
-
-        const TAP_MAX_MOVE = 8;
-        const TAP_MAX_MS = 300;
-
-        canvas.addEventListener('touchstart', (event) => {
-            if (event.cancelable) event.preventDefault();
-            if (!hasAudio()) return;
-            syncViewWindow();
-            const rect = canvas.getBoundingClientRect();
-
-            if (event.touches.length === 1) {
-                gestureMultiTouch = false;
-                const t = event.touches[0];
-                const xCss = t.clientX - rect.left;
-                const yCss = t.clientY - rect.top;
-                if (isOnPlayheadHandle(xCss, yCss, rect.width, PLAYHEAD_TOUCH_ZONE_PX, PLAYHEAD_TOUCH_GRAB_PX)) {
-                    touchPlayhead = { id: t.identifier };
-                    touchPan = null;
-                    pinchState = null;
-                    touchSelectionId = null;
-                    dragMode = null;
-                    if (playingSource) stopPlayback();
-                    const span = state.viewEnd - state.viewStart;
-                    setPlayhead(clamp(state.viewStart + (xCss / rect.width) * span, 0, duration()));
-                } else {
-                    touchPan = {
-                        id: t.identifier,
-                        startX: t.clientX,
-                        startY: t.clientY,
-                        startViewStart: state.viewStart,
-                        startViewEnd: state.viewEnd,
-                        moved: false,
-                        startTime: Date.now(),
-                    };
-                    pinchState = null;
-                    touchSelectionId = null;
-                    touchPlayhead = null;
-                    dragMode = null;
-                }
-            } else if (event.touches.length === 2) {
-                gestureMultiTouch = true;
-                const a = event.touches[0];
-                const b = event.touches[1];
-                const midX = (a.clientX + b.clientX) / 2;
-                const midY = (a.clientY + b.clientY) / 2;
-                const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-                pinchState = {
-                    initialDist: Math.max(1, dist),
-                    initialViewStart: state.viewStart,
-                    initialViewEnd: state.viewEnd,
-                    midX,
-                    midY,
-                };
-                touchPan = null;
-                touchSelectionId = null;
-                touchPlayhead = null;
-                dragMode = null;
-            } else {
-                gestureMultiTouch = true;
-                pinchState = null;
-                touchPan = null;
-                touchSelectionId = null;
-                touchPlayhead = null;
-                dragMode = null;
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (event) => {
-            if (event.cancelable) event.preventDefault();
-            if (!hasAudio()) return;
-            const rect = canvas.getBoundingClientRect();
-
-            if (event.touches.length === 1 && touchPlayhead && getTouchById(event.touches, touchPlayhead.id)) {
-                const t = getTouchById(event.touches, touchPlayhead.id);
-                const span = state.viewEnd - state.viewStart;
-                setPlayhead(clamp(state.viewStart + ((t.clientX - rect.left) / rect.width) * span, 0, duration()));
-            } else if (event.touches.length === 1 && touchPan && getTouchById(event.touches, touchPan.id)) {
-                const t = getTouchById(event.touches, touchPan.id);
-                const span = touchPan.startViewEnd - touchPan.startViewStart;
-                const deltaPixels = t.clientX - touchPan.startX;
-                if (Math.abs(deltaPixels) > TAP_MAX_MOVE) touchPan.moved = true;
-                const deltaTime = (deltaPixels / rect.width) * span;
-                let newStart = touchPan.startViewStart - deltaTime;
-                let newEnd = touchPan.startViewEnd - deltaTime;
-                const d = duration();
-                if (newStart < 0) {
-                    newStart = 0;
-                    newEnd = newStart + span;
-                }
-                if (newEnd > d) {
-                    newEnd = d;
-                    newStart = Math.max(0, d - span);
-                }
-                state.viewStart = newStart;
-                state.viewEnd = newEnd;
-                drawWaveform();
-            } else if (event.touches.length === 2) {
-                gestureMultiTouch = true;
-                const a = event.touches[0];
-                const b = event.touches[1];
-                const midX = (a.clientX + b.clientX) / 2;
-                const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-
-                if (!pinchState) {
-                    pinchState = {
-                        initialDist: Math.max(1, dist),
-                        initialViewStart: state.viewStart,
-                        initialViewEnd: state.viewEnd,
-                        midX,
-                        midY: (a.clientY + b.clientY) / 2,
-                    };
-                }
-
-                const initialDist = pinchState.initialDist;
-                const initialViewStart = pinchState.initialViewStart;
-                const initialViewEnd = pinchState.initialViewEnd;
-                const initialSpan = Math.max(state.minViewSpan, initialViewEnd - initialViewStart);
-
-                const zoomFactor = clamp(initialDist / Math.max(1, dist), 0.2, 5);
-                const newSpan = clamp(initialSpan * zoomFactor, state.minViewSpan, duration());
-
-                const centerRatio = clamp((midX - rect.left) / rect.width, 0, 1);
-                let newStart = initialViewStart + centerRatio * (initialSpan - newSpan);
-                let newEnd = newStart + newSpan;
-                const d = duration();
-                if (newStart < 0) {
-                    newStart = 0;
-                    newEnd = newSpan;
-                }
-                if (newEnd > d) {
-                    newEnd = d;
-                    newStart = Math.max(0, d - newSpan);
-                }
-                state.viewStart = newStart;
-                state.viewEnd = newEnd;
-                drawWaveform();
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchend', (event) => {
-            if (!touchPlayhead && touchPan && !touchPan.moved && !gestureMultiTouch) {
-                const elapsed = Date.now() - touchPan.startTime;
-                if (elapsed <= TAP_MAX_MS) {
-                    const rect = canvas.getBoundingClientRect();
-                    const x = touchPan.startX - rect.left;
-                    const center = clamp((x / rect.width), 0, 1);
-                    const t = clamp(state.viewStart + (state.viewEnd - state.viewStart) * center, 0, duration());
-                    const distStart = Math.abs(t - state.selection.start);
-                    const distEnd = Math.abs(t - state.selection.end);
-                    if (distStart < distEnd) {
-                        setSelection(t, state.selection.end);
-                    } else {
-                        setSelection(state.selection.start, t);
-                    }
-                }
-            }
-
-            if (touchPlayhead && !getTouchById(event.touches, touchPlayhead.id)) {
-                touchPlayhead = null;
-            }
-
-            if (event.touches.length === 1) {
-                const remaining = event.touches[0];
-                touchPan = {
-                    id: remaining.identifier,
-                    startX: remaining.clientX,
-                    startY: remaining.clientY,
-                    startViewStart: state.viewStart,
-                    startViewEnd: state.viewEnd,
-                    moved: false,
-                    startTime: Date.now(),
-                };
-                pinchState = null;
-                touchPlayhead = null;
-            } else {
-                touchPan = null;
-                pinchState = null;
-                touchSelectionId = null;
-                dragMode = null;
-                touchPlayhead = null;
-            }
-
-            if (event.touches.length === 0) gestureMultiTouch = false;
-        }, { passive: false });
-
-        canvas.addEventListener('touchcancel', () => {
-            touchPan = null;
-            pinchState = null;
-            touchSelectionId = null;
-            dragMode = null;
-            touchPlayhead = null;
-            gestureMultiTouch = false;
-        });
-
         fileInput?.addEventListener('change', (e) => {
             const file = e.target.files?.[0];
             if (file) handleFile(file);
@@ -2974,55 +2445,35 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             setButtonDisabledState(false);
         });
 
-        playBtn?.addEventListener('click', async () => {
-            const isSelectionPlaying = playingSource && playingMode === 'selection';
-            if (isSelectionPlaying) {
-                pausePlayback();
-                syncPlayButtons();
-                return;
-            }
-            try {
-                await playSelection();
-            } catch (err) {
-                persistStatus(`Failed to play selection: ${err}.`, false);
-            } finally {
-                syncPlayButtons();
-            }
-        });
-
-        playAllBtn?.addEventListener('click', async () => {
-            const isPlayingAll = playingSource && playingMode === 'all';
-            if (isPlayingAll) {
-                pausePlayback();
-                syncPlayButtons();
-                return;
-            }
-            try {
-                await playWholeFile();
-            } catch (err) {
-                persistStatus(`Failed to play entire file: ${err}.`, false);
-            } finally {
-                syncPlayButtons();
-            }
-        });
-
         loadFileBtn?.addEventListener('click', () => { fileInput?.click(); });
-        stopBtn?.addEventListener('click', stopPlayback);
-        trimBtn?.addEventListener('click', trimToSelection);
-        deleteBtn?.addEventListener('click', deleteSelection);
-        splitBtn?.addEventListener('click', saveSelectionAsSegment);
         exportBtn?.addEventListener('click', exportWav);
+        if (exportMacroBtn && !sendMenu) {
+            sendMenu = createSendMenu({
+                label: 'Send to…',
+                title: 'Open the mix in another tool',
+                items: [
+                    { tool: 'decoder', label: 'Decoder (check that the mix decodes)', what: 'Mix', payload: sendMixToDecoder },
+                ],
+            });
+            sendMenu.setDisabled(exportBtn ? exportBtn.disabled : true);
+            exportMacroBtn.insertAdjacentElement('afterend', sendMenu.element);
+        }
         clearBtn?.addEventListener('click', async () => {
             stopPlayback();
-            state.segments = [];
             state.pcm = new Float32Array(0);
+            project = SM.createProject(44100);
+            SM.addTrack(project, 'voice');
+            project.master = captureMaster();
+            editHistory.clear();
+            if (editor) editor.resetView();
             playheadTime = 0;
-            setSelection(0, 0);
-            updateSegmentsList();
+            state.selection = { start: 0, end: 0 };
+            rebuildTimeline();
             invalidateMacroWaveformCache(true);
             macroRenderBlobCache = null;
             drawWaveform();
-            clearCache();
+            await clearCache();
+            sweepDiskFiles();
             setButtonDisabledState(true);
             const intervalId = setInterval(() => persistStatus('Project cleared.', true), 5);
             await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -3030,12 +2481,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         });
 
         silenceBtn?.addEventListener('click', addSilence);
-        splitSelectionBtn?.addEventListener('click', splitAtSelection);
-        joinAllBtn?.addEventListener('click', joinAllSegments);
 
         voiceSelect?.addEventListener('change', () => {
             const selectedVoice = (voiceSelect?.value || 'wasm').trim();
             const overrideTZElements = document.getElementsByClassName('splicerOverrideTZ');
+            const tzRow = document.getElementById('spliceTZRow');
+            if (tzRow) tzRow.hidden = selectedVoice !== 'EMNet';
             if (selectedVoice !== 'EMNet') {
                 Array.from(overrideTZElements).forEach(el => el.style.display = 'none');
             } else {
@@ -3076,7 +2527,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     addSegment(pcm, sampleRate, 'TTS', text);
                     if (ttsStatus) ttsStatus.textContent = `Added ${(pcm.length / (sampleRate || state.sampleRate)).toFixed(2)}s of audio.`;
                     setButtonDisabledState(false);
-                    resetViewWindow();
                     drawWaveform();
                 } else if (normalizedVoice.startsWith('ios-native:') && window.EASBridge) {
                     if (ttsStatus) ttsStatus.textContent = 'Generating iOS native TTS...';
@@ -3103,7 +2553,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                         addSegment(pcm, buffer.sampleRate, 'TTS', text);
                         if (ttsStatus) ttsStatus.textContent = `Added ${(pcm.length / buffer.sampleRate).toFixed(2)}s of iOS TTS audio.`;
                         setButtonDisabledState(false);
-                        resetViewWindow();
                         drawWaveform();
                     } else {
                         throw new Error('No audio returned from native TTS');
@@ -3119,7 +2568,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                         addSegment(result.pcm, result.sampleRate, 'TTS', text);
                         if (ttsStatus) ttsStatus.textContent = `Added ${(result.pcm.length / (result.sampleRate || state.sampleRate)).toFixed(2)}s of audio.`;
                         setButtonDisabledState(false);
-                        resetViewWindow();
                         drawWaveform();
                     } else {
                         if (ttsStatus) ttsStatus.textContent = 'No audio received.';
@@ -3135,37 +2583,47 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     };
 
     const setButtonDisabledState = (disabled) => {
-        playBtn.disabled = disabled;
-        playAllBtn.disabled = disabled;
-        stopBtn.disabled = disabled;
-        splitBtn.disabled = disabled;
-        trimBtn.disabled = disabled;
-        deleteBtn.disabled = disabled;
         exportBtn.disabled = disabled;
-        splitSelectionBtn.disabled = disabled;
-        joinAllBtn.disabled = disabled;
         clearBtn.disabled = disabled;
+        if (sendMenu) sendMenu.setDisabled(disabled);
         if (previewMacroBtn) previewMacroBtn.disabled = disabled;
         if (exportMacroBtn) exportMacroBtn.disabled = disabled;
     };
 
     const restoreFromCache = async () => {
         const payload = await loadProject();
-        if (!payload || !payload.segments?.length) {
+        const restored = projectFromPayload(payload);
+        const lost = restored ? await dropMissingDisk(restored) : 0;
+        if (lost) setTimeout(() => persistStatus(`${lost} clip${lost === 1 ? '' : 's'} from large files were removed because the files are no longer in device storage.`, false), 1100);
+        if (!restored || !restored.tracks.some((t) => t.clips.length)) {
+            if (restored && restored.tracks.length) {
+                project = restored;
+                syncControlsFromMaster();
+                rebuildTimeline();
+            } else if (!project.master) {
+                project.master = captureMaster();
+            }
             setButtonDisabledState(true);
             persistStatus('No cached project found yet.');
             drawWaveform();
-            updateSegmentsList();
             return;
         }
         voiceSelect.value = payload.ttsVoiceSelection || PIPER_VOICE;
         ttsInput.value = payload.ttsText || '';
-        macroSelect.value = payload.macroSelection || 'FLAT';
-        restoreAudMacroSelection();
+        spliceSilenceInput.value = payload.spliceSilenceInput ?? 0.5;
+        if (restored.master) {
+            window.splicerEditor.setValue(payload.ttsText || '');
+            project = restored;
+            state.sampleRate = project.sampleRate;
+            editHistory.clear();
+            applyMasterToControls(project.master);
+            rebuildTimeline();
+            setButtonDisabledState(false);
+            persistStatus('Project restored from cache.');
+            return;
+        }
         if (macroStrengthInput) macroStrengthInput.value = String(chainItemMix(payload.macroLevel));
         if (macroVolumeInput) macroVolumeInput.value = String(chainItemGainDb(payload.macroLevel));
-        syncMacroLevelUi();
-        spliceSilenceInput.value = payload.spliceSilenceInput ?? 0.5;
         spliceLoudnessInput.value = payload.spliceLoudnessInput ?? 0;
         enableStaticNoiseCheckbox.checked = payload.staticEnabled || false;
         syncStaticNoiseUi();
@@ -3186,14 +2644,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             syncVmifyUi();
             if (vmifyIntensityInput) vmifyIntensityInput.value = payload.vmifyOptions?.intensity || 1;
         }
+        setMasterMacro(payload.macroSelection || 'FLAT');
+        syncMacroLevelUi();
         window.splicerEditor.setValue(payload.ttsText || '');
-        state.sampleRate = payload.sampleRate || state.sampleRate;
-        state.segments = payload.segments.map((s) => ({
-            id: s.id || `seg-${Math.random().toString(16).slice(2)}`,
-            label: s.label,
-            pcm: new Float32Array(s.pcm),
-            sourceText: s.sourceText || '',
-        }));
+        project = restored;
+        state.sampleRate = project.sampleRate;
+        editHistory.clear();
+        project.master = captureMaster();
         rebuildTimeline();
         setButtonDisabledState(false);
         const intervalId3 = setInterval(() => persistStatus('Project restored from cache.'), 5);
@@ -3217,6 +2674,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     }
     function restoreAudMacroSelection() {
         if (!macroSelect) return;
+        if (project.master) {
+            if (pendingMasterMacro) setMasterMacro(pendingMasterMacro);
+            return;
+        }
         let want;
         try { want = localStorage.getItem(LAST_AUD_MACRO_KEY); } catch (e) { return; }
         if (!want || !want.startsWith('AUD:')) return;
@@ -3246,7 +2707,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             return;
         }
         if (typeof persistStatus === 'function') {
-            persistStatus(message, false);
+            spokenStatus(message, false);
         } else {
             console.error(message, err || '');
         }
@@ -3309,26 +2770,41 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
 
         addAudacityMacrosToSelect();
-        if (customGroup) macroSelect.appendChild(customGroup);
+        if (customGroup) macroSelect.insertBefore(customGroup, macroSelect.querySelector('optgroup[data-sox]'));
         updateChainOption();
         if (previous) macroSelect.value = previous;
     }
 
+    const macroNameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     function addAudacityMacrosToSelect() {
         if (!macroSelect || !window.AudacityMacroEngine) return;
-        if (macroSelect.querySelector('optgroup[data-aud]')) return;
         const list = window.AudacityMacroEngine.listMacros();
         if (!list.length) return;
-        const grp = document.createElement('optgroup');
-        grp.label = 'Audacity VST macros';
-        grp.setAttribute('data-aud', '1');
+        let grp = macroSelect.querySelector('optgroup[data-aud]');
+        const fresh = !grp;
+        if (fresh) {
+            grp = document.createElement('optgroup');
+            grp.label = 'Audacity VST macros';
+            grp.setAttribute('data-aud', '1');
+        }
+        const opts = Array.from(grp.children);
+        const have = new Set(opts.map((o) => o.value));
         list.forEach(({ id, name }) => {
+            if (have.has(id)) return;
             const opt = document.createElement('option');
             opt.value = id;
             opt.textContent = name;
-            grp.appendChild(opt);
+            opts.push(opt);
         });
-        macroSelect.appendChild(grp);
+        if (!fresh && opts.length === grp.children.length) return;
+        const keep = macroSelect.value;
+        opts.sort((a, b) => macroNameCollator.compare(a.textContent, b.textContent));
+        grp.append(...opts);
+        if (fresh) {
+            const after = macroSelect.querySelector('optgroup[data-custom]') || macroSelect.querySelector('optgroup[data-sox]');
+            macroSelect.insertBefore(grp, after);
+        }
+        if (keep && macroSelect.value !== keep) macroSelect.value = keep;
         restoreAudMacroSelection();
     }
 
@@ -3350,6 +2826,9 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         btn.setAttribute('aria-haspopup', 'listbox');
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-label', 'Apply macro');
+        btn.id = 'spliceMacroComboBtn';
+        const comboLabel = panel.querySelector('label[for="spliceMacros"]');
+        if (comboLabel) comboLabel.htmlFor = btn.id;
 
         const labelSpan = document.createElement('span');
         labelSpan.className = 'splice-macro-combo__label';
@@ -3640,7 +3119,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             grp = document.createElement('optgroup');
             grp.label = 'Custom macros (this session)';
             grp.setAttribute('data-custom', '1');
-            macroSelect.appendChild(grp);
+            macroSelect.insertBefore(grp, macroSelect.querySelector('optgroup[data-sox]'));
         }
         const opt = document.createElement('option');
         opt.value = id;
@@ -3786,19 +3265,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         { cmd: 'Invert', params: '' },
     ];
 
-    const CHAIN_MIX_MIN = 0;
-    const CHAIN_MIX_MAX = 100;
-    const CHAIN_GAIN_MIN_DB = -24;
-    const CHAIN_GAIN_MAX_DB = 12;
-
-    const clampChainNumber = (value, min, max, fallback) => {
-        if (value === null || value === undefined || value === '') return fallback;
-        const n = Number(value);
-        return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
-    };
-    const chainItemMix = (it) => clampChainNumber(it && it.mix, CHAIN_MIX_MIN, CHAIN_MIX_MAX, CHAIN_MIX_MAX);
-    const chainItemGainDb = (it) => clampChainNumber(it && it.gainDb, CHAIN_GAIN_MIN_DB, CHAIN_GAIN_MAX_DB, 0);
-    const chainItemHasLevel = (it) => chainItemMix(it) !== CHAIN_MIX_MAX || chainItemGainDb(it) !== 0;
+    const CHAIN_MIX_MIN = SR.MIX_MIN;
+    const CHAIN_MIX_MAX = SR.MIX_MAX;
+    const CHAIN_GAIN_MIN_DB = SR.GAIN_MIN_DB;
+    const CHAIN_GAIN_MAX_DB = SR.GAIN_MAX_DB;
+    const chainItemMix = SR.itemMix;
+    const chainItemGainDb = SR.itemGainDb;
+    const clampChainNumber = SR.clampNumber;
 
     const macroStrengthInput = panel.querySelector('[data-splice-macro-strength]');
     const macroVolumeInput = panel.querySelector('[data-splice-macro-volume]');
@@ -3811,9 +3284,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return level.mix + '/' + level.gainDb;
     };
 
-    const chainSig = () => macroChain.map((it) => it.id
-        + (it.params ? '{' + it.params + '}' : '')
-        + (chainItemHasLevel(it) ? '@' + chainItemMix(it) + '/' + chainItemGainDb(it) : '')).join('>');
+    const chainSig = () => SR.chainSig(macroChain);
 
     function persistMacroChain() {
         try {
@@ -3828,23 +3299,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         } catch (e) { }
     }
 
-    function applyChainItemLevel(dry, drySr, wet, wetSr, item) {
-        if (!chainItemHasLevel(item) || !wet || !wet.length) return wet;
-        const mix = chainItemMix(item) / 100;
-        const gain = Math.pow(10, chainItemGainDb(item) / 20);
-        const dryAligned = mix < 1 && dry && dry.length
-            ? (drySr === wetSr ? dry : resamplePcmSinc(dry, drySr, wetSr))
-            : null;
-        const dryMix = 1 - mix;
-        const dryLen = dryAligned ? dryAligned.length : 0;
-        const out = new Float32Array(wet.length);
-        for (let i = 0; i < wet.length; i++) {
-            let s = wet[i] * mix;
-            if (i < dryLen) s += dryAligned[i] * dryMix;
-            out[i] = s * gain;
-        }
-        return out;
-    }
+    const applyChainItemLevel = (dry, drySr, wet, wetSr, item) => SR.applyLevel(dry, drySr, wet, wetSr, item, resamplePcmSinc);
 
     function updateChainOption() {
         if (!macroSelect) return;
@@ -3878,6 +3333,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     function onChainMutated() {
         persistMacroChain();
         updateChainOption();
+        commitMaster('edit macro chain');
         if (macroSelect && macroSelect.value === 'CHAIN') {
             invalidateMacroPreview();
             scheduleMacroWaveformUpdate();
@@ -3919,7 +3375,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
     }
 
-    const chainTotalSteps = () => macroChain.reduce((a, it) => a + (it.steps || 1), 0);
 
     async function decodeWavBlobDirect(blob) {
         try {
@@ -3964,75 +3419,63 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
     }
 
-    async function applyMacroChainToPcm(pcm, sampleRate, onProgress) {
-        if (!macroChain.length) return { pcm, sampleRate };
-        let cur = pcm;
-        let sr = sampleRate;
-        const total = macroChain.length;
-        const cancelSeq = macroCancelSeq;
-        for (let i = 0; i < total; i++) {
-            if (cancelSeq !== macroCancelSeq) throw macroCancelError();
-            const item = macroChain[i];
-            const base = i / total;
-            const span = 1 / total;
-            const stageLabel = 'Chain ' + (i + 1) + '/' + total + ': ' + item.label;
-            const dry = cur;
-            const drySr = sr;
-            if (onProgress) onProgress({ step: i + 1, total, cmd: stageLabel, fraction: base });
-            if (item.id.startsWith('AUD:') || item.id.startsWith('CMD:')) {
-                if (!window.AudacityMacroEngine) {
-                    throw new Error('Audacity macro engine unavailable for "' + item.label + '".');
-                }
-                const stageProgress = {
-                    onProgress: (p) => {
-                        if (onProgress) onProgress({
-                            step: i + 1,
-                            total,
-                            cmd: stageLabel + ' - ' + p.cmd,
-                            fraction: base + Math.max(0, Math.min(1, p.fraction)) * span,
-                        });
-                    },
-                };
-                const out = item.id.startsWith('AUD:')
-                    ? await window.AudacityMacroEngine.applyMacroFile(cur, sr, item.id.slice(4), stageProgress)
-                    : await window.AudacityMacroEngine.applyMacroText(cur, sr, item.id.slice(4) + ':' + (item.params || ''), stageProgress);
-                cur = out.pcm;
-                sr = out.sampleRate;
-            } else {
-                const blob = await renderMacroWithSox(cur, sr, item.id, 0);
-                if (!blob) throw new Error('SoX macro "' + item.label + '" failed to render.');
-                const dec = await decodeWavBlobDirect(blob);
-                if (!dec || !dec.pcm || !dec.pcm.length) throw new Error('SoX macro "' + item.label + '" returned no audio.');
-                cur = dec.pcm;
-                sr = dec.sampleRate;
-                if (item.id === 'NOISY_DX_RECORDING') {
-                    cur = addStaticNoiseToPcm(cur, sr, { level: 0.14, fadeDepth: 0.45, fadeRateHz: 0.6 });
-                }
+    async function runChainItem(item, pcm, sr, stageProgress, signal) {
+        if (item.id.startsWith('AUD:') || item.id.startsWith('CMD:')) {
+            if (!window.AudacityMacroEngine) {
+                throw new Error('Audacity macro engine unavailable for "' + item.label + '".');
             }
-            cur = applyChainItemLevel(dry, drySr, cur, sr, item);
-            if (onProgress) onProgress({ step: i + 1, total, cmd: stageLabel, fraction: (i + 1) / total });
+            const opts = { onProgress: stageProgress, signal };
+            return item.id.startsWith('AUD:')
+                ? await window.AudacityMacroEngine.applyMacroFile(pcm, sr, item.id.slice(4), opts)
+                : await window.AudacityMacroEngine.applyMacroText(pcm, sr, item.id.slice(4) + ':' + (item.params || ''), opts);
         }
-        if (cancelSeq !== macroCancelSeq) throw macroCancelError();
-        return { pcm: cur, sampleRate: sr };
+        const blob = await renderMacroWithSox(pcm, sr, item.id, 0);
+        if (!blob) throw new Error('SoX macro "' + item.label + '" failed to render.');
+        const dec = await decodeWavBlobDirect(blob);
+        if (!dec || !dec.pcm || !dec.pcm.length) throw new Error('SoX macro "' + item.label + '" returned no audio.');
+        if (item.id === 'NOISY_DX_RECORDING') {
+            return { pcm: addStaticNoiseToPcm(dec.pcm, dec.sampleRate, { level: 0.14, fadeDepth: 0.45, fadeRateHz: 0.6 }), sampleRate: dec.sampleRate };
+        }
+        return dec;
     }
 
-    async function renderSelectedMacroPcm(pcm, sampleRate, macroId, onProgress) {
+    function renderEffectChain(pcm, sampleRate, items, onProgress, signal) {
+        const cancelSeq = macroCancelSeq;
+        return SR.renderChain(pcm, sampleRate, items, {
+            runItem: (item, p, sr, stageProgress) => runChainItem(item, p, sr, stageProgress, signal),
+            resample: resamplePcmSinc,
+            onProgress,
+            isCancelled: () => cancelSeq !== macroCancelSeq || !!(signal && signal.aborted),
+            cancelError: macroCancelError,
+        });
+    }
+
+    function applyMacroChainToPcm(pcm, sampleRate, onProgress, signal) {
+        return renderEffectChain(pcm, sampleRate, macroChain, onProgress, signal);
+    }
+
+    function renderSelectedMacroPcm(pcm, sampleRate, macroId, onProgress) {
+        return runExclusive((signal) => renderSelectedMacroPcmNow(pcm, sampleRate, macroId, onProgress, signal));
+    }
+
+    async function renderSelectedMacroPcmNow(pcm, sampleRate, macroId, onProgress, signal) {
         const id = macroId || 'FLAT';
         const cancelSeq = macroCancelSeq;
+        const cancelled = () => cancelSeq !== macroCancelSeq || !!(signal && signal.aborted);
         const fxPcm = applyExportFxToPcm(pcm, sampleRate, id);
         let out = null;
         if (id === 'CHAIN') {
-            out = await applyMacroChainToPcm(fxPcm, sampleRate, onProgress);
+            out = await applyMacroChainToPcm(fxPcm, sampleRate, onProgress, signal);
         } else if (id.startsWith('AUD:')) {
             if (!window.AudacityMacroEngine) {
                 throw new Error('Audacity macro engine unavailable for "' + id.slice(4) + '".');
             }
-            out = await window.AudacityMacroEngine.applyMacroFile(fxPcm, sampleRate, id.slice(4), { onProgress });
+            out = await window.AudacityMacroEngine.applyMacroFile(fxPcm, sampleRate, id.slice(4), { onProgress, signal });
         } else {
             const blob = await renderMacroWithSox(fxPcm, sampleRate, id, 0);
             out = blob ? await decodeWavBlobDirect(blob) : null;
         }
-        if (cancelSeq !== macroCancelSeq) throw macroCancelError();
+        if (cancelled()) throw macroCancelError();
         if (!out || !out.pcm || !out.pcm.length) {
             return { pcm: fxPcm, sampleRate, macroApplied: false };
         }
@@ -4068,7 +3511,37 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
         const intro = document.createElement('p');
         intro.className = 'splice-chain-intro';
-        intro.textContent = 'Build an ordered chain of macros and effects, applied top to bottom in one pass. Limits: ' + MAX_CHAIN_ITEMS + ' macros or ' + MAX_CHAIN_STEPS + ' total effect steps, whichever comes first. Strength blends each macro with the audio going into it (100% is the full effect), and Volume raises or lowers what that macro puts out. The Macro Strength and Volume boxes under Apply Macro work the same way on the whole chain or on a single macro.';
+        const limitsText = 'Limits: ' + MAX_CHAIN_ITEMS + ' macros or ' + MAX_CHAIN_STEPS + ' total effect steps, whichever comes first. Strength blends each macro with the audio going into it (100% is the full effect), and Volume raises or lowers what that macro puts out.';
+
+        const masterTarget = {
+            title: 'Macro Chain Editor',
+            label: 'Macro chain editor',
+            intro: 'Build an ordered chain of macros and effects, applied top to bottom in one pass. ' + limitsText + ' The Macro Strength and Volume boxes under Apply Macro work the same way on the whole chain or on a single macro.',
+            listLabel: 'Chain (applied top to bottom)',
+            get items() { return macroChain; },
+            set items(v) { macroChain = v; },
+            mutated: () => onChainMutated(),
+            useText: 'Use Chain',
+            clearText: 'Clear Chain',
+            use: () => {
+                if (!macroChain.length) {
+                    chainEditorStatus('Chain is empty - add at least one macro first.');
+                    return;
+                }
+                updateChainOption();
+                if (macroSelect.value !== 'CHAIN') {
+                    macroSelect.value = 'CHAIN';
+                    macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                } else {
+                    invalidateMacroPreview();
+                    scheduleMacroWaveformUpdate();
+                }
+                closeChainEditor();
+                persistStatus('Macro chain selected (' + macroChain.length + ' macro' + (macroChain.length === 1 ? '' : 's') + ').');
+            },
+        };
+        let target = masterTarget;
+        const itemsSteps = () => target.items.reduce((a, it) => a + (it.steps || 1), 0);
 
         const cols = document.createElement('div');
         cols.className = 'splice-chain-cols';
@@ -4161,10 +3634,10 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
 
         const renderChainList = () => {
             chainListEl.textContent = '';
-            chainCount.textContent = macroChain.length
-                ? macroChain.length + '/' + MAX_CHAIN_ITEMS + ' macros, ' + chainTotalSteps() + '/' + MAX_CHAIN_STEPS + ' steps'
-                : 'Empty - add macros from the list on the left.';
-            macroChain.forEach((item, index) => {
+            chainCount.textContent = target.items.length
+                ? target.items.length + '/' + MAX_CHAIN_ITEMS + ' macros, ' + itemsSteps() + '/' + MAX_CHAIN_STEPS + ' steps'
+                : 'Empty - use Add on a macro or effect in the list of available ones.';
+            target.items.forEach((item, index) => {
                 const li = document.createElement('li');
                 li.className = 'splice-chain-item';
                 li.draggable = true;
@@ -4184,7 +3657,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     paramsInput.setAttribute('aria-label', 'Parameters for ' + item.label);
                     paramsInput.addEventListener('change', () => {
                         item.params = paramsInput.value;
-                        onChainMutated();
+                        target.mutated('edit effect');
                         chainEditorStatus('Updated parameters for "' + item.label + '".');
                     });
                     paramsInput.addEventListener('pointerdown', () => { li.draggable = false; });
@@ -4209,7 +3682,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                     input.addEventListener('change', () => {
                         item[key] = clampChainNumber(input.value, min, max, read({}));
                         input.value = String(item[key]);
-                        onChainMutated();
+                        target.mutated('edit effect');
                         chainEditorStatus('Set "' + item.label + '" ' + describe(item[key]) + '.');
                     });
                     input.addEventListener('pointerdown', () => { li.draggable = false; });
@@ -4234,7 +3707,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 downBtn.type = 'button';
                 downBtn.textContent = '↓';
                 downBtn.setAttribute('aria-label', 'Move "' + item.label + '" down');
-                downBtn.disabled = index === macroChain.length - 1;
+                downBtn.disabled = index === target.items.length - 1;
                 downBtn.addEventListener('click', () => moveChainItem(index, index + 1));
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
@@ -4268,7 +3741,6 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 if (row.group !== lastGroup && row.group) {
                     const head = document.createElement('li');
                     head.className = 'splice-chain-group';
-                    head.setAttribute('role', 'presentation');
                     head.textContent = row.group;
                     availList.appendChild(head);
                 }
@@ -4285,11 +3757,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 addBtn.type = 'button';
                 addBtn.textContent = 'Add';
                 addBtn.setAttribute('aria-label', 'Add "' + row.label + '" to chain');
-                addBtn.addEventListener('click', () => { addChainItem(row.id, row.label, macroChain.length, row.params); });
+                addBtn.addEventListener('click', () => { addChainItem(row.id, row.label, target.items.length, row.params); });
 
                 li.appendChild(name);
                 li.appendChild(addBtn);
-                li.addEventListener('dblclick', () => { addChainItem(row.id, row.label, macroChain.length, row.params); });
+                li.addEventListener('dblclick', () => { addChainItem(row.id, row.label, target.items.length, row.params); });
                 li.addEventListener('dragstart', (e) => {
                     e.dataTransfer.setData('text/plain', JSON.stringify({ t: 'A', id: row.id, label: row.label, params: row.params }));
                     e.dataTransfer.effectAllowed = 'copy';
@@ -4305,35 +3777,36 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         };
 
         async function addChainItem(id, label, at, params) {
-            if (macroChain.length >= MAX_CHAIN_ITEMS) {
+            if (target.items.length >= MAX_CHAIN_ITEMS) {
                 chainEditorStatus('Chain is full (max ' + MAX_CHAIN_ITEMS + ' macros).');
                 return;
             }
             const steps = await chainStepsForId(id);
-            const total = chainTotalSteps();
+            const total = itemsSteps();
             if (total + steps > MAX_CHAIN_STEPS) {
                 chainEditorStatus('Adding "' + label + '" would exceed the budget of ' + MAX_CHAIN_STEPS + ' effect steps (chain has ' + total + ', this adds ' + steps + ').');
                 return;
             }
-            const index = Math.max(0, Math.min(macroChain.length, at));
-            macroChain.splice(index, 0, { id, label, steps, params: params || '', mix: CHAIN_MIX_MAX, gainDb: 0 });
-            onChainMutated();
+            const index = Math.max(0, Math.min(target.items.length, at));
+            target.items.splice(index, 0, { id, label, steps, params: params || '', mix: CHAIN_MIX_MAX, gainDb: 0 });
+            target.mutated('add effect');
             renderChainList();
             chainEditorStatus('Added "' + label + '".');
         }
 
         function moveChainItem(from, to) {
-            if (from === to || from < 0 || from >= macroChain.length || to < 0 || to >= macroChain.length) return;
-            const [item] = macroChain.splice(from, 1);
-            macroChain.splice(to, 0, item);
-            onChainMutated();
+            const items = target.items;
+            if (from === to || from < 0 || from >= items.length || to < 0 || to >= items.length) return;
+            const [item] = items.splice(from, 1);
+            items.splice(to, 0, item);
+            target.mutated('reorder effects');
             renderChainList();
         }
 
         function removeChainItem(index) {
-            if (index < 0 || index >= macroChain.length) return;
-            const [item] = macroChain.splice(index, 1);
-            onChainMutated();
+            if (index < 0 || index >= target.items.length) return;
+            const [item] = target.items.splice(index, 1);
+            target.mutated('remove effect');
             renderChainList();
             chainEditorStatus('Removed "' + item.label + '".');
         }
@@ -4344,7 +3817,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 const r = li.getBoundingClientRect();
                 if (e.clientY < r.top + r.height / 2) return parseInt(li.dataset.index, 10);
             }
-            return macroChain.length;
+            return target.items.length;
         };
 
         const clearDropMarkers = () => {
@@ -4383,14 +3856,22 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 if (Number.isFinite(from)) {
                     let to = idx;
                     if (from < to) to--;
-                    moveChainItem(from, Math.max(0, Math.min(macroChain.length - 1, to)));
+                    moveChainItem(from, Math.max(0, Math.min(target.items.length - 1, to)));
                 }
             }
         });
 
         let lastFocus = null;
-        const openChainEditor = () => {
+        const openChainEditor = (next = masterTarget) => {
+            target = next;
             lastFocus = document.activeElement;
+            title.textContent = target.title;
+            modal.setAttribute('aria-label', target.label);
+            intro.textContent = target.intro;
+            chainLabel.textContent = target.listLabel;
+            useBtn.textContent = target.useText;
+            clearBtn.textContent = target.clearText;
+            closeBtn.hidden = target !== masterTarget;
             availSearch.value = '';
             renderAvailList();
             renderChainList();
@@ -4398,12 +3879,61 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             backdrop.hidden = false;
             availSearch.focus();
         };
-        const closeChainEditor = () => {
+        function closeChainEditor() {
             backdrop.hidden = true;
-            if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+            target = masterTarget;
+            if (lastFocus && lastFocus.isConnected && typeof lastFocus.focus === 'function') lastFocus.focus();
+            else if (editor) editor.focusGrid();
+        }
+
+        const fxTarget = (kind, id) => {
+            const find = () => (kind === 'clip' ? (SM.findClip(project, id) || {}).clip : SM.findTrack(project, id));
+            const obj = find();
+            if (!obj) return null;
+            const name = kind === 'clip' ? (obj.label || project.sources.get(obj.sourceId)?.label || 'clip') : obj.name;
+            const t = {
+                title: (kind === 'clip' ? 'Clip Effects: ' : 'Track Effects: ') + name,
+                label: (kind === 'clip' ? 'Effects on clip ' : 'Effects on track ') + name,
+                intro: (kind === 'clip'
+                    ? 'These effects run on this clip only, top to bottom, and render in the background. Effects that change the length, such as Change Speed or Repeat, make the clip longer or shorter on the timeline. '
+                    : 'These effects run on everything this track plays, after each clip\'s own effects, top to bottom, and render in the background. ') + limitsText,
+                listLabel: 'Effects (applied top to bottom)',
+                items: SM.cloneFx(obj.effects),
+                mutated: (label) => {
+                    const cur = find();
+                    if (!cur) return;
+                    const next = t.items.map(SR.cleanItem);
+                    if (SM.sameJson(cur.effects.map(SR.cleanItem), next)) return;
+                    editHistory.push(project, (kind === 'clip' ? 'clip ' : 'track ') + (label || 'effects'));
+                    find().effects = next;
+                    projectChanged();
+                },
+                reload: () => {
+                    const cur = find();
+                    if (!cur) return false;
+                    if (SM.sameJson(cur.effects.map(SR.cleanItem), t.items.map(SR.cleanItem))) return 'same';
+                    t.items = SM.cloneFx(cur.effects);
+                    return true;
+                },
+                useText: 'Done',
+                clearText: 'Remove All',
+                use: () => closeChainEditor(),
+            };
+            return t;
         };
 
-        openBtn.addEventListener('click', openChainEditor);
+        openEffectsEditorFn = (kind, id) => {
+            const t = fxTarget(kind, id);
+            if (t) openChainEditor(t);
+        };
+        refreshEffectsEditorFn = () => {
+            if (backdrop.hidden || !target.reload) return;
+            const r = target.reload();
+            if (!r) closeChainEditor();
+            else if (r !== 'same') renderChainList();
+        };
+
+        openBtn.addEventListener('click', () => openChainEditor(masterTarget));
         closeBtn.addEventListener('click', closeChainEditor);
         backdrop.addEventListener('mousedown', (e) => {
             if (e.target === backdrop) closeChainEditor();
@@ -4412,33 +3942,32 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             if (e.key === 'Escape') {
                 e.preventDefault();
                 closeChainEditor();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+            const stops = [...modal.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])')]
+                .filter((n) => !n.disabled && n.getClientRects().length > 0);
+            if (!stops.length) return;
+            const first = stops[0];
+            const last = stops[stops.length - 1];
+            if (e.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
             }
         });
         availSearch.addEventListener('input', renderAvailList);
 
         clearBtn.addEventListener('click', () => {
-            macroChain = [];
-            onChainMutated();
+            target.items = [];
+            target.mutated('remove all effects');
             renderChainList();
-            chainEditorStatus('Chain cleared.');
+            chainEditorStatus(target === masterTarget ? 'Chain cleared.' : 'All effects removed.');
         });
 
-        useBtn.addEventListener('click', () => {
-            if (!macroChain.length) {
-                chainEditorStatus('Chain is empty - add at least one macro first.');
-                return;
-            }
-            updateChainOption();
-            if (macroSelect.value !== 'CHAIN') {
-                macroSelect.value = 'CHAIN';
-                macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            } else {
-                invalidateMacroPreview();
-                scheduleMacroWaveformUpdate();
-            }
-            closeChainEditor();
-            persistStatus('Macro chain selected (' + macroChain.length + ' macro' + (macroChain.length === 1 ? '' : 's') + ').');
-        });
+        useBtn.addEventListener('click', () => target.use());
     }
 
     function setupMacroUpload() {
@@ -4729,60 +4258,50 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
     }
 
-    function encodeWavFromPcm(pcm, sampleRate) {
-        const buffer = new ArrayBuffer(44 + pcm.length * 2);
-        const view = new DataView(buffer);
-
-        function writeString(offset, str) {
-            for (let i = 0; i < str.length; i++) {
-                view.setUint8(offset + i, str.charCodeAt(i));
-            }
-        }
-
-        const length = pcm.length;
-
-        writeString(0, 'RIFF');
-        view.setUint32(4, 36 + length * 2, true);
-        writeString(8, 'WAVE');
-        writeString(12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, 1, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        writeString(36, 'data');
-        view.setUint32(40, length * 2, true);
-
-        let offset = 44;
-        for (let i = 0; i < length; i++, offset += 2) {
-            let s = pcm[i];
-            s = Math.max(-1, Math.min(1, s));
-            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-        }
-
-        return new Blob([buffer], { type: 'audio/wav' });
+    function encodeWavFromPcm(pcm, sampleRate, format = 'pcm16') {
+        return SE.encodeAll(Array.isArray(pcm) ? pcm : [pcm], sampleRate, format,
+            { bitrate: SE.bitrateOf(format, outputPrefs.bitrates[SE.formatOf(format)]), resample: resamplePcmSinc });
     }
 
-    async function renderMacroToWavFromPcm(pcm, sampleRate, macroId) {
-        if (!pcm || !pcm.length) {
+    const perChannel = async (chans, fn) => {
+        const out = [];
+        for (let i = 0; i < chans.length; i++) {
+            const same = chans.indexOf(chans[i]);
+            out.push(same < i ? out[same] : await fn(chans[i]));
+        }
+        return out;
+    };
+
+    async function renderMacroToWavFromPcm(pcm, sampleRate, macroId, format = 'pcm16') {
+        const chans = Array.isArray(pcm) ? pcm : [pcm];
+        if (!chans[0] || !chans[0].length) {
             reportErrorStatus('FX: cannot render macro – empty PCM data.');
             throw new Error('renderMacroToWavFromPcm: empty PCM data');
         }
 
         const id = macroId || 'FLAT';
         const exportGain = getExportGain();
+        const finish = (raws, rate) => {
+            const limited = finishChans(raws, rate, exportGainFactor());
+            lastMacroOver = limited ? limited.over : SL.peakRatio(raws, exportGainFactor());
+            lastMacroLimited = !!limited;
+            return encodeWavFromPcm(limited ? limited.chans : raws.map((r) => clonePcmWithGain(r, exportGain)), rate, format);
+        };
 
+        let outs = null;
+        let outRate = sampleRate;
         try {
-            const processed = await trackMacroJob(() => renderSelectedMacroPcm(pcm, sampleRate, id, macroProgressCb));
+            outs = await perChannel(chans, async (c) => {
+                const processed = await trackMacroJob(() => renderSelectedMacroPcm(c, sampleRate, id, macroProgressCb));
+                outRate = processed.sampleRate;
+                return processed.pcm;
+            });
             const doneLabel = macroRenderDoneLabel(id, false);
             if (doneLabel) setMacroProgress(1, doneLabel);
-            return encodeWavFromPcm(clonePcmWithGain(processed.pcm, exportGain), processed.sampleRate);
         } catch (err) {
             setMacroProgress(1, '');
             if (isMacroCancelError(err)) {
-                persistStatus('Macro processing cancelled.', true);
+                cancelStatus('Macro processing cancelled.');
                 throw err;
             }
             if (isMacroAssetError(err)) {
@@ -4791,9 +4310,13 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             }
             const what = id === 'CHAIN' ? 'Macro chain' : (id.startsWith('AUD:') ? `Audacity macro '${id.slice(4)}'` : `Macro '${id}'`);
             reportErrorStatus(what + ' failed; exporting dry.', err);
-            return encodeWavFromPcm(clonePcmWithGain(applyExportFxToPcm(pcm, sampleRate, id), exportGain), sampleRate);
+            return finish(chans.map((c) => applyExportFxToPcm(c, sampleRate, id)), sampleRate);
         }
+        return finish(outs, outRate);
     }
+
+    let lastMacroOver = 1;
+    let lastMacroLimited = false;
 
     window.EASSplicerFX = window.EASSplicerFX || {};
     window.EASSplicerFX.renderMacroToWavFromPcm = renderMacroToWavFromPcm;
@@ -4848,7 +4371,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         ].join('|');
     };
 
-    const getSegmentPcmRefs = () => state.segments.map((seg) => seg.pcm);
+    const getSegmentPcmRefs = () => [state.pcm];
 
     const sameSegmentPcmRefs = (a, b) => {
         if (!a || !b || a.length !== b.length) return false;
@@ -4858,25 +4381,42 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         return true;
     };
 
-    const renderMacroBlobCached = async (macroId) => {
-        const key = getMacroRenderKey(macroId);
+    const renderMacroBlobCached = async (macroId, format = 'pcm16') => {
+        if (macroWaveformDebounce && macroWaveformPendingKey && macroWaveformPendingKey === getMacroWaveformKey()) {
+            clearTimeout(macroWaveformDebounce);
+            macroWaveformDebounce = null;
+            generateMacroWaveformForKey(macroWaveformPendingKey);
+        }
+        const pending = macroWaveformJob;
+        if (pending && macroWaveformPendingKey && macroWaveformPendingKey === getMacroWaveformKey()) {
+            const cancelSeq = macroCancelSeq;
+            await (pending.settled || pending).catch(() => null);
+            if (cancelSeq !== macroCancelSeq) throw macroCancelError();
+        }
+        const key = getMacroRenderKey(macroId) + '|' + SE.formatOf(format) + ':' + SE.bitrateOf(format, outputPrefs.bitrates[SE.formatOf(format)]) + '|' + outputSig();
         const segRefs = getSegmentPcmRefs();
         if (macroRenderBlobCache
             && macroRenderBlobCache.key === key
             && sameSegmentPcmRefs(macroRenderBlobCache.segRefs, segRefs)) {
+            lastMacroOver = macroRenderBlobCache.over;
+            lastMacroLimited = macroRenderBlobCache.limited;
             return macroRenderBlobCache.blob;
         }
-        if (macroWaveformPcm && macroWaveformPcm.length
+        if (macroWaveformPcm && macroWaveformPcm.length && !stereoPanned()
             && macroWaveformOutputSig && macroWaveformOutputSig === getMacroOutputSignature(macroId)) {
-            const reusedBlob = encodeWavFromPcm(clonePcmWithGain(macroWaveformPcm, getExportGain()), macroWaveformSampleRate);
+            const limited = finishChans([macroWaveformPcm], macroWaveformSampleRate, exportGainFactor());
+            const reused = limited ? limited.chans[0] : clonePcmWithGain(macroWaveformPcm, getExportGain());
+            lastMacroOver = limited ? limited.over : SL.peakRatio([macroWaveformPcm], exportGainFactor());
+            lastMacroLimited = !!limited;
+            const reusedBlob = await encodeWavFromPcm(outStereo() ? [reused, reused] : [reused], macroWaveformSampleRate, format);
             if (reusedBlob) {
-                macroRenderBlobCache = { key, blob: reusedBlob, segRefs };
+                macroRenderBlobCache = { key, blob: reusedBlob, segRefs, over: lastMacroOver, limited: lastMacroLimited };
                 return reusedBlob;
             }
         }
-        const blob = await renderMacroToWavFromPcm(state.pcm, state.sampleRate, macroId);
+        const blob = await renderMacroToWavFromPcm(outputChannels(), state.sampleRate, macroId, format);
         if (blob) {
-            macroRenderBlobCache = { key, blob, segRefs };
+            macroRenderBlobCache = { key, blob, segRefs, over: lastMacroOver, limited: lastMacroLimited };
         }
         return blob;
     };
@@ -4914,6 +4454,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
                 if (!pcm) { resetPreviewMacroButton(); return; }
                 blob = await renderMacroToWavFromPcm(pcm, psr, macroId);
             } else {
+                if (fxJobs.size || fxMissing()) await ensureFxReady();
                 blob = await renderMacroBlobCached(macroId);
             }
 
@@ -4979,7 +4520,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
             playingSource = audio;
             playingMode = 'macro-preview';
             pausedPlayback = null;
-            setPreviewMacroButtonState('Pause Macro Preview', false);
+            setPreviewMacroButtonState('Pause Preview', false);
 
             const ctxAudio = audioCtx || getAudioCtx();
             if (ctxAudio && ctxAudio.state === 'suspended' && typeof ctxAudio.resume === 'function') {
@@ -5103,62 +4644,64 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         catch (e) { return false; }
         if (!macroIsStreamable(text)) return false;
 
+        const fmt = outFormat();
+        const info = outInfo();
         let outFh, writable;
         try {
             const dir = await opfsHugeDir();
-            outFh = await dir.getFileHandle('export.wav', { create: true });
+            outFh = await dir.getFileHandle('export.' + info.ext, { create: true });
             writable = await outFh.createWritable();
         } catch (e) { persistStatus('Could not open device storage for export.', false); return true; }
 
-        const dataBytes = totalFrames * 2;
-        const header = new ArrayBuffer(44);
-        const dv = new DataView(header);
-        const ws = (o, s2) => { for (let i = 0; i < s2.length; i++) dv.setUint8(o + i, s2.charCodeAt(i)); };
-        ws(0, 'RIFF'); dv.setUint32(4, 36 + dataBytes, true); ws(8, 'WAVE');
-        ws(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-        dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
-        ws(36, 'data'); dv.setUint32(40, dataBytes, true);
-
-        const gain = getExportGain();
-        const applyGain = Math.abs(gain - 1) > EXPORT_GAIN_TOLERANCE;
+        const nch = outStereo() ? 2 : 1;
+        const gain = exportGainFactor();
+        const lim = limitOn() ? SL.createLimiter({ sampleRate: sr }) : null;
+        let over = 1;
         const W = MACRO_STREAM_W;
         const WIN = STREAM_WIN_FRAMES;
         const name = streamName;
         const cancelSeq = macroCancelSeq;
         macroJobsActive++;
         syncMacroCancelBtn();
+        let out = null;
         try {
-            await writable.write(new Uint8Array(header));
+            out = await SE.createWriter(fmt, { sampleRate: sr, channels: nch, frames: totalFrames, bitrate: outBitrate(), sink: writable });
             for (let start = 0; start < totalFrames; start += WIN) {
                 if (cancelSeq !== macroCancelSeq) throw macroCancelError();
                 const end = Math.min(totalFrames, start + WIN);
                 const wa = Math.max(0, start - W);
                 const wb = Math.min(totalFrames, end + W);
-                const win = await materializeTimelineRange(wa, wb);
-                if (!win) { try { await writable.close(); } catch (_) {} return true; }
-                const processed = await window.AudacityMacroEngine.applyMacroText(win, sr, text);
-                const p = processed && processed.pcm;
-                if (!p || p.length !== win.length) {
+                let wins;
+                try { wins = await mixRangeChannels(wa, wb); }
+                catch (e) { wins = null; persistStatus('Not enough memory to apply this effect. Trim to a shorter selection.', false); }
+                if (!wins) { await out.cancel(); try { await writable.close(); } catch (_) {} return true; }
+                const outs = await perChannel(wins, async (win) => {
+                    const processed = await runExclusive((signal) => window.AudacityMacroEngine.applyMacroText(win, sr, text, { signal }));
+                    const p = processed && processed.pcm;
+                    return p && p.length === win.length ? p : null;
+                });
+                if (outs.some((p) => !p)) {
+                    await out.cancel();
                     try { await writable.close(); } catch (_) {}
                     persistStatus('This macro changes length and cannot stream; trim to a smaller clip.', false);
                     return true;
                 }
                 const off = start - wa, n = end - start;
-                const i16 = new Int16Array(n);
-                for (let i = 0; i < n; i++) {
-                    let s = p[off + i];
-                    if (applyGain) s *= gain;
-                    if (s > 1) s = 1; else if (s < -1) s = -1;
-                    i16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+                if (lim) {
+                    await out.write(lim.process(outs, off, n, gain), 0, n, 1);
+                } else {
+                    over = Math.max(over, SL.peakRatio(outs.map((o) => o.subarray(off, off + n)), gain));
+                    await out.write(outs, off, n, gain);
                 }
-                await writable.write(new Uint8Array(i16.buffer, 0, n * 2));
                 persistStatus('Applying "' + name + '" to whole file... ' + Math.round((end / totalFrames) * 100) + '%');
                 await new Promise((rr) => setTimeout(rr));
             }
-            await writable.close();
+            await out.finish();
         } catch (e) {
+            if (out) await out.cancel();
             try { await writable.close(); } catch (_) {}
-            reportErrorStatus('Streaming macro export failed for "' + name + '".', e);
+            if (isMacroCancelError(e)) cancelStatus('Macro processing cancelled.');
+            else reportErrorStatus('Streaming macro export failed for "' + name + '".', e);
             return true;
         } finally {
             macroJobsActive = Math.max(0, macroJobsActive - 1);
@@ -5166,12 +4709,12 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         }
 
         let outFile;
-        try { outFile = await outFh.getFile(); } catch (e) { persistStatus('Export failed while reading back.', false); return true; }
+        try { outFile = await outFh.getFile(); } catch (e) { spokenStatus('Export failed while reading back.', false); return true; }
         try {
-            await saveFile('splice.wav', outFile, 'audio/wav');
-            persistStatus('WAV exported with "' + name + '"!', true);
+            await saveFile(outFileName('splice'), outFile, info.mime);
+            spokenStatus(`${info.name} exported with "${name}"!` + overNote(lim ? lim.over : over, !!lim, fmt), true);
         } catch (e) {
-            persistStatus('Export save failed: ' + e + '.', false);
+            spokenStatus('Export save failed: ' + e + '.', false);
         }
         return true;
     }
@@ -5184,12 +4727,16 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (totalFrames <= MACRO_MEM_FRAMES) {
             try {
                 persistStatus('Rendering macro...');
-                const pcm = await materializeTimelineRange(0, totalFrames);
-                if (!pcm) return;
-                const blob = await renderMacroToWavFromPcm(pcm, sr, macroId);
-                persistStatus('Exporting WAV...');
-                await saveFile('splice.wav', blob, 'audio/wav');
-                const iv = setInterval(() => persistStatus('WAV exported!', true), 5);
+                let chans;
+                try { chans = await mixRangeChannels(0, totalFrames); }
+                catch (e) { persistStatus('Not enough memory to apply this effect. Trim to a shorter selection.', false); return; }
+                if (!chans) return;
+                const blob = await renderMacroToWavFromPcm(chans, sr, macroId, outFormat());
+                persistStatus(`Exporting ${outInfo().name}...`);
+                await saveFile(outFileName('splice'), blob, outInfo().mime);
+                const doneMsg = `${outInfo().name} exported!` + overNote(lastMacroOver, lastMacroLimited, outFormat());
+                spokenStatus(doneMsg, true);
+                const iv = setInterval(() => persistStatus(doneMsg, true), 5);
                 await new Promise((resolve) => setTimeout(resolve, 1000));
                 clearInterval(iv);
             } catch (err) {
@@ -5217,16 +4764,22 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         console.log('[Splicer] exportWavWithCurrentMacro macroId =', macroId);
 
         try {
-            const blob = await renderMacroBlobCached(macroId);
+            if (fxJobs.size || fxMissing()) {
+                persistStatus('Finishing clip and track effects before export...');
+                await ensureFxReady();
+            }
+            const blob = await renderMacroBlobCached(macroId, outFormat());
 
             let label = macroId;
             if (macroSelect && macroSelect.selectedIndex >= 0) {
                 label = macroSelect.options[macroSelect.selectedIndex].text || macroId;
             }
             const safeLabel = String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            persistStatus('Preparing Macro WAV for download...', true);
-            await saveFile(`splice-${safeLabel}.wav`, blob, 'audio/wav');
-            const intervalId5 = setInterval(() => persistStatus('Macro WAV exported!', true), 5);
+            persistStatus(`Preparing Macro ${outInfo().name} for download...`, true);
+            await saveFile(outFileName(`splice-${safeLabel}`), blob, outInfo().mime);
+            const doneMsg = `Macro ${outInfo().name} exported!` + overNote(lastMacroOver, lastMacroLimited, outFormat());
+            spokenStatus(doneMsg, true);
+            const intervalId5 = setInterval(() => persistStatus(doneMsg, true), 5);
             await new Promise((resolve) => setTimeout(resolve, 1000));
             clearInterval(intervalId5);
         } catch (err) {
@@ -5245,7 +4798,7 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (!enableStaticNoiseCheckbox.disabled) {
             staticNoisePreference = enabled;
         }
-        staticNoiseOptions.style.display = enabled ? 'block' : 'none';
+        staticNoiseOptions.hidden = !enabled;
         return enabled;
     };
 
@@ -5255,36 +4808,37 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         if (!enable60HzHumCheckbox.disabled) {
             enable60HzHum = enabled;
         }
-        humOptions.style.display = enabled ? 'block' : 'none';
+        humOptions.hidden = !enabled;
         return enabled;
     };
 
     const syncBitcrushUi = () => {
         if (!enableBitcrushCheckbox || !bitcrushOptions) return false;
         const enabled = enableBitcrushCheckbox.checked === true;
-        bitcrushOptions.style.display = enabled ? 'block' : 'none';
+        bitcrushOptions.hidden = !enabled;
         return enabled;
     };
 
     const syncVmifyUi = () => {
         if (!enableVmifyCheckbox || !vmifyOptions) return false;
         const enabled = enableVmifyCheckbox.checked === true;
-        vmifyOptions.style.display = enabled ? 'block' : 'none';
+        vmifyOptions.hidden = !enabled;
         return enabled;
     };
 
     if (macroSelect) {
         macroSelect.addEventListener('change', () => {
             const macroValue = document.getElementById('spliceMacros').value;
+            macroWaveformCancelledKey = null;
             rememberAudMacro(macroValue);
             if (macroValue === noisyMacroId) {
                 enableStaticNoiseCheckbox.checked = true;
                 enableStaticNoiseCheckbox.disabled = true;
-                staticNoiseOptions.style.display = 'none';
+                staticNoiseOptions.hidden = true;
             } else {
                 enableStaticNoiseCheckbox.disabled = false;
                 enableStaticNoiseCheckbox.checked = staticNoisePreference;
-                staticNoiseOptions.style.display = staticNoisePreference ? 'block' : 'none';
+                staticNoiseOptions.hidden = !staticNoisePreference;
             }
 
             invalidateMacroPreview();
@@ -5478,17 +5032,17 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
         const ttsControls = document.getElementById('ttsRatePitchControls2');
 
         if (/Speechify/i.test(voiceSelect.value) || parseSpfyVoiceId(voiceSelect.value) !== null) {
-            shouldBitcrushSpeechifyDiv.style.display = 'block';
+            shouldBitcrushSpeechifyDiv.hidden = false;
         } else {
-            shouldBitcrushSpeechifyDiv.style.display = 'none';
+            shouldBitcrushSpeechifyDiv.hidden = true;
         }
 
         const supportsProsody = backendSupportsProsody(voiceBackend);
 
         if (supportsProsody || parseEspeakVoiceId(voiceSelect.value) !== null) {
-            ttsControls.style.display = 'block';
+            ttsControls.hidden = false;
         } else {
-            ttsControls.style.display = 'none';
+            ttsControls.hidden = true;
         }
 
         const ttsVolumeRow = document.getElementById('ttsVolume2Row');
@@ -5508,6 +5062,593 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     enableVmifyCheckbox?.dispatchEvent(changeEvent);
     spliceLoudnessInput?.dispatchEvent(changeEvent);
 
+    function captureMaster() {
+        return {
+            macroId: pendingMasterMacro || (macroSelect && macroSelect.value) || 'FLAT',
+            chain: macroChain.map(SR.cleanItem),
+            level: getMacroLevel(),
+            loudness: spliceLoudnessInput ? spliceLoudnessInput.value : String(LOUDNESS_DBFS_DEFAULT),
+            vmify: { on: enableVmifyCheckbox?.checked === true, intensity: vmifyIntensityInput?.value ?? '1' },
+            bitcrush: { on: enableBitcrushCheckbox?.checked === true, bits: bitcrushBitsInput?.value ?? '8', downsample: bitcrushDownsampleInput?.value ?? '1' },
+            static: { on: staticNoisePreference === true, level: staticNoiseLevelInput?.value ?? '0.14', fadeDepth: staticNoiseFadeDepthInput?.value ?? '0.45', fadeRateHz: staticNoiseFadeRateInput?.value ?? '0.6' },
+            hum: { on: enable60HzHum === true, level: humLevelInput?.value ?? '0.01' },
+        };
+    }
+
+    function setMasterMacro(id) {
+        if (!macroSelect) return;
+        if (![...macroSelect.options].some((o) => o.value === id)) {
+            pendingMasterMacro = id;
+            return;
+        }
+        pendingMasterMacro = null;
+        const was = applyingMaster;
+        applyingMaster = true;
+        try {
+            macroSelect.value = id;
+            macroSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        } finally {
+            applyingMaster = was;
+        }
+    }
+
+    function applyMasterToControls(m) {
+        if (!m) return;
+        applyingMaster = true;
+        try {
+            macroChain = (m.chain || []).filter((it) => it && typeof it.id === 'string' && it.id).slice(0, MAX_CHAIN_ITEMS).map(SR.cleanItem);
+            persistMacroChain();
+            updateChainOption();
+            if (macroStrengthInput) macroStrengthInput.value = String(chainItemMix(m.level));
+            if (macroVolumeInput) macroVolumeInput.value = String(chainItemGainDb(m.level));
+            if (spliceLoudnessInput && m.loudness !== undefined && m.loudness !== null) spliceLoudnessInput.value = m.loudness;
+            const setFx = (box, on, fields) => {
+                if (box) box.checked = !!on;
+                for (const [input, value] of fields) if (input && value !== undefined && value !== null) input.value = value;
+            };
+            setFx(enableVmifyCheckbox, m.vmify?.on, [[vmifyIntensityInput, m.vmify?.intensity]]);
+            setFx(enableBitcrushCheckbox, m.bitcrush?.on, [[bitcrushBitsInput, m.bitcrush?.bits], [bitcrushDownsampleInput, m.bitcrush?.downsample]]);
+            setFx(enable60HzHumCheckbox, m.hum?.on, [[humLevelInput, m.hum?.level]]);
+            setFx(null, false, [[staticNoiseLevelInput, m.static?.level], [staticNoiseFadeDepthInput, m.static?.fadeDepth], [staticNoiseFadeRateInput, m.static?.fadeRateHz]]);
+            staticNoisePreference = m.static?.on === true;
+            if (enableStaticNoiseCheckbox) {
+                enableStaticNoiseCheckbox.disabled = false;
+                enableStaticNoiseCheckbox.checked = staticNoisePreference;
+            }
+            syncStaticNoiseUi();
+            sync60HzHumUi();
+            syncBitcrushUi();
+            syncVmifyUi();
+            setMasterMacro(m.macroId || 'FLAT');
+            syncMacroLevelUi();
+            invalidateMacroPreview();
+            scheduleMacroWaveformUpdate();
+        } finally {
+            applyingMaster = false;
+        }
+        if (editor) editor.refreshMaster();
+    }
+
+    function commitMaster(label = 'change master effects') {
+        if (applyingMaster) return;
+        const m = captureMaster();
+        if (!project.master) {
+            project.master = m;
+        } else if (!SM.sameJson(m, project.master)) {
+            editHistory.push(project, label);
+            project.master = m;
+            scheduleSave();
+        }
+        if (editor) editor.refreshMaster();
+    }
+
+    function syncControlsFromMaster() {
+        if (!project.master) {
+            project.master = captureMaster();
+            return;
+        }
+        if (!SM.sameJson(captureMaster(), project.master)) applyMasterToControls(project.master);
+    }
+
+    const masterControls = [macroSelect, macroStrengthInput, macroVolumeInput, spliceLoudnessInput,
+        enableVmifyCheckbox, vmifyIntensityInput, enableBitcrushCheckbox, bitcrushBitsInput, bitcrushDownsampleInput,
+        enableStaticNoiseCheckbox, staticNoiseLevelInput, staticNoiseFadeDepthInput, staticNoiseFadeRateInput,
+        enable60HzHumCheckbox, humLevelInput];
+    for (const input of masterControls) {
+        if (!input) continue;
+        input.addEventListener('change', (e) => {
+            if (applyingMaster) return;
+            if (e.target === macroSelect) pendingMasterMacro = null;
+            commitMaster();
+        });
+    }
+    if (macroSelect) {
+        new MutationObserver(() => {
+            if (pendingMasterMacro && [...macroSelect.options].some((o) => o.value === pendingMasterMacro)) setMasterMacro(pendingMasterMacro);
+        }).observe(macroSelect, { childList: true, subtree: true });
+    }
+
+    const macroLabelFor = (id) => {
+        if (!id || id === 'FLAT') return '';
+        if (id === 'CHAIN') return 'Macro chain (' + macroChain.length + ')';
+        const opt = macroSelect ? [...macroSelect.options].find((o) => o.value === id) : null;
+        return opt ? opt.textContent.trim() : id.replace(/^AUD:/, '').replace(/\.txt$/i, '');
+    };
+
+    const masterParts = (m) => {
+        const parts = [];
+        const macro = macroLabelFor(m.macroId);
+        if (macro) {
+            const mix = chainItemMix(m.level), gainDb = chainItemGainDb(m.level);
+            parts.push(macro + (mix !== CHAIN_MIX_MAX ? ' at ' + mix + '%' : '') + (gainDb ? ' ' + (gainDb > 0 ? '+' : '') + gainDb + ' dB' : ''));
+        }
+        if (m.vmify?.on) parts.push('VM effect');
+        if (m.bitcrush?.on) parts.push('Bitcrush');
+        if (m.static?.on && m.macroId !== noisyMacroId) parts.push('Static');
+        if (m.hum?.on) parts.push('60 Hz hum');
+        return parts;
+    };
+
+    const masterInfo = () => {
+        const m = project.master || captureMaster();
+        const parts = masterParts(m);
+        const lvl = parseFloat(m.loudness);
+        const levelDb = Number.isFinite(lvl) ? lvl : 0;
+        const pending = !!macroWaveformPendingKey;
+        const ready = !!(macroWaveformPcm && macroWaveformActiveKey && shouldUseMacroWaveform() && macroWaveformActiveKey === getMacroWaveformKey());
+        return {
+            effects: parts,
+            levelDb,
+            active: parts.length > 0,
+            state: !parts.length ? 'none' : (state.disk ? 'large' : (ready ? 'ready' : (pending || macroRenderActiveCount > 0 ? 'rendering' : 'dry'))),
+            bypass: masterBypass,
+        };
+    };
+
+    const focusMasterControls = () => {
+        const target = macroComboBtn || macroSelect;
+        if (!target) return;
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        target.focus({ preventScroll: true });
+    };
+
+    const editorMount = document.createElement('div');
+    editorMount.className = 'sp-mount';
+    const spliceDock = panel.querySelector('.splice-dock');
+    if (spliceDock) spliceDock.before(editorMount);
+    else panel.appendChild(editorMount);
+    let restoreDone = false;
+    const TONE_CODES = { 0: 'wat', 1: 'nwr', 2: 'pelmorex', 3: 'buzzer', 5: 'nwr-wat', 6: 'wat-nwr' };
+    const ALERT_ROLES = [['header', 'Header'], ['attn', 'Attention'], ['voice', 'Message'], ['eom', 'EOM'], ['free', 'Pre/Post']];
+
+    const genForPart = (role, info) => {
+        const base = { mode: info.mode, clip: !!info.clip, emulate: !!info.emulate };
+        if (role === 'header') return { kind: 'same-header', header: info.header, ...base };
+        if (role === 'attn') return TONE_CODES[info.tone] ? { kind: 'attention', tone: TONE_CODES[info.tone], seconds: info.tlen, ...base } : null;
+        if (role === 'eom') return { kind: 'eom', ...base };
+        if (role === 'voice' && info.announcementType === 'tts' && info.text) return { kind: 'tts', text: info.text, voice: info.voice };
+        return null;
+    };
+
+    const ROLE_ORDER = { header: 0, attn: 1, voice: 2, eom: 3, bed: 4, free: 5 };
+    const roleTrack = (role, name) => {
+        const found = project.tracks.find((t) => t.role === role);
+        if (found) return found;
+        const after = project.tracks.findIndex((t) => (ROLE_ORDER[t.role] ?? 9) > (ROLE_ORDER[role] ?? 9));
+        return SM.addTrack(project, role, name, after < 0 ? project.tracks.length : after);
+    };
+
+    const exactSpan = async (gen, src, a, b) => {
+        if (!gen || gen.kind === 'tts' || project.sampleRate !== SG.GEN_RATE) return null;
+        const rendered = await SG.renderGenerator(gen).catch(() => null);
+        if (!rendered || !rendered.length) return null;
+        let lead = 0;
+        while (lead < rendered.length && rendered[lead] === 0) lead++;
+        let first = a;
+        while (first < b && src[first] === 0) first++;
+        const start = first - lead;
+        if (start < a || start + rendered.length > b) return null;
+        for (let i = 0; i < rendered.length; i++) if (rendered[i] !== src[start + i]) return null;
+        return [start, start + rendered.length];
+    };
+
+    const importAlert = async ({ pcm, sampleRate, parts, info }) => {
+        const sr = project.sampleRate;
+        const src = sampleRate === sr ? pcm : resamplePcmSinc(pcm, sampleRate, sr);
+        const scale = sr / sampleRate;
+        const spans = [];
+        for (const [role, name] of ALERT_ROLES) {
+            for (const part of parts.filter((x) => x.role === role)) {
+                let a = Math.round(part.from * scale), b = Math.min(src.length, Math.round(part.to * scale));
+                const gen = genForPart(role, info);
+                const exact = await exactSpan(gen, src, a, b);
+                if (exact) {
+                    [a, b] = exact;
+                } else {
+                    while (a < b && src[a] === 0) a++;
+                    while (b > a && src[b - 1] === 0) b--;
+                }
+                if (b > a) spans.push({ role, name, a, b, gen });
+            }
+        }
+        const base = SM.projectLength(project) ? SM.projectLength(project) + sr : 0;
+        editHistory.push(project, 'open alert from the Encoder');
+        let made = 0;
+        for (const { role, name, a, b, gen } of spans) {
+            const label = role === 'free' ? 'Pre/post audio' : name;
+            const sid = SM.addSource(project, src.slice(a, b), label);
+            SM.placeClip(project, roleTrack(role, name).id, SM.makeClip(sid, base + a, b - a, { label, ...(gen ? { gen } : {}) }));
+            made++;
+        }
+        projectChanged();
+        persistStatus(`Opened the alert from the Encoder: ${made} part${made === 1 ? '' : 's'} on their own tracks.`, true);
+        if (editor) editor.announce(`Opened the alert from the Encoder with ${made} parts. Each part is on its own track.`);
+    };
+
+    const receiveHandoff = async (payload) => {
+        if (payload.alert) {
+            await importAlert(payload.alert).catch((err) => reportErrorStatus('Could not open the alert from the Encoder.', err));
+        }
+        if (payload.audio) {
+            await handleFile(payload.audio);
+            setButtonDisabledState(!hasAudio());
+        }
+        if (typeof payload.text === 'string') {
+            if (window.splicerEditor) window.splicerEditor.setValue(payload.text);
+            else if (ttsInput) ttsInput.value = payload.text;
+            persistStatus('Loaded TTS text from another tool.', true);
+        }
+    };
+
+    const renderGen = async (gen) => {
+        if (gen.kind === 'tts') {
+            const out = await synthTts(gen.text, gen.voice);
+            if (!out || !out.pcm || !out.pcm.length) throw new Error('the voice returned no audio');
+            return out.sampleRate === project.sampleRate ? out.pcm : resamplePcm(out.pcm, out.sampleRate, project.sampleRate);
+        }
+        const pcm = await SG.renderGenerator(gen);
+        return project.sampleRate === SG.GEN_RATE ? pcm : resamplePcmSinc(pcm, SG.GEN_RATE, project.sampleRate);
+    };
+
+    const regenerateClip = async (clipId, nextGen) => {
+        const f = SM.findClip(project, clipId);
+        if (!f || !(nextGen || f.clip.gen)) return false;
+        const gen = nextGen || f.clip.gen;
+        persistStatus(`Generating ${SG.GEN_LABELS[gen.kind] || 'audio'}...`);
+        let pcm;
+        try {
+            pcm = await renderGen(gen);
+        } catch (err) {
+            reportErrorStatus(`Could not generate ${SG.GEN_LABELS[gen.kind] || 'audio'}: ${err.message || err}`, err);
+            return false;
+        }
+        if (!SM.findClip(project, clipId)) return false;
+        editHistory.push(project, nextGen ? 'edit generator' : 'regenerate');
+        const sid = SM.addSource(project, pcm, f.clip.label || SG.GEN_LABELS[gen.kind]);
+        const c = SM.replaceClipAudio(project, clipId, sid, pcm.length);
+        c.gen = { ...gen };
+        projectChanged();
+        persistStatus(`${SG.GEN_LABELS[gen.kind] || 'Clip'} regenerated.`, true);
+        return true;
+    };
+
+    const createAlert = async () => {
+        const v = await openAlertDialog();
+        if (!v) return;
+        const sr = project.sampleRate;
+        const ms = (x) => Math.round(sr * (x / 1000));
+        const gaps = SG.partGapsMs(v.mode);
+        const base = { mode: v.mode, clip: v.clip, emulate: v.emulate };
+        const plan = [];
+        if (v.tone !== 'pelmorex') plan.push(['header', 'Header', { kind: 'same-header', header: v.header, ...base }, 0]);
+        if (v.tone !== 'none') plan.push(['attn', 'Attention', { kind: 'attention', tone: v.tone, seconds: v.seconds, ...base }, gaps.headersToAttention]);
+        if (v.text) plan.push(['voice', 'Message', { kind: 'tts', text: v.text, voice: (voiceSelect && voiceSelect.value) || 'wasm' }, gaps.attentionToMessage]);
+        if (v.eom) plan.push(['eom', 'EOM', { kind: 'eom', ...base }, gaps.messageToEom]);
+        if (!plan.length) return;
+        persistStatus('Generating the alert...');
+        const rendered = [];
+        for (const [role, name, gen, gapBefore] of plan) {
+            try {
+                rendered.push({ role, name, gen, gapBefore, pcm: await renderGen(gen) });
+            } catch (err) {
+                reportErrorStatus(`Could not generate the ${name.toLowerCase()}: ${err.message || err}`, err);
+                return;
+            }
+        }
+        const start = SM.projectLength(project) ? SM.projectLength(project) + sr : 0;
+        editHistory.push(project, 'new alert');
+        let cursor = start;
+        rendered.forEach((r, i) => {
+            if (i) cursor += ms(r.gapBefore);
+            const sid = SM.addSource(project, r.pcm, r.name);
+            SM.placeClip(project, roleTrack(r.role, r.name).id, SM.makeClip(sid, cursor, r.pcm.length, { label: r.name, gen: r.gen }));
+            cursor += r.pcm.length;
+        });
+        if (v.bed) {
+            const gen = { kind: 'noise-bed', seconds: (cursor - start) / sr, levelDb: v.bedDb, seed: (Date.now() >>> 0) || 1 };
+            const pcm = await renderGen(gen);
+            const sid = SM.addSource(project, pcm, 'Noise bed');
+            SM.placeClip(project, roleTrack('bed', 'Noise Bed').id, SM.makeClip(sid, start, pcm.length, { label: 'Noise bed', gen }));
+        }
+        projectChanged();
+        persistStatus(`Created an alert with ${rendered.length + (v.bed ? 1 : 0)} parts.`, true);
+        if (editor) editor.announce(`Created an alert: ${rendered.map((r) => r.name).join(', ')}${v.bed ? ', noise bed' : ''}. Each part is on its own track.`);
+    };
+
+    const spaceAlert = () => {
+        const headerClip = project.tracks.filter((t) => t.role === 'header').flatMap((t) => t.clips).find((c) => c.gen && c.gen.mode);
+        const g = SG.partGapsMs(headerClip ? headerClip.gen.mode : 'DEFAULT');
+        const sr = project.sampleRate;
+        const ms = (x) => Math.round(sr * (x / 1000));
+        const hasRole = (r) => project.tracks.some((t) => t.role === r && t.clips.length);
+        if (!['header', 'attn', 'voice', 'eom'].some(hasRole)) {
+            persistStatus('Add header, attention, message or EOM clips first.', false);
+            return 0;
+        }
+        const gaps = {
+            attn: ms(g.headersToAttention),
+            voice: hasRole('attn') ? ms(g.attentionToMessage) : ms(g.headersToAttention + g.attentionToMessage),
+            eom: ms(g.messageToEom),
+        };
+        editHistory.push(project, 'space alert');
+        const moved = SM.layoutAlert(project, gaps);
+        if (!moved) {
+            editHistory.drop();
+            return 0;
+        }
+        projectChanged();
+        return moved;
+    };
+
+    const ROLE_GEN = { header: 'same-header', attn: 'attention', eom: 'eom' };
+
+    const generateOnTrack = async (trackId) => {
+        const t = SM.findTrack(project, trackId);
+        const kind = t ? ROLE_GEN[t.role] : null;
+        if (!kind) return false;
+        const v = await openAlertDialog({ only: kind, adding: true, initial: { tone: 'wat' } });
+        if (!v) return false;
+        const base = { mode: v.mode, clip: v.clip, emulate: v.emulate };
+        const gen = kind === 'same-header' ? { kind, header: v.header, ...base }
+            : (kind === 'attention' ? { kind, tone: v.tone, seconds: v.seconds, ...base } : { kind, ...base });
+        const label = SG.GEN_LABELS[kind];
+        let pcm;
+        try {
+            pcm = await renderGen(gen);
+        } catch (err) {
+            reportErrorStatus(`Could not generate the ${label.toLowerCase()}: ${err.message || err}`, err);
+            return false;
+        }
+        if (!SM.findTrack(project, trackId)) return false;
+        editHistory.push(project, `generate ${label.toLowerCase()}`);
+        const sid = SM.addSource(project, pcm, label);
+        const at = Math.round(getNeedleTime() * project.sampleRate);
+        const clip = SM.placeClip(project, trackId, SM.makeClip(sid, at, pcm.length, { label, gen }));
+        projectChanged();
+        if (editor && clip) editor.selectClip(clip.id);
+        return true;
+    };
+
+    let recorder = null;
+    let recWorklet = null;
+    let recCount = 0;
+
+    const recordingFailed = (err) => {
+        const name = err && err.name;
+        if (name === 'NotAllowedError' || name === 'SecurityError') return 'Microphone access was blocked. Allow the microphone for this site or app, then try again.';
+        if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No microphone was found.';
+        if (name === 'NotReadableError') return 'The microphone is in use by another app.';
+        return `Could not start recording: ${(err && err.message) || err}`;
+    };
+
+    const startRecording = async () => {
+        if (recorder) return false;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            spokenStatus('This browser does not offer microphone recording here.', false);
+            return false;
+        }
+        if (playingSource || pausedPlayback) stopPlayback();
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        } catch (err) {
+            spokenStatus(recordingFailed(err), false);
+            return false;
+        }
+        const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') await ctx.resume();
+        const rec = {
+            stream, chunks: [], frames: 0, rate: ctx.sampleRate, live: true, done: null,
+            at: Math.round(getNeedleTime() * project.sampleRate), started: performance.now(),
+            src: ctx.createMediaStreamSource(stream), node: null, mute: ctx.createGain(), timer: null,
+        };
+        const maxFrames = (IN_APP_WEBVIEW ? 600 : 3600) * rec.rate;
+        const take = (data) => {
+            if (data === 'done') { if (rec.done) rec.done(); return; }
+            if (!rec.live && !rec.done) return;
+            rec.chunks.push(data);
+            rec.frames += data.length;
+            if (rec.live && rec.frames >= maxFrames) stopRecording();
+        };
+        try {
+            if (!ctx.audioWorklet || typeof AudioWorkletNode !== 'function') throw new Error('no AudioWorklet');
+            if (!recWorklet) recWorklet = ctx.audioWorklet.addModule(new URL('./splicer/rec-worklet.js', import.meta.url).href);
+            await recWorklet;
+            rec.node = new AudioWorkletNode(ctx, 'splicer-rec-capture', { numberOfOutputs: 1, outputChannelCount: [1] });
+            rec.node.port.onmessage = (e) => take(e.data);
+        } catch (_) {
+            recWorklet = null;
+            rec.node = ctx.createScriptProcessor(4096, 1, 1);
+            rec.node.onaudioprocess = (e) => take(new Float32Array(e.inputBuffer.getChannelData(0)));
+        }
+        rec.mute.gain.value = 0;
+        rec.src.connect(rec.node);
+        rec.node.connect(rec.mute);
+        rec.mute.connect(ctx.destination);
+        recorder = rec;
+        if (editor) editor.setRecording(true, 0);
+        rec.timer = setInterval(() => { if (editor) editor.setRecording(true, (performance.now() - rec.started) / 1000); }, 250);
+        persistStatus('Recording from the microphone...');
+        if (editor) editor.announce('Recording. Press R or Stop Recording to finish.');
+        return true;
+    };
+
+    const stopRecording = async () => {
+        const rec = recorder;
+        if (!rec) return false;
+        recorder = null;
+        rec.live = false;
+        clearInterval(rec.timer);
+        if (rec.node.port) {
+            await new Promise((resolve) => {
+                rec.done = resolve;
+                setTimeout(resolve, 400);
+                rec.node.port.postMessage('stop');
+            });
+        }
+        rec.done = null;
+        for (const n of [rec.src, rec.node, rec.mute]) {
+            try { n.disconnect(); } catch (_) {}
+        }
+        rec.stream.getTracks().forEach((t) => t.stop());
+        if (editor) editor.setRecording(false, 0);
+        if (!rec.frames) {
+            spokenStatus('Nothing was recorded.', false);
+            return false;
+        }
+        let pcm = new Float32Array(rec.frames);
+        let o = 0;
+        for (const c of rec.chunks) { pcm.set(c, o); o += c.length; }
+        if (rec.rate !== project.sampleRate) pcm = resamplePcmSinc(pcm, rec.rate, project.sampleRate);
+        editHistory.push(project, 'record');
+        let trackId = editor ? editor.targetTrackId('voice') : null;
+        if (!trackId || !SM.findTrack(project, trackId)) trackId = (project.tracks.find((x) => x.role === 'voice') || SM.addTrack(project, 'voice')).id;
+        const label = `Recording ${++recCount}`;
+        const sid = SM.addSource(project, pcm, label);
+        const clip = SM.placeClip(project, trackId, SM.makeClip(sid, rec.at, pcm.length, { label }));
+        projectChanged();
+        const t = SM.findTrack(project, trackId);
+        const msg = `Recorded ${(pcm.length / project.sampleRate).toFixed(2)} seconds onto ${t ? t.name : 'the track'}.`;
+        persistStatus(msg, true);
+        if (editor && clip) {
+            editor.selectClip(clip.id);
+            editor.announce(msg);
+        }
+        return true;
+    };
+
+    const toggleRecording = () => (recorder ? stopRecording() : startRecording())
+        .catch((err) => reportErrorStatus('Recording failed.', err));
+
+    const editGenerator = async (clipId) => {
+        const f = SM.findClip(project, clipId);
+        if (!f || !f.clip.gen || f.clip.gen.kind === 'tts' || f.clip.gen.kind === 'noise-bed') return false;
+        const g = f.clip.gen;
+        const v = await openAlertDialog({ only: g.kind, initial: { ...g } });
+        if (!v) return false;
+        const next = { ...g, mode: v.mode, clip: v.clip, emulate: v.emulate };
+        if (g.kind === 'same-header') next.header = v.header;
+        if (g.kind === 'attention') Object.assign(next, { tone: v.tone, seconds: v.seconds });
+        return regenerateClip(clipId, next);
+    };
+
+    editor = createEditor({
+        mount: editorMount,
+        slots: {
+            projects: panel.querySelector('.splice-projects-slot'),
+            help: panel.querySelector('.splice-help-slot'),
+        },
+        getProject: () => project,
+        history: editHistory,
+        changed: () => projectChanged(),
+        play: async (mode) => {
+            if (mode !== 'selection' && !pausedPlayback && getNeedleTime() >= duration() - 0.005) playheadTime = 0;
+            if (mode === 'selection') await playSelection();
+            else await playWholeFile();
+            syncPlayButtons();
+        },
+        pause: () => {
+            pausePlayback();
+            if (pausedPlayback && Number.isFinite(pausedPlayback.resumeFrom)) playheadTime = clamp(pausedPlayback.resumeFrom, 0, duration());
+            syncPlayButtons();
+        },
+        stop: () => stopPlayback(),
+        isPlaying: () => !!playingSource && playSpan > 0,
+        playMode: () => playingMode,
+        needleSeconds: () => getNeedleTime(),
+        setPlayheadSeconds: (t) => {
+            if (playingSource) stopPlayback();
+            pausedPlayback = null;
+            playheadTime = clamp(t, 0, duration());
+        },
+        outputPreview: () => {
+            const out = masterBypass ? { pcm: state.pcm, sampleRate: state.sampleRate } : getWaveformRenderData();
+            if (!out.pcm || !out.pcm.length) return null;
+            return { pcm: out.pcm, sampleRate: out.sampleRate, gain: getExportGain() };
+        },
+        master: () => masterInfo(),
+        setMasterBypass: (v) => {
+            masterBypass = !!v;
+            if (playingSource && !macroPreviewPlayback) {
+                const mode = playingMode;
+                pausePlayback();
+                (mode === 'selection' ? playSelection() : playWholeFile()).catch((e) => persistStatus(`Playback failed: ${e.message || e}`, false));
+            }
+        },
+        openMasterEffects: () => focusMasterControls(),
+        describeGen: (gen) => SG.describeGenerator(gen),
+        regenerate: (clipId) => regenerateClip(clipId),
+        editGenerator: (clipId) => editGenerator(clipId),
+        spaceAlert: () => spaceAlert(),
+        canGenerate: (role) => !!ROLE_GEN[role],
+        toggleRecord: () => toggleRecording(),
+        isRecording: () => !!recorder,
+        generateOnTrack: (trackId) => generateOnTrack(trackId).catch((err) => reportErrorStatus('Could not generate the clip.', err)),
+        newAlert: () => createAlert().catch((err) => reportErrorStatus('Could not create the alert.', err)),
+        setMasterGain: (v) => {
+            if (!spliceLoudnessInput) return;
+            spliceLoudnessInput.value = String(v);
+            spliceLoudnessInput.dispatchEvent(new Event('change', { bubbles: true }));
+        },
+        editEffects: (kind, id) => {
+            if (openEffectsEditorFn) openEffectsEditorFn(kind, id);
+        },
+        clipAudio: (c) => SM.clipAudio(project, c, fxPeek),
+        fxState: (kind, x) => {
+            if (!SM.hasFx(x)) return 'none';
+            const key = kind === 'clip' ? clipFxKey(x) : trackFxKey(x);
+            if (fxStore().has(key)) return 'ready';
+            if (fxFailed.has(key)) return 'failed';
+            return 'rendering';
+        },
+        fxLabel: (items) => (items || []).filter((e) => e && !e.bypass).map((e) => e.label || e.id).join(', '),
+        status: (msg, ok = true) => persistStatus(msg, ok),
+        onSelectionChange: (a, b) => {
+            state.selection = { start: a, end: b };
+        },
+        projects: {
+            list: () => listNamedProjects(),
+            save: (name) => saveProject(NAMED_PREFIX + name),
+            open: async (name) => {
+                const payload = await loadProject(NAMED_PREFIX + name);
+                const p = projectFromPayload(payload);
+                if (!p) throw new Error('saved project is empty or unreadable');
+                const lost = await dropMissingDisk(p);
+                project = p;
+                if (lost) persistStatus(`${lost} clip${lost === 1 ? '' : 's'} from large files were removed because the files are no longer in device storage.`, false);
+                if (!project.tracks.length) SM.addTrack(project, 'voice');
+                if (project.master) applyMasterToControls(project.master);
+                else project.master = captureMaster();
+                playheadTime = 0;
+                projectChanged();
+            },
+            remove: (name) => deleteNamedProject(name),
+            exportFile: (name) => exportProjectFile(name),
+            importFile: (file) => importProjectFile(file),
+        },
+    });
+    syncEditorMode();
+
     setupMacroCombo();
     setupMacroUpload();
     setupChainEditor();
@@ -5516,8 +5657,11 @@ import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES
     restoreMacroChain();
     ensureAudacityMacroList();
     bindEvents();
-    updateSelectionLabels();
     drawWaveform();
-    restoreFromCache();
+    restoreFromCache().then(() => {
+        restoreDone = true;
+        sweepDiskFiles();
+        receive('splicer', receiveHandoff);
+    });
     await getVoiceList();
 })();

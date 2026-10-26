@@ -12,6 +12,7 @@ import {
 import { E2T } from '../E2T/EAS2Text-NG.js';
 import { loadSeattyWasm, createSeattySameDemod } from './seatty-same-wasm.js';
 import { SEATTY_EVENT_TONE, decodeBatches, readWavLayout, wavChannelChunks } from './seatty-worker.js';
+import { createSendMenu, receive, audioFile } from './handoff.js';
 
 loadSeattyWasm();
 
@@ -2231,6 +2232,7 @@ async function fetchAndStore() {
 
     async function triggerRecordingDownload(buffer) {
         const filename = `eas-recording-${new Date().toISOString().replace(/[:.]/g, "-")}.wav`;
+        lastSourceAudio = audioFile(buffer, filename);
         try {
             await saveFile(filename, buffer, "audio/wav");
         } catch (e) {
@@ -4101,6 +4103,7 @@ async function fetchAndStore() {
 
     let fileDecodeActive = false;
     let fileDecodeChain = Promise.resolve();
+    let lastSourceAudio = null;
 
     async function runSourceDecode(blob) {
         fileDecodeActive = true;
@@ -4118,6 +4121,7 @@ async function fetchAndStore() {
     }
 
     function decodeAudioSource(blob) {
+        lastSourceAudio = audioFile(blob, blob.name || "decoded-audio.wav", blob.type || "audio/wav");
         const run = fileDecodeChain.then(() => runSourceDecode(blob));
         fileDecodeChain = run.catch(() => {});
         return run;
@@ -5216,9 +5220,7 @@ async function fetchAndStore() {
         const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
         let eas = E2T(cleanHeader, null, false, userTimezone);
-        const encodedHeader = encodeURIComponent(header.rawHeader);
         const easText = eas.replace(/\n/g, "<br>");
-        const openInEncoderButton = `<button id="openInEncoderButton${requestToken}">Open in SAME Encoder</button>`;
 
         if (easText.match(/(Warning|Emergency|Immediate)/i) && !easText.match(/(Demo)/i)) {
             modalBox.style.border = "3px solid red";
@@ -5268,15 +5270,30 @@ async function fetchAndStore() {
         infoContainer.appendChild(document.createElement("br"));
         infoContainer.appendChild(createInfo(`Human-Readable Alert Text: "${easText}"`));
         infoContainer.appendChild(document.createElement("br"));
-        infoContainer.appendChild(createInfo(openInEncoderButton));
+        infoContainer.appendChild(createAlertSendMenu(cleanHeader, eas).element);
+    }
 
-        const openInEncoderBtn = document.getElementById(`openInEncoderButton${requestToken}`);
-        if (openInEncoderBtn) {
-            openInEncoderBtn.addEventListener("click", () => {
-                const encoderUrl = `index.html?tool=encoder&header=${encodedHeader}`;
-                window.location.href = encoderUrl;
-            });
-        }
+    function createAlertSendMenu(cleanHeader, easText) {
+        const leaveModal = (payload) => {
+            closeModal();
+            return payload;
+        };
+        return createSendMenu({
+            label: "Send alert to…",
+            title: "Open this alert in another tool",
+            items: [
+                { tool: "encoder", label: "SAME Encoder (header)", what: "Header", payload: () => leaveModal({ header: cleanHeader }) },
+                { tool: "crawl", label: "Text Crawl Generator (header)", what: "Header", payload: () => leaveModal({ header: cleanHeader }) },
+                { tool: "encoder", label: "SAME Encoder (alert text as TTS)", what: "Alert text", payload: () => leaveModal({ text: easText }) },
+                {
+                    tool: "splicer",
+                    label: "Audio Splicer (decoded audio)",
+                    what: "Decoded audio",
+                    unavailable: () => lastSourceAudio ? "" : "only for alerts decoded from a file or recording",
+                    payload: () => leaveModal({ audio: lastSourceAudio }),
+                },
+            ],
+        });
     }
 
     function timeToReadable(time, use24) {
@@ -5796,26 +5813,35 @@ async function fetchAndStore() {
     }
 
     const audiofileInput = document.getElementById('audiofile');
+
+    async function decodeUserFile(file) {
+        addStatus("PROCESSING...", "yellow");
+        audiofileInput.disabled = true;
+        decoderToggle.disabled = true;
+        decoderLoad.disabled = true;
+        resetDecoderState();
+        try {
+            await decodeAudioSource(file);
+        } catch (e) {
+            console.error("Failed to decode uploaded audio file:", e);
+            addStatus("FAILED TO READ AUDIO FILE!", "red");
+        } finally {
+            audiofileInput.disabled = false;
+            decoderToggle.disabled = false;
+            decoderLoad.disabled = false;
+            audiofileInput.value = "";
+        }
+    }
+
     if (audiofileInput) {
         audiofileInput.addEventListener('change', async function () {
             const file = this.files && this.files[0];
             if (!file) return;
-            addStatus("PROCESSING...", "yellow");
-            audiofileInput.disabled = true;
-            decoderToggle.disabled = true;
-            decoderLoad.disabled = true;
-            resetDecoderState();
-            try {
-                await decodeAudioSource(file);
-            } catch (e) {
-                console.error("Failed to decode uploaded audio file:", e);
-                addStatus("FAILED TO READ AUDIO FILE!", "red");
-            } finally {
-                audiofileInput.disabled = false;
-                decoderToggle.disabled = false;
-                decoderLoad.disabled = false;
-                audiofileInput.value = "";
-            }
+            await decodeUserFile(file);
+        });
+
+        receive('decoder', (payload) => {
+            if (payload.audio) decodeUserFile(payload.audio);
         });
     }
 

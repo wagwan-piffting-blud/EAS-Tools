@@ -1,5 +1,19 @@
 # EAS Tools Changelog
 
+2026-10-26:
+
+- The Splicer is now redone and much more like Audacity in some regards. It now has a proper waveform display, and the ability to select a portion of the audio to apply effects to. The waveform display is interactive, allowing users to zoom in and out, and to select specific portions of the audio for editing. The splicer tool now also supports multiple tracks, allowing users to layer audio files on top of each other for more complex audio processing. This change provides users with a more powerful and flexible audio editing experience, similar to what they would find in a dedicated audio editing application like Audacity or Wavacity in a browser. Thanks to user @jakescooty for suggesting this change, as it was a long time coming and I finally got the time to implement it and test it fully before deploying it. Enjoy!
+
+- Fix GitHub issues #129, #133, #137, #138, #141, #142, #143, and #144. Thank you to everyone who reported these various issues with EAS Tools.
+
+- Add a "Send To..." button for most tools. This allows you to switch between tools more easily, and to send the output of one tool to another tool for further processing. For example, you can now generate a SAME message in the encoder, and then send it directly to the splicer for further editing, or to the decoder for testing. This change improves the workflow between tools and allows users to more easily create complex audio projects using multiple tools in EAS Tools.
+
+- Update spfy wasm build to version 2026.10.26.
+
+- NOTE to native app users: The native apps will be updated to version 3.7.0 some time in the next few days, which will include all of the changes made in this update, hopefully including a native port/version of the Splicer tool. Please be patient as the app store review process can take some time.
+
+---
+
 2026-10-17:
 
 - Update TTS voice list page to include the most current version of the VoiceText voices. Thanks to GitHub user @jakescooty for reminding me to update the list, as it was using the incorrect versions.

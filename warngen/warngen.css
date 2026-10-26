@@ -383,6 +383,58 @@ body.mode-areas .leaflet-interactive {
     background: var(--wg-info-bg-hover);
 }
 
+/* Send to… menu */
+.send-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.send-menu[hidden],
+.send-menu__list[hidden] {
+    display: none;
+}
+
+.send-menu__list {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 1100;
+    min-width: 16rem;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    background: var(--wg-surface-raised);
+    border: 1px solid var(--wg-border-strong);
+    border-radius: 4px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.send-menu__item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    color: var(--wg-text);
+    border: 0;
+}
+
+.send-menu__item:hover,
+.send-menu__item:focus {
+    background: var(--wg-info-bg-hover);
+    color: var(--wg-text);
+    outline: none;
+}
+
+.send-menu__item:focus-visible {
+    outline: 2px solid var(--wg-info);
+    outline-offset: -2px;
+}
+
+.send-menu__item[aria-disabled="true"] {
+    color: var(--wg-text-label);
+    cursor: not-allowed;
+}
+
 .help-bar {
     background: var(--wg-surface-bar);
     color: var(--wg-text-bar);

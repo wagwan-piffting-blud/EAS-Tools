@@ -768,7 +768,7 @@
     };
     function buildDistortionTable(type, p) {
         const STEPS = 1024, SIZE = 2*STEPS+1, T = new Float64Array(SIZE);
-        const threshold = DB2LIN(p.thrDb);
+        const threshold = DB2LIN(type === 0 || type === 1 ? -6 : p.thrDb);
         let makeup = 1.0;
         const LogCurve = (th, v, r) => th + ((Math.exp(r*(th-v))-1)/-r);
         const Cubic = (x) => x - (Math.pow(x,3)/3);
@@ -795,8 +795,10 @@
             case 8: { const nf=DB2LIN(p.noiseFloor), passes=p.repeats, np=6;
                 const gf=[0.80,1.00,1.20,1.20,1.00,0.80], gl=[0.0001,nf,0.1,0.3,0.5,1.0], add=[0,0,0,0,0,0];
                 for (let i=0;i<np-1;i++) add[i+1]=add[i]+(gl[i]*(gf[i]-gf[i+1]));
+                const frac = p.p1/100;
                 for (let n=STEPS;n<SIZE;n++){ T[n]=(n-STEPS)/STEPS;
-                    for (let j=0;j<passes;j++){ let idx=np-1; for(let i=idx;i>=0&&T[n]<gl[i];i--) idx=i; T[n]=T[n]*gf[idx]+add[idx]; } } copyHalf(); break; }
+                    for (let j=0;j<passes;j++){ let idx=np-1; for(let i=idx;i>=0&&T[n]<gl[i];i--) idx=i; T[n]=T[n]*gf[idx]+add[idx]; }
+                    let fi=np-1; for(let i=fi;i>=0&&T[n]<gl[i];i--) fi=i; T[n]+=frac*((T[n]*(gf[fi]-1))+add[fi]); } copyHalf(); break; }
             case 9: { const amount=(p.p1/50)-1, ss=1/STEPS; let idx=STEPS;
                 for (let n=0;n<=STEPS;n++){ T[idx]=n*ss; idx++; } idx=STEPS-1;
                 for (let n=1;n<=STEPS;n++){ T[idx]=n*ss*amount; idx--; } break; }
@@ -1424,13 +1426,15 @@
         'Align_StartToZero','Align_StartToSelStart','Join','Disjoin','PanCenter','SetLabelTrack','NewLabelTrack',
     ]);
 
-    const NON_UNDOABLE = new Set([
-        'SelectAll','SelAllTracks','Select','SelectTime','SelectTracks','SelTrackStartToEnd','SelectNone',
-        'SelSave','SelRestore','SelCursorEnd','SelStartToCursor','SelCursorStoEnd','SelSyncLockTracks',
-        'SelectFrequencies','Copy','Undo','Redo','PanLeft','PanRight','PanCenter','ZoomFit','ZoomNormal','ZoomIn','ZoomOut','FitInWindow',
-        'SkipSelStart','SkipSelEnd','CursTrackStart','CursTrackEnd','CursSelStart','CursSelEnd',
-        'CursProjectStart','CursProjectEnd','CursNext','CollapseAllTracks','ExpandAllTracks',
-        'SetTrackStatus','SetTrackVisuals','Align_StartToZero','Align_StartToSelStart',
+    const PUSHES_UNDO = new Set([
+        'MixAndRender','MixAndRenderToNewTrack','Paste','Cut','Delete','Duplicate','NewMonoTrack','NewStereoTrack',
+        'NewLabelTrack','RemoveTracks','RemoveAudioTracks','PanLeft','PanRight','PanCenter','Trim','Split','SplitCut',
+        'SplitDelete','SplitNew','Join','Disjoin','Resample','Align_StartToZero','Align_StartToSelStart','Import2',
+    ]);
+    const MODIFIES_UNDO = new Set([
+        'SelectAll','SelAllTracks','SelectNone','SelTrackStartToEnd','SelStartToCursor','SelCursorEnd','SelCursorStoEnd',
+        'SelSyncLockTracks','SelRestore','CursSelStart','CursSelEnd','CursTrackStart','CursTrackEnd',
+        'CursProjectStart','CursProjectEnd','SkipSelStart','SkipSelEnd',
     ]);
     function snapshotProj(proj) {
         return { tracks: proj.tracks.map(t => isStereo(t) ? { L: t.L.slice(), R: t.R.slice() } : t.slice()),
@@ -1566,11 +1570,31 @@
     function trackLen(t) { return isStereo(t) ? Math.max(t.L.length, t.R.length) : t.length; }
     function panLgain(p) { return p > 0 ? 1 - p : 1; }
     function panRgain(p) { return p < 0 ? 1 + p : 1; }
-    function downmix(t) {
+    function downmix(t, sum) {
         if (!isStereo(t)) return t;
-        const n = Math.max(t.L.length, t.R.length), o = new Float32Array(n);
-        for (let i = 0; i < n; i++) o[i] = ((t.L[i] || 0) + (t.R[i] || 0)) * 0.5;
+        const n = Math.max(t.L.length, t.R.length), o = new Float32Array(n), k = sum ? 1 : 0.5;
+        for (let i = 0; i < n; i++) o[i] = ((t.L[i] || 0) + (t.R[i] || 0)) * k;
         return o;
+    }
+    function mapTrack(t, fn) { return isStereo(t) ? { L: fn(t.L, 'L'), R: fn(t.R, 'R') } : fn(t, null); }
+    function selBounds(proj, len) {
+        if (!proj.selRange) return [0, len];
+        const a = Math.max(0, Math.min(len, proj.selRange[0]));
+        return [a, Math.max(a, Math.min(len, proj.selRange[1]))];
+    }
+    function deleteRange(c, a, b) {
+        const out = new Float32Array(c.length - (b - a));
+        out.set(c.subarray(0, a));
+        out.set(c.subarray(b), a);
+        return out;
+    }
+    function insertRange(c, clip, a, b) {
+        const head = Math.min(a, c.length), pad = Math.max(0, a - c.length), tail = Math.min(Math.max(a, b), c.length);
+        const out = new Float32Array(head + pad + clip.length + (c.length - tail));
+        out.set(c.subarray(0, head));
+        out.set(clip, head + pad);
+        out.set(c.subarray(tail), head + pad + clip.length);
+        return out;
     }
     function noiseThing(carrier, modulator) {
         const n = carrier.length, bs = 10, nb = Math.max(1, Math.ceil(modulator.length/bs)), bp = new Float64Array(nb);
@@ -1579,8 +1603,8 @@
         for (let i=0;i<n;i++){ const fb=i/bs, b0=Math.min(nb-1,Math.floor(fb)), fr=fb-Math.floor(fb), env=bp[b0]+((bp[Math.min(nb-1,b0+1)]??bp[b0])-bp[b0])*fr; out[i]=carrier[i]*env; }
         return out;
     }
-    function mixBuffers(list, minLen) {
-        const mono = list.map(downmix);
+    function mixBuffers(list, minLen, sumStereo) {
+        const mono = list.map((t) => downmix(t, sumStereo));
         let maxLen = minLen || 0;
         for (const t of mono) if (t.length > maxLen) maxLen = t.length;
         const out = new Float32Array(maxLen);
@@ -1589,8 +1613,12 @@
     }
 
     async function applyEffectToSelected(proj, cmd, params, report) {
+        if (proj.selected.size === 0) {
+            proj.selected = new Set(proj.tracks.map((_, i) => i));
+            proj.selRange = null;
+            cfg.log(`  [project] '${cmd}' with nothing selected: selecting all`);
+        }
         const sel = [...proj.selected].sort((a, b) => a - b);
-        if (sel.length === 0) { cfg.log(`  [skip] '${cmd}' (no selection)`); return; }
         const entry = resolvePluginEntry(cmd);
         const runOne = async (chan, subReport) => {
             if (!entry) return applyBuiltin(cmd, params, chan, proj.sr);
@@ -1603,23 +1631,40 @@
                 ? await runLadspaPlugin(dllBytes, params, chan, proj.sr, subReport, proj.guard)
                 : await runPlugin(dllBytes, params, chan, proj.sr, subReport, proj.guard);
         };
+        const range = proj.selRange && proj.selRange[1] > proj.selRange[0] ? proj.selRange : null;
+        let lengthDelta = 0;
+        const runRange = async (chan, subReport) => {
+            if (!range) return runOne(chan, subReport);
+            const a = Math.min(range[0], chan.length), b = Math.min(range[1], chan.length);
+            if (b <= a) return chan;
+            const seg = await runOne(chan.slice(a, b), subReport);
+            if (!seg) return null;
+            if (seg.length !== b - a) lengthDelta = seg.length - (b - a);
+            const out = new Float32Array(a + seg.length + (chan.length - b));
+            out.set(chan.subarray(0, a));
+            out.set(seg, a);
+            out.set(chan.subarray(b), a + seg.length);
+            return out;
+        };
+        if (range) cfg.log(`  [range] ${cmd} on [${range[0]}..${range[1]}]`);
         for (let s = 0; s < sel.length; s++) {
             const idx = sel[s];
             const track = proj.tracks[idx];
             const subReport = (f) => report((s + f) / sel.length);
             if (entry) cfg.log(`  [${nativeFor(entry) ? 'native' : 'emulated'} ${entry.kind === 'ladspa' ? 'LADSPA' : 'VST'}] ${entry.file}${sel.length > 1 ? ` [track ${idx}]` : ''}`);
             if (isStereo(track)) {
-                const L = await runOne(track.L, (f) => subReport(f * 0.5));
-                const R = await runOne(track.R, (f) => subReport(0.5 + f * 0.5));
+                const L = await runRange(track.L, (f) => subReport(f * 0.5));
+                const R = await runRange(track.R, (f) => subReport(0.5 + f * 0.5));
                 if (entry || (L && R)) proj.tracks[idx] = { L: L || track.L, R: R || track.R };
                 else cfg.log(`  [skip] '${cmd}' (not modelled)`);
             } else {
-                const bi = await runOne(track, subReport);
+                const bi = await runRange(track, subReport);
                 if (entry) proj.tracks[idx] = bi;
                 else if (bi) proj.tracks[idx] = bi;
                 else cfg.log(`  [skip] '${cmd}' (built-in/Nyquist not modelled)`);
             }
         }
+        if (range && lengthDelta) proj.selRange = [range[0], Math.max(range[0], range[1] + lengthDelta)];
         proj.length = proj.tracks.reduce((m, t) => Math.max(m, trackLen(t)), 0);
     }
 
@@ -1655,8 +1700,8 @@
                 const L = new Float32Array(len), R = new Float32Array(len);
                 for (const i of sel) {
                     const t = proj.tracks[i], p = pans[i] || 0;
-                    const mono = !isStereo(t), k = mono ? 0.5 : 1;
-                    const lg = panLgain(p) * k, rg = panRgain(p) * k;
+                    const mono = !isStereo(t);
+                    const lg = panLgain(p), rg = panRgain(p);
                     const tl = mono ? t : t.L, tr = mono ? t : t.R;
                     for (let j = 0; j < tl.length && j < len; j++) L[j] += tl[j] * lg;
                     for (let j = 0; j < tr.length && j < len; j++) R[j] += tr[j] * rg;
@@ -1683,28 +1728,40 @@
             return;
         }
         case 'Undo': {
-            if (proj.undoStack && proj.undoStack.length) {
-                proj.redoStack.push(snapshotProj(proj));
-                restoreProj(proj, proj.undoStack.pop());
+            if (proj.history && proj.histPos > 0) {
+                restoreProj(proj, snapshotProj(proj.history[--proj.histPos]));
                 cfg.log(`  [project] Undo (${proj.tracks.length} track[s])`);
             } else cfg.log(`  [project] Undo (history empty)`);
             return;
         }
         case 'Redo': {
-            if (proj.redoStack && proj.redoStack.length) {
-                proj.undoStack.push(snapshotProj(proj));
-                restoreProj(proj, proj.redoStack.pop());
+            if (proj.history && proj.histPos < proj.history.length - 1) {
+                restoreProj(proj, snapshotProj(proj.history[++proj.histPos]));
                 cfg.log(`  [project] Redo`);
             }
             return;
         }
-        case 'Copy':
-            proj.clipboard = { tracks: [...proj.selected].sort((a, b) => a - b).map(i => { const t = proj.tracks[i]; return isStereo(t) ? { L: t.L.slice(), R: t.R.slice() } : t.slice(); }), sr: proj.sr };
+        case 'Copy': case 'Cut': {
+            const sel = [...proj.selected].sort((a, b) => a - b);
+            proj.clipboard = {
+                tracks: sel.map(i => mapTrack(proj.tracks[i], (c) => { const [a, b] = selBounds(proj, c.length); return c.slice(a, b); })),
+                sr: proj.sr,
+            };
+            if (cmd === 'Cut') {
+                for (const i of sel) proj.tracks[i] = mapTrack(proj.tracks[i], (c) => { const [a, b] = selBounds(proj, c.length); return deleteRange(c, a, b); });
+                if (proj.selRange) proj.selRange = [proj.selRange[0], proj.selRange[0]];
+                proj.length = proj.tracks.reduce((m, t) => Math.max(m, trackLen(t)), 0);
+            }
+            cfg.log(`  [project] ${cmd} ${proj.selRange ? '[' + proj.selRange[0] + '..' + proj.selRange[1] + ']' : 'all'}`);
             return;
-        case 'Cut':
-            proj.clipboard = { tracks: [...proj.selected].sort((a, b) => a - b).map(i => proj.tracks[i].slice()), sr: proj.sr };
-            for (const i of proj.selected) proj.tracks[i] = new Float32Array(0);
+        }
+        case 'Delete': {
+            for (const i of proj.selected) proj.tracks[i] = mapTrack(proj.tracks[i], (c) => { const [a, b] = selBounds(proj, c.length); return deleteRange(c, a, b); });
+            if (proj.selRange) proj.selRange = [proj.selRange[0], proj.selRange[0]];
+            proj.length = proj.tracks.reduce((m, t) => Math.max(m, trackLen(t)), 0);
+            cfg.log(`  [project] Delete (${proj.length} smp left)`);
             return;
+        }
         case 'PanLeft': case 'PanRight': case 'PanCenter': {
             const p = cmd === 'PanLeft' ? -1 : cmd === 'PanRight' ? 1 : 0;
             if (!proj.pans) proj.pans = proj.tracks.map(() => 0);
@@ -1726,18 +1783,25 @@
         case 'Paste': {
             if (!proj.clipboard) return;
             const cb = proj.clipboard, sel = [...proj.selected].sort((a, b) => a - b);
-            for (let s = 0; s < sel.length && s < cb.tracks.length; s++) {
-                let src = cb.tracks[s] || new Float32Array(0);
-                if (isStereo(src)) {
-                    let L = src.L, R = src.R;
-                    if (cb.sr !== proj.sr) { L = resampleAudio(L, cb.sr, proj.sr); R = resampleAudio(R, cb.sr, proj.sr); }
-                    proj.tracks[sel[s]] = { L: L.slice(), R: R.slice() };
-                } else {
-                    if (cb.sr !== proj.sr) src = resampleAudio(src, cb.sr, proj.sr);
-                    proj.tracks[sel[s]] = src.slice();
+            const range = proj.selRange;
+            let pasted = 0;
+            for (let s = 0; s < sel.length && cb.tracks.length; s++) {
+                let src = cb.tracks[Math.min(s, cb.tracks.length - 1)] || new Float32Array(0);
+                if (cb.sr !== proj.sr) src = mapTrack(src, (c) => resampleAudio(c, cb.sr, proj.sr));
+                pasted = Math.max(pasted, trackLen(src));
+                const dst = proj.tracks[sel[s]];
+                if (!range) {
+                    proj.tracks[sel[s]] = mapTrack(src, (c) => c.slice());
+                    continue;
                 }
+                const clipFor = (side) => isStereo(src) ? (side ? src[side] : downmix(src)) : src;
+                proj.tracks[sel[s]] = isStereo(dst)
+                    ? { L: insertRange(dst.L, clipFor('L'), range[0], range[1]), R: insertRange(dst.R, clipFor('R'), range[0], range[1]) }
+                    : insertRange(dst, clipFor(null), range[0], range[1]);
             }
-            cfg.log(`  [project] Paste`);
+            if (range) proj.selRange = [range[0], range[0] + pasted];
+            proj.length = proj.tracks.reduce((m, t) => Math.max(m, trackLen(t)), 0);
+            cfg.log(`  [project] Paste ${range ? 'at ' + range[0] + ' (' + pasted + ' smp)' : '(whole track)'}`);
             return;
         }
         case 'NewMonoTrack': case 'NewStereoTrack':
@@ -1750,6 +1814,17 @@
             proj.selected = new Set(proj.tracks.map((_, i) => i));
             proj.selRange = null;
             return;
+        case 'SelectNone': {
+            const t0 = proj.selRange ? proj.selRange[0] : 0;
+            proj.selected = new Set();
+            proj.selRange = [t0, t0];
+            cfg.log(`  [project] SelectNone`); return;
+        }
+        case 'SelTrackStartToEnd': {
+            const ends = [...proj.selected].map(i => trackLen(proj.tracks[i]));
+            if (ends.length) proj.selRange = [0, Math.max(...ends)];
+            cfg.log(`  [project] SelTrackStartToEnd ${proj.selRange ? '[' + proj.selRange[0] + '..' + proj.selRange[1] + ']' : 'all'}`); return;
+        }
         case 'SelectTracks': {
             const tr = mget(params,'Track');
             if (tr !== null) {
@@ -1815,7 +1890,6 @@
                 proj.tracks[i] = isStereo(t) ? { L: place(t.L), R: place(t.R) } : place(t);
             }
             proj.length = Math.max(proj.length, b);
-            proj.selRange = null;
             cfg.log(`  [generator] ${cmd} [${a}..${b}]`); return;
         }
         case 'Silence': {
@@ -1829,7 +1903,6 @@
                     }
                 } else proj.tracks[i] = isStereo(t) ? { L: new Float32Array(proj.length), R: new Float32Array(proj.length) } : new Float32Array(proj.length);
             }
-            proj.selRange = null;
             cfg.log(`  [generator] Silence`); return;
         }
         case 'FadeIn': case 'FadeOut': {
@@ -1845,7 +1918,6 @@
                     else for (let j = a; j < b; j++) c[j] = c[j] * (n - 1 - (j - a)) / n;
                 }
             }
-            proj.selRange = null;
             cfg.log(`  [builtin] ${cmd}`); return;
         }
         case 'Repeat': {
@@ -1970,14 +2042,23 @@
         await guard.race(ensureNativePlugins());
         const onProgress = opts.onProgress || null;
         const onStep = opts.onStep || null;
-        const proj = { sr, length: pcm.length, tracks: [new Float32Array(pcm)], pans: [0], selected: new Set([0]), clipboard: null, selRange: null, undoStack: [], redoStack: [], undoEnabled: false, guard };
+        const proj = { sr, length: pcm.length, tracks: [new Float32Array(pcm)], pans: [0], selected: new Set([0]), clipboard: null, selRange: null, history: null, histPos: 0, undoEnabled: false, guard };
 
         const steps = await guard.race(expandMacroLines(text, [], []));
         const total = steps.length;
         proj.undoEnabled = steps.some(st => st.cmd === 'Undo' || st.cmd === 'Redo');
-        let maxUndoRun = 0; for (let i = 0, run = 0; i < total; i++) { if (steps[i].cmd === 'Undo') { run++; if (run > maxUndoRun) maxUndoRun = run; } else run = 0; }
+        let maxUndoRun = 0;
+        for (let i = 0, run = 0; i < total; i++) {
+            const c = steps[i].cmd;
+            if (c === 'Undo') { run++; if (run > maxUndoRun) maxUndoRun = run; }
+            else if (c === 'Redo') run = Math.max(0, run - 1);
+            else if (PUSHES_UNDO.has(c)) run = 0;
+        }
         const undoCap = cfg.undoDepth || Math.max(maxUndoRun + 1, 2);
-        if (proj.undoEnabled) cfg.log(`  [project] undo history capped at ${undoCap} (macro's deepest undo run = ${maxUndoRun})`);
+        if (proj.undoEnabled) {
+            proj.history = [snapshotProj(proj)];
+            cfg.log(`  [project] undo history capped at ${undoCap} (macro's deepest undo run = ${maxUndoRun})`);
+        }
 
         const startTime = Date.now();
         let lastYield = startTime;
@@ -1989,14 +2070,17 @@
             cfg.log(`[${s + 1}/${total}] ${cmd}`);
             if (onStep) onStep(s + 1, total, cmd);
             const report = (frac) => { if (onProgress) onProgress({ step: s + 1, total, cmd, fraction: (s + frac) / total }); };
-            if (proj.undoEnabled && !NON_UNDOABLE.has(cmd)) {
-                proj.undoStack.push(snapshotProj(proj));
-                while (proj.undoStack.length > undoCap) proj.undoStack.shift();
-                proj.redoStack.length = 0;
-            }
             report(0);
             await applyStep(proj, cmd, params, report);
             report(1);
+            if (proj.undoEnabled) {
+                if (PUSHES_UNDO.has(cmd)) {
+                    proj.history.length = proj.histPos + 1;
+                    proj.history.push(snapshotProj(proj));
+                    while (proj.history.length > undoCap) proj.history.shift();
+                    proj.histPos = proj.history.length - 1;
+                } else if (MODIFIES_UNDO.has(cmd)) proj.history[proj.histPos] = snapshotProj(proj);
+            }
             if (typeof process !== 'undefined' && process.env && process.env.EMU_STEPTRACE) {
                 const parts = proj.tracks.map((t, ti) => {
                     const ch = isStereo(t) ? [t.L, t.R] : [t]; let r = 0, n = 0, pk = 0;
@@ -2009,7 +2093,7 @@
         guard.check();
         if (onProgress) onProgress({ step: total, total, cmd: 'done', fraction: 1 });
         cfg.log(`done: ${total} steps -> ${proj.tracks.length} track[s] @ ${proj.sr} Hz (took ${((Date.now() - startTime)/1000).toFixed(2)} seconds wall-clock time)`);
-        return { pcm: mixBuffers(proj.tracks, proj.length), sampleRate: proj.sr };
+        return { pcm: mixBuffers(proj.tracks, proj.length, true), sampleRate: proj.sr };
     }
 
     async function applyMacroFile(pcm, sr, file, opts) {

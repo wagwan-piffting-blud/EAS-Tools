@@ -1,6 +1,8 @@
 export const SCREEN_FORMAT = 'eas-tools-screen';
-export const SCREEN_VERSION = 1;
+export const SCREEN_VERSION = 2;
 export const SCREEN_TYPE = 'screen';
+export const MAX_SCREEN_PAGES = 50;
+export const EVERY_PAGE = -1;
 
 const STORE_KEY = 'eas-tools-crawl-screens';
 const DEFAULT_SEVERITY_COLORS = Object.freeze({ warning: '#FF2A10', watch: '#FF8000', advisory: '#02D306' });
@@ -24,6 +26,8 @@ export const SCREEN_TOKENS = Object.freeze([
     { name: 'SENDER', description: 'Sender ID from the header (or the override)' },
     { name: 'HEADLINE', description: 'EMERGENCY ALERT SYSTEM, or NATIONAL ALERT for EAN/EAT' },
     { name: 'TEXT', description: 'The full crawl text' },
+    { name: 'PAGE', description: 'Number of the page being shown, counting the extra pages long text adds' },
+    { name: 'PAGES', description: 'How many pages the screen shows in total' },
     { name: 'SEVERITY_COLOR', description: 'Warning, watch or advisory color from the Screen settings; works in color fields and inside {COLOR:...}' }
 ]);
 
@@ -32,10 +36,10 @@ const TEMPLATE_CHOICES = Object.freeze([
     { value: 'atari_800xl', label: 'Atari 800XL Override Screen' },
     { value: 'easyplus', label: 'EASyPLUS' },
     { value: 'easyplus_gray', label: 'EASyPLUS Gray' },
-    { value: 'eas_1cg', label: 'Gorman Redlich EAS-1CG (single page)' },
-    { value: 'dasdec', label: 'DASDEC (single page)' },
-    { value: 'dasdec_black', label: 'DASDEC (black, single page)' },
-    { value: 'dasdec_blue', label: 'DASDEC (blue, single page)' }
+    { value: 'eas_1cg', label: 'Gorman Redlich EAS-1CG' },
+    { value: 'dasdec', label: 'DASDEC' },
+    { value: 'dasdec_black', label: 'DASDEC (black)' },
+    { value: 'dasdec_blue', label: 'DASDEC (blue)' }
 ]);
 
 let elementCounter = 0;
@@ -104,6 +108,7 @@ function normalizeElement(raw) {
         type,
         x: roundTo(clampNumber(raw.x, -10000, 10000, 0)),
         y: roundTo(clampNumber(raw.y, -10000, 10000, 0)),
+        page: Math.round(clampNumber(raw.page, EVERY_PAGE, MAX_SCREEN_PAGES - 1, 0)),
         flash: raw.flash === true
     };
     if (type === 'text') {
@@ -126,6 +131,8 @@ function normalizeElement(raw) {
             letterSpacing: roundTo(clampNumber(raw.letterSpacing, -100, 1000, 0)),
             wrap: pickEnum(raw.wrap, ['none', 'width', 'columns'], 'width'),
             columns: Math.round(clampNumber(raw.columns, 1, 500, 32)),
+            maxLines: Math.round(clampNumber(raw.maxLines, 0, 500, 0)),
+            overflow: pickEnum(raw.overflow, ['continue', 'clip'], 'continue'),
             uppercase: raw.uppercase === true
         };
     }
@@ -165,6 +172,7 @@ export function normalizeScreen(raw) {
     const background = raw.background && typeof raw.background === 'object' ? raw.background : {};
     const severity = raw.severityColors && typeof raw.severityColors === 'object' ? raw.severityColors : {};
     const crawl = raw.crawl && typeof raw.crawl === 'object' ? raw.crawl : {};
+    const pageCount = Math.round(clampNumber(raw.pageCount, 1, MAX_SCREEN_PAGES, 1));
     const elements = (Array.isArray(raw.elements) ? raw.elements : [])
         .slice(0, 200)
         .map(normalizeElement)
@@ -175,10 +183,12 @@ export function normalizeScreen(raw) {
             element.id = newElementId();
         }
         seen.add(element.id);
+        element.page = Math.min(element.page, pageCount - 1);
     });
+    const paged = pageCount > 1 || elements.some((element) => element.page !== 0 || element.maxLines > 0);
     return {
         format: SCREEN_FORMAT,
-        version: SCREEN_VERSION,
+        version: paged ? 2 : 1,
         id: typeof raw.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(raw.id) ? raw.id : null,
         name: (typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Untitled Screen').slice(0, 80),
         width,
@@ -188,6 +198,8 @@ export function normalizeScreen(raw) {
             image: sanitizeImageSource(background.image)
         },
         flashIntervalMs: Math.round(clampNumber(raw.flashIntervalMs, 100, 10000, 500)),
+        pageCount,
+        pageIntervalMs: Math.round(clampNumber(raw.pageIntervalMs, 500, 60000, 4000)),
         textEndecMode: typeof raw.textEndecMode === 'string' ? raw.textEndecMode.trim().slice(0, 40) : '',
         severityColors: {
             warning: sanitizeColor(severity.warning, DEFAULT_SEVERITY_COLORS.warning, { allowSeverity: false }),
@@ -495,18 +507,21 @@ function drawSpacedSegment(ctx, text, x, y, spacing, outline) {
     return cursor;
 }
 
-function layoutText(ctx, element, resolved, showTokens) {
+function layoutText(ctx, element, resolved, showTokens, chunk = 0) {
     ctx.font = fontString(element);
     resetLetterSpacing(ctx);
     const spacing = element.letterSpacing || 0;
     const measure = (text) => measureSpaced(ctx, text, spacing);
     const baseColor = resolveColorValue(element.color, resolved, '#FFFFFF');
     const content = substituteTokens(element.text, resolved, showTokens).replace(/\r/g, '');
-    const lines = [];
+    const allLines = [];
     content.split('\n').forEach((paragraph) => {
         const glyphs = glyphsFromRuns(parseRuns(paragraph, baseColor, resolved, element.uppercase));
-        wrapGlyphs(glyphs, element, measure).forEach((line) => lines.push(segmentsFromGlyphs(line)));
+        wrapGlyphs(glyphs, element, measure).forEach((line) => allLines.push(segmentsFromGlyphs(line)));
     });
+    const limit = element.maxLines > 0 ? element.maxLines : 0;
+    const offset = limit && element.overflow === 'continue' ? chunk * limit : 0;
+    const lines = limit ? allLines.slice(offset, offset + limit) : allLines;
     const lineHeight = element.lineHeight > 0 ? element.lineHeight : element.size * 1.2;
     const count = Math.max(1, lines.length);
     let firstCenter;
@@ -534,6 +549,7 @@ function layoutText(ctx, element, resolved, showTokens) {
     }
     return {
         lines,
+        totalLines: allLines.length,
         widths,
         lineHeight,
         spacing,
@@ -547,8 +563,8 @@ function layoutText(ctx, element, resolved, showTokens) {
     };
 }
 
-function drawText(ctx, element, resolved, showTokens) {
-    const laid = layoutText(ctx, element, resolved, showTokens);
+function drawText(ctx, element, resolved, showTokens, chunk) {
+    const laid = layoutText(ctx, element, resolved, showTokens, chunk);
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     ctx.lineJoin = element.outlineJoin || 'round';
@@ -615,6 +631,40 @@ async function prepareScreenAssets(layout) {
     return loaded;
 }
 
+export function elementOnPage(element, page) {
+    return element.page === EVERY_PAGE || element.page === page;
+}
+
+function pageResolved(resolved, number, total) {
+    return { ...resolved, PAGE: String(number), PAGES: String(total) };
+}
+
+function planScreenPages(screen, resolved) {
+    const ctx = document.createElement('canvas').getContext('2d');
+    const probe = pageResolved(resolved, 88, 88);
+    const plan = [];
+    for (let page = 0; page < screen.pageCount && plan.length < MAX_SCREEN_PAGES; page++) {
+        let chunks = 1;
+        screen.elements.forEach((element) => {
+            if (element.type !== 'text' || !elementOnPage(element, page) || !element.maxLines || element.overflow !== 'continue') {
+                return;
+            }
+            const laid = layoutText(ctx, element, probe, false);
+            chunks = Math.max(chunks, Math.ceil(laid.totalLines / element.maxLines));
+        });
+        for (let chunk = 0; chunk < chunks && plan.length < MAX_SCREEN_PAGES; chunk++) {
+            plan.push({ page, chunk });
+        }
+    }
+    return plan;
+}
+
+export async function screenPagePlan(layout, tokens) {
+    const screen = normalizeScreen(layout);
+    await prepareScreenAssets(screen);
+    return planScreenPages(screen, resolveTokens(screen, tokens));
+}
+
 export async function renderScreenCanvas(layout, tokens, options = {}) {
     const screen = normalizeScreen(layout);
     const canvas = options.canvas || document.createElement('canvas');
@@ -622,7 +672,10 @@ export async function renderScreenCanvas(layout, tokens, options = {}) {
     canvas.height = screen.height;
     const ctx = canvas.getContext('2d');
     const images = await prepareScreenAssets(screen);
-    const resolved = resolveTokens(screen, tokens);
+    const page = Math.round(clampNumber(options.page, 0, screen.pageCount - 1, 0));
+    const chunk = Math.max(0, Math.round(Number(options.chunk) || 0));
+    const base = resolveTokens(screen, tokens);
+    const resolved = base.PAGE === undefined ? pageResolved(base, page + 1, screen.pageCount) : base;
     const showTokens = options.showTokens === true;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, screen.width, screen.height);
@@ -633,12 +686,12 @@ export async function renderScreenCanvas(layout, tokens, options = {}) {
         ctx.drawImage(bgImage, 0, 0, screen.width, screen.height);
     }
     screen.elements.forEach((element) => {
-        if (options.hideFlashing && element.flash) {
+        if ((options.hideFlashing && element.flash) || !elementOnPage(element, page)) {
             return;
         }
         ctx.save();
         if (element.type === 'text') {
-            drawText(ctx, element, resolved, showTokens);
+            drawText(ctx, element, resolved, showTokens, chunk);
         } else if (element.type === 'rect') {
             const fill = element.fill ? resolveColorValue(element.fill, resolved, '') : '';
             if (fill) {
@@ -678,15 +731,44 @@ export function screenHasFlashing(layout) {
 
 export async function renderScreenFrames(layout, tokens) {
     const screen = normalizeScreen(layout);
-    const frames = [await canvasToImage(await renderScreenCanvas(screen, tokens))];
-    if (screenHasFlashing(screen)) {
-        frames.push(await canvasToImage(await renderScreenCanvas(screen, tokens, { hideFlashing: true })));
+    await prepareScreenAssets(screen);
+    const resolved = resolveTokens(screen, tokens);
+    const plan = planScreenPages(screen, resolved);
+    const flashing = screenHasFlashing(screen);
+    const pages = [];
+    for (let index = 0; index < plan.length; index++) {
+        const pageTokens = pageResolved(resolved, index + 1, plan.length);
+        const options = { page: plan[index].page, chunk: plan[index].chunk };
+        const on = await canvasToImage(await renderScreenCanvas(screen, pageTokens, options));
+        const off = flashing ? await canvasToImage(await renderScreenCanvas(screen, pageTokens, { ...options, hideFlashing: true })) : null;
+        pages.push({ on, off });
+    }
+    let frames;
+    let rotationDelayMs;
+    if (pages.length === 1) {
+        frames = flashing ? [pages[0].on, pages[0].off] : [pages[0].on];
+        rotationDelayMs = screen.flashIntervalMs;
+    } else if (flashing) {
+        const flashesPerPage = Math.max(1, Math.round(screen.pageIntervalMs / screen.flashIntervalMs));
+        frames = [];
+        pages.forEach(({ on, off }) => {
+            for (let i = 0; i < flashesPerPage; i++) {
+                frames.push(i % 2 === 0 ? on : off);
+            }
+        });
+        rotationDelayMs = screen.flashIntervalMs;
+    } else {
+        frames = pages.map(({ on }) => on);
+        rotationDelayMs = screen.pageIntervalMs;
     }
     return {
         frames,
+        pageCount: pages.length,
+        rotationDelayMs,
         width: screen.width,
         height: screen.height,
         flashIntervalMs: screen.flashIntervalMs,
+        pageIntervalMs: screen.pageIntervalMs,
         topLeft: screenTopLeft(screen)
     };
 }
@@ -696,13 +778,20 @@ export async function screenTextLines(layout, tokens) {
     await prepareScreenAssets(screen);
     const ctx = document.createElement('canvas').getContext('2d');
     const resolved = resolveTokens(screen, tokens);
+    const plan = planScreenPages(screen, resolved);
     const out = [];
-    screen.elements.forEach((element) => {
-        if (element.type !== 'text') {
-            return;
+    plan.forEach(({ page, chunk }, index) => {
+        if (index > 0) {
+            out.push('');
         }
-        const laid = layoutText(ctx, element, resolved, false);
-        laid.lines.forEach((segments) => out.push(segments.map((segment) => segment.text).join('')));
+        const pageTokens = pageResolved(resolved, index + 1, plan.length);
+        screen.elements.forEach((element) => {
+            if (element.type !== 'text' || !elementOnPage(element, page)) {
+                return;
+            }
+            const laid = layoutText(ctx, element, pageTokens, false, chunk);
+            laid.lines.forEach((segments) => out.push(segments.map((segment) => segment.text).join('')));
+        });
     });
     return out;
 }
@@ -841,6 +930,22 @@ async function eas1cgTemplate() {
     const safeTop = height * 0.1;
     const safeWidth = width - safeLeft * 2;
     const size = roundTo(await columnsFontSize(font, 31, safeWidth));
+    const rows = 8;
+    const lineHeight = (height - safeTop * 2) / rows;
+    const common = {
+        x: safeLeft,
+        width: safeWidth,
+        align: 'left',
+        valign: 'top',
+        font,
+        size,
+        lineHeight,
+        wrap: 'columns',
+        columns: 31,
+        color: '#FFFFFF',
+        outlineColor: '#000000',
+        outlineWidth: 2
+    };
     return baseScreen({
         name: 'My EAS-1CG Screen',
         width,
@@ -849,22 +954,8 @@ async function eas1cgTemplate() {
         background: { color: '#545454', image: '' },
         crawl: { enabled: false, y: 384, inset: 0 },
         elements: [
-            textElement({
-                text: '***EMERGENCY DETAILS Page 1***\n{TEXT}',
-                x: safeLeft,
-                y: safeTop,
-                width: safeWidth,
-                align: 'left',
-                valign: 'top',
-                font,
-                size,
-                lineHeight: (height - safeTop * 2) / 8,
-                wrap: 'columns',
-                columns: 31,
-                color: '#FFFFFF',
-                outlineColor: '#000000',
-                outlineWidth: 2
-            })
+            textElement({ ...common, text: '***EMERGENCY DETAILS Page {PAGE}***', y: safeTop, wrap: 'none' }),
+            textElement({ ...common, text: '{TEXT}', y: safeTop + lineHeight, maxLines: rows - 1, overflow: 'continue' })
         ]
     });
 }
@@ -909,8 +1000,11 @@ async function dasdecTemplate() {
                 size,
                 letterSpacing: 0,
                 lineHeight: 34,
-                wrap: 'width'
-            })
+                wrap: 'width',
+                maxLines: 10,
+                overflow: 'continue'
+            }),
+            textElement({ text: '{PAGE}/{PAGES}', x: 0, y: 418, width, align: 'center', valign: 'middle', font: 'Luxi Mono', size, wrap: 'none', page: EVERY_PAGE })
         ]
     });
 }
@@ -932,9 +1026,9 @@ function dasdecVariantTemplate(blue) {
         background: { color: blue ? '#0000FF' : '#000000', image: '' },
         crawl: { enabled: false, y: 384, inset: 0 },
         elements: [
-            textElement({ ...common, text: DASDEC_TITLE, y: blue ? 33 : 77 }),
-            textElement({ ...common, ...body, text: '{TEXT}', valign: 'top', lineHeight, y: (blue ? 77 : 112) - lineHeight / 2 }),
-            textElement({ ...common, text: '1/1', y: blue ? 453 : 450 })
+            textElement({ ...common, text: DASDEC_TITLE, y: blue ? 33 : 77, page: EVERY_PAGE }),
+            textElement({ ...common, ...body, text: '{TEXT}', valign: 'top', lineHeight, y: (blue ? 77 : 112) - lineHeight / 2, maxLines: blue ? 12 : 11, overflow: 'continue' }),
+            textElement({ ...common, text: '{PAGE}/{PAGES}', y: blue ? 453 : 450, page: EVERY_PAGE })
         ]
     });
 }
@@ -968,7 +1062,7 @@ export function templateChoices() {
 }
 
 function elementLabel(element, index) {
-    const position = `${index + 1}.`;
+    const position = `${index + 1}.${element.page === EVERY_PAGE ? ' (every page)' : ''}`;
     if (element.type === 'text') {
         const preview = element.text.replace(/\s+/g, ' ').trim().slice(0, 32) || '(empty)';
         return `${position} Text: ${preview}${element.flash ? ' (flashing)' : ''}`;
@@ -1051,6 +1145,8 @@ function createBuilder() {
         returnFocus: null,
         drag: null,
         deleteArmed: false,
+        pageIndex: 0,
+        pageDeleteArmed: false,
         offscreen: document.createElement('canvas'),
         lastLayout: new Map()
     };
@@ -1067,7 +1163,7 @@ function createBuilder() {
     const intro = el('p', {
         id: 'sb-intro',
         className: 'sb-intro',
-        text: 'Design a full alert screen, with or without the scrolling crawl. Text can use tokens such as {EVENT} or {LOCATIONS}, which are filled from the EAS header when the screen is used. Screens are saved in this browser and can be exported as .json.'
+        text: 'Design a full alert screen, with or without the scrolling crawl. Text can use tokens such as {EVENT} or {LOCATIONS}, which are filled from the EAS header when the screen is used. Screens are saved in this browser and can be exported as .json; saving under a new name keeps the original and stores a new screen.'
     });
 
     const nameInput = el('input', { id: 'sb-name', type: 'text', maxlength: '80', autocomplete: 'off' });
@@ -1105,6 +1201,24 @@ function createBuilder() {
         ])
     ]);
 
+    const pageSelect = el('select', { id: 'sb-page' });
+    const pageSecondsInput = el('input', { type: 'number', id: 'sb-page-seconds', min: '0.5', max: '60', step: '0.5', value: '4' });
+    const addPageButton = el('button', { type: 'button', id: 'sb-add-page', text: 'Add Page' });
+    const duplicatePageButton = el('button', { type: 'button', id: 'sb-duplicate-page', text: 'Duplicate Page' });
+    const deletePageButton = el('button', { type: 'button', id: 'sb-delete-page', text: 'Delete Page' });
+    const pageNote = el('p', { id: 'sb-page-note', className: 'sb-note', 'aria-live': 'polite' });
+    const pagesField = el('fieldset', { className: 'sb-fieldset' }, [
+        el('legend', { text: 'Pages' }),
+        el('div', { className: 'sb-grid' }, [
+            el('label', { for: 'sb-page', text: 'Page being edited:' }),
+            pageSelect,
+            el('label', { for: 'sb-page-seconds', text: 'Seconds per page:' }),
+            pageSecondsInput,
+            el('div', { className: 'sb-buttons sb-wide' }, [addPageButton, duplicatePageButton, deletePageButton]),
+            pageNote
+        ])
+    ]);
+
     const elementList = el('select', { id: 'sb-element-list', size: '8' });
     const addTextButton = el('button', { type: 'button', id: 'sb-add-text', text: 'Add Text' });
     const addBoxButton = el('button', { type: 'button', id: 'sb-add-box', text: 'Add Box' });
@@ -1116,7 +1230,7 @@ function createBuilder() {
     const deleteElementButton = el('button', { type: 'button', id: 'sb-delete-element', text: 'Delete' });
     const elementsField = el('fieldset', { className: 'sb-fieldset' }, [
         el('legend', { text: 'Elements' }),
-        el('label', { for: 'sb-element-list', text: 'Drawn first to last; later elements sit on top:' }),
+        el('label', { for: 'sb-element-list', text: 'On this page, drawn first to last; later elements sit on top:' }),
         elementList,
         el('div', { className: 'sb-buttons' }, [addTextButton, addBoxButton, addImageButton, addImageFile, duplicateButton, upButton, downButton, deleteElementButton])
     ]);
@@ -1139,7 +1253,7 @@ function createBuilder() {
     tokenList.appendChild(el('li', {}, [el('code', { text: '{COLOR:#RRGGBB}' }), ' switches the text color until the end of the line; ', el('code', { text: '{COLOR}' }), ' switches back']));
     const tokenHelp = el('details', { className: 'sb-tokens' }, [el('summary', { text: 'Tokens you can use in text' }), tokenList]);
 
-    const side = el('div', { className: 'sb-side' }, [elementsField, propsField, screenField, crawlField, tokenHelp]);
+    const side = el('div', { className: 'sb-side' }, [pagesField, elementsField, propsField, screenField, crawlField, tokenHelp]);
     const body = el('div', { className: 'sb-body' }, [stage, side]);
 
     const status = el('span', { id: 'sb-status', className: 'sb-status', role: 'status', 'aria-live': 'polite' });
@@ -1161,11 +1275,19 @@ function createBuilder() {
         status.textContent = message || '';
     };
 
-    const selected = () => (state.layout ? state.layout.elements.find((element) => element.id === state.selectedId) || null : null);
+    const visibleElements = () => (state.layout ? state.layout.elements.filter((element) => elementOnPage(element, state.pageIndex)) : []);
+
+    const selected = () => visibleElements().find((element) => element.id === state.selectedId) || null;
+
+    const disarmPageDelete = () => {
+        state.pageDeleteArmed = false;
+        deletePageButton.textContent = 'Delete Page';
+    };
 
     const markEdited = () => {
         state.deleteArmed = false;
         deleteScreenButton.textContent = 'Delete Saved Screen';
+        disarmPageDelete();
     };
 
     function populateStartSelect() {
@@ -1186,29 +1308,30 @@ function createBuilder() {
     }
 
     function refreshElementList() {
-        const layout = state.layout;
+        const visible = visibleElements();
         elementList.textContent = '';
-        layout.elements.forEach((element, index) => {
+        visible.forEach((element, index) => {
             const option = new Option(elementLabel(element, index), element.id);
             elementList.appendChild(option);
         });
-        if (state.selectedId && layout.elements.some((element) => element.id === state.selectedId)) {
+        if (state.selectedId && visible.some((element) => element.id === state.selectedId)) {
             elementList.value = state.selectedId;
         } else {
             state.selectedId = null;
             elementList.selectedIndex = -1;
         }
-        const index = layout.elements.findIndex((element) => element.id === state.selectedId);
+        const index = visible.findIndex((element) => element.id === state.selectedId);
         duplicateButton.disabled = index < 0;
         deleteElementButton.disabled = index < 0;
         upButton.disabled = index <= 0;
-        downButton.disabled = index < 0 || index >= layout.elements.length - 1;
+        downButton.disabled = index < 0 || index >= visible.length - 1;
     }
 
     function updateSelectedOptionLabel() {
-        const index = state.layout.elements.findIndex((element) => element.id === state.selectedId);
+        const visible = visibleElements();
+        const index = visible.findIndex((element) => element.id === state.selectedId);
         if (index >= 0 && elementList.options[index]) {
-            elementList.options[index].text = elementLabel(state.layout.elements[index], index);
+            elementList.options[index].text = elementLabel(visible[index], index);
         }
     }
 
@@ -1218,8 +1341,33 @@ function createBuilder() {
             selectionNote.textContent = 'No element selected.';
             return;
         }
-        const index = state.layout.elements.indexOf(element);
+        const index = visibleElements().indexOf(element);
         selectionNote.textContent = `${elementLabel(element, index)}, at X ${Math.round(element.x)}, Y ${Math.round(element.y)}.`;
+    }
+
+    function populatePageSelect() {
+        const count = state.layout.pageCount;
+        pageSelect.textContent = '';
+        for (let i = 0; i < count; i++) {
+            pageSelect.appendChild(new Option(`Page ${i + 1} of ${count}`, String(i)));
+        }
+        pageSelect.value = String(state.pageIndex);
+        pageSecondsInput.value = String(state.layout.pageIntervalMs / 1000);
+        deletePageButton.disabled = count <= 1;
+        addPageButton.disabled = count >= MAX_SCREEN_PAGES;
+        duplicatePageButton.disabled = count >= MAX_SCREEN_PAGES;
+    }
+
+    function goToPage(index) {
+        state.pageIndex = Math.max(0, Math.min(state.layout.pageCount - 1, index));
+        const visible = visibleElements();
+        state.selectedId = visible.length ? visible[0].id : null;
+        disarmPageDelete();
+        populatePageSelect();
+        refreshElementList();
+        renderProps();
+        describeSelection();
+        scheduleRender();
     }
 
     function field(id, labelText, input) {
@@ -1429,6 +1577,16 @@ function createBuilder() {
             add(field('sb-prop-wrap', 'Wrapping:', wrapSelect));
             add(field('sb-prop-columns', 'Characters per line:', columnsInput));
             syncColumns();
+            const maxLinesInput = numberInput(element.maxLines, { min: 0, max: 500 });
+            const overflowSelect = selectInput(element.overflow, [['continue', 'Continue on extra pages'], ['clip', 'Cut them off']]);
+            const syncOverflow = () => {
+                overflowSelect.disabled = !(element.maxLines > 0);
+            };
+            bindNumber(maxLinesInput, element, 'maxLines', { min: 0, max: 500, after: syncOverflow });
+            bindValue(overflowSelect, element, 'overflow');
+            add(field('sb-prop-max-lines', 'Line limit (0 = no limit):', maxLinesInput));
+            add(field('sb-prop-overflow', 'Lines past the limit:', overflowSelect));
+            syncOverflow();
         }
 
         if (element.type === 'rect') {
@@ -1457,6 +1615,25 @@ function createBuilder() {
         const flash = checkInput(element.flash);
         bindCheck(flash, element, 'flash', relabel);
         add(field('sb-prop-flash', 'Flash on and off:', flash));
+
+        const pageChoices = [[String(EVERY_PAGE), 'Every page']];
+        for (let i = 0; i < state.layout.pageCount; i++) {
+            pageChoices.push([String(i), `Page ${i + 1}`]);
+        }
+        const pageInput = selectInput(String(element.page), pageChoices);
+        pageInput.addEventListener('change', () => {
+            element.page = Number(pageInput.value);
+            changed();
+            if (elementOnPage(element, state.pageIndex)) {
+                relabel();
+                return;
+            }
+            const destination = `page ${element.page + 1}`;
+            selectElement(null);
+            setStatus(`Moved the element to ${destination}.`);
+            pageSelect.focus();
+        });
+        add(field('sb-prop-page', 'Shown on:', pageInput));
     }
 
     function renderScreenFields() {
@@ -1582,10 +1759,19 @@ function createBuilder() {
         const offscreen = await renderScreenCanvas(screen, state.tokens, {
             canvas: state.offscreen,
             showTokens: showTokens.checked,
-            hideFlashing: showFlashOff.checked
+            hideFlashing: showFlashOff.checked,
+            page: state.pageIndex
         });
+        const plan = await screenPagePlan(screen, state.tokens);
         if (token !== state.renderToken) {
             return;
+        }
+        const seconds = screen.pageIntervalMs / 1000;
+        const noteText = plan.length > 1
+            ? `With the preview alert, this screen shows ${plan.length} pages, ${seconds} seconds each; long text past a line limit adds the extra pages. Elements set to every page appear on all of them.`
+            : 'With the preview alert, this screen shows 1 page. Add pages, or give a text element a line limit, to show more.';
+        if (pageNote.textContent !== noteText) {
+            pageNote.textContent = noteText;
         }
         const ctx = canvas.getContext('2d');
         if (canvas.width !== screen.width || canvas.height !== screen.height) {
@@ -1634,17 +1820,18 @@ function createBuilder() {
         }
         const ctx = state.offscreen.getContext('2d');
         ctx.save();
-        const laid = layoutText(ctx, element, resolveTokens(screen, state.tokens), showTokens.checked);
+        const laid = layoutText(ctx, element, pageResolved(resolveTokens(screen, state.tokens), state.pageIndex + 1, screen.pageCount), showTokens.checked);
         ctx.restore();
         return laid.bounds;
     }
 
     function hitTest(x, y) {
         const screen = normalizeScreen(state.layout);
-        for (let i = screen.elements.length - 1; i >= 0; i--) {
-            const box = elementBounds(screen, screen.elements[i].id);
+        const onPage = screen.elements.filter((element) => elementOnPage(element, state.pageIndex));
+        for (let i = onPage.length - 1; i >= 0; i--) {
+            const box = elementBounds(screen, onPage[i].id);
             if (box && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height) {
-                return screen.elements[i].id;
+                return onPage[i].id;
             }
         }
         return null;
@@ -1731,7 +1918,10 @@ function createBuilder() {
         selectElement(elementList.value || null);
     });
 
-    function insertElement(element) {
+    function insertElement(element, { keepPage = false } = {}) {
+        if (!keepPage) {
+            element.page = state.pageIndex;
+        }
         const index = state.layout.elements.findIndex((entry) => entry.id === state.selectedId);
         if (index >= 0) {
             state.layout.elements.splice(index + 1, 0, element);
@@ -1827,21 +2017,23 @@ function createBuilder() {
         const element = selected();
         if (!element) return;
         const copy = normalizeElement({ ...cloneScreen(element), id: newElementId(), x: element.x + 10, y: element.y + 10 });
-        insertElement(copy);
+        insertElement(copy, { keepPage: true });
         setStatus('Duplicated the element.');
         duplicateButton.focus();
     });
 
     const moveSelected = (delta, button) => {
         const elements = state.layout.elements;
-        const index = elements.findIndex((entry) => entry.id === state.selectedId);
+        const visible = visibleElements();
+        const index = visible.findIndex((entry) => entry.id === state.selectedId);
         const target = index + delta;
-        if (index < 0 || target < 0 || target >= elements.length) return;
-        const [element] = elements.splice(index, 1);
-        elements.splice(target, 0, element);
+        if (index < 0 || target < 0 || target >= visible.length) return;
+        const [element] = elements.splice(elements.indexOf(visible[index]), 1);
+        const anchor = elements.indexOf(visible[target]);
+        elements.splice(delta > 0 ? anchor + 1 : anchor, 0, element);
         changed();
         selectElement(element.id);
-        setStatus(`Moved to position ${target + 1} of ${elements.length}.`);
+        setStatus(`Moved to position ${target + 1} of ${visible.length}.`);
         if (button.disabled) {
             elementList.focus();
         } else {
@@ -1853,11 +2045,12 @@ function createBuilder() {
 
     deleteElementButton.addEventListener('click', () => {
         const elements = state.layout.elements;
-        const index = elements.findIndex((entry) => entry.id === state.selectedId);
+        const index = visibleElements().findIndex((entry) => entry.id === state.selectedId);
         if (index < 0) return;
-        elements.splice(index, 1);
+        elements.splice(elements.findIndex((entry) => entry.id === state.selectedId), 1);
         changed();
-        const next = elements[Math.min(index, elements.length - 1)];
+        const remaining = visibleElements();
+        const next = remaining[Math.min(index, remaining.length - 1)];
         selectElement(next ? next.id : null);
         setStatus('Deleted the element.');
         if (next) {
@@ -1865,6 +2058,64 @@ function createBuilder() {
         } else {
             addTextButton.focus();
         }
+    });
+
+    pageSelect.addEventListener('change', () => {
+        goToPage(Number(pageSelect.value) || 0);
+    });
+
+    pageSecondsInput.addEventListener('input', () => {
+        const seconds = Number(pageSecondsInput.value);
+        if (!Number.isFinite(seconds)) return;
+        state.layout.pageIntervalMs = Math.round(Math.min(60, Math.max(0.5, seconds)) * 1000);
+        changed();
+    });
+
+    addPageButton.addEventListener('click', () => {
+        if (state.layout.pageCount >= MAX_SCREEN_PAGES) return;
+        state.layout.pageCount += 1;
+        changed();
+        goToPage(state.layout.pageCount - 1);
+        setStatus(`Added page ${state.layout.pageCount}. It starts with only the elements set to every page.`);
+        addPageButton.focus();
+    });
+
+    duplicatePageButton.addEventListener('click', () => {
+        if (state.layout.pageCount >= MAX_SCREEN_PAGES) return;
+        const source = state.pageIndex;
+        const copies = state.layout.elements
+            .filter((element) => element.page === source)
+            .map((element) => normalizeElement({ ...cloneScreen(element), id: newElementId(), page: source + 1 }));
+        state.layout.elements.forEach((element) => {
+            if (element.page > source) element.page += 1;
+        });
+        state.layout.elements.push(...copies);
+        state.layout.pageCount += 1;
+        changed();
+        goToPage(source + 1);
+        setStatus(`Duplicated page ${source + 1} as page ${source + 2}.`);
+        duplicatePageButton.focus();
+    });
+
+    deletePageButton.addEventListener('click', () => {
+        if (state.layout.pageCount <= 1) return;
+        const doomed = state.pageIndex;
+        const owned = state.layout.elements.filter((element) => element.page === doomed).length;
+        if (owned && !state.pageDeleteArmed) {
+            state.pageDeleteArmed = true;
+            deletePageButton.textContent = 'Press Again to Delete Page';
+            setStatus(`Press Delete Page again to remove page ${doomed + 1} and its ${owned} element${owned === 1 ? '' : 's'}.`);
+            return;
+        }
+        state.layout.elements = state.layout.elements.filter((element) => element.page !== doomed);
+        state.layout.elements.forEach((element) => {
+            if (element.page > doomed) element.page -= 1;
+        });
+        state.layout.pageCount -= 1;
+        changed();
+        goToPage(Math.min(doomed, state.layout.pageCount - 1));
+        setStatus(`Deleted page ${doomed + 1}. ${state.layout.pageCount} page${state.layout.pageCount === 1 ? '' : 's'} left.`);
+        (deletePageButton.disabled ? pageSelect : deletePageButton).focus();
     });
 
     nameInput.addEventListener('input', () => {
@@ -1876,8 +2127,11 @@ function createBuilder() {
 
     function loadLayout(layout, message) {
         state.layout = cloneScreen(normalizeScreen(layout));
-        state.selectedId = state.layout.elements.length ? state.layout.elements[0].id : null;
+        state.pageIndex = 0;
+        const visible = visibleElements();
+        state.selectedId = visible.length ? visible[0].id : null;
         nameInput.value = state.layout.name;
+        populatePageSelect();
         refreshElementList();
         renderProps();
         renderScreenFields();
@@ -1930,7 +2184,13 @@ function createBuilder() {
     });
 
     function persist() {
-        state.layout.name = nameInput.value.trim() || 'Untitled Screen';
+        const name = (nameInput.value.trim() || 'Untitled Screen').slice(0, 80);
+        const existing = state.layout.id ? getScreen(state.layout.id) : null;
+        const forkedFrom = existing && existing.name !== name ? existing.name : null;
+        if (forkedFrom) {
+            state.layout.id = null;
+        }
+        state.layout.name = name;
         const saved = saveScreen(state.layout);
         state.layout.id = saved.id;
         state.layout.updated = saved.updated;
@@ -1938,13 +2198,16 @@ function createBuilder() {
         if (state.options.onSave) {
             state.options.onSave(saved);
         }
-        return saved;
+        return { saved, forkedFrom };
     }
 
     saveButton.addEventListener('click', () => {
         try {
-            const saved = persist();
-            setStatus(`Saved "${saved.name}" in this browser.`);
+            const { saved, forkedFrom } = persist();
+            startSelect.value = `saved:${saved.id}`;
+            setStatus(forkedFrom
+                ? `Saved "${saved.name}" as a new screen in this browser. "${forkedFrom}" was left unchanged.`
+                : `Saved "${saved.name}" in this browser.`);
         } catch (err) {
             setStatus(`Could not save: ${err.message || err}`);
         }
@@ -1953,7 +2216,7 @@ function createBuilder() {
     useButton.addEventListener('click', async () => {
         let saved;
         try {
-            saved = persist();
+            saved = persist().saved;
         } catch (err) {
             setStatus(`Could not save: ${err.message || err}`);
             return;

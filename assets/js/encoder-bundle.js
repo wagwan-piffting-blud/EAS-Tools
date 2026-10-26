@@ -1,4 +1,5 @@
 import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain } from './common-functions.js';
+import { createSendMenu, receive, audioFile } from './handoff.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -218,7 +219,13 @@ async function fetchAndStore() {
     var HEADER = "ZCZC";
     var PREAMBLE = 0xD5; //0xab read from lsb to msb
     var samples = [];
+    var alertParts = [];
+    var alertInfo = null;
     var TWO_PI = 2 * Math.PI;
+
+    function markPart(role) {
+        alertParts.push({ role, at: samples.length });
+    }
     var SAME_SAMPLES_PER_BIT = SAMPLE_RATE * AFSK_TIME;
     var MARK_PHASE_INC = TWO_PI * MARK_FREQ / SAMPLE_RATE;
     var SPACE_PHASE_INC = TWO_PI * SPACE_FREQ / SAMPLE_RATE;
@@ -297,6 +304,48 @@ async function fetchAndStore() {
     const __relayPopFileCache = new Map();
     const __relayPopFileLoaders = new Map();
 
+    function __mergeChannels(channels, length) {
+        const merged = new Float32Array(length);
+        const invChannels = 1 / Math.max(1, channels.length);
+        for (const channelData of channels) {
+            for (let i = 0; i < length; i++) {
+                merged[i] += channelData[i] * invChannels;
+            }
+        }
+        return merged;
+    }
+
+    function __decodeWavPcm(arrayBuffer) {
+        const wav = new wavefile.WaveFile(new Uint8Array(arrayBuffer));
+        wav.toBitDepth("32f");
+        const raw = wav.getSamples(false, Float32Array);
+        const channels = (raw instanceof Float32Array) ? [raw] : Array.from(raw);
+        const length = channels.length ? channels[0].length : 0;
+        if (!length || !wav.fmt.sampleRate) {
+            throw new Error("Empty or unreadable WAV.");
+        }
+        return { merged: __mergeChannels(channels, length), sampleRate: wav.fmt.sampleRate };
+    }
+
+    async function __decodeWithAudioContext(arrayBuffer) {
+        const decodeContext = new (window.AudioContext || window.webkitAudioContext)();
+        const decode = decodeContext.decodeAudioData.bind(decodeContext);
+        try {
+            const audioBuffer = decode.length > 1
+                ? await new Promise((resolve, reject) => decode(arrayBuffer.slice(0), resolve, reject))
+                : await decode(arrayBuffer.slice(0));
+            const channels = [];
+            for (let channel = 0; channel < Math.max(1, audioBuffer.numberOfChannels); channel++) {
+                channels.push(audioBuffer.getChannelData(channel));
+            }
+            return { merged: __mergeChannels(channels, audioBuffer.length), sampleRate: audioBuffer.sampleRate };
+        } finally {
+            if (typeof decodeContext.close === "function") {
+                decodeContext.close().catch(() => { });
+            }
+        }
+    }
+
     function __loadRelayPopFile(file) {
         if (__relayPopFileCache.has(file)) return Promise.resolve(__relayPopFileCache.get(file));
         if (__relayPopFileLoaders.has(file)) return __relayPopFileLoaders.get(file);
@@ -309,36 +358,21 @@ async function fetchAndStore() {
                 }
 
                 const arrayBuffer = await response.arrayBuffer();
-                const decodeContext = new (window.AudioContext || window.webkitAudioContext)();
-                const decode = decodeContext.decodeAudioData.bind(decodeContext);
-                const audioBuffer = decode.length > 1
-                    ? await new Promise((resolve, reject) => decode(arrayBuffer.slice(0), resolve, reject))
-                    : await decode(arrayBuffer.slice(0));
-
-                if (typeof decodeContext.close === "function") {
-                    decodeContext.close().catch(() => { });
+                let decoded;
+                try {
+                    decoded = __decodeWavPcm(arrayBuffer);
+                } catch (parseError) {
+                    decoded = await __decodeWithAudioContext(arrayBuffer);
                 }
 
-                const channels = Math.max(1, audioBuffer.numberOfChannels);
-                const length = audioBuffer.length;
-                const merged = new Float32Array(length);
-                const invChannels = 1 / channels;
-
-                for (let channel = 0; channel < channels; channel++) {
-                    const channelData = audioBuffer.getChannelData(channel);
-                    for (let i = 0; i < length; i++) {
-                        merged[i] += channelData[i] * invChannels;
-                    }
-                }
-
-                const pcm = (audioBuffer.sampleRate === SAMPLE_RATE)
-                    ? merged
-                    : resamplePcm(merged, audioBuffer.sampleRate, SAMPLE_RATE);
+                const pcm = (decoded.sampleRate === SAMPLE_RATE)
+                    ? decoded.merged
+                    : resamplePcm(decoded.merged, decoded.sampleRate, SAMPLE_RATE);
                 __relayPopFileCache.set(file, pcm);
                 return pcm;
             } catch (error) {
-                __relayPopFileCache.set(file, null);
                 console.error("Unable to decode relay pop audio.", error);
+                addStatus(`Relay pop audio (${file}) could not be loaded, so this alert has no pop: ${error && error.message ? error.message : error}`, "WARN");
                 return null;
             } finally {
                 __relayPopFileLoaders.delete(file);
@@ -975,6 +1009,7 @@ async function fetchAndStore() {
 
     function append_post_eom_audio(postPcm) {
         if (!postPcm || !postPcm.length) return;
+        markPart("free");
         generate_silence(prePostGapSamples("post"));
         appendPcmToSamples(postPcm);
     }
@@ -1490,8 +1525,11 @@ async function fetchAndStore() {
         }
 
         activeSilenceGaps = getSilenceGapsMs(endecMode);
+        alertParts = [];
+        alertInfo = { header, mode: endecMode, tone, tlen, clip: cl, emulate: shouldEmulateEndecRate() };
         const prePcm = await resolvePrePostPcm("pre");
         const postPcm = await resolvePrePostPcm("post");
+        markPart("free");
         generate_silence(silenceSamples("preTone"));
         if (prePcm && prePcm.length) {
             appendPcmToSamples(prePcm);
@@ -1501,31 +1539,43 @@ async function fetchAndStore() {
         if (tone !== null) {
             switch (tone.toString()) {
                 case "0":
+                    markPart("header");
                     create_header_tones(header);
+                    markPart("attn");
                     create_wat();
                     break;
                 case "1":
+                    markPart("header");
                     create_header_tones(header);
+                    markPart("attn");
                     create_nwr_tone();
                     break;
                 case "2":
+                    markPart("attn");
                     await create_pelmorex_attention_tone();
                     break;
                 case "3":
+                    markPart("header");
                     create_header_tones(header);
+                    markPart("attn");
                     await create_buzzer_tone();
                     break;
                 case "4":
+                    markPart("header");
                     create_header_tones(header);
                     break;
                 case "5":
+                    markPart("header");
                     create_header_tones(header);
+                    markPart("attn");
                     create_nwr_tone();
                     generate_silence(silenceSamples("headersToAttention"));
                     create_wat();
                     break;
                 case "6":
+                    markPart("header");
                     create_header_tones(header);
+                    markPart("attn");
                     create_wat();
                     generate_silence(silenceSamples("headersToAttention"));
                     create_nwr_tone();
@@ -1533,6 +1583,7 @@ async function fetchAndStore() {
             }
         }
 
+        markPart("voice");
         const appendAnnouncement = (pcmRaw) => {
             const pcm = levelTtsPcm(pcmRaw, { targetDb: 3, maxGainDb: 24, softClip: cl, softClipK: 1.6 });
             generate_silence(silenceSamples("attentionToMessage"));
@@ -1757,6 +1808,7 @@ async function fetchAndStore() {
             }
         }
 
+        markPart("eom");
         if (tone !== null) {
             switch (tone.toString()) {
                 case "0":
@@ -1883,6 +1935,67 @@ async function fetchAndStore() {
     const UNIMPLEMENTED_EVENT_KEYWORDS = ["INDUSTRIAL FIRE", "WILD FIRE WARNING", "DUST STORM WATCH", "CIVIL DANGER WATCH", "RADIOLOGICAL HAZARD WATCH", "HAZARDOUS MATERIALS WATCH", "EARTHQUAKE WATCH", "NUCLEAR PLANT TEST", "IMMEDIATE EVACUATION WARNING"];
 
     saveb.addEventListener("click", saveToWav);
+
+    let lastSpeech = { text: "", voice: "", announcementType: "" };
+    let lastWavBlob = null;
+    let sendMenu = null;
+    function ensureSendMenu() {
+        if (sendMenu) return sendMenu;
+        const noAlert = () => (samples.length && alertInfo) ? "" : "generate an alert first";
+        sendMenu = createSendMenu({
+            label: "Send to…",
+            title: "Open the generated alert in another tool",
+            items: [
+                {
+                    tool: "splicer",
+                    label: "Audio Splicer (header, tone, message and EOM on their own tracks)",
+                    what: "Alert",
+                    unavailable: noAlert,
+                    payload: () => {
+                        const payload = splicerAlertPayload();
+                        if (payload) addStatus("Sent the alert to the Audio Splicer.");
+                        return payload;
+                    },
+                },
+                {
+                    tool: "decoder",
+                    label: "Decoder (check that the alert decodes)",
+                    what: "Alert audio",
+                    unavailable: () => lastWavBlob ? "" : "generate an alert first",
+                    payload: () => ({ audio: audioFile(lastWavBlob, "eas-encoder-alert.wav") }),
+                },
+                {
+                    tool: "crawl",
+                    label: "Text Crawl Generator (header)",
+                    what: "Header",
+                    unavailable: noAlert,
+                    payload: () => alertInfo ? { header: alertInfo.header } : null,
+                },
+            ],
+        });
+        sendMenu.element.id = "encoderSendMenu";
+        sendMenu.setVisible(false);
+        saveb.insertAdjacentElement("afterend", sendMenu.element);
+        return sendMenu;
+    }
+
+    function splicerAlertPayload() {
+        if (!samples.length || !alertInfo) return null;
+        const pcm = Float32Array.from(samples);
+        const parts = alertParts.map((p, i) => ({
+            role: p.role,
+            from: p.at,
+            to: i + 1 < alertParts.length ? alertParts[i + 1].at : pcm.length,
+        })).filter((p) => p.to > p.from);
+        return {
+            alert: {
+                pcm,
+                sampleRate: SAMPLE_RATE,
+                parts,
+                info: { ...alertInfo, ...lastSpeech },
+            },
+        };
+    }
 
     function hasAnyEventKeyword(labelUpper, keywords) {
         for (let i = 0; i < keywords.length; i++) {
@@ -2241,6 +2354,8 @@ async function fetchAndStore() {
         var timeTaken = ", Time taken to generate: " + (minutes.toString().padStart(2, "0") === "00" ? "" : minutes.toString().padStart(2, "0") + ":") + seconds.toString().padStart(2, "0") + "." + hundredths.toString().padStart(2, "0") + (minutes.toString().padStart(2, "0") !== "00" ? "m" : "s");
 
         saveb.style.display = "inline-block";
+        lastSpeech = { text: window.ttsText || "", voice: window.ttsVoice || "", announcementType: window.announcementType || "" };
+        ensureSendMenu().setVisible(true);
         addStatus("EAS Generated! Samples: " + samples.length.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (showTime ? timeTaken : ""));
         addStatus("Generated header: <br class=\"mobileBreak\"><pre class=\"generatedHeader\">" + (usesCustomHeader ? customHeaderValue : header) + "</pre>");
 
@@ -2258,6 +2373,7 @@ async function fetchAndStore() {
         wav.fromScratch(1, SAMPLE_RATE, '32', samples.map(sampleToInt32));
         const wavBuffer = wav.toBuffer().buffer;
         const wavBlob = new Blob([new DataView(wavBuffer)], { type: 'audio/wav' });
+        lastWavBlob = wavBlob;
         const wavUrl = URL.createObjectURL(wavBlob);
         playbackElement.dataset.objectUrl = wavUrl;
         playbackElement.setAttribute("src", wavUrl);
@@ -3227,6 +3343,10 @@ async function fetchAndStore() {
         updateHeaderPreview();
     });
 
+    if (encoderModeSelect.value === "header") {
+        encoderModeSelect.dispatchEvent(new Event("change"));
+    }
+
     const announcementLevelDiv = document.getElementById("announcementLevelDiv");
     const announcementAutoLevelRow = document.getElementById("announcementAutoLevelRow");
 
@@ -3254,6 +3374,47 @@ async function fetchAndStore() {
             ttsOuterDiv.style.display = "none";
             customAnnouncementDiv.style.display = "none";
         }
+    });
+
+    function loadIncomingHeader(raw) {
+        const value = String(raw || "").trim();
+        if (!value) return;
+        rawinput.value = value;
+        encoderModeSelect.value = "header";
+        encoderModeSelect.dispatchEvent(new Event("change"));
+        const resolved = resolveHeaderInput(value);
+        if (!resolved.ok) {
+            addStatus(resolved.error, "ERROR");
+            return;
+        }
+        const parsedHeader = parseSameHeaderParam(resolved.header);
+        if (parsedHeader) {
+            applyHeaderDetails(parsedHeader);
+        }
+        if (resolved.notes) {
+            resolved.notes.forEach(function (n, i) { addStatus(n, i ? "ERROR" : undefined); });
+        }
+        updateHeaderPreview();
+        addStatus("Loaded a header from another tool.");
+    }
+
+    function loadIncomingText(text) {
+        announcementTypeSelect.value = "tts";
+        announcementTypeSelect.dispatchEvent(new Event("change"));
+        if (window.encoderEditor) {
+            window.encoderEditor.setValue(text);
+        } else {
+            const field = document.getElementById("ttsText");
+            if (field) field.value = text;
+        }
+        window.ttsText = text.trim();
+        requestAnimationFrame(() => window.__ensureTextEditorsRefreshed?.("encoder"));
+        addStatus("Loaded TTS text from another tool.");
+    }
+
+    receive("encoder", (payload) => {
+        if (payload.header) loadIncomingHeader(payload.header);
+        if (typeof payload.text === "string") loadIncomingText(payload.text);
     });
 
     const enableVmifyCustomCheckbox = document.getElementById("enable-vmify-custom");

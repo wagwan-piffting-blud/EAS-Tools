@@ -133,7 +133,14 @@ function casesFor(groups) {
     const can = groups.filter(g => g.action === 'CAN');
     const hasCon = groups.some(g => g.action === 'CON');
     if (can.length && hasCon) {
-        can.forEach(g => cases.push({ action: 'CANCON', phen: g.phen, bullets: g.bullets }));
+        // Same as the page's canconBullets(): CAN's bullets, then CON's that CAN lacks.
+        can.forEach(g => {
+            const con = groups.find(c => c.action === 'CON' && c.phen === g.phen)
+                || groups.find(c => c.action === 'CON');
+            const seen = new Set(g.bullets.map(b => b.name));
+            const extra = con.bullets.filter(b => !seen.has(b.name));
+            cases.push({ action: 'CANCON', phen: g.phen, bullets: g.bullets.concat(extra) });
+        });
     }
     return cases;
 }
