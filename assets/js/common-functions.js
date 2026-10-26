@@ -115,8 +115,8 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         betweenGapMs: 1000,
         afterGapMs: 1000,
         sampleRate: 44100,
-        headerBursts: [{ prefix: "\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF", suffix: "\xFF\xFF" }],
-        eomBursts: [{ prefix: "\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF", suffix: "\xFF\xFF" }]
+        headerBursts: [{ prefix: "\xFF\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF" }],
+        eomBursts: [{ prefix: "\xFF\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF" }]
     },
     TRILITHIC: {
         label: "Trilithic EASyPLUS/EASyCAST/EASyIPTV",
