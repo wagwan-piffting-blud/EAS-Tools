@@ -115,17 +115,8 @@ const ENDEC_MODE_PROFILE_SOURCE = {
         betweenGapMs: 1000,
         afterGapMs: 1000,
         sampleRate: 44100,
-        headerBursts: [{ prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }],
-        eomBursts: [{ prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }]
-    },
-    one_moment_pls: {
-        label: "Excuse me, there's children watching!",
-        signature: { tail: "FF FF FF", lead: "FF FF", burstGapMs: 1000 },
-        betweenGapMs: 1000,
-        afterGapMs: 1000,
-        sampleRate: 44100,
-        headerBursts: [{ prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }],
-        eomBursts: [{ prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }, { prefix: "\xFF\xFF", suffix: "\xFF\xFF\xFF" }]
+        headerBursts: [{ prefix: "\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF", suffix: "\xFF\xFF" }],
+        eomBursts: [{ prefix: "\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF", suffix: "\xFF\xFF" }, { prefix: "\xFF", suffix: "\xFF\xFF" }]
     },
     TRILITHIC: {
         label: "Trilithic EASyPLUS/EASyCAST/EASyIPTV",
