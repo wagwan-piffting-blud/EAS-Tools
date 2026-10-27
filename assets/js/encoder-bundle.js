@@ -780,16 +780,35 @@ async function fetchAndStore() {
         m.forEach(e => { var o = document.createElement("option"); o.innerHTML = e.toString().padStart(2, "0"); o.value = e.toString().padStart(2, "0"); nodes.push(o); }); return nodes;
     }
 
-    async function saveToWav() {
-        addStatus("Generating wav file...");
-        const endecRate = getEndecModeProfile(getOverallEndecMode()).sampleRate;
-        const useEndecRate = shouldEmulateEndecRate() && endecRate !== SAMPLE_RATE;
+    function buildEndecRateWav(mode, emulate) {
+        const endecRate = getEndecModeProfile(mode).sampleRate;
+        const useEndecRate = emulate && endecRate !== SAMPLE_RATE;
         const outRate = useEndecRate ? endecRate : SAMPLE_RATE;
         const outSamples = useEndecRate ? Array.from(resamplePcmSinc(samples, SAMPLE_RATE, endecRate)) : samples;
         wav.fromScratch(1, outRate, '32', outSamples.map(sampleToInt32));
-        const wavBuffer = wav.toBuffer().buffer;
-        await saveFile('eas.wav', wavBuffer, 'audio/wav');
+        return { buffer: wav.toBuffer().buffer, outRate, useEndecRate };
+    }
+
+    async function saveToWav() {
+        addStatus("Generating wav file...");
+        const { buffer, outRate, useEndecRate } = buildEndecRateWav(getOverallEndecMode(), shouldEmulateEndecRate());
+        await saveFile('eas.wav', buffer, 'audio/wav');
         addStatus(useEndecRate ? `Download started (${outRate} Hz ENDEC rate).` : "Download started...");
+    }
+
+    let decoderHandoffBlob = null;
+
+    function decoderHandoffAudio() {
+        if (!lastWavBlob) {
+            return null;
+        }
+        if (!decoderHandoffBlob) {
+            const mode = alertInfo ? alertInfo.mode : getOverallEndecMode();
+            const emulate = alertInfo ? alertInfo.emulate : shouldEmulateEndecRate();
+            const { buffer, useEndecRate } = buildEndecRateWav(mode, emulate);
+            decoderHandoffBlob = useEndecRate ? new Blob([new DataView(buffer)], { type: 'audio/wav' }) : lastWavBlob;
+        }
+        return audioFile(decoderHandoffBlob, "eas-encoder-alert.wav");
     }
 
     function getOverallEndecMode() {
@@ -1962,7 +1981,7 @@ async function fetchAndStore() {
                     label: "Decoder (check that the alert decodes)",
                     what: "Alert audio",
                     unavailable: () => lastWavBlob ? "" : "generate an alert first",
-                    payload: () => ({ audio: audioFile(lastWavBlob, "eas-encoder-alert.wav") }),
+                    payload: () => ({ audio: decoderHandoffAudio() }),
                 },
                 {
                     tool: "crawl",
@@ -2374,6 +2393,7 @@ async function fetchAndStore() {
         const wavBuffer = wav.toBuffer().buffer;
         const wavBlob = new Blob([new DataView(wavBuffer)], { type: 'audio/wav' });
         lastWavBlob = wavBlob;
+        decoderHandoffBlob = null;
         const wavUrl = URL.createObjectURL(wavBlob);
         playbackElement.dataset.objectUrl = wavUrl;
         playbackElement.setAttribute("src", wavUrl);
@@ -4206,7 +4226,7 @@ async function fetchAndStore() {
                 window.EASBridge.send('encoder:status', { text: '[WARN] Generate an alert first.' });
                 return;
             }
-            handIn('decoder', { audio: audioFile(lastWavBlob, 'eas-encoder-alert.wav') }, { what: 'Alert audio' });
+            handIn('decoder', { audio: decoderHandoffAudio() }, { what: 'Alert audio' });
         });
 
         window.EASBridge.on('encoder:handoffSplicerAlert', () => {

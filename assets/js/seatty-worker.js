@@ -257,22 +257,26 @@ export async function* wavChannelChunks(blob, layout, slices) {
 export async function* decodeBatches(chunks, sampleRate, options, batchSamples) {
     let kinds = [];
     let index = [];
+    let softs = [];
     const demod = createSeattySameDemod({
         ...options,
         sampleRate,
         onBit: (bit, soft, sampleIndex) => {
             kinds.push(bit);
             index.push(sampleIndex);
+            softs.push(soft);
         },
         onTone: (sampleIndex) => {
             kinds.push(SEATTY_EVENT_TONE);
             index.push(sampleIndex);
+            softs.push(0);
         }
     });
     const take = (done) => {
-        const batch = { kinds: Uint8Array.from(kinds), index: Float64Array.from(index), done };
+        const batch = { kinds: Uint8Array.from(kinds), index: Float64Array.from(index), soft: Float32Array.from(softs), done };
         kinds = [];
         index = [];
+        softs = [];
         return batch;
     };
     const step = Math.max(1, Math.floor(batchSamples) || sampleRate);
@@ -302,7 +306,7 @@ if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScop
     const ready = loadSeattyWasm();
     ready.then((wasm) => self.postMessage({ type: 'ready', wasm }));
     const post = (id, batch) => {
-        self.postMessage({ type: 'batch', id, ...batch }, [batch.kinds.buffer, batch.index.buffer]);
+        self.postMessage({ type: 'batch', id, ...batch }, [batch.kinds.buffer, batch.index.buffer, batch.soft.buffer]);
     };
     self.onmessage = async (event) => {
         const msg = event.data || {};

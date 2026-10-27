@@ -1,5 +1,11 @@
 # EAS Tools Changelog
 
+2026-10-27:
+
+- Fix some bugs in the ENDEC detection logic for the decoder tool, which should improve the accuracy and reliability of the decoding process. Specifically, an 1822 is now properly distinguished from a 3644, for example. As well, the ENDEC sample rate now properly passes between tools. Thank you to GitHub user @IcyNylon for reporting this issue via their (well intended, but not merged) PR #146. The issue was still valid and I was able to fix it in this update.
+
+---
+
 2026-10-26:
 
 - The Splicer is now redone and much more like Audacity in some regards. It now has a proper waveform display, and the ability to select a portion of the audio to apply effects to. The waveform display is interactive, allowing users to zoom in and out, and to select specific portions of the audio for editing. The splicer tool now also supports multiple tracks, allowing users to layer audio files on top of each other for more complex audio processing. This change provides users with a more powerful and flexible audio editing experience, similar to what they would find in a dedicated audio editing application like Audacity or Wavacity in a browser. Thanks to user @jakescooty for suggesting this change, as it was a long time coming and I finally got the time to implement it and test it fully before deploying it. Enjoy!
