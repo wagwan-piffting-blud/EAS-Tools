@@ -6,6 +6,7 @@ import {
     normalizeEndecMode,
     saveFile,
     isObject,
+    responseOk,
     USES_DARK_THEME
 } from './common-functions.js';
 
@@ -2697,7 +2698,7 @@ async function fetchAndStore() {
         }
         const pending = fetch(url)
             .then((response) => {
-                if (!response.ok) {
+                if (!responseOk(response)) {
                     throw new Error("HTTP " + response.status);
                 }
                 return response.arrayBuffer();
@@ -3260,8 +3261,6 @@ async function fetchAndStore() {
         return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
     }
 
-    // Per-burst framing, measured with carrier presence: terminator runs only count bytes that
-    // still carry the FSK tone, so the silence after a burst no longer reads as a 0x00 tail.
     function sameProductFeatures(product) {
         const f = {
             ffRuns: [],
@@ -4299,9 +4298,6 @@ async function fetchAndStore() {
     let lastSourceAudio = null;
     let sourceSampleRate = null;
 
-    // The rate a WAV was written at, even when it is too low for the WAV path and gets decoded
-    // through decodeAudioData. The encoder's ENDEC emulation writes TFT at 8 kHz, HollyAnne at
-    // 5 kHz and DASDEC at 48 kHz, which is the only thing telling those tail-less modes apart.
     async function peekWavSampleRate(blob) {
         try {
             const view = new DataView(await blob.slice(0, 4096).arrayBuffer());
@@ -4551,9 +4547,6 @@ async function fetchAndStore() {
         return pos < 0 ? -1 : pos;
     }
 
-    // Called on the first byte-aligned 0xAB of a burst, which is the last 8 bits of the history.
-    // Earlier preamble bytes are skipped, then the bits before the preamble describe the ENDEC:
-    // a run of strong marks (SAGE 1822), a strong 0x00 (SAGE 3644's first burst), or nothing.
     function measureBurstShape() {
         let abMag = 0;
         for (let k = 0; k < 8; k++) {

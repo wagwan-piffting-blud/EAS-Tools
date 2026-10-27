@@ -217,6 +217,10 @@ export function createEndecModeVotes(initialValue = 0) {
     return votes;
 }
 
+export function responseOk(response) {
+    return !!response && (response.ok || (response.status === 0 && response.type !== "opaque" && response.type !== "error"));
+}
+
 export function isObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }

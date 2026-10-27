@@ -1,4 +1,4 @@
-import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
+import { saveFile, responseOk, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
 import { createSendMenu, receive } from './handoff.js';
 import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady } from '../E2T/EAS2Text-NG.js';
 import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec, Input, BlobSource, CanvasSink, ALL_FORMATS } from './mediabunny/mediabunny.min.js';
@@ -6404,7 +6404,7 @@ async function initCrawlEditor() {
             const fileUrl = path.startsWith('file://') ? path : 'file://' + path;
             const url = window.Capacitor && typeof window.Capacitor.convertFileSrc === 'function' ? window.Capacitor.convertFileSrc(fileUrl) : fileUrl;
             const response = await fetch(url);
-            if (!response.ok) throw new Error('Could not read the background video (HTTP ' + response.status + ').');
+            if (!responseOk(response)) throw new Error('Could not read the background video (HTTP ' + response.status + ').');
             const blob = await response.blob();
             const file = new File([blob], params.name || 'background-video.mp4', { type: params.type || blob.type || 'video/mp4', lastModified: Date.now() });
             file.__nativeToken = token;

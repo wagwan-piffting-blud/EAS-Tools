@@ -1,4 +1,4 @@
-import { ENDEC_MODE_OPTIONS, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain } from './common-functions.js';
+import { ENDEC_MODE_OPTIONS, responseOk, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain } from './common-functions.js';
 import { createSendMenu, receive, handIn, audioFile } from './handoff.js';
 
 if (typeof window !== 'undefined') {
@@ -353,7 +353,7 @@ async function fetchAndStore() {
         const loader = (async () => {
             try {
                 const response = await fetch(file);
-                if (!response.ok) {
+                if (!responseOk(response)) {
                     throw new Error("Failed to fetch relay pop file.");
                 }
 
@@ -1043,7 +1043,7 @@ async function fetchAndStore() {
         pelmorexTonePromise = (async function () {
             try {
                 const response = await fetch("assets/pelmorex.wav");
-                if (!response.ok) {
+                if (!responseOk(response)) {
                     throw new Error("Failed to fetch Pelmorex attention tone reference.");
                 }
 
@@ -1100,7 +1100,7 @@ async function fetchAndStore() {
         buzzerTonePromise = (async function () {
             try {
                 const response = await fetch("assets/buzzer.wav");
-                if (!response.ok) {
+                if (!responseOk(response)) {
                     throw new Error("Failed to fetch Buzzer tone reference.");
                 }
 
@@ -1322,7 +1322,7 @@ async function fetchAndStore() {
         if (prePostPcmCache.has(preset.url)) return prePostPcmCache.get(preset.url);
         try {
             const response = await fetch(preset.url);
-            if (!response.ok) {
+            if (!responseOk(response)) {
                 reportPrePost(spec.label + ": the recording for \"" + preset.label + "\" is not installed, so it was skipped.", "WARN");
                 return null;
             }
