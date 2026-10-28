@@ -13,7 +13,9 @@ Web‑based **EAS / SAME Tools** that run entirely in your browser. Packed to th
 > [!CAUTION]
 > **Legal & ethics notice**
 >
-> This project is for **lab, testing, hobbyist, and educational use only**. In many jurisdictions (e.g., U.S. FCC 47 CFR §11.45), transmitting or simulating EAS tones outside of authorized tests is prohibited. **Do not broadcast** generated tones or headers over public channels. The author is NOT responsible for ANY misuse of this software toolkit. You must also adhere to the EAS Tools [Terms of Service](https://eas.tools/terms.html) at all times when using the app.
+> This project is for **lab, testing, hobbyist, and educational use only**. In many jurisdictions (e.g., U.S. FCC 47 CFR §11.45), transmitting or simulating EAS tones outside of authorized tests is prohibited. **Do not broadcast** generated tones or headers over public channels. **The authors are not responsible for any misuse of this software toolkit.**
+>
+> You must also adhere to the EAS Tools [Terms of Service](https://eas.tools/terms.html) at all times when using the app.
 
 ---
 
@@ -86,7 +88,8 @@ Web‑based **EAS / SAME Tools** that run entirely in your browser. Packed to th
    # then open http://localhost:8080 in your browser
    ```
 
-   > Browsers require a **secure context** for microphone (`getUserMedia`). `https://` or `http://localhost:8080` works; opening `index.html` with a `file://` URL usually won’t.
+   > [!IMPORTANT]
+   > Browsers require a **secure web context** for the microphone (`getUserMedia`). Opening with `https://` or `http://localhost:8080` from a web server works; opening `index.html` with a `file://` URL usually won’t.
 
 ---
 
@@ -240,19 +243,16 @@ For a demonstration of each individual TTS voice, see the [voice demo page](http
   * [US Census Bureau TIGER/Line Shapefiles](https://www.census.gov/cgi-bin/geo/shapefiles/index.php)
   * [NOAA / National Weather Service County Warning Area Shapefile](https://www.weather.gov/gis/ZoneCounty)
 
-> See each upstream project for their respective licenses.
+> [!IMPORTANT]
+> Remember to see each upstream project for their own respective licenses.
 
 ---
 
 ## 🛡️ License
 
-This project is licensed under **GPL‑3.0** (see [`LICENSE`](./LICENSE)).
+This project is licensed under the **GNU GPLv3** license. See [`LICENSE`](./LICENSE).
 
 ## 📍 Disclaimers
-
-> [!CAUTION]
-> This tool decodes and synthesizes EAS/SAME signals for **lab, testing, hobbyist, and educational** purposes only.
-> You are responsible for complying with all applicable laws, regulations, and organizational policies that govern your usage of the output from this software. The authors are **not** responsible for any misuse or abuse of this software. You **must** also adhere to the EAS Tools [Terms of Service](https://eas.tools/terms.html) at all times when using the app.
 
 ## GenAI Disclosure Notice
 
