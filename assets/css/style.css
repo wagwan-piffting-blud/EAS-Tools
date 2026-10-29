@@ -2625,9 +2625,6 @@ textarea:disabled {
 #splicer-panel {
     --splice-pad: clamp(18px, 2vw, 32px);
     padding: 16px var(--splice-pad) 0;
-    /* .tool-panel's overflow-y: auto makes overflow-x compute to auto too; the Splicer never
-       scrolls sideways as a whole (the timeline and toolbar have their own scrollers). */
-    overflow-x: hidden;
 }
 
 #splicer-panel.active {

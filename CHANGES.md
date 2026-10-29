@@ -10,6 +10,8 @@
 
 - Fix an iOS related scrolling bug in the new Splicer tool version.
 
+- VERY SMALL follow-up to the above scroll bug fix.
+
 ---
 
 2026-10-27:
