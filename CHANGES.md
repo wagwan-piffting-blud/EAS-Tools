@@ -1,11 +1,20 @@
 # EAS Tools Changelog
 
+2026-10-29:
+
+- Redesign WarnGen a slight bit to be more in-line with the other tool styles on EAS Tools. Thanks to GitHub user @seasonal-currency for suggesting this change and making PR #153 for it, as it was long overdue. Enjoy!
+
+- Update README with similar changes from PR #153/issue #151.
+
+- Fix issue #149. Thanks to GitHub user @itsmewilliam12 for reporting this issue.
+
+---
+
 2026-10-27:
 
 - Fix some bugs in the ENDEC detection logic for the decoder tool, which should improve the accuracy and reliability of the decoding process. Specifically, an 1822 is now properly distinguished from a 3644, for example. As well, the ENDEC sample rate now properly passes between tools. Thank you to GitHub user @IcyNylon for reporting this issue via their (well intended, but not merged) PR #146. The issue was still valid and I was able to fix it in this update.
 
 - Fix issue #147 where iOS users were not able to download and use audio assets within EAS Tools due to an upstream Capacitor handling issue. Specifically, the Trilithic "pop" and the Pelmorex/Alert Ready tone among a few other files were not able to be downloaded and used in the tools. This has been resolved with some changes to the way the assets are handled in the JavaScript code. Thanks to GitHub user @GameXpert97 for reporting this issue and providing helpful screenshots that showed the problem more precisely.
-
 
 ---
 

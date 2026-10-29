@@ -684,7 +684,16 @@
                         <br>
                         <label for="crawlVideoBarOpacity">Crawl Bar Opacity (percentage, 0-100):</label>
                         <input type="number" id="crawlVideoBarOpacity" min="0" max="100" value="100">
-                        <p id="crawlBackgroundVideoNote" class="inline-note">The crawl runs in a bar over the video, colored with the Background Color above. Choosing a video sizes the crawl to the video; you can change the size afterwards. The video plays muted and loops while the crawl runs, and exports loop it for the length of the crawl. MP4 (H.264) and WebM work in most browsers.</p>
+                        <br>
+                        <label for="crawlVideoStart">Video Start (seconds, blank for the beginning):</label>
+                        <input type="number" id="crawlVideoStart" min="0" step="0.1" placeholder="0" aria-describedby="crawlBackgroundVideoNote">
+                        <br>
+                        <label for="crawlVideoEnd">Video End (seconds, blank for the end):</label>
+                        <input type="number" id="crawlVideoEnd" min="0" step="0.1" placeholder="end" aria-describedby="crawlBackgroundVideoNote">
+                        <br>
+                        <label for="crawlVideoStopAtEnd">Stop the export at the end of the video clip:</label>
+                        <input type="checkbox" id="crawlVideoStopAtEnd">
+                        <p id="crawlBackgroundVideoNote" class="inline-note">The crawl runs in a bar over the video, colored with the Background Color above. Choosing a video sizes the crawl to the video; you can change the size afterwards. The video plays muted and loops between the start and end times while the crawl runs, and exports loop it for the length of the crawl, or stop at the end of the clip when that box is checked. MP4 (H.264) and WebM work in most browsers.</p>
                     </div>
                     <div id="crawlBackgroundPremadeDiv" style="display: none;">
                         <br>
@@ -749,9 +758,13 @@
                         </select>
                         <label for="crawlExportVideoFps">Video FPS:</label>
                         <select id="crawlExportVideoFps" aria-label="Video export frame rate">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="5">5</option>
                             <option value="24">24</option>
                             <option value="30">30</option>
                             <option value="60" selected>60</option>
+                            <option value="changed">Only when changed</option>
                         </select>
                         <label for="crawlExportVideoFormat">Video Format:</label>
                         <select id="crawlExportVideoFormat" aria-label="Video export container format">
@@ -973,8 +986,9 @@
                             container: document.getElementById('warngen-container'),
                             src: 'warngen/',
                             title: 'WarnGen',
-                            minHeight: '1070px',
+                            minHeight: '0',
                             persist: true,
+                            module: 'assets/js/handoff.js',
                         },
                     },
                     muxer: {
@@ -1022,6 +1036,7 @@
                 const ensureIframe = (tool) => {
                     const config = panels[tool]?.iframe;
                     if (!config || !config.container || iframeInstances[tool]) return;
+                    if (config.module) loadModule(config.module).catch(() => { });
                     const iframe = document.createElement('iframe');
                     iframe.title = config.title;
                     iframe.loading = 'lazy';

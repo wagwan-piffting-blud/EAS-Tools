@@ -2,66 +2,73 @@
 * {
     box-sizing: border-box;
 
-    --wg-bg: #1a1d22;
-    --wg-surface-panel: #12151a;
-    --wg-surface-raised: #14171c;
-    --wg-surface-bar: #1c2128;
-    --wg-surface-sunken: #0d0f12;
-    --wg-control-bg: #2a2e35;
+    /* Keep WarnGen's local variables, but source the palette from EAS Tools. */
+    --wg-bg: var(--color-bg, #050505);
+    --wg-surface-panel: #121212;
+    --wg-surface-raised: #161616;
+    --wg-surface-bar: #1c1c1c;
+    --wg-surface-sunken: #0b0b0b;
+    --wg-control-bg: #161616;
 
-    --wg-map-bg: #1a1d22;
-    --wg-map-canvas: #14171c;
+    --wg-map-bg: #050505;
+    --wg-map-canvas: #121212;
 
-    --wg-border: #2a2e35;
-    --wg-border-input: #3a3e45;
-    --wg-border-strong: #444;
+    --wg-border: var(--color-border, #303030);
+    --wg-border-input: var(--color-border-light, #555555);
+    --wg-border-strong: var(--color-border-light, #555555);
 
-    --wg-button-bg: #3a4452;
-    --wg-button-active-bg: #2a323e;
+    --wg-button-bg: var(--color-orange, #ff7800);
+    --wg-button-hover-bg: #ff8c22;
+    --wg-button-active-bg: var(--color-dark-orange, #b15708);
 
-    --wg-text-bright: #ffffff;
-    --wg-text: #e8e8e8;
-    --wg-text-output: #d8d8d8;
-    --wg-text-option: #d0d0d0;
-    --wg-text-checkbox: #ccc;
-    --wg-text-bar: #c8c8c8;
-    --wg-text-label: #aaa;
-    --wg-text-dim: #888;
-    --wg-text-faint: #858585;
+    --wg-text-bright: var(--color-text, #f5f5f5);
+    --wg-text: var(--color-text, #f5f5f5);
+    --wg-text-output: #e5e5e5;
+    --wg-text-option: #d5d5d5;
+    --wg-text-checkbox: #cccccc;
+    --wg-text-bar: #cccccc;
+    --wg-text-label: #aaaaaa;
+    --wg-text-dim: #9a9a9a;
+    --wg-text-faint: #8a8a8a;
+    --wg-disabled-bg: #3a3a3a;
+    --wg-disabled-text: #9a9a9a;
 
-    --wg-accent: #f0c674;
-    --wg-accent-alt: #fabd2f;
-    --wg-accent-dim: #a68660;
-    --wg-accent-border: #4a3828;
-    --wg-accent-bg: #2a1f15;
-    --wg-accent-bg-hover: #3a2b1c;
-    --wg-accent-surface: #1a1410;
-    --wg-accent-alt-fill: rgba(250, 189, 47, 0.55);
+    --wg-accent: var(--color-orange, #ff7800);
+    --wg-accent-alt: #ff9a3c;
+    --wg-accent-dim: #d9822e;
+    --wg-accent-border: #6f3b10;
+    --wg-accent-bg: #2a1608;
+    --wg-accent-bg-hover: #3a210d;
+    --wg-accent-surface: #1a0f06;
+    --wg-accent-alt-fill: rgba(255, 154, 60, 0.55);
 
-    --wg-danger: #fb4934;
-    --wg-danger-bg: #341c23;
-    --wg-danger-fill: rgba(251, 73, 52, 0.5);
-    --wg-danger-glow: rgba(251, 73, 52, 0.8);
+    --wg-danger: #ff4d4d;
+    --wg-danger-hover: #ff6868;
+    --wg-danger-text: #050505;
+    --wg-danger-bg: #341616;
+    --wg-danger-bg-hover: #4a2020;
+    --wg-danger-fill: rgba(255, 77, 77, 0.5);
+    --wg-danger-glow: rgba(255, 77, 77, 0.8);
     --wg-locked: #83a5f8;
 
-    --wg-info: #83a598;
-    --wg-info-border: #3a5a72;
-    --wg-info-bg: #142833;
-    --wg-info-bg-hover: #1e3743;
+    --wg-info: #ff9a3c;
+    --wg-info-border: #6f3b10;
+    --wg-info-bg: #1a0f06;
+    --wg-info-bg-hover: #2a1608;
 
-    --wg-success: #8ec07c;
-    --wg-primary-text: #b8e0c0;
-    --wg-primary-border: #5a8c63;
-    --wg-primary-bg: #2d4a32;
-    --wg-primary-bg-hover: #3a5b40;
+    --wg-success: #34c759;
+    --wg-primary-text: var(--color-bg, #050505);
+    --wg-primary-border: var(--color-orange, #ff7800);
+    --wg-primary-bg: var(--color-orange, #ff7800);
+    --wg-primary-bg-hover: #ff8c22;
 
     --wg-map-county-stroke: #666;
-    --wg-map-county-fill: #1f242b;
-    --wg-map-hit-stroke: #f0c674;
-    --wg-map-hit-fill: #f0c67455;
-    --wg-map-draw-stroke: #fb4934;
+    --wg-map-county-fill: #161616;
+    --wg-map-hit-stroke: #ff7800;
+    --wg-map-hit-fill: #ff780055;
+    --wg-map-draw-stroke: #ff4d4d;
     --wg-map-issued-stroke: #83a5f8;
-    --wg-map-draw-fill: #fb493422;
+    --wg-map-draw-fill: #ff4d4d22;
     --wg-map-marine-stroke: #458588;
     --wg-map-marine-fill: #83a59822;
     --wg-map-zone-stroke: #8f7a3f;
@@ -77,7 +84,7 @@
     --wg-map-label-city: #eceff3;
     --wg-map-label-county: #a9b2bc;
     --wg-map-label-grid: #9aa4b0;
-    --wg-map-label-halo: #14171c;
+    --wg-map-label-halo: #121212;
     --wg-map-shield-i-bg: #2a5bb8;
     --wg-map-shield-i-text: #ffffff;
     --wg-map-shield-us-bg: #f2f2f2;
@@ -90,6 +97,9 @@
 html, body {
     margin: 0;
     padding: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
     background: var(--wg-bg);
     color: var(--wg-text);
     font-family: "Hack", "Consolas", "Menlo", monospace;
@@ -97,8 +107,15 @@ html, body {
     line-height: 1.45;
 }
 
+body.app-body {
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
 main {
-    padding: 16px 20px;
+    padding: 0;
 }
 
 label {
@@ -110,15 +127,24 @@ select, button {
     background: var(--wg-control-bg);
     color: var(--wg-text);
     border: 1px solid var(--wg-border-strong);
-    padding: 4px 10px;
+    padding: 6px 10px;
     font-family: inherit;
-    font-size: 13px;
-    border-radius: 2px;
+    font-size: 0.9rem;
+    border-radius: 4px;
     cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 select:hover, button:hover {
-    border-color: var(--wg-text-dim);
+    border-color: var(--wg-accent);
+}
+
+select:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--wg-accent);
+    outline-offset: 2px;
 }
 
 select:disabled {
@@ -128,9 +154,14 @@ select:disabled {
 
 button {
     background: var(--wg-button-bg);
-    color: var(--wg-accent);
+    color: var(--wg-primary-text);
+    border-color: var(--wg-accent);
     font-weight: bold;
-    padding: 4px 18px;
+    padding: 6px 12px;
+}
+
+button:hover {
+    background: var(--wg-button-hover-bg);
 }
 
 button:active {
@@ -186,9 +217,27 @@ body.mode-areas .leaflet-interactive {
     outline-offset: -3px;
 }
 
-#clear-poly-btn {
+.danger-btn {
+    background: var(--wg-danger);
+    color: var(--wg-danger-text);
+    border-color: var(--wg-danger);
+}
+
+.danger-btn:hover {
+    background: var(--wg-danger-hover);
+    border-color: var(--wg-danger-hover);
+}
+
+.danger-btn-outline {
     background: var(--wg-danger-bg);
     color: var(--wg-danger);
+}
+
+.danger-btn-outline:hover,
+.danger-btn-outline:active {
+    background: var(--wg-danger-bg-hover);
+    color: var(--wg-danger);
+    border-color: var(--wg-danger);
 }
 
 #bullet-list {
@@ -234,9 +283,11 @@ body.mode-areas .leaflet-interactive {
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
-    padding: 6px 0;
-    margin-left: 20px;
-    margin-right: 20px;
+    padding: 10px 20px;
+    margin-left: 0;
+    margin-right: 0;
+    background: var(--wg-surface-raised);
+    border-bottom: 1px solid var(--wg-border);
 }
 
 .checkbox-label {
@@ -262,9 +313,19 @@ body.mode-areas .leaflet-interactive {
 
 .app-body main.split {
     display: flex;
-    height: calc(100vh - 250px);
-    min-height: 460px;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 560px;
+    overflow: hidden;
     border-top: 1px solid var(--wg-border);
+}
+
+.controls,
+.status-bar,
+.help-bar,
+.storm-bar,
+.meta-bar {
+    flex: 0 0 auto;
 }
 
 .status-bar {
@@ -287,7 +348,8 @@ body.mode-areas .leaflet-interactive {
     gap: 14px;
 }
 
-.meta-bar strong {
+.meta-bar strong,
+.storm-bar strong {
     color: var(--wg-info);
     margin-right: 4px;
 }
@@ -309,7 +371,7 @@ body.mode-areas .leaflet-interactive {
     font-size: 12px;
 }
 
-.meta-bar input[type="number"] { width: 60px; }
+.meta-bar input[type="number"] { width: calc(4ch + 2rem); }
 .meta-bar select { max-width: 220px; }
 
 .meta-bar select:focus,
@@ -342,8 +404,15 @@ body.mode-areas .leaflet-interactive {
 }
 
 .wg-combo .ss-combo__btn {
+    background: var(--ss-bg, var(--wg-control-bg));
+    color: var(--ss-text, var(--wg-text));
+    border-color: var(--ss-border, var(--wg-border-input));
     font-weight: normal;
     border-radius: 2px;
+}
+
+.wg-combo .ss-combo__btn:hover {
+    background: var(--ss-bg, var(--wg-control-bg));
 }
 
 .wg-combo .ss-combo__pop {
@@ -374,13 +443,13 @@ body.mode-areas .leaflet-interactive {
 }
 
 .secondary-btn {
-    background: var(--wg-info-bg);
-    color: var(--wg-info);
-    border-color: var(--wg-info-border);
+    background: var(--wg-button-bg);
+    color: var(--wg-primary-text);
+    border-color: var(--wg-accent);
 }
 
 .secondary-btn:hover {
-    background: var(--wg-info-bg-hover);
+    background: var(--wg-button-hover-bg);
 }
 
 /* Send to… menu */
@@ -445,7 +514,7 @@ body.mode-areas .leaflet-interactive {
 }
 
 .help-bar strong {
-    color: var(--wg-accent); margin-right: 6px;
+    color: var(--wg-info); margin-right: 6px;
 }
 
 .help-bar em {
@@ -468,11 +537,6 @@ body.mode-areas .leaflet-interactive {
     gap: 14px;
 }
 
-.storm-bar strong {
-    color: var(--wg-danger);
-    margin-right: 4px;
-}
-
 .storm-bar label {
     display: inline-flex;
     align-items: center;
@@ -492,7 +556,10 @@ body.mode-areas .leaflet-interactive {
     padding: 2px 5px;
     font-family: inherit;
     font-size: 12px;
-    width: 70px;
+}
+
+.storm-bar input[type="number"] {
+    width: calc(7ch + 2rem);
 }
 
 .storm-bar input[type="text"] {
@@ -1086,7 +1153,7 @@ body:not(.iw-mode) #iw-panel,
 }
 
 .synth-grid input[type="number"] {
-    width: 7.5em;
+    width: calc(8ch + 2rem);
 }
 
 .synth-hint {
@@ -1110,6 +1177,55 @@ body:not(.iw-mode) #iw-panel,
 
     .synth-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Native number spinners sit inside the input's content box. Right padding moves Chromium's
+   spinner away from the edge and steals room from the value, so reserve width explicitly and
+   leave that edge to the browser control. Modern browsers can then grow with the current value. */
+input[type="number"] {
+    padding-right: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.meta-bar input[type="number"],
+.storm-bar input[type="number"],
+.synth-grid input[type="number"],
+.fillin-input[type="number"] {
+    padding-right: 0;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    margin: 0 0 0 5px;
+}
+
+/* Gecko's native spinner internals are not exposed to page CSS. Its widget is one pixel shorter
+   than these compact controls, so tighten the author-controlled border box instead. */
+@supports (-moz-appearance: none) {
+    .meta-bar input[type="number"],
+    .storm-bar input[type="number"] {
+        padding-bottom: 1px;
+    }
+}
+
+@supports (field-sizing: content) {
+    .meta-bar input[type="number"],
+    .storm-bar input[type="number"],
+    .synth-grid input[type="number"] {
+        field-sizing: content;
+        width: auto;
+        min-width: calc(3ch + 2rem);
+        max-width: calc(14ch + 2rem);
+    }
+
+    #centroid-lat,
+    #centroid-lon,
+    #synth-storm-lat,
+    #synth-storm-lon,
+    #synth-site-lat,
+    #synth-site-lon {
+        min-width: calc(7ch + 2rem);
     }
 }
 
@@ -1138,20 +1254,11 @@ body:not(.iw-mode) #iw-panel,
 
 .watch-del {
     flex: 0 0 auto;
-    background: var(--wg-accent-bg);
-    color: var(--wg-accent-alt);
-    border: 1px solid var(--wg-accent-border);
     cursor: pointer;
     font-family: inherit;
     font-size: 13px;
     line-height: 1;
     padding: 3px 7px;
-}
-
-.watch-del:hover,
-.watch-del:focus {
-    background: var(--wg-accent-bg-hover);
-    outline: none;
 }
 
 .watch-actions {
@@ -1166,19 +1273,27 @@ body:not(.iw-mode) #iw-panel,
 }
 
 .mini-btn {
-    background: var(--wg-accent-bg);
-    color: var(--wg-accent-alt);
-    border: 1px solid var(--wg-accent-border);
+    background: var(--wg-button-bg);
+    color: var(--wg-primary-text);
+    border: 1px solid var(--wg-accent);
     cursor: pointer;
     font-family: inherit;
     font-size: 11px;
     padding: 2px 8px;
 }
 
-.mini-btn:hover,
-.mini-btn:focus {
-    background: var(--wg-accent-bg-hover);
-    outline: none;
+.mini-btn:hover {
+    background: var(--wg-button-hover-bg);
+}
+
+button:disabled,
+button[disabled],
+button:disabled:hover,
+button[disabled]:hover {
+    background: var(--wg-disabled-bg);
+    color: var(--wg-disabled-text);
+    border-color: var(--wg-disabled-bg);
+    cursor: not-allowed;
 }
 
 /* Media Queries */
@@ -1216,8 +1331,16 @@ body:not(.iw-mode) #iw-panel,
 @media (max-width: 768px) {
     html, body {
         overflow-x: hidden;
+        overflow-y: auto;
         width: 100%;
+        height: auto;
+        min-height: 100%;
         max-width: 100%;
+    }
+
+    body.app-body {
+        display: block;
+        overflow-y: auto;
     }
 
     .app-body main.split {
@@ -1294,66 +1417,72 @@ body:not(.iw-mode) #iw-panel,
 /* Light mode */
 @media (prefers-color-scheme: light) {
     * {
-        --wg-bg: #f4f4f6;
-        --wg-surface-panel: #fafafb;
-        --wg-surface-raised: #ececee;
-        --wg-surface-bar: #e3e5e8;
+        --wg-bg: #f5f5f5;
+        --wg-surface-panel: #fafafa;
+        --wg-surface-raised: #eeeeee;
+        --wg-surface-bar: #e4e4e4;
         --wg-surface-sunken: #ffffff;
-        --wg-control-bg: #dcdde1;
+        --wg-control-bg: #f5f5f5;
 
-        --wg-map-bg: #eceef1;
-        --wg-map-canvas: #e7eaee;
+        --wg-map-bg: #eeeeee;
+        --wg-map-canvas: #fafafa;
 
-        --wg-border: #c6c9ce;
-        --wg-border-input: #a8acb3;
-        --wg-border-strong: #8e949b;
+        --wg-border: #d0d0d0;
+        --wg-border-input: #a7a7a7;
+        --wg-border-strong: #a7a7a7;
 
-        --wg-button-bg: #d5dae2;
-        --wg-button-active-bg: #bfc7d2;
+        --wg-button-bg: #ff7800;
+        --wg-button-hover-bg: #ff8c22;
+        --wg-button-active-bg: #b15708;
 
-        --wg-text-bright: #000000;
-        --wg-text: #1b1d21;
-        --wg-text-output: #23262b;
-        --wg-text-option: #2b2e33;
-        --wg-text-checkbox: #2b2e33;
-        --wg-text-bar: #33373d;
-        --wg-text-label: #4a4f56;
-        --wg-text-dim: #5b6067;
-        --wg-text-faint: #5b6066;
+        --wg-text-bright: #050505;
+        --wg-text: #050505;
+        --wg-text-output: #161616;
+        --wg-text-option: #222222;
+        --wg-text-checkbox: #222222;
+        --wg-text-bar: #303030;
+        --wg-text-label: #4a4a4a;
+        --wg-text-dim: #666666;
+        --wg-text-faint: #666666;
+        --wg-disabled-bg: #dddddd;
+        --wg-disabled-text: #666666;
 
-        --wg-accent: #7d5800;
-        --wg-accent-alt: #7a5600;
-        --wg-accent-dim: #6d5730;
-        --wg-accent-border: #d0b478;
-        --wg-accent-bg: #fdf3dc;
-        --wg-accent-bg-hover: #f7e5b8;
-        --wg-accent-surface: #fffaf0;
-        --wg-accent-alt-fill: rgba(176, 124, 0, 0.45);
+        --wg-accent: #9a4600;
+        --wg-accent-alt: #9a4600;
+        --wg-accent-dim: #9a4600;
+        --wg-accent-border: #d89a61;
+        --wg-accent-bg: #fff0e2;
+        --wg-accent-bg-hover: #ffe0c2;
+        --wg-accent-surface: #fff8f0;
+        --wg-accent-alt-fill: rgba(177, 87, 8, 0.35);
 
-        --wg-danger: #b3261e;
-        --wg-danger-bg: #fbe3e0;
-        --wg-danger-fill: rgba(179, 38, 30, 0.45);
-        --wg-danger-glow: rgba(179, 38, 30, 0.55);
+        --wg-danger: #b71c1c;
+        --wg-danger-hover: #961616;
+        --wg-danger-text: #ffffff;
+        --wg-danger-bg: #fbe4e4;
+        --wg-danger-bg-hover: #f5cccc;
+        --wg-danger-fill: rgba(198, 40, 40, 0.35);
+        --wg-danger-glow: rgba(198, 40, 40, 0.55);
         --wg-locked: #1a4fc4;
 
-        --wg-info: #2a6b5b;
-        --wg-info-border: #86b5a7;
-        --wg-info-bg: #e0efeb;
-        --wg-info-bg-hover: #cbe4dc;
+        --wg-info: #9a4600;
+        --wg-info-border: #d89a61;
+        --wg-info-bg: #fff0e2;
+        --wg-info-bg-hover: #ffe0c2;
 
-        --wg-success: #2f6b1f;
-        --wg-primary-text: #245c2b;
-        --wg-primary-border: #79a97f;
-        --wg-primary-bg: #dff0dc;
-        --wg-primary-bg-hover: #c9e5c4;
+        --wg-success: #17701a;
+        --wg-primary-text: #050505;
+        --wg-primary-border: #ff7800;
+        --wg-primary-bg: #ff7800;
+        --wg-primary-bg-hover: #ff8c22;
 
         --wg-map-county-stroke: #767b82;
-        --wg-map-county-fill: #ffffff;
-        --wg-map-hit-stroke: #7d5800;
-        --wg-map-hit-fill: #d9a63a77;
-        --wg-map-draw-stroke: #b3261e;
+        --wg-map-county-fill: #f5f5f5;
+        --wg-map-hit-stroke: #c45f00;
+        --wg-map-hit-fill: #ff780055;
+        --wg-map-draw-stroke: #b71c1c;
         --wg-map-issued-stroke: #1a4fc4;
-        --wg-map-draw-fill: #b3261e33;
+        --wg-map-draw-fill: #c6282833;
         --wg-map-marine-stroke: #2a6b5b;
         --wg-map-marine-fill: #2a6b5b33;
         --wg-map-zone-stroke: #6d5730;

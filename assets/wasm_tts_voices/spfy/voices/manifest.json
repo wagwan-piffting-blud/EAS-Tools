@@ -4,7 +4,7 @@
   "voices": [
     {
       "id": "aicraig",
-      "display": "Craig",
+      "display": "FAKE/AI Craig",
       "lang": "en-US",
       "prefix": "aicraig",
       "large": false,

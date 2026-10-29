@@ -754,7 +754,18 @@ async function initCrawlEditor() {
         }
     }
 
-    function createVideoFrameProvider(video, fps, totalFrames) {
+    function resolveBgVideoRange(range, duration) {
+        const total = Number.isFinite(duration) && duration > 0 ? duration : 0;
+        const rawStart = range ? Number(range.start) : 0;
+        const rawEnd = range ? Number(range.end) : 0;
+        let start = Number.isFinite(rawStart) && rawStart > 0 ? rawStart : 0;
+        if (total && start >= total) start = 0;
+        let end = Number.isFinite(rawEnd) && rawEnd > start ? rawEnd : total;
+        if (total && end > total) end = total;
+        return { start, end, stopAtEnd: Boolean(range && range.stopAtEnd) };
+    }
+
+    function createVideoFrameProvider(video, fps, totalFrames, range = null) {
         const provider = { current: null, prepare, dispose };
         let opening = null;
         let decoder = null;
@@ -800,9 +811,11 @@ async function initCrawlEditor() {
             if (!iterator || index !== iteratorNext) {
                 await closeIterator();
                 const { start, duration } = decoder;
+                const clip = resolveBgVideoRange(range, duration);
+                const span = clip.end - clip.start;
                 const timestamps = function* () {
                     for (let i = index; i < Math.max(totalFrames, index + 1); i++) {
-                        yield start + ((i / fps) % duration);
+                        yield start + clip.start + ((i / fps) % span);
                     }
                 };
                 iterator = decoder.sink.canvasesAtTimestamps(timestamps());
@@ -821,7 +834,8 @@ async function initCrawlEditor() {
                 await waitForVideoData(fallbackVideo);
             }
             const duration = Number.isFinite(fallbackVideo.duration) && fallbackVideo.duration > 0 ? fallbackVideo.duration : 0;
-            await seekVideoElement(fallbackVideo, duration ? (index / fps) % duration : 0);
+            const clip = resolveBgVideoRange(range, duration);
+            await seekVideoElement(fallbackVideo, duration ? clip.start + ((index / fps) % (clip.end - clip.start)) : 0);
             provider.current = fallbackVideo;
         }
 
@@ -1195,7 +1209,7 @@ async function initCrawlEditor() {
         };
     })();
 
-    const VIDEO_EXPORT_FPS_OPTIONS = [24, 30, 60];
+    const VIDEO_EXPORT_FPS_OPTIONS = [1, 2, 5, 24, 30, 60, 'changed'];
     const GIF_EXPORT_FPS_OPTIONS = [20, 25, 50];
     const VIDEO_EXPORT_FORMAT_OPTIONS = ['auto', 'mp4', 'webm'];
     const NATIVE_EXPORT_MAX_WIDTH = 1280;
@@ -1395,20 +1409,24 @@ async function initCrawlEditor() {
         const dasdecTotalDisplays = (dasdecPages && dasdecPages.length && dasdecRotationDelay)
             ? Math.max(1, Number(dasdecBackground.totalDisplays) || (dasdecRepetitionOverride * dasdecPages.length))
             : 0;
-        const dasdecFramesPerPage = dasdecRotationDelay
-            ? Math.max(1, Math.round(dasdecRotationDelay / frameDelayMs))
+        const dasdecFramesPerPageExact = dasdecRotationDelay ? (dasdecRotationDelay * fps) / 1000 : null;
+        const dasdecFramesPerPage = dasdecFramesPerPageExact
+            ? Math.max(1, Math.round(dasdecFramesPerPageExact))
             : null;
+        const dasdecPageTimingExact = !dasdecFramesPerPageExact
+            || (dasdecFramesPerPageExact >= 1 && Math.abs(dasdecFramesPerPageExact - Math.round(dasdecFramesPerPageExact)) < 1e-6);
         const dasdecDrivesTotalFrames = Boolean(dasdecBackground && dasdecBackground.drivesTotalFrames);
         const getDasdecPageForFrame = (dasdecPages && dasdecFramesPerPage)
             ? (frameIndex) => {
+                const rawDisplayIndex = Math.floor(frameIndex / dasdecFramesPerPageExact + 1e-9);
                 const displayIndex = dasdecDrivesTotalFrames
-                    ? Math.min(dasdecTotalDisplays - 1, Math.floor(frameIndex / dasdecFramesPerPage))
-                    : Math.floor(frameIndex / dasdecFramesPerPage);
+                    ? Math.min(dasdecTotalDisplays - 1, rawDisplayIndex)
+                    : rawDisplayIndex;
                 return dasdecPages[displayIndex % dasdecPages.length];
             }
             : null;
         if (getDasdecPageForFrame && dasdecDrivesTotalFrames) {
-            totalFrames = dasdecTotalDisplays * dasdecFramesPerPage;
+            totalFrames = Math.max(1, Math.round(dasdecTotalDisplays * dasdecFramesPerPageExact));
         }
 
         const isTransparentBackground = Boolean(
@@ -1421,8 +1439,14 @@ async function initCrawlEditor() {
 
         const clipWidth = width - inset * 2;
         const shouldClip = inset > 0 && clipWidth > 0;
-        const videoFrames = generator.bgVideo && !getDasdecPageForFrame
-            ? createVideoFrameProvider(generator.bgVideo, fps, totalFrames)
+        const videoClip = generator.bgVideo && !getDasdecPageForFrame
+            ? resolveBgVideoRange(generator.bgVideoRange, generator.bgVideo.duration)
+            : null;
+        if (videoClip && videoClip.stopAtEnd && videoClip.end > videoClip.start) {
+            totalFrames = Math.max(1, Math.round((videoClip.end - videoClip.start) * fps));
+        }
+        const videoFrames = videoClip
+            ? createVideoFrameProvider(generator.bgVideo, fps, totalFrames, generator.bgVideoRange)
             : null;
         const overlayBar = generator.bgVideo && typeof generator._overlayBarRect === 'function'
             ? generator._overlayBarRect()
@@ -1569,6 +1593,8 @@ async function initCrawlEditor() {
             transparentOutput,
             dasdecPageCount: dasdecPages ? dasdecPages.length : 0,
             dasdecFramesPerPage: dasdecFramesPerPage || 0,
+            dasdecRotationDelayMs: getDasdecPageForFrame ? dasdecRotationDelay : 0,
+            dasdecPageTimingExact: !getDasdecPageForFrame || dasdecPageTimingExact,
             drawFrame,
             renderAt,
             reset,
@@ -1824,8 +1850,18 @@ async function initCrawlEditor() {
         return Promise.race([promise, watchdog]).finally(() => clearTimeout(timer));
     }
 
-    async function encodeVideoWithMediabunny(frameSource, { codec, container, bitrate, hardwareAcceleration = 'no-preference', isCancelled, reportProgress, updateEta }) {
-        const { canvas, fps, totalFrames, transparentOutput } = frameSource;
+    function sameFramePixels(a, b) {
+        if (!a || !b || a.length !== b.length) return false;
+        const left = new Uint32Array(a.buffer, a.byteOffset, a.length >> 2);
+        const right = new Uint32Array(b.buffer, b.byteOffset, b.length >> 2);
+        for (let i = 0; i < left.length; i++) {
+            if (left[i] !== right[i]) return false;
+        }
+        return true;
+    }
+
+    async function encodeVideoWithMediabunny(frameSource, { codec, container, bitrate, hardwareAcceleration = 'no-preference', onlyChanged = false, isCancelled, reportProgress, updateEta }) {
+        const { canvas, ctx, width, height, fps, totalFrames, transparentOutput } = frameSource;
         const format = container === 'mp4'
             ? new Mp4OutputFormat({ fastStart: 'in-memory' })
             : new WebMOutputFormat();
@@ -1842,13 +1878,27 @@ async function initCrawlEditor() {
         await withEncoderWatchdog(output.start(), ENCODER_FRAME_STALL_MS);
 
         try {
+            let previousPixels = null;
+            let lastAdded = -1;
             for (let i = 0; i < totalFrames; i++) {
                 if (isCancelled()) {
                     await output.cancel();
                     return null;
                 }
                 await frameSource.drawFrame(i);
-                await withEncoderWatchdog(source.add(i / fps, 1 / fps), ENCODER_FRAME_STALL_MS);
+                let changed = true;
+                if (onlyChanged) {
+                    const pixels = ctx.getImageData(0, 0, width, height).data;
+                    changed = !sameFramePixels(previousPixels, pixels);
+                    if (changed) previousPixels = pixels;
+                }
+                if (changed) {
+                    await withEncoderWatchdog(source.add(i / fps, 1 / fps), ENCODER_FRAME_STALL_MS);
+                    lastAdded = i;
+                }
+                if (onlyChanged && i === totalFrames - 1 && lastAdded < i) {
+                    await withEncoderWatchdog(source.add(i / fps, 1 / fps), ENCODER_FRAME_STALL_MS);
+                }
                 reportProgress((i + 1) / totalFrames);
                 updateEta(i + 1);
                 if ((i + 1) % EXPORT_FRAMES_PER_YIELD === 0) {
@@ -1975,7 +2025,9 @@ async function initCrawlEditor() {
         const showTime = localStorage["showTime"];
         const generator = window.crawlGenerator;
         const native = isNativePlatform();
-        const fps = readExportSelect('crawlExportVideoFps', VIDEO_EXPORT_FPS_OPTIONS, 60);
+        const fpsChoice = readExportSelect('crawlExportVideoFps', VIDEO_EXPORT_FPS_OPTIONS, 60);
+        const onlyChanged = fpsChoice === 'changed';
+        const fps = onlyChanged ? TARGET_FRAMES_PER_SECOND : fpsChoice;
         const requestedFormat = readExportSelect('crawlExportVideoFormat', VIDEO_EXPORT_FORMAT_OPTIONS, 'auto');
         const hasWebCodecs = typeof VideoEncoder === 'function' && typeof VideoFrame === 'function';
 
@@ -1986,6 +2038,7 @@ async function initCrawlEditor() {
         const baseOptions = {
             fps,
             transparent: true,
+            readPixels: onlyChanged,
             maxWidth: native ? 1920 : 0,
             maxHeight: native ? 1080 : 0
         };
@@ -1993,6 +2046,9 @@ async function initCrawlEditor() {
 
         try {
             const { width, height, transparentOutput } = frameSource;
+            if (!frameSource.dasdecPageTimingExact) {
+                addStatus(`At ${fps} FPS this screen's ${frameSource.dasdecRotationDelayMs} ms page changes can't be timed exactly. Pick "Only when changed" or a frame rate that divides evenly into ${frameSource.dasdecRotationDelayMs} ms.`, 'WARN');
+            }
             const bitrate = computeVideoBitrate(width, height, fps);
 
             let codec = null;
@@ -2040,6 +2096,7 @@ async function initCrawlEditor() {
                 container: attemptCodec === 'avc' ? 'mp4' : 'webm',
                 bitrate,
                 hardwareAcceleration,
+                onlyChanged,
                 isCancelled,
                 reportProgress,
                 updateEta
@@ -2093,6 +2150,9 @@ async function initCrawlEditor() {
                     addStatus('WebM encoding is not available in this browser; using the software H.264 encoder (MP4) instead.', 'WARN');
                 } else {
                     addStatus('This browser lacks WebCodecs; using the software H.264 encoder (slower, MP4 only).', 'WARN');
+                }
+                if (onlyChanged) {
+                    addStatus(`"Only when changed" needs the browser's video encoder; the built-in H.264 encoder writes every frame at ${fps} FPS instead.`, 'WARN');
                 }
                 container = 'mp4';
                 restartFrameSource({ readPixels: true });
@@ -2165,6 +2225,7 @@ async function initCrawlEditor() {
             this.outlineJoin = 'round';
             this.bgImage = null;
             this.bgVideo = null;
+            this.bgVideoRange = null;
             this.explicitWidth = null;
             this.explicitHeight = null;
             this.crawlInset = 0;
@@ -2809,11 +2870,15 @@ async function initCrawlEditor() {
             const video = this.bgVideo;
 
             if (video && Number.isFinite(width) && Number.isFinite(height)) {
+                if (this.isAnimating) {
+                    this._keepBgVideoInRange();
+                }
                 const haveCurrentData = typeof HTMLMediaElement !== 'undefined'
                     ? HTMLMediaElement.HAVE_CURRENT_DATA
                     : 2;
-                if (video.readyState >= haveCurrentData) {
-                    drawMediaFitted(this.ctx, video, width, height, this.bgVideoFit, videoLetterboxFill(this));
+                const held = video.seeking && this._bgVideoHold && this._bgVideoHold.__video === video ? this._bgVideoHold : null;
+                if (video.readyState >= haveCurrentData || held) {
+                    drawMediaFitted(this.ctx, video.readyState >= haveCurrentData ? video : held, width, height, this.bgVideoFit, videoLetterboxFill(this));
                     drawCrawlBar(this.ctx, this._overlayBarRect(), width, 1);
                     return;
                 }
@@ -2843,10 +2908,60 @@ async function initCrawlEditor() {
             this.bgVideoFit = CRAWL_VIDEO_FITS.has(fit) ? fit : 'stretch';
             if (previous && previous !== this.bgVideo) {
                 try { previous.pause(); } catch (err) { }
+                this._bgVideoHold = null;
             }
             if (this.bgVideo && this.isAnimating) {
                 this._playBgVideo();
             }
+        }
+
+        setBgVideoRange(start, end, stopAtEnd) {
+            const parsedStart = Number(start);
+            const parsedEnd = Number(end);
+            this.bgVideoRange = {
+                start: start !== '' && Number.isFinite(parsedStart) && parsedStart > 0 ? parsedStart : 0,
+                end: end !== '' && Number.isFinite(parsedEnd) && parsedEnd > 0 ? parsedEnd : 0,
+                stopAtEnd: Boolean(stopAtEnd)
+            };
+            const video = this.bgVideo;
+            if (!video || this.isAnimating) return;
+            const clip = this._bgVideoClip();
+            const outside = video.currentTime < clip.start || (clip.end > clip.start && video.currentTime >= clip.end);
+            if (outside && video.readyState >= 1) {
+                video.addEventListener('seeked', () => {
+                    if (!this.isAnimating && this.bgVideo === video) this._renderFrame({ advance: false });
+                }, { once: true });
+                video.currentTime = clip.start;
+            }
+        }
+
+        _bgVideoClip() {
+            const video = this.bgVideo;
+            return resolveBgVideoRange(this.bgVideoRange, video ? video.duration : 0);
+        }
+
+        _keepBgVideoInRange() {
+            const video = this.bgVideo;
+            if (!video || video.seeking || video.readyState < 1) return;
+            const clip = this._bgVideoClip();
+            if (!(clip.end > clip.start)) return;
+            const ranged = clip.start > 0 || clip.end < video.duration;
+            if (video.loop === ranged) video.loop = !ranged;
+            if (video.ended || video.currentTime >= clip.end || video.currentTime < clip.start - 0.05) {
+                this._holdBgVideoFrame();
+                video.currentTime = clip.start;
+                if (video.paused) this._playBgVideo();
+            }
+        }
+
+        _holdBgVideoFrame() {
+            const video = this.bgVideo;
+            if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+            const hold = this._bgVideoHold || (this._bgVideoHold = document.createElement('canvas'));
+            if (hold.width !== video.videoWidth) hold.width = video.videoWidth;
+            if (hold.height !== video.videoHeight) hold.height = video.videoHeight;
+            hold.getContext('2d').drawImage(video, 0, 0, hold.width, hold.height);
+            hold.__video = video;
         }
 
         setOverlayBar(bar) {
@@ -2892,8 +3007,9 @@ async function initCrawlEditor() {
             const video = this.bgVideo;
             if (!video) return;
             try { video.pause(); } catch (err) { }
-            if (rewind && video.currentTime !== 0) {
-                video.currentTime = 0;
+            const clipStart = this._bgVideoClip().start;
+            if (rewind && video.currentTime !== clipStart) {
+                video.currentTime = clipStart;
             }
         }
 
@@ -3101,7 +3217,7 @@ async function initCrawlEditor() {
             this.isAnimating = false;
             this.lastTimestamp = null;
             const video = this.bgVideo;
-            if (video && video.currentTime !== 0) {
+            if (video && video.currentTime !== this._bgVideoClip().start) {
                 video.addEventListener('seeked', () => {
                     if (!this.isAnimating && this.bgVideo === video) this.stop();
                 }, { once: true });
@@ -4864,6 +4980,9 @@ async function initCrawlEditor() {
             crawlVideoBarY: value('crawlVideoBarY'),
             crawlVideoBarHeight: value('crawlVideoBarHeight'),
             crawlVideoBarOpacity: value('crawlVideoBarOpacity'),
+            crawlVideoStart: value('crawlVideoStart'),
+            crawlVideoEnd: value('crawlVideoEnd'),
+            crawlVideoStopAtEnd: checked('crawlVideoStopAtEnd'),
             crawlBackgroundPremade: value('crawlBackgroundPremadeSelect'),
             easyplusOriginator: value('easyplusOriginator'),
             easyplusEventCode: value('easyplusEventCode'),
@@ -5036,6 +5155,7 @@ async function initCrawlEditor() {
         }
 
         applyBackgroundToGenerator(generator, controls.crawlBackgroundMode, backgroundAssets, controls.crawlBackgroundVideoFit);
+        generator.setBgVideoRange(controls.crawlVideoStart, controls.crawlVideoEnd, controls.crawlVideoStopAtEnd);
         const opacityPercent = Number(controls.crawlVideoBarOpacity);
         generator.setOverlayBar(controls.crawlBackgroundMode === 'video' && backgroundAssets.video ? {
             position: controls.crawlVideoBarPosition,
@@ -5135,6 +5255,7 @@ async function initCrawlEditor() {
         'crawlKerning', 'crawlTextWidth', 'crawlRestartDelay', 'crawlRepetitions',
         'crawlBackgroundMode', 'crawlBackgroundImageFile', 'crawlBackgroundVideoFile', 'crawlBackgroundVideoFit', 'crawlBackgroundPremadeSelect',
         'crawlVideoBarPosition', 'crawlVideoBarY', 'crawlVideoBarHeight', 'crawlVideoBarOpacity',
+        'crawlVideoStart', 'crawlVideoEnd', 'crawlVideoStopAtEnd',
         'easyplusOriginator', 'easyplusEventCode'
     ];
 
@@ -6657,6 +6778,9 @@ async function initCrawlEditor() {
                 setVal('crawlVideoBarY', params.videoBarY);
                 setVal('crawlVideoBarHeight', params.videoBarHeight);
                 setVal('crawlVideoBarOpacity', params.videoBarOpacity);
+                setVal('crawlVideoStart', params.videoStart);
+                setVal('crawlVideoEnd', params.videoEnd);
+                setChk('crawlVideoStopAtEnd', params.videoStopAtEnd);
                 if (params.bgMode === 'video') {
                     if (!params.bgVideoPath) throw new Error('Choose a background video first.');
                     await loadNativeCrawlFile('crawlBackgroundVideoFile', { path: params.bgVideoPath, name: params.bgVideoName, type: params.bgVideoType, token: params.bgVideoToken });
