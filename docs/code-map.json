@@ -1,0 +1,14 @@
+{
+  "description": "Documentation coverage map for first-party repository surfaces.",
+  "areas": [
+    { "path": "index.html", "docs": ["docs/architecture.md", "docs/usage.md"] },
+    { "path": "assets/js", "docs": ["docs/architecture.md", "docs/development.md"] },
+    { "path": "assets/E2T", "docs": ["docs/architecture.md", "docs/generated/faq.md"] },
+    { "path": "assets/wasm_tts_voices", "docs": ["docs/architecture.md", "docs/generated/tts.md"] },
+    { "path": "assets/muxer", "docs": ["docs/architecture.md", "docs/usage.md"] },
+    { "path": "warngen", "docs": ["docs/architecture.md", "docs/usage.md", "docs/development.md"] },
+    { "path": "tools", "docs": ["docs/development.md", "docs/testing.md"] },
+    { "path": "test", "docs": ["docs/testing.md"] },
+    { "path": ".agents/skills", "docs": ["docs/development.md", "AGENTS.md"] }
+  ]
+}

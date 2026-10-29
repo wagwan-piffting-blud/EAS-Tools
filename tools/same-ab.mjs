@@ -277,7 +277,7 @@ class LegacyDecoder {
         } else if (byte !== 0xab) {
             this.container = true;
             const ch = String.fromCharCode(byte);
-            if (byte >= 32 && byte <= 126 && /^[A-Za-z0-9\-\+\/\(\)\\ ]$/.test(ch) === false) {
+            if (byte >= 32 && byte <= 126 && new RegExp('^[A-Za-z0-9+/()\\\\ -]$').test(ch) === false) {
                 return;
             }
             this.currentMsg += ch;
@@ -1016,7 +1016,12 @@ function runPool(jobs, workerCount, label) {
 }
 
 function printable(text) {
-    return text.replace(/[\x00-\x1f\x7f-\xff]/g, (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`);
+    return text.replace(/[\s\S]/g, (c) => {
+        const code = c.charCodeAt(0);
+        return code <= 0x1f || (code >= 0x7f && code <= 0xff)
+            ? `\\x${code.toString(16).padStart(2, '0')}`
+            : c;
+    });
 }
 
 function pct(n, d) {

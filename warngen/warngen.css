@@ -49,7 +49,7 @@
     --wg-danger-bg-hover: #4a2020;
     --wg-danger-fill: rgba(255, 77, 77, 0.5);
     --wg-danger-glow: rgba(255, 77, 77, 0.8);
-    --wg-locked: #83a5f8;
+    --wg-locked: #ff9a3c;
 
     --wg-info: #ff9a3c;
     --wg-info-border: #6f3b10;
@@ -67,7 +67,7 @@
     --wg-map-hit-stroke: #ff7800;
     --wg-map-hit-fill: #ff780055;
     --wg-map-draw-stroke: #ff4d4d;
-    --wg-map-issued-stroke: #83a5f8;
+    --wg-map-issued-stroke: #ff9a3c;
     --wg-map-draw-fill: #ff4d4d22;
     --wg-map-marine-stroke: #458588;
     --wg-map-marine-fill: #83a59822;
@@ -1463,7 +1463,7 @@ button[disabled]:hover {
         --wg-danger-bg-hover: #f5cccc;
         --wg-danger-fill: rgba(198, 40, 40, 0.35);
         --wg-danger-glow: rgba(198, 40, 40, 0.55);
-        --wg-locked: #1a4fc4;
+        --wg-locked: #b15708;
 
         --wg-info: #9a4600;
         --wg-info-border: #d89a61;
@@ -1481,7 +1481,7 @@ button[disabled]:hover {
         --wg-map-hit-stroke: #c45f00;
         --wg-map-hit-fill: #ff780055;
         --wg-map-draw-stroke: #b71c1c;
-        --wg-map-issued-stroke: #1a4fc4;
+        --wg-map-issued-stroke: #b15708;
         --wg-map-draw-fill: #c6282833;
         --wg-map-marine-stroke: #2a6b5b;
         --wg-map-marine-fill: #2a6b5b33;

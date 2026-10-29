@@ -243,9 +243,9 @@ export function createEditor(host) {
                     item('nudge the selected clip left or right 0.1 s; with Shift, 1 s.', ...keysEach('[', ']')),
                     item('edits effects on the selected clip, or on the focused track.', ...keys('E')),
                     item('zoom in and out; 0 zooms to fit.', ...keysEach('+', '-'))))));
-    try { helpBox.open = localStorage.getItem(helpKey) === '1'; } catch (_) {}
+    try { helpBox.open = localStorage.getItem(helpKey) === '1'; } catch { /* storage is optional */ }
     helpBox.addEventListener('toggle', () => {
-        try { localStorage.setItem(helpKey, helpBox.open ? '1' : '0'); } catch (_) {}
+        try { localStorage.setItem(helpKey, helpBox.open ? '1' : '0'); } catch { /* storage is optional */ }
     });
 
     const slots = host.slots || {};
@@ -1485,8 +1485,8 @@ export function createEditor(host) {
     }
 
     async function refreshProjects(selectName) {
-        let names = [];
-        try { names = await host.projects.list(); } catch (e) { names = []; }
+        let names;
+        try { names = await host.projects.list(); } catch { names = []; }
         projSelect.replaceChildren(el('option', { value: '' }, names.length ? 'Choose a saved project' : 'No saved projects'),
             ...names.map((n) => el('option', { value: n }, n)));
         if (selectName && names.includes(selectName)) projSelect.value = selectName;

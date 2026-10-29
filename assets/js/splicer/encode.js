@@ -49,7 +49,7 @@ export async function canEncode(f) {
     try {
         const r = await AudioEncoder.isConfigSupported({ codec: info.codec, sampleRate: 48000, numberOfChannels: 2, bitrate: info.bitrate * 1000 });
         return !!r.supported;
-    } catch (_) {
+    } catch {
         return false;
     }
 }
@@ -135,7 +135,7 @@ export async function createWriter(f, { sampleRate, channels, frames, bitrate, s
             return sink ? null : new Blob([target.buffer], { type: info.mime });
         },
         cancel: async () => {
-            try { await output.cancel(); } catch (_) {}
+            try { await output.cancel(); } catch { /* cancellation is best effort */ }
         },
     };
 }

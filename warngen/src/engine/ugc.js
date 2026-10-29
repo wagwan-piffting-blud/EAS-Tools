@@ -67,10 +67,10 @@
         }
 
         var sections = [];
-        for (var i = 0; i < stateOrder.length; i++) {
-            var st = stateOrder[i];
-            var fipsList = byState[st].sort(function (x, y) { return x - y; });
-            sections.push(st + formatCode + collapseRanges(fipsList).join("-"));
+        for (var j = 0; j < stateOrder.length; j++) {
+            var state = stateOrder[j];
+            var fipsList = byState[state].sort(function (x, y) { return x - y; });
+            sections.push(state + formatCode + collapseRanges(fipsList).join("-"));
         }
 
         var d = expireDate.getUTCDate();
