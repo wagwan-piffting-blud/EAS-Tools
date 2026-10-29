@@ -2625,6 +2625,9 @@ textarea:disabled {
 #splicer-panel {
     --splice-pad: clamp(18px, 2vw, 32px);
     padding: 16px var(--splice-pad) 0;
+    /* .tool-panel's overflow-y: auto makes overflow-x compute to auto too; the Splicer never
+       scrolls sideways as a whole (the timeline and toolbar have their own scrollers). */
+    overflow-x: hidden;
 }
 
 #splicer-panel.active {
@@ -2840,11 +2843,16 @@ textarea:disabled {
     max-height: 16rem;
 }
 
+/* WebKit counts the voice select's longest option toward this wrapping row's scrollable width
+   (~800px), which made the Splicer panel scroll sideways on iOS. clip contains it without
+   turning the row into a scroll container. */
 .splice-tts-go {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px 8px;
+    overflow: clip;
+    overflow-clip-margin: 4px;
 }
 
 .splice-tts-go > select {

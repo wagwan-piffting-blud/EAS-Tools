@@ -43,6 +43,7 @@ buildPanel(document.getElementById('splicer-panel'));
     const fileInput = panel.querySelector('[data-splice-file]');
     const ttsInput = panel.querySelector('#ttsText2') || panel.querySelector('.ttsText');
     const ttsButton = panel.querySelector('[data-splice-tts-generate]') || panel.querySelector('#spliceTTSGenerator button');
+    const ttsClearButton = panel.querySelector('[data-splice-tts-clear]');
     const ttsStatus = panel.querySelector('[data-splice-tts-status]') || panel.querySelector('#spliceTTSGenerator [data-splice-tts-status]');
     const voiceSelect = panel.querySelector('#ttsVoice2');
     const overrideTzSelect = panel.querySelector('#useSplicerOverrideTZ');
@@ -2495,6 +2496,19 @@ buildPanel(document.getElementById('splicer-panel'));
         });
 
         voiceSelect?.dispatchEvent(new Event('change'));
+
+        ttsClearButton?.addEventListener('click', () => {
+            const editor = window.splicerEditor;
+            if (editor) {
+                editor.execCommand('selectAll');
+                editor.replaceSelection('');
+                editor.focus();
+            } else if (ttsInput) {
+                ttsInput.value = '';
+                ttsInput.focus();
+            }
+            if (ttsStatus) ttsStatus.textContent = '';
+        });
 
         ttsButton?.addEventListener('click', async () => {
             const text = (ttsInput?.value || '').trim();

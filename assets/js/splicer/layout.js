@@ -79,6 +79,7 @@ const TEMPLATE = `
                 <label for="ttsVoice2">Voice</label>
                 <select id="ttsVoice2" name="ttsVoice2">${VOICES.map(([v, t, a]) => `<option value="${v}"${a ? ' ' + a : ''}>${t}</option>`).join('')}</select>
                 <button type="button" data-splice-tts-generate class="splice-go">Generate &amp; Append</button>
+                <button type="button" data-splice-tts-clear title="Delete all the text in the box">Clear Text</button>
             </div>
             <div id="ttsRatePitchControls2" class="splice-sliders">${slider('ttsRate2', 'Speed', 'Speech speed value', 'ttsRate2Number', 'ttsRateReset2')}${slider('ttsPitch2', 'Pitch', 'Speech pitch value', 'ttsPitch2Number', 'ttsPitchReset2')}${slider('ttsVolume2', 'Volume', 'Speech volume value', 'ttsVolume2Number', 'ttsVolume2Reset', ' id="ttsVolume2Row"')}${VOLUME_NOTE}
             </div>

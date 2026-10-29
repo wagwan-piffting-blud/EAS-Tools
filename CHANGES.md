@@ -8,6 +8,8 @@
 
 - Fix issue #149. Thanks to GitHub user @itsmewilliam12 for reporting this issue.
 
+- Fix an iOS related scrolling bug in the new Splicer tool version.
+
 ---
 
 2026-10-27:
