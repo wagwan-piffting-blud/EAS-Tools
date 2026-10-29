@@ -4,6 +4,8 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <title>WarnGen</title>
+        <link rel="stylesheet" href="../assets/css/hack.css">
+        <link rel="stylesheet" href="../assets/css/style.css">
         <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
         <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
         <link rel="stylesheet" href="../assets/css/searchable-select.css">
@@ -60,7 +62,7 @@
                 Locked text
             </label>
             <button id="start-draw-btn" class="primary-btn">Draw polygon</button>
-            <button id="clear-poly-btn">Clear</button>
+            <button id="clear-poly-btn" class="danger-btn danger-btn-outline">Clear</button>
             <button id="import-poly-btn" class="secondary-btn" title="Load a polygon from a GeoJSON or KML file (e.g. IEM vtec.kml from the NWS archive)">Import polygon</button>
             <input type="file" id="import-poly-file" accept=".geojson,.json,.kml,application/json,application/geo+json,application/vnd.google-earth.kml+xml" style="display:none">
             <button id="importtxt-poly-btn" class="secondary-btn" title="Parse AWIPS bulletin from text">Import AWIPS .txt</button>
@@ -92,7 +94,7 @@
                 <input type="radio" name="selection-mode" id="mode-areas" value="areas">
                 Click whole areas
             </label>
-            <button type="button" id="clear-areas" class="mini-btn" style="display: none;">Clear selection</button>
+            <button type="button" id="clear-areas" class="mini-btn danger-btn" style="display: none;">Clear selection</button>
             <span id="area-count" class="motion-label"></span>
         </div>
         <div class="storm-bar motion-bar">
@@ -139,7 +141,7 @@
             <button type="button" id="radar-save-svg-btn" class="mini-btn" disabled
                 aria-label="Save SVG radar image"
                 title="Save the selected product and tilt as an editable SVG vector image with a legend">Save SVG</button>
-            <button type="button" id="radar-clear-btn" class="mini-btn" disabled>Remove</button>
+            <button type="button" id="radar-clear-btn" class="mini-btn danger-btn" disabled>Remove</button>
             <span id="radar-info" class="motion-label" aria-live="polite"></span>
             <span id="radar-probe" class="motion-label"></span>
         </div>
@@ -279,7 +281,7 @@
             <button type="button" id="capture-baseline-btn" class="secondary-btn"
                 title="Remember the current counties and expiration as the original warning this followup updates">Capture
                 original warning</button>
-            <button type="button" id="clear-baseline-btn" class="secondary-btn">Clear</button>
+            <button type="button" id="clear-baseline-btn" class="secondary-btn danger-btn">Clear</button>
             <span id="baseline-note" class="meta-note">No original warning captured -- issue a warning first, or
                 capture the current polygon.</span>
         </div>
@@ -4960,7 +4962,7 @@
 
                     var del = document.createElement("button");
                     del.type = "button";
-                    del.className = "watch-del";
+                    del.className = "watch-del danger-btn";
                     del.textContent = "\u00d7";
                     del.setAttribute("aria-label", "Remove watch " + (idx + 1));
                     del.addEventListener("click", function () {
