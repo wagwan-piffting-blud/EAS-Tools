@@ -47,6 +47,25 @@ Do not hand-edit `docs/generated/`. Add a documentation HTML page to
 exception. Update `docs/code-map.json` when a new first-party runtime area is
 introduced.
 
+The Markdown generator also applies static-mirror cleanup in
+`tools/generate-markdown-docs.mjs`:
+
+- trailing spaces and tabs are removed from generated lines;
+- browser-populated `voice-count` is omitted, and the dynamic TTS request limit
+  is rendered as “the configured number of”;
+- browser-only `copy-text` controls are omitted from documentation prose.
+- placeholder `href="#"` links are converted to stable Markdown heading
+  fragments based on their visible labels.
+- browser-only “Back to EAS Tools” buttons are omitted;
+- TTS demo audio files are emitted as Markdown links, and JavaScript-injected
+  TTS usage examples are emitted as language-tagged fenced code blocks;
+- repeated blank lines are collapsed outside fenced code blocks.
+
+The generator does not execute page JavaScript, so dynamically inserted voice
+lists and CodeMirror examples are not mirrored unless the HTML source provides
+static fallback content. These rules preserve the live HTML behavior while
+keeping the checked-in Markdown mirrors deterministic and readable.
+
 ## Common targets
 
 | Target | Purpose |

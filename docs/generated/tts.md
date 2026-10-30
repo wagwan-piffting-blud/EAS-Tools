@@ -35,7 +35,7 @@ Each voice has its own unique sound and characteristics. For example, the DECTal
 When using the TTS feature, users should be aware of the following:
 
 - The quality of the generated speech may vary depending on the selected voice. See below for pronunciation notes and examples.
-- There is a per-user limit of  successful requests per day for the server-side voices to prevent abuse. This limit resets daily at midnight Central Time. All processed audio is also cleared at this time, so make sure you download your audio before then.
+- There is a per-user limit of the configured number of successful requests per day for the server-side voices to prevent abuse. This limit resets daily at midnight Central Time. All processed audio is also cleared at this time, so make sure you download your audio before then.
 - Each TTS request is allowed up to 90 seconds to complete itself. If a request takes longer than this, it will be terminated and abandoned by the server. Most requests should complete LONG before this timer is up, but know that **you may need to adjust your text input or try a different voice if you encounter timeouts.** Timeouts usually result in an "x-empty" response by the TTS server.
 - **Screen reader users:** TTS preview audio plays through your computer's speakers and will overlap with your screen reader's speech. Recommended workflow: wear headphones, or temporarily silence the screen reader before pressing Play (NVDA: press `Insert`+`S` to cycle the speech mode to "off"; JAWS: press `Insert`+`Space` then `S`, or just press `Ctrl` to silence the current utterance). The decoded audio from the SAME Decoder behaves the same way.
 
@@ -84,25 +84,70 @@ If you're having trouble with pronunciation of specific words, try adjusting the
 
 ### Addendum: A full example of VoiceText VTML/Balabolka Phoneme usage
 
-  
 Here is a full example of how to use the VoiceText Paul voice with example VTML codes to adjust pronunciation, speed, and pitch:
 
-Copy text 
+```xml
+This Hazardous Weather Outlook is for southwest Iowa<vtml_pause time="200"/>west central Iowa<vtml_pause time="200"/>east central Nebraska<vtml_pause time="200"/>northeast Nebraska and southeast Nebraska, including the city of <vtml_phoneme alphabet="x-cmu" ph="T AH K EY0 M AH">Tekamah</vtml_phoneme> for testing purposes.
 
-  
+For tonight... No hazardous weather is expected at this time.
+
+SPOTTER INFORMATION STATEMENT<vtml_pause time="200"/>Spotter activation is not expected at this time.
+
+<vtml_pause time="1500"/>
+
+This is NOAA All Hazards Radio Station K I H 61 in Omaha<vtml_pause time="200"/>Nebraska.
+
+The current time is, current local time.
+
+<vtml_pitch value="150">This sentence is higher pitched than normal.</vtml_pitch>
+
+<vtml_speed value="70">And this sentence is spoken at a slower rate than normal.</vtml_speed>
+```
+
 And that same example, but with Balabolka:
 
-Copy text 
+```xml
+This Hazardous Weather Outlook is for southwest Iowa<silence msec="200"/>west central Iowa<silence msec="200"/>east central Nebraska<silence msec="200"/>northeast Nebraska and southeast Nebraska, including the city of <pron sym="t eh k ey 1 m ax" /> for testing purposes.
 
-  
+For tonight... No hazardous weather is expected at this time.
+
+SPOTTER INFORMATION STATEMENT<silence msec="200"/>Spotter activation is not expected at this time.
+
+<silence msec="1500"/>
+
+This is NOAA All Hazards Radio Station K I H 61 in Omaha<silence msec="200"/>Nebraska.
+
+The current time is, current local time.
+
+<pitch absmiddle="5">This sentence is higher pitched than normal.</pitch>
+
+<rate absspeed="-3">And this sentence is spoken at a slower rate than normal.</rate>
+```
+
 Finally, with DECtalk:
 
-Copy text 
+```text
+[:comma 20] This Hazardous Weather Outlook is for southwest Iowa, west central Iowa, east central Nebraska, northeast Nebraska and southeast Nebraska, including the city of [:phoneme on] [t ah k ey m ah] for testing purposes.
+
+For tonight... No hazardous weather is expected at this time.
+
+[:period 1500]
+
+SPOTTER INFORMATION STATEMENT, Spotter activation is not expected at this time.
+
+[:period 60]
+
+This is NOAA All Hazards Radio Station K I H 61 in Omaha, Nebraska.
+
+[:comma 0] The current time is, current local time.
+
+[:np][:dv ap 200] This sentence is higher pitched than normal. [:sync]
+
+[:np][:dv ap 120][:rate 100] And this sentence is spoken at a slower rate than normal. [:sync]
+```
 
 ### Conclusion
 
 By keeping these notes in mind, users can make the most of the TTS feature in EAS Tools and ensure a smoother experience when working with different voices.
 
 ## Page last updated: September 25th, 2026
-
-Back to EAS Tools

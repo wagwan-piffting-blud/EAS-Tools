@@ -6,23 +6,23 @@
 
 This section addresses common questions regarding the Emergency Alert System (EAS) in general, and some questions about the EAS Tools web application specifically.
 
-- [What is the EAS?](#)
-- [What is EAS Tools?](#)
-- [What is SAME?](#)
-- [What is AFSK modulation?](#)
-- [What is the purpose of the EAS Tools web application?](#)
-- [How does EAS Tools work?](#)
-- [Is EAS Tools free to use?](#)
-- [What technologies does EAS Tools use?](#)
-- [Who developed EAS Tools?](#)
-- [How can I contribute to EAS Tools?](#)
-- [Is EAS Tools available as a mobile app?](#)
-- [Where can I report bugs or request features without knowing how to code?](#)
-- [You mentioned a web TTS service? What's that, and how does it work?](#)
-- [How can I support the development of EAS Tools?](#)
-- [Are there currently any known issues or limitations with EAS Tools? (updated as of 2026-04-26)](#)
-- [How can I get more involved in the overall EAS community?](#)
-- [Does EAS Tools work with screen readers (NVDA, JAWS)?](#)
+- [What is the EAS?](#what-is-the-eas)
+- [What is EAS Tools?](#what-is-eas-tools)
+- [What is SAME?](#what-is-same)
+- [What is AFSK modulation?](#what-is-afsk-modulation)
+- [What is the purpose of the EAS Tools web application?](#what-is-the-purpose-of-the-eas-tools-web-application)
+- [How does EAS Tools work?](#how-does-eas-tools-work)
+- [Is EAS Tools free to use?](#is-eas-tools-free-to-use)
+- [What technologies does EAS Tools use?](#what-technologies-does-eas-tools-use)
+- [Who developed EAS Tools?](#who-developed-eas-tools)
+- [How can I contribute to EAS Tools?](#how-can-i-contribute-to-eas-tools)
+- [Is EAS Tools available as a mobile app?](#is-eas-tools-available-as-a-mobile-app)
+- [Where can I report bugs or request features without knowing how to code?](#where-can-i-report-bugs-or-request-features-without-knowing-how-to-code)
+- [You mentioned a web TTS service? What's that, and how does it work?](#you-mentioned-a-web-tts-service-whats-that-and-how-does-it-work)
+- [How can I support the development of EAS Tools?](#how-can-i-support-the-development-of-eas-tools)
+- [Are there currently any known issues or limitations with EAS Tools? (updated as of 2026-04-26)](#are-there-currently-any-known-issues-or-limitations-with-eas-tools)
+- [How can I get more involved in the overall EAS community?](#how-can-i-get-more-involved-in-the-overall-eas-community)
+- [Does EAS Tools work with screen readers (NVDA, JAWS)?](#does-eas-tools-work-with-screen-readers-nvda-jaws)
 
 ### What is the EAS?
 
@@ -74,7 +74,7 @@ You can report bugs or request features by visiting the project's [GitHub Issues
 
 ### You mentioned a web TTS service? What's that, and how does it work?
 
-The web TTS (Text-to-Speech) service is a server-side component that generates speech audio from text input. When you use the EAS Tools Encoder or Audio Splicer tools and select the Text-to-Speech announcement option and a voice other than WebAssembly/NanoTTS, your text is sent to the TTS server located at [Wags' Puzzle Space](https://wagspuzzle.space/tools/eas-tts). The server processes the text and returns the generated audio back to your browser for inclusion in the EAS alert. This allows for dynamic generation of speech audio without relying on client-side TTS capabilities, which are extremely limited when it comes to being able to synthesize real voices used in actual alerts. Please note that any/all requests made to the TTS server are logged temporarily for debugging purposes only, and all logs and generated audio are automatically deleted at exactly Midnight Central Time. Each individual user is limited to  requests per day overall to prevent abuse of the service. If you find yourself running into the request limit often, try installing some of the voices you're looking to synthesize on a regular basis and using them locally! The web TTS service is provided AS-IS, with no guarantees or warranties, or uptime promises. It may go down randomly, it may not. The server tries to check and make sure it is up before it processes audio, but if it happens to suddenly, randomly go down in the middle of this processing, it may not be able to complete your request successfully. Keep this in mind when using the Web TTS service.
+The web TTS (Text-to-Speech) service is a server-side component that generates speech audio from text input. When you use the EAS Tools Encoder or Audio Splicer tools and select the Text-to-Speech announcement option and a voice other than WebAssembly/NanoTTS, your text is sent to the TTS server located at [Wags' Puzzle Space](https://wagspuzzle.space/tools/eas-tts). The server processes the text and returns the generated audio back to your browser for inclusion in the EAS alert. This allows for dynamic generation of speech audio without relying on client-side TTS capabilities, which are extremely limited when it comes to being able to synthesize real voices used in actual alerts. Please note that any/all requests made to the TTS server are logged temporarily for debugging purposes only, and all logs and generated audio are automatically deleted at exactly Midnight Central Time. Each individual user is limited to the configured number of requests per day overall to prevent abuse of the service. If you find yourself running into the request limit often, try installing some of the voices you're looking to synthesize on a regular basis and using them locally! The web TTS service is provided AS-IS, with no guarantees or warranties, or uptime promises. It may go down randomly, it may not. The server tries to check and make sure it is up before it processes audio, but if it happens to suddenly, randomly go down in the middle of this processing, it may not be able to complete your request successfully. Keep this in mind when using the Web TTS service.
 
 ### How can I support the development of EAS Tools?
 

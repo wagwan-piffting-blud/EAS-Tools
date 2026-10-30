@@ -28,9 +28,6 @@ If you prefer to support me through Ko-fi, you can do so using the link below:
 
 If you prefer to use other methods or platforms to show your support not shown here, please feel free to reach out to me on GitHub, Discord, or through the contact form on [my personal website](https://wagspuzzle.space/contact), and we can discuss alternative ways for you to contribute. Again, thank you for your support, and I truly appreciate any contributions, whether monetary or simply sharing the tool with others who might find it useful!
 
-  
-**\- Wags**   
+**\- Wags**
 
 ## Page last updated: October 10th, 2026
-
-Back to EAS Tools

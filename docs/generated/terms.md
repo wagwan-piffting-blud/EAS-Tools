@@ -87,5 +87,3 @@ I may update the Terms of Service from time to time. Any changes will be posted 
 If you have any questions or concerns about the Terms of Service, please contact Wags directly at [contact@wagspuzzle.space](mailto:contact@wagspuzzle.space).
 
 ## Page last updated: January 31, 2026
-
-Back to EAS Tools

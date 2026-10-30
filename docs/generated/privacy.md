@@ -45,5 +45,3 @@ I may update this privacy policy from time to time. Any changes will be posted o
 If you have any questions or concerns about this privacy policy, please contact Wags directly at [contact@wagspuzzle.space](mailto:contact@wagspuzzle.space).
 
 ## Page last updated: September 5th, 2026
-
-Back to EAS Tools
