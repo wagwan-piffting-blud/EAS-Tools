@@ -3,7 +3,7 @@
 
 use eas_tools_e2e::*;
 
-use crate::common::temp_file;
+use crate::common::{temp_file, wait_for_tool};
 
 const CHAIN_STORAGE_KEY: &str = "splicer.macroChain";
 
@@ -32,6 +32,8 @@ async fn open_with_chain(tab: &Tab, chain: Value) -> Result<()> {
         Duration::from_secs(40),
     )
     .await?;
+    // The saved chain is restored only after the macro defs load, so earlier the editor opens empty.
+    wait_for_tool(tab, "splicer").await?;
     tab.exec(
         "const el = document.querySelector('[data-splice-loudness]');
          el.value = '0';

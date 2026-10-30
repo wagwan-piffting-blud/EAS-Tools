@@ -78,6 +78,7 @@ keeping the checked-in Markdown mirrors deterministic and readable.
 | `make warngen-test` | Render modern and legacy WarnGen corpora |
 | `make skills-check` | Validate every repository-local skill package |
 | `make e2e` | Run the Rust + Chrome browser suite in `test/e2e-rs/` |
-| `make quality` | Run all repository quality gates |
+| `make checks` | Run every gate except the browser suite (CI runs it and `make e2e` as parallel jobs) |
+| `make quality` | Run all repository quality gates (`checks` + `e2e`) |
 
 Human review remains required. Automated checks provide evidence, not acceptance.

@@ -16,16 +16,10 @@ jobs:
   quality:
     name: Quality gates
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      EAS_TOOLS_TABS: "4"
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      # The voice packages are ~1.4 GB of LFS; the e2e suite only needs eSpeak's.
-      - name: Fetch eSpeak data from LFS
-        run: git lfs pull --include="assets/wasm_tts_voices/espeak/espeak-ng.eas.data"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -38,13 +32,60 @@ jobs:
           node-version: 26
           cache: pnpm
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run repository quality gates
+        run: make checks
+
+  e2e:
+    name: Browser e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EAS_TOOLS_TABS: "4"
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # The voice packages are ~1.4 GB of LFS; the e2e suite only needs eSpeak's.
+      - name: Fetch eSpeak data from LFS
+        run: git lfs pull --include="assets/wasm_tts_voices/espeak/espeak-ng.eas.data"
+
       - name: Setup Rust
+        id: rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache e2e build
-        uses: Swatinem/rust-cache@v2
+      # Restored and saved explicitly: post-step caches (rust-cache, setup-node) only save
+      # when the whole job succeeds, so a failing test run never wrote one.
+      - name: Restore e2e build cache
+        id: e2e-cache
+        uses: actions/cache/restore@v4
         with:
-          workspaces: test/e2e-rs
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            test/e2e-rs/target/
+          key: e2e-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('test/e2e-rs/Cargo.lock', 'test/e2e-rs/src/**', 'test/e2e-rs/suites/**') }}
+          restore-keys: |
+            e2e-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-
+
+      - name: Build e2e suite
+        run: cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e --no-run
+
+      - name: Save e2e build cache
+        if: steps.e2e-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            test/e2e-rs/target/
+          key: ${{ steps.e2e-cache.outputs.cache-primary-key }}
 
       - name: Setup Chrome
         id: chrome
@@ -52,10 +93,7 @@ jobs:
         with:
           chrome-version: stable
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run repository quality gates
+      - name: Run e2e suite
         env:
           EAS_TOOLS_CHROME: ${{ steps.chrome.outputs.chrome-path }}
-        run: make quality
+        run: make e2e

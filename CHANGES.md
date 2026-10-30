@@ -10,6 +10,8 @@
 
 - Some more fixes to the markdown doc generation script from PR #156.
 
+- MORE e2e test fixes for CI.
+
 ---
 
 2026-10-29:
