@@ -60,7 +60,10 @@ impl Tab {
                 let _ = dialog_page.execute(HandleJavaScriptDialogParams::new(false)).await;
             }
         });
-        Ok(Tab(Arc::new(Inner { page, slot, context: Mutex::new(Some(context)), shared, dialogs, _permit: permit })))
+        let tab = Tab(Arc::new(Inner { page, slot, context: Mutex::new(Some(context)), shared, dialogs, _permit: permit }));
+        // Chrome otherwise follows the OS theme: dark on the dev desktop, light on CI runners.
+        tab.emulate_media(&[("prefers-color-scheme", "dark")]).await?;
+        Ok(tab)
     }
 
     pub fn page(&self) -> &Page {

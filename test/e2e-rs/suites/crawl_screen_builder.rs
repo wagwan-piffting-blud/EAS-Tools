@@ -188,7 +188,25 @@ fn set_of(ids: &[&str]) -> BTreeSet<String> {
 }
 
 pub fn cases() -> Vec<Case> {
-    vec![
+    let mut cases: Vec<Case> = ["dark", "light"]
+        .into_iter()
+        .map(|scheme| {
+            case(format!("the_open_dialog_has_no_serious_axe_violations[{scheme}]"), move |tab| async move {
+                tab.emulate_media(&[("prefers-color-scheme", scheme)]).await?;
+                open_crawl(&tab).await?;
+                open_builder(&tab).await?;
+                axe::assert_clean(&tab, json!(".sb-modal"), &[], &format!("{scheme}: screen builder, text selected")).await?;
+                start_template(&tab, "template:dasdec", "My DASDEC Screen").await?;
+                let spacing: String = tab.eval("document.getElementById('sb-prop-letter-spacing').value").await?;
+                ensure!(spacing == "0", "letter spacing {spacing}");
+                axe::assert_clean(&tab, json!(".sb-modal"), &[], &format!("{scheme}: screen builder, DASDEC text selected")).await?;
+                tab.click("#sb-add-box").await?;
+                tab.wait_for_selector("#sb-prop-stroke-width", Duration::from_secs(10)).await?;
+                axe::assert_clean(&tab, json!(".sb-modal"), &[], &format!("{scheme}: screen builder, box selected")).await
+            })
+        })
+        .collect();
+    cases.extend(vec![
         case("builder_is_a_keyboard_operable_modal_dialog", |tab| async move {
             open_crawl(&tab).await?;
             open_builder(&tab).await?;
@@ -229,18 +247,6 @@ pub fn cases() -> Vec<Case> {
             tab.wait_until("document.querySelector('.sb-backdrop').hidden", Duration::from_secs(5)).await?;
             ensure!(tab.active_id().await? == "crawlOpenScreenBuilder", "focus did not return to the opener");
             Ok(())
-        }),
-        case("the_open_dialog_has_no_serious_axe_violations", |tab| async move {
-            open_crawl(&tab).await?;
-            open_builder(&tab).await?;
-            axe::assert_clean(&tab, json!(".sb-modal"), &[], "screen builder, text selected").await?;
-            start_template(&tab, "template:dasdec", "My DASDEC Screen").await?;
-            let spacing: String = tab.eval("document.getElementById('sb-prop-letter-spacing').value").await?;
-            ensure!(spacing == "0", "letter spacing {spacing}");
-            axe::assert_clean(&tab, json!(".sb-modal"), &[], "screen builder, DASDEC text selected").await?;
-            tab.click("#sb-add-box").await?;
-            tab.wait_for_selector("#sb-prop-stroke-width", Duration::from_secs(10)).await?;
-            axe::assert_clean(&tab, json!(".sb-modal"), &[], "screen builder, box selected").await
         }),
         case("arrow_keys_on_the_preview_move_the_selected_element", |tab| async move {
             open_crawl(&tab).await?;
@@ -620,5 +626,6 @@ pub fn cases() -> Vec<Case> {
             ensure!(!persisted, "the style picker leaked into the saved settings");
             Ok(())
         }),
-    ]
+    ]);
+    cases
 }

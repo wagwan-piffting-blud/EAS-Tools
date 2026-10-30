@@ -9,8 +9,8 @@ use sha1::Digest;
 
 use crate::common::temp_file;
 
-const SAMPLE_PATH: &str = "tests/radar_imagry/KHGX20260927_034306_V06.ar2v";
-const PALETTE_PATH: &str = "tests/radar_imagry/8_bit_refl_[awips_ii_official_mod].pal";
+const SAMPLE_PATH: &str = "test/e2e-rs/fixtures/radar/KHGX20260927_034306_V06.ar2v";
+const PALETTE_PATH: &str = "test/e2e-rs/fixtures/radar/8_bit_refl_[awips_ii_official_mod].pal";
 
 /// SHA-1 of every bzip2 record in the archive, decompressed natively.
 fn reference_records(data: &[u8]) -> Result<Vec<String>> {

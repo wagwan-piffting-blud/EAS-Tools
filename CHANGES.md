@@ -6,6 +6,10 @@
 
 - Un-gitignore and enable the e2e-rs suite. This goes hand-in-hand with the above PR, and allows for more comprehensive testing of the EAS Tools codebase, ensuring that any changes made to the code do not introduce new bugs or issues. The e2e-rs suite is a set of end-to-end tests that simulate real-world usage scenarios, and it helps to ensure that the tools work as expected in a variety of situations.
 
+- Add missing text fixtures for e2e-rs tests. This ensures that the e2e-rs tests have all the necessary data to run correctly, and it helps to ensure that the tests are comprehensive and accurate.
+
+- Some more fixes to the markdown doc generation script from PR #156.
+
 ---
 
 2026-10-29:

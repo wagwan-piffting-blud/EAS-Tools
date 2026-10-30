@@ -23,6 +23,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # The voice packages are ~1.4 GB of LFS; the e2e suite only needs eSpeak's.
+      - name: Fetch eSpeak data from LFS
+        run: git lfs pull --include="assets/wasm_tts_voices/espeak/espeak-ng.eas.data"
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:

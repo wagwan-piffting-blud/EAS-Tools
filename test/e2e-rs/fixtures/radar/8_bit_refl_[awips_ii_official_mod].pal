@@ -1,0 +1,20 @@
+; WFO EAX Base Reflectivity Color Table Modified
+
+Product: BR
+Units: DBZ
+Step: 5
+
+Color: -30 116 78 173
+Color: -20 150 150 82
+Color: -10 204 208 175
+Color: 0 67 94 160
+Color: 15 106 208 228
+Color: 20 20 230 20
+Color: 34 10 80 0
+Color: 40 255 225 0 255 128 0
+Color: 50 255 0 0 0 0 0
+color: 60 255 255 255 255 146 255
+color: 65 255 117 255 225 11 227
+color: 70 178 0 255 99 0 214
+color: 75 5 236 240 1 32 32
+Color: 80 0 0 0

@@ -29,7 +29,7 @@
 
 .sb-modal h3 {
     margin: 0 0 6px;
-    color: var(--color-orange, #ff7800);
+    color: var(--color-orange-text, #ff7800);
 }
 
 .sb-intro,
@@ -110,7 +110,7 @@
 }
 
 .sb-fieldset legend {
-    color: var(--color-orange, #ff7800);
+    color: var(--color-orange-text, #ff7800);
     padding: 0 4px;
 }
 
@@ -171,7 +171,7 @@
 
 .sb-tokens summary {
     cursor: pointer;
-    color: var(--color-orange, #ff7800);
+    color: var(--color-orange-text, #ff7800);
 }
 
 .sb-token-list {

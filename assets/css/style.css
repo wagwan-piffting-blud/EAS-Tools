@@ -46,6 +46,7 @@
     --color-bg: #050505;
     --color-text: #f5f5f5;
     --color-orange: #ff7800;
+    --color-orange-text: #ff7800;
     --color-dark-orange: #b15708;
     --color-border: #303030;
     --color-border-light: #555555;
@@ -492,7 +493,7 @@ textarea:disabled {
 }
 
 #decoder-panel .watch {
-    color: var(--color-orange);
+    color: var(--color-orange-text);
 }
 
 #decoder-panel .warning {
@@ -607,7 +608,7 @@ textarea:disabled {
 
 .splice-macro-combo__arrow {
     flex: 0 0 auto;
-    color: var(--color-orange);
+    color: var(--color-orange-text);
     font-size: 0.8em;
 }
 
@@ -683,7 +684,7 @@ textarea:disabled {
     content: "\2713";
     position: absolute;
     right: 10px;
-    color: var(--color-orange);
+    color: var(--color-orange-text);
 }
 
 .splice-macro-combo__opt.is-selected.is-active::after {
@@ -772,7 +773,7 @@ textarea:disabled {
 }
 
 .loc-search__opt.is-added .loc-search__code {
-    color: var(--ss-accent);
+    color: var(--color-orange-text);
 }
 
 .loc-search__opt.is-active,
@@ -824,7 +825,7 @@ textarea:disabled {
 
 .splice-chain-modal h3 {
     margin: 0 0 6px;
-    color: var(--color-orange);
+    color: var(--color-orange-text);
 }
 
 .splice-chain-intro {
@@ -1255,7 +1256,7 @@ textarea:disabled {
     letter-spacing: 0.04em;
     text-transform: uppercase;
     margin: 0 0 18px;
-    color: var(--color-orange);
+    color: var(--color-orange-text);
 }
 
 .hidden-checkbox {
@@ -1400,7 +1401,7 @@ textarea:disabled {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: var(--color-orange);
+    color: var(--color-orange-text);
     font-size: 1.5rem;
     font-weight: bold;
     pointer-events: none;
@@ -1426,7 +1427,7 @@ textarea:disabled {
     margin-bottom: 0.5rem;
     padding-bottom: 0.25rem;
     border-bottom: 1px solid var(--color-border);
-    color: var(--color-orange);
+    color: var(--color-orange-text);
     font-size: 1.25rem;
 }
 
@@ -1704,6 +1705,12 @@ textarea:disabled {
         --color-border: #d0d0d0;
         --color-bg-darker: #a7a7a7;
         --color-text: #050505;
+        /* #ff7800 is only 2.4:1 on the light background; it stays as the button/fill colour */
+        --color-orange-text: #a84300;
+    }
+
+    #decoder-panel .level-meter__label {
+        color: #666666;
     }
 
     .copy-text {
@@ -1738,7 +1745,7 @@ textarea:disabled {
     }
 
     .section-heading {
-        color: var(--color-orange);
+        color: var(--color-orange-text);
     }
 
     header {
@@ -2719,7 +2726,7 @@ textarea:disabled {
     font-size: 0.85rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--color-orange);
+    color: var(--color-orange-text);
 }
 
 .splice-card button {
