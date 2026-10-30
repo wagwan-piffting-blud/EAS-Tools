@@ -8,6 +8,7 @@ export function createLimiter({ sampleRate = 44100, lookaheadMs = 5, releaseMs =
         lookahead: 2 * L,
         get over() { return over; },
         process(chans, from, n, gain = 1) {
+            if (chans.length === 0) return [];
             const len = chans[0].length;
             const m = Math.max(0, Math.min(len - from, n + 2 * L));
             const t = new Float32Array(m);

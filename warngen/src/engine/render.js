@@ -73,10 +73,10 @@
 
         var out = [];
         var lastBlank = false;
-        for (var i = 0; i < lines.length; i++) {
-            var blank = (lines[i] === "");
+        for (var k = 0; k < lines.length; k++) {
+            var blank = (lines[k] === "");
             if (blank && lastBlank) continue;
-            out.push(lines[i]);
+            out.push(lines[k]);
             lastBlank = blank;
         }
 
@@ -136,7 +136,8 @@
         + "(([\\?\\(\\)\\w\\.,/'-]+\\s{1,})+\\w{2}-)))");
 
     function isJavaWhitespace(c) {
-        return /[ \t\n\x0B\f\r\x1C-\x1F]/.test(c);
+        return c === " " || c === "\t" || c === "\n" || c === "\x0B" || c === "\f" || c === "\r"
+            || (c >= "\x1C" && c <= "\x1F");
     }
 
     function indexIgnoringLockMarkers(text, start, count) {
@@ -370,7 +371,7 @@
                 inBullet = false;
             } else if (/^\* /.test(plain)) {
                 inBullet = true;
-            } else if (inBullet && !/^  /.test(plain)) {
+            } else if (inBullet && !/^ {2}/.test(plain)) {
                 line = "  " + line;
                 plain = "  " + plain;
             }

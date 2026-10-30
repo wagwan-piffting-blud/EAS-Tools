@@ -1,0 +1,31 @@
+{
+  "name": "eas-tools",
+  "version": "0.0.0-private",
+  "private": true,
+  "description": "Development, testing, and documentation tooling for EAS Tools",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "coverage:scope": "node tools/check-coverage-scope.mjs",
+    "lint": "eslint .",
+    "lint:anti-suppressions": "node tools/check-anti-suppressions.mjs",
+    "docs": "node tools/generate-markdown-docs.mjs",
+    "docs:check": "node tools/generate-markdown-docs.mjs --check && node tools/check-docs.mjs",
+    "skills:check": "node tools/validate-skills.mjs",
+    "quality": "make quality"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^5.0.5",
+    "@xmldom/xmldom": "^0.9.12",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "node-html-markdown": "^2.0.0",
+    "vitest": "^5.0.5"
+  }
+}

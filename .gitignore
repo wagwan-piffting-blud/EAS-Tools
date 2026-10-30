@@ -4,7 +4,6 @@
 pytest-cache*/
 *.pyc
 __pycache__/
-tests/
 *.patch
 _archive/
 warngen/tools/output/*.json
@@ -12,3 +11,5 @@ warngen/tools/output/*.mbtiles*
 warngen/tools/output/watch_corpus/
 warngen/data/satellite.pmtiles*
 HANDOFF_*.md
+node_modules/
+coverage/

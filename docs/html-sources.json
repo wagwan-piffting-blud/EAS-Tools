@@ -1,0 +1,22 @@
+{
+  "description": "Authoritative HTML documentation and its generated Markdown mirrors.",
+  "entries": [
+    { "source": "credits.html", "output": "docs/generated/credits.md" },
+    { "source": "demos.html", "output": "docs/generated/tts-demos.md" },
+    { "source": "donations.html", "output": "docs/generated/donations.md" },
+    { "source": "faq.html", "output": "docs/generated/faq.md" },
+    { "source": "privacy.html", "output": "docs/generated/privacy.md" },
+    { "source": "terms.html", "output": "docs/generated/terms.md" },
+    { "source": "tts-docs.html", "output": "docs/generated/tts.md" },
+    { "source": "tts-list.html", "output": "docs/generated/tts-voices.md" },
+    { "source": "assets/tts_backend_codes/balabolka.html", "output": "docs/generated/phonemes/balabolka.md", "scope": "body" },
+    { "source": "assets/tts_backend_codes/dectalk.html", "output": "docs/generated/phonemes/dectalk.md", "scope": "body" },
+    { "source": "assets/tts_backend_codes/vtml.html", "output": "docs/generated/phonemes/vtml.md", "scope": "body" }
+  ],
+  "exceptions": [
+    { "source": "index.html", "reason": "Application shell, not a documentation page." },
+    { "source": "muxer.html", "reason": "Application iframe, not a documentation page." },
+    { "source": "warngen/index.html", "reason": "WarnGen application shell, not a documentation page." },
+    { "source": "changelog.html", "reason": "Runtime shell that already renders CHANGES.md as its Markdown source." }
+  ]
+}

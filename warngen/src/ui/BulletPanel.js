@@ -9,7 +9,7 @@
 }(typeof self !== "undefined" ? self : this, function () {
 
     function cleanTitleText(s) {
-        return s.replace(/[\*|]/g, "").replace(/\s+/g, " ").trim();
+        return s.replace(/[*|]/g, "").replace(/\s+/g, " ").trim();
     }
 
     function build(container, bulletConfig, opts) {
@@ -54,7 +54,7 @@
 
         var inputsByName = {};
 
-        bullets.forEach(function (b, idx) {
+        bullets.forEach(function (b) {
             if (b.type === "title") {
                 var clean = cleanTitleText(b.text);
                 if (clean.length === 0) {

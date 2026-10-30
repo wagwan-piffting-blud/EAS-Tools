@@ -202,7 +202,6 @@
         }
 
         var ugcLine = null;
-        var vtecLine = null;
         var vtecMatch = null;
         var vtecRe = /\/([OTEX])\.([A-Z]+)\.([A-Z]{4})\.([A-Z]{2})\.([WAYS])\.(\d{4})\.(\d{6}T\d{4}Z)-(\d{6}T\d{4}Z)\//;
         for (var j = wmoIdx + 1; j < lines.length; j++) {
@@ -210,7 +209,6 @@
                 var vm = vtecRe.exec(lines[j]);
                 if (vm) {
                     vtecMatch = vm;
-                    vtecLine = lines[j];
                     if (j > 0) ugcLine = lines[j - 1];
                 }
             }
@@ -303,7 +301,7 @@
             eventTime: eventTime,
             officeName: officeName,
             officeShortName: officeShortName,
-            impactBased: isImpactBased(bulletin, tags),
+            impactBased: isImpactBased(bulletin),
             tags: tags
         };
 
@@ -312,7 +310,7 @@
     }
 
     // Impact-based products carry HAZARD/SOURCE/IMPACT paragraphs or the IBW threat tags.
-    function isImpactBased(text, tags) {
+    function isImpactBased(text) {
         if (/^\s*HAZARD\.\.\./im.test(text) && /^\s*SOURCE\.\.\./im.test(text)) return true;
         if (/^\s*IMPACT\.\.\./im.test(text)) return true;
         return /^(TORNADO|THUNDERSTORM|FLASH FLOOD) DAMAGE THREAT\.\.\./im.test(text)

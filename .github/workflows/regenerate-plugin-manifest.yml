@@ -35,7 +35,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "26"
 
       # Warnings (shadowed norms, Debug builds, x64 binaries) surface as run annotations;
       # only a hard problem — an unreadable DLL or an alias pointing at a missing file —

@@ -76,7 +76,7 @@ function parseGroups(xmlText) {
         // An action-less group is the followup configs' "select a followup" placeholder.
         const action = (attrs.match(/action="([^"]*)"/) || [])[1];
         if (!action) continue;
-        groups.push({ action, phen: (attrs.match(/phen="([^"]*)"/) || [, ''])[1], bullets });
+        groups.push({ action, phen: (attrs.match(/phen="([^"]*)"/) || [undefined, ''])[1], bullets });
     }
     return groups;
 }
@@ -97,7 +97,7 @@ function defaultBulletNames(bullets) {
 }
 
 const sb = makeSandbox();
-const { WarngenRender, WarngenContext } = sb;
+const { WarngenRender } = sb;
 
 const templates = {};
 for (const f of fs.readdirSync(TEMPLATE_DIR)) {
@@ -190,7 +190,7 @@ function collect(label, name, productId, bullets, text, error) {
         chars: text ? text.length : 0, unresolved, directives, vtec, badVtec
     });
     if (saveDir && text) {
-        fs.writeFileSync(path.join(saveDir, label.replace(/[\\/\[\]]/g, '_').replace(/\.vm/, '') + '.txt'), text);
+        fs.writeFileSync(path.join(saveDir, label.replace(new RegExp('[\\\\/\\[\\]]', 'g'), '_').replace(/\.vm/, '') + '.txt'), text);
     }
 }
 
