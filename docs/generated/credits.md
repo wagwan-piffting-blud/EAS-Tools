@@ -53,5 +53,3 @@ Special thanks goes out to the following individuals, resources, and packages/or
 - [jacklefucksnetwork](https://www.youtube.com/channel/UCxdYMkg8HS1CrFy7k3GtwTg): Creator of the BC370CRS weather radio sound effects used in the Decoder tool.
 
 ## Page last updated: October 10th, 2026
-
-Back to EAS Tools

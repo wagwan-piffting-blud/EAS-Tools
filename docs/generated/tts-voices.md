@@ -44,5 +44,3 @@ A \* means these voices are "Wags' Originals", meaning they were discovered, or 
 A + means these voices are made available via me personally hosting them on my web server.
 
 ## Page last updated: October 10th, 2026
-
-Back to EAS Tools
