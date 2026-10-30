@@ -13,3 +13,5 @@ warngen/data/satellite.pmtiles*
 HANDOFF_*.md
 node_modules/
 coverage/
+/tests/
+/test/e2e-rs/target/

@@ -69,6 +69,7 @@ encoder, text-crawl generator, audio splicer, phoneme tools, a WarnGen replica, 
 ├── docs/
 │   └── generated/             Markdown mirrors generated from HTML docs
 ├── test/                      Unit and regression tests
+│   └── e2e-rs/                Rust + Chrome end-to-end browser suite
 ├── tools/                     Repository generators and validation harnesses
 ├── warngen/
 │   ├── data/                  Geographic and product-support data

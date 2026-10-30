@@ -1,9 +1,10 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { measuredFiles } from './tools/coverage-scope.mjs';
 
 export default defineConfig({
     test: {
         include: ['test/**/*.test.js'],
+        exclude: [...configDefaults.exclude, 'test/e2e-rs/**'],
         environment: 'node',
         coverage: {
             provider: 'v8',

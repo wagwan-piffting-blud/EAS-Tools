@@ -1,5 +1,13 @@
 # EAS Tools Changelog
 
+2026-10-30:
+
+- Merge PR #154. This adds more agentic guidance for the EAS Tools repository, which should help autonomous coding agents like Claude Code to better understand the purpose and structure of the repository, and to make more informed decisions when working with the code. Thank you to GitHub user @seasonal-currency for suggesting this change and working on the PR for it.
+
+- Un-gitignore and enable the e2e-rs suite. This goes hand-in-hand with the above PR, and allows for more comprehensive testing of the EAS Tools codebase, ensuring that any changes made to the code do not introduce new bugs or issues. The e2e-rs suite is a set of end-to-end tests that simulate real-world usage scenarios, and it helps to ensure that the tools work as expected in a variety of situations.
+
+---
+
 2026-10-29:
 
 - Redesign WarnGen a slight bit to be more in-line with the other tool styles on EAS Tools. Thanks to GitHub user @seasonal-currency for suggesting this change and making PR #153 for it, as it was long overdue. Enjoy!

@@ -30,6 +30,25 @@ introduced. Do not inflate coverage with generated bundles, vendored libraries,
 inert imports, ignored lines, or assertions that merely execute code without
 checking behavior.
 
+## Browser end-to-end suite
+
+`make e2e` (or `pnpm run test:e2e`) runs the Rust + Chrome DevTools Protocol suite
+in `test/e2e-rs/`. It drives real headless Chrome against the static site through
+an in-process server, so it covers what Node unit tests cannot: tool loading,
+audio generation and decoding, crawl/video export, WarnGen rendering, handoffs,
+and axe-core accessibility checks. It needs a stable Rust toolchain and Chrome.
+
+- `EAS_TOOLS_CHROME` points at a specific Chrome binary. Without it, the suite
+  uses the standard Windows install, then whatever `google-chrome`/`chromium` is
+  on `PATH`.
+- `EAS_TOOLS_TABS` sets the number of parallel Chrome instances (default 8).
+- `EAS_TOOLS_BASE_URL` tests an already running server instead of the built-in one.
+
+`suites/main.rs` is generated. After adding a suite file, run
+`node test/e2e-rs/gen_main.mjs`; `make e2e-check` fails when the registry is
+stale, because an unregistered suite is never compiled or run. See
+`test/e2e-rs/README.md` for the harness API and isolation model.
+
 ## Other validation layers
 
 - `make protocol-test` exercises recorder boundaries and differential SAME audio

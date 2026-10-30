@@ -1,0 +1,35 @@
+[package]
+name = "eas-tools-e2e"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[test]]
+name = "e2e"
+path = "suites/main.rs"
+harness = false
+
+[dependencies]
+anyhow = "1"
+base64 = "0.23"
+bzip2 = "0.6"
+chromiumoxide = "0.9"
+crc32fast = "1"
+futures = "0.3"
+image = { version = "0.25", default-features = false, features = ["png", "gif"] }
+libtest-mimic = "0.8"
+mime_guess = "2"
+roxmltree = "0.21"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.11"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs"] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

@@ -1,6 +1,8 @@
 PNPM ?= pnpm
+CARGO ?= cargo
+E2E_MANIFEST := test/e2e-rs/Cargo.toml
 
-.PHONY: install test coverage coverage-scope lint anti-suppressions docs docs-check protocol-test warngen-test skills-check quality
+.PHONY: install test coverage coverage-scope lint anti-suppressions docs docs-check protocol-test warngen-test skills-check e2e e2e-check quality
 
 install:
 	$(PNPM) install --frozen-lockfile
@@ -37,4 +39,10 @@ warngen-test:
 skills-check:
 	$(PNPM) run skills:check
 
-quality: docs-check coverage-scope lint anti-suppressions coverage protocol-test warngen-test skills-check
+e2e-check:
+	node test/e2e-rs/gen_main.mjs --check
+
+e2e: e2e-check
+	$(CARGO) test --manifest-path $(E2E_MANIFEST) --test e2e
+
+quality: docs-check coverage-scope lint anti-suppressions coverage protocol-test warngen-test skills-check e2e

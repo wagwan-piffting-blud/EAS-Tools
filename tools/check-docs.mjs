@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { listRepoFiles } from './repo-files.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const sources = JSON.parse(fs.readFileSync(path.join(root, 'docs/html-sources.json'), 'utf8'));
@@ -14,13 +15,7 @@ const registeredHtml = new Set([
 ]);
 
 function walk(dir, predicate) {
-    const found = [];
-    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
-        const absolute = path.join(dir, item.name);
-        if (item.isDirectory()) found.push(...walk(absolute, predicate));
-        else if (predicate(absolute)) found.push(absolute);
-    }
-    return found;
+    return listRepoFiles(dir).map((file) => path.join(dir, file)).filter(predicate);
 }
 
 for (const absolute of walk(root, (file) => file.endsWith('.html'))) {

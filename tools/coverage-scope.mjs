@@ -49,7 +49,7 @@ const integrationFiles = new Set([
 /** Return the single quality lane responsible for a JavaScript file. */
 export function classifyCoverageFile(file) {
     if (measured.has(file)) return 'measured';
-    if (file.startsWith('test/')) return 'test-harness';
+    if (file.startsWith('test/') && !file.startsWith('test/e2e-rs/vendor/')) return 'test-harness';
     if (file === 'vitest.config.mjs' || file === 'eslint.config.mjs') return 'test-harness';
     if (integrationFiles.has(file)) return 'integration';
 
@@ -66,6 +66,7 @@ export function classifyCoverageFile(file) {
         || file.startsWith('assets/js/h264-mp4-encoder/')
         || file.startsWith('assets/js/mediabunny/')
         || file.startsWith('warngen/vendor/')
+        || file.startsWith('test/e2e-rs/vendor/')
     ) return 'vendored';
 
     if (

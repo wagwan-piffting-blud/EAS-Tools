@@ -18,6 +18,10 @@ Use GNU Make as the stable entry point and pnpm as the JavaScript tool runner.
   audio changes. Use `eas-alert-differential-lab` for deeper comparisons.
 - Run `make warngen-test` for WarnGen engine, template, geography, or product
   changes. Use `warngen-reference-parity` when output meaning is disputed.
+- Run `make e2e` for browser-visible behavior: tool loading, audio, crawl/video
+  export, WarnGen rendering, handoffs, and accessibility. Narrow it while
+  iterating with `cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e -- <name>`.
+  After adding a suite file, run `node test/e2e-rs/gen_main.mjs`.
 - Run `make skills-check` after changing repository-local skills.
 - Run `make lint` and `make anti-suppressions` after changing JavaScript,
   TypeScript, quality configuration, or lint-sensitive tooling. Do not add inline

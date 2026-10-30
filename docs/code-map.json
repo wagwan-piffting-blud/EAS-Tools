@@ -9,6 +9,7 @@
     { "path": "warngen", "docs": ["docs/architecture.md", "docs/usage.md", "docs/development.md"] },
     { "path": "tools", "docs": ["docs/development.md", "docs/testing.md"] },
     { "path": "test", "docs": ["docs/testing.md"] },
+    { "path": "test/e2e-rs", "docs": ["docs/testing.md", "test/e2e-rs/README.md"] },
     { "path": ".agents/skills", "docs": ["docs/development.md", "AGENTS.md"] }
   ]
 }

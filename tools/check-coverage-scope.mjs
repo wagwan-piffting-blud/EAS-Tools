@@ -1,19 +1,13 @@
-import { readdirSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { resolve } from 'node:path';
 import { classifyCoverageFile, coverageLaneDescriptions, measuredFiles } from './coverage-scope.mjs';
+import { listRepoFiles } from './repo-files.mjs';
 
 const ignoredDirectories = new Set(['.git', '.aws', '.codex', 'coverage', 'node_modules']);
 
-function findJavaScriptFiles(directory = '.') {
-    const files = [];
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-        if (entry.isDirectory()) {
-            if (!ignoredDirectories.has(entry.name)) files.push(...findJavaScriptFiles(join(directory, entry.name)));
-        } else if (entry.isFile() && /\.m?js$/.test(entry.name)) {
-            files.push(relative('.', join(directory, entry.name)).split(sep).join('/'));
-        }
-    }
-    return files;
+function findJavaScriptFiles() {
+    return listRepoFiles(resolve(import.meta.dirname, '..'))
+        .filter((file) => /\.m?js$/.test(file))
+        .filter((file) => !file.split('/').slice(0, -1).some((part) => ignoredDirectories.has(part)));
 }
 
 const files = findJavaScriptFiles().sort();

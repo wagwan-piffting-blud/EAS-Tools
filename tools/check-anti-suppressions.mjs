@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { listRepoFiles } from './repo-files.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const self = path.relative(root, import.meta.filename).split(path.sep).join('/');
@@ -21,15 +22,10 @@ const rules = [
 ];
 
 function filesUnder(directory) {
-    const files = [];
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-        if (entry.isDirectory()) {
-            if (!ignoredDirectories.has(entry.name)) files.push(...filesUnder(path.join(directory, entry.name)));
-        } else if (entry.isFile() && sourceExtensions.has(path.extname(entry.name).toLowerCase())) {
-            files.push(path.join(directory, entry.name));
-        }
-    }
-    return files;
+    return listRepoFiles(directory)
+        .filter((file) => !file.split('/').slice(0, -1).some((part) => ignoredDirectories.has(part)))
+        .filter((file) => sourceExtensions.has(path.extname(file).toLowerCase()))
+        .map((file) => path.join(directory, file));
 }
 
 const findings = [];

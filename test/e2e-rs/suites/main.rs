@@ -1,0 +1,80 @@
+mod common;
+mod a11y;
+mod announcement_level;
+mod crawl_atari;
+mod crawl_dasdec;
+mod crawl_dimension_inputs;
+mod crawl_easyplus_event_names;
+mod crawl_premade_locks;
+mod crawl_screen_builder;
+mod crawl_sender_override;
+mod crawl_top_left_manual;
+mod crawl_video_background;
+mod crawl_video_export_stall;
+mod decoder_alarm;
+mod decoder_custom_alarms;
+mod decoder_same;
+mod decoder_settings;
+mod demo_wav_headers;
+mod demos_page;
+mod encoder_events;
+mod encoder_location_search;
+mod encoder_pre_post_audio;
+mod endec_rate;
+mod espeak_voice;
+mod number_inputs;
+mod silence_timing;
+mod site_tools;
+mod splicer_chain_level;
+mod tool_handoff;
+mod tts_prosody;
+mod warngen_flood_hazsimp;
+mod warngen_map_cursor;
+mod warngen_radar;
+mod warngen_radar_export;
+mod warngen_radar_synth;
+mod warngen_searchable_selects;
+mod warngen_theme;
+mod warngen_zone_warnings;
+
+fn main() -> std::process::ExitCode {
+    eas_tools_e2e::run(vec![
+        ("a11y", a11y::cases()),
+        ("announcement_level", announcement_level::cases()),
+        ("crawl_atari", crawl_atari::cases()),
+        ("crawl_dasdec", crawl_dasdec::cases()),
+        ("crawl_dimension_inputs", crawl_dimension_inputs::cases()),
+        ("crawl_easyplus_event_names", crawl_easyplus_event_names::cases()),
+        ("crawl_premade_locks", crawl_premade_locks::cases()),
+        ("crawl_screen_builder", crawl_screen_builder::cases()),
+        ("crawl_sender_override", crawl_sender_override::cases()),
+        ("crawl_top_left_manual", crawl_top_left_manual::cases()),
+        ("crawl_video_background", crawl_video_background::cases()),
+        ("crawl_video_export_stall", crawl_video_export_stall::cases()),
+        ("decoder_alarm", decoder_alarm::cases()),
+        ("decoder_custom_alarms", decoder_custom_alarms::cases()),
+        ("decoder_same", decoder_same::cases()),
+        ("decoder_settings", decoder_settings::cases()),
+        ("demo_wav_headers", demo_wav_headers::cases()),
+        ("demos_page", demos_page::cases()),
+        ("encoder_events", encoder_events::cases()),
+        ("encoder_location_search", encoder_location_search::cases()),
+        ("encoder_pre_post_audio", encoder_pre_post_audio::cases()),
+        ("endec_rate", endec_rate::cases()),
+        ("espeak_voice", espeak_voice::cases()),
+        ("number_inputs", number_inputs::cases()),
+        ("silence_timing", silence_timing::cases()),
+        ("site_tools", site_tools::cases()),
+        ("splicer_chain_level", splicer_chain_level::cases()),
+        ("tool_handoff", tool_handoff::cases()),
+        ("tts_prosody", tts_prosody::cases()),
+        ("warngen_flood_hazsimp", warngen_flood_hazsimp::cases()),
+        ("warngen_map_cursor", warngen_map_cursor::cases()),
+        ("warngen_radar", warngen_radar::cases()),
+        ("warngen_radar_export", warngen_radar_export::cases()),
+        ("warngen_radar_synth", warngen_radar_synth::cases()),
+        ("warngen_searchable_selects", warngen_searchable_selects::cases()),
+        ("warngen_theme", warngen_theme::cases()),
+        ("warngen_zone_warnings", warngen_zone_warnings::cases()),
+    ])
+}

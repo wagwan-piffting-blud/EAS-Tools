@@ -16,10 +16,12 @@ export default [
             'assets/js/spfy_wasm.js',
             'assets/js/seatty-same-wasm.js',
             'assets/wasm_tts_voices/**',
+            'test/e2e-rs/target/**',
+            'test/e2e-rs/vendor/**',
         ],
     },
     {
-        files: ['assets/**/*.js', 'assets/**/*.mjs', 'warngen/src/**/*.js', 'tools/**/*.mjs', 'warngen/tools/**/*.mjs', 'test/**/*.js', 'vitest.config.mjs'],
+        files: ['assets/**/*.js', 'assets/**/*.mjs', 'warngen/src/**/*.js', 'tools/**/*.mjs', 'warngen/tools/**/*.mjs', 'test/**/*.js', 'test/e2e-rs/*.mjs', 'vitest.config.mjs'],
         ...js.configs.recommended,
         languageOptions: {
             ecmaVersion: 'latest',
@@ -34,7 +36,7 @@ export default [
         },
     },
     {
-        files: ['test/**/*.js', 'tools/**/*.mjs', 'warngen/tools/**/*.mjs', 'vitest.config.mjs'],
+        files: ['test/**/*.js', 'tools/**/*.mjs', 'warngen/tools/**/*.mjs', 'test/e2e-rs/*.mjs', 'vitest.config.mjs'],
         ...js.configs.recommended,
         languageOptions: {
             ecmaVersion: 'latest',
