@@ -138,7 +138,16 @@ pub async fn open_tab() -> Result<Tab> {
     let permit = Arc::clone(&shared.tabs).acquire_owned().await.context("tab semaphore closed")?;
     let slot = shared.free.lock().unwrap().pop().context("no free browser slot")?;
     match open_in_slot(&shared, slot).await {
-        Ok((page, context)) => Tab::attach(page, slot, context, Arc::clone(&shared), permit).await,
+        Ok((page, context, reused)) => {
+            let tab = Tab::attach(page, slot, context, Arc::clone(&shared), permit).await?;
+            if reused {
+                if let Err(e) = tab.scrub_storage().await {
+                    tab.close().await;
+                    return Err(e);
+                }
+            }
+            Ok(tab)
+        }
         Err(e) => {
             shared.free.lock().unwrap().push(slot);
             Err(e)
@@ -146,9 +155,10 @@ pub async fn open_tab() -> Result<Tab> {
     }
 }
 
-async fn open_in_slot(shared: &Shared, slot: usize) -> Result<(chromiumoxide::Page, BrowserContextId)> {
+async fn open_in_slot(shared: &Shared, slot: usize) -> Result<(chromiumoxide::Page, BrowserContextId, bool)> {
     let browser = shared.slots[slot].browser.get_or_try_init(|| launch(&shared.origin, slot)).await?.read().await;
     let pooled = shared.slots[slot].context.lock().unwrap().take();
+    let reused = pooled.is_some();
     let context = match pooled {
         Some(context) => context,
         None => browser
@@ -162,7 +172,7 @@ async fn open_in_slot(shared: &Shared, slot: usize) -> Result<(chromiumoxide::Pa
         .build()
         .map_err(|e| anyhow!(e))?;
     let page = browser.new_page(params).await.context("open page")?;
-    Ok((page, context))
+    Ok((page, context, reused))
 }
 
 impl Shared {

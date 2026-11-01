@@ -343,6 +343,7 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
                     onclick: async () => {
                         const result = await getJson(TTS_BACKEND_URL + '&pron=status&id=' + encodeURIComponent(sub.id) + '&token=' + encodeURIComponent(sub.token));
                         if (result.ok) {
+                            if (result.data.status === 'approved' && sub.lastStatus !== 'approved') getPronunciationRepository().invalidate();
                             updateSubmission(sub.id, { lastStatus: result.data.status, reviewerNote: result.data.reviewerNote || '' });
                             renderSubmissions();
                         } else {

@@ -3,7 +3,6 @@ import {
     CACHE_KEY,
     CACHE_MAX_CHARS,
     EXPORT_TYPE,
-    INDEX_TTL_MS,
     PERSONAL_CHANGE,
     PERSONAL_KEY,
     SELECTION_CHANGE,
@@ -57,14 +56,17 @@ function jsonResponse(body, status = 200) {
 
 function fakeFetch(routes) {
     const calls = [];
-    const impl = vi.fn(async (url) => {
+    const inits = [];
+    const impl = vi.fn(async (url, init) => {
         calls.push(url);
+        inits.push(init);
         for (const [pattern, handler] of routes) {
             if (url.includes(pattern)) return typeof handler === 'function' ? handler(url) : jsonResponse(handler);
         }
         return jsonResponse({}, 404);
     });
     impl.calls = calls;
+    impl.inits = inits;
     return impl;
 }
 
@@ -334,14 +336,30 @@ describe('repository', () => {
         expect(Object.keys(cached.sets)).toEqual(['wfo/LMK@5']);
         const second = make();
         expect((await second.loadSet('wfo/LMK')).rev).toBe(5);
-        expect(fetchImpl.calls.filter((u) => u.includes('pron=index'))).toHaveLength(1);
-        expect(fetchImpl.calls.filter((u) => u.includes('pron=set&id=wfo%2FLMK'))).toHaveLength(1);
-        clock += INDEX_TTL_MS + 1;
-        const third = make();
-        await third.loadIndex();
         expect(fetchImpl.calls.filter((u) => u.includes('pron=index'))).toHaveLength(2);
+        expect(fetchImpl.calls.filter((u) => u.includes('pron=set&id=wfo%2FLMK'))).toHaveLength(1);
         repo.invalidate();
         expect((await repo.loadIndex()).revision).toBe(9);
+        expect(fetchImpl.calls.filter((u) => u.includes('pron=index'))).toHaveLength(3);
+    });
+
+    it('sees a set approved after the index was cached, and keys cached sets by content hash', async () => {
+        const storage = memoryStorage();
+        let remoteIndex = { ok: true, revision: 3, sets: {} };
+        let remoteTx = set('tx/KIH41', [], { rev: 1, prosody: { speed: { value: 100 } } });
+        const fetchImpl = fakeFetch(bundledRoutes([
+            ['pron=index', () => jsonResponse(remoteIndex)],
+            ['pron=set&id=tx%2FKIH41', () => jsonResponse(remoteTx)],
+        ]));
+        const make = () => createPronunciationRepository({ fetchImpl, bundledBase: 'b', apiUrl: 'https://tts/x', storage, remoteEnabled: () => true });
+        expect((await make().loadSet('tx/KIH41'))).toBeNull();
+        remoteIndex = { ok: true, revision: 4, sets: { 'tx/KIH41': { rev: 1, sha256: 'a'.repeat(64) } } };
+        expect((await make().loadSet('tx/KIH41')).prosody.speed.value).toBe(100);
+        remoteTx = set('tx/KIH41', [], { rev: 1, prosody: { speed: { value: 95 } } });
+        remoteIndex = { ok: true, revision: 4, sets: { 'tx/KIH41': { rev: 1, sha256: 'b'.repeat(64) } } };
+        expect((await make().loadSet('tx/KIH41')).prosody.speed.value).toBe(95);
+        expect(Object.keys(JSON.parse(storage.getItem(CACHE_KEY)).sets)).toEqual(['tx/KIH41@1@aaaaaaaaaaaaaaaa', 'tx/KIH41@1@bbbbbbbbbbbbbbbb']);
+        expect(fetchImpl.inits.filter((init) => init?.cache === 'no-cache').length).toBe(fetchImpl.calls.filter((u) => u.includes('pron=')).length);
     });
 
     it('falls back to the bundled copy when a remote set fails', async () => {
@@ -355,7 +373,7 @@ describe('repository', () => {
 
     it('ignores broken remote indexes and keeps a stale cache', async () => {
         const storage = memoryStorage({ [CACHE_KEY]: JSON.stringify({ index: { at: 0, data: { sets: { 'wfo/LOT': { rev: 3 } } } }, sets: {}, order: [] }) });
-        const repo = createPronunciationRepository({ fetchImpl: fakeFetch(bundledRoutes([['pron=index', { ok: false }]])), bundledBase: 'b', apiUrl: 'https://tts/x', storage, remoteEnabled: () => true, now: () => INDEX_TTL_MS * 2 });
+        const repo = createPronunciationRepository({ fetchImpl: fakeFetch(bundledRoutes([['pron=index', { ok: false }]])), bundledBase: 'b', apiUrl: 'https://tts/x', storage, remoteEnabled: () => true });
         expect((await repo.loadIndex()).sets['wfo/LOT'].rev).toBe(3);
         const failing = createPronunciationRepository({ fetchImpl: fakeFetch(bundledRoutes([['pron=index', () => { throw new Error('down'); }]])), bundledBase: 'b', apiUrl: 'https://tts/x', storage: memoryStorage(), remoteEnabled: () => true });
         expect((await failing.loadIndex()).sets['wfo/LOT']).toBeUndefined();

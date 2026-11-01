@@ -26,7 +26,6 @@ export const PERSONAL_CHANGE = 'eas:nwr-pron-personal-change';
 export const EXPORT_TYPE = 'eas-tools-nwr-pronunciation';
 export const MAX_SUBMISSIONS = 50;
 export const CACHE_MAX_CHARS = 512 * 1024;
-export const INDEX_TTL_MS = 6 * 60 * 60 * 1000;
 
 const PERSONAL_SCOPE_RE = /^(?:all|wfo:[A-Z]{3}|tx:[A-Z0-9]{3,7})$/;
 
@@ -323,7 +322,7 @@ export function createPronunciationRepository({
     function withTimeout(url) {
         const controller = typeof AbortController === 'function' ? new AbortController() : null;
         let timer = null;
-        const request = fetchImpl(url, controller ? { signal: controller.signal } : undefined);
+        const request = fetchImpl(url, controller ? { cache: 'no-cache', signal: controller.signal } : { cache: 'no-cache' });
         const timeout = new Promise((_, reject) => {
             timer = setTimeout(() => {
                 controller?.abort();
@@ -367,7 +366,6 @@ export function createPronunciationRepository({
     async function loadRemoteIndex() {
         if (!remoteEnabled() || !apiUrl) return null;
         const cache = readCache();
-        if (cache.index && now() - cache.index.at < INDEX_TTL_MS) return cache.index.data;
         try {
             const data = await getJson(remoteUrl('pron=index'), true);
             if (!isObject(data) || data.ok === false || !isObject(data.sets)) return cache.index?.data || null;
@@ -397,7 +395,8 @@ export function createPronunciationRepository({
                     if (!isSetId(id) || !isObject(meta)) continue;
                     const rev = Number(meta.rev) || 0;
                     if (!sets[id] || rev > sets[id].rev) {
-                        sets[id] = { rev, entries: meta.entries || 0, prosody: !!meta.prosody, origin: 'remote', bundledRev: sets[id]?.bundledRev || 0 };
+                        const sha = typeof meta.sha256 === 'string' ? meta.sha256.slice(0, 16) : '';
+                        sets[id] = { rev, sha, entries: meta.entries || 0, prosody: !!meta.prosody, origin: 'remote', bundledRev: sets[id]?.bundledRev || 0 };
                     }
                 }
                 const voices = Array.isArray(remote?.voices) ? remote.voices : Array.isArray(bundled?.voices) ? bundled.voices : [...DEFAULT_VOICES];
@@ -423,8 +422,8 @@ export function createPronunciationRepository({
         }
     }
 
-    async function loadRemoteSet(id, rev) {
-        const cacheId = id + '@' + rev;
+    async function loadRemoteSet(id, rev, sha = '') {
+        const cacheId = id + '@' + rev + (sha ? '@' + sha : '');
         const cache = readCache();
         if (cache.sets[cacheId]) {
             cache.order = cache.order.filter((k) => k !== cacheId).concat(cacheId);
@@ -451,7 +450,7 @@ export function createPronunciationRepository({
                 const meta = index.sets[id];
                 if (!meta) return null;
                 if (meta.origin === 'remote') {
-                    const remote = await loadRemoteSet(id, meta.rev);
+                    const remote = await loadRemoteSet(id, meta.rev, meta.sha);
                     if (remote) return remote;
                     return meta.bundledRev ? loadBundledSet(id) : null;
                 }

@@ -12,6 +12,7 @@ It replaced the Selenium/pytest suite on 2026-10-15. Each Python file became a s
 ## How the harness keeps tests isolated
 - A slot is checked out per test (semaphore + free list). The page is new for every test, so init scripts, viewport/media emulation, dialogs and sessionStorage never carry over.
 - On close, `Storage.clearDataForOrigin` wipes cookies, localStorage, IndexedDB, file systems, WebSQL, service workers and Cache Storage for the origin. The context then goes back to the slot. If the wipe fails, the context is disposed instead.
+- A pooled context is scrubbed again when the next test takes it. The scrub loads `fixtures/blank.html` and runs `localStorage.clear()` from that page. It exists because a write sent just before the page left can reach storage after the wipe; crawl settings and WarnGen state have both done this. Keys cleared this way are printed as `[e2e] slot N: cleared localStorage keys that outlived the wipe`.
 - The HTTP cache and V8 code cache deliberately survive, so later tests skip refetching and recompiling the bundles.
 - `EAS_TOOLS_TABS=1` runs everything through one reused context in sequence. That is the leak check (about 3.5 min).
 

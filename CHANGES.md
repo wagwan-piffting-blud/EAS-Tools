@@ -16,6 +16,8 @@
 
 - Updates to the tag handling for VTML/Balabolka. Any unquoted options are now auto-quoted for you, so the voices do not read the tag aloud. Thank you to Discord user @pringlezgameing for reporting this issue.
 
+- Fix a bug regarding cache invalidation on the VT Paul pronunciation dictionary. This change ensures that the pronunciation dictionary is properly updated and invalidated when changes are made, preventing issues with outdated or incorrect pronunciations/speeds/etc. being used in the encoder or splicer tools.
+
 ---
 
 2026-10-30:

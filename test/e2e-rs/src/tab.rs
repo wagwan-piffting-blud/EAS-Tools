@@ -29,6 +29,9 @@ pub const SCRIPT_TIMEOUT: Duration = Duration::from_secs(30);
 /// Everything a test can leave behind for its origin, except the HTTP cache.
 const STORAGE_TYPES: &str = "cookies,file_systems,indexeddb,local_storage,websql,service_workers,cache_storage";
 
+/// A same-origin page that runs no site code, for scrub_storage.
+const BLANK_PAGE: &str = "test/e2e-rs/fixtures/blank.html";
+
 struct Inner {
     page: Page,
     slot: usize,
@@ -110,6 +113,21 @@ impl Tab {
         if let Some(context) = context {
             self.0.shared.release(self.0.slot, context, wiped).await;
         }
+    }
+
+    /// Second half of the wipe in `close`, run when a pooled context is handed out. A
+    /// localStorage write the previous test's page sent just before it navigated away can reach
+    /// the storage backend after Storage.clearDataForOrigin, so the previous test's crawl
+    /// settings turned up in the next test (seen on CI runners). By now any such write has
+    /// landed, and clearing from a same-origin page also resets the renderer's cached copy.
+    pub(crate) async fn scrub_storage(&self) -> Result<()> {
+        self.goto(BLANK_PAGE).await?;
+        let leftover: Vec<String> =
+            self.eval("(() => { const keys = Object.keys(localStorage); localStorage.clear(); return keys; })()").await?;
+        if !leftover.is_empty() {
+            eprintln!("[e2e] slot {}: cleared localStorage keys that outlived the wipe: {leftover:?}", self.0.slot);
+        }
+        Ok(())
     }
 
     pub async fn goto(&self, path: &str) -> Result<()> {
