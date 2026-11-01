@@ -44,12 +44,25 @@ const WORD_START_RE = /[A-Za-z0-9]/;
 const WORD_CHAR_RE = /[A-Za-z0-9'’]/;
 const ALNUM_RUN_RE = /^[A-Za-z0-9]+/;
 const PLACEHOLDER = '{{match}}';
+const START_TAG_RE = /<([A-Za-z_][\w:.-]*)((?:[ \t\r\n\f]+[A-Za-z_][\w:.-]*[ \t\r\n\f]*=[ \t\r\n\f]*(?:"[^"<>]*"|'[^'<>]*'|[^ \t\r\n\f"'<>=`/]+))*)[ \t\r\n\f]*(\/?)>/g;
+const TAG_ATTRIBUTE_RE = /([A-Za-z_][\w:.-]*)[ \t\r\n\f]*=[ \t\r\n\f]*(?:"([^"<>]*)"|'([^'<>]*)'|([^ \t\r\n\f"'<>=`/]+))/g;
 
 const isObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
 const isInt = (value) => Number.isInteger(value);
 
 export function escapeXml(text) {
     return String(text ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+export function normalizeMarkupTags(text) {
+    return String(text ?? '').replace(START_TAG_RE, (tag, name, attributes, selfClosing) => {
+        let out = '<' + name;
+        for (const m of attributes.matchAll(TAG_ATTRIBUTE_RE)) {
+            const value = m[2] ?? m[3] ?? m[4];
+            out += ' ' + m[1] + '="' + value.replace(/"/g, '&quot;') + '"';
+        }
+        return out + (selfClosing ? '/>' : '>');
+    });
 }
 
 export function normalizeMatch(match) {

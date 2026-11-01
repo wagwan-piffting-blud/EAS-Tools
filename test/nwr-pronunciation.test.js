@@ -10,6 +10,7 @@ import {
     lexiconFromSet,
     matchTokens,
     mergeLayers,
+    normalizeMarkupTags,
     parseSourceId,
     planRemoteSpeech,
     renderReplacement,
@@ -192,6 +193,40 @@ describe('validation', () => {
         expect(dp).toEqual(expect.arrayContaining(['duplicate id a', 'duplicate match alpha', 'entry must be an object']));
         const big = makeSet('national', new Array(LIMITS.setEntries + 1).fill(0).map((_, i) => respell('e' + i, 'w' + i, 'x')));
         expect(validatePronunciationSet(big).problems[0].problem).toMatch(/more than/);
+    });
+});
+
+describe('normalizeMarkupTags', () => {
+    it.each([
+        ['<vtml_speed value=117>Test</vtml_speed>', '<vtml_speed value="117">Test</vtml_speed>'],
+        ['<vtml_pause time=500/> go', '<vtml_pause time="500"/> go'],
+        ['<vtml_pause time = 500 /> go', '<vtml_pause time="500"/> go'],
+        ["<vtml_pitch value='90'>x</vtml_pitch>", '<vtml_pitch value="90">x</vtml_pitch>'],
+        ["<vtml_sub alias='say \"hi\"'>x</vtml_sub>", '<vtml_sub alias="say &quot;hi&quot;">x</vtml_sub>'],
+        ['<vtml_phoneme alphabet=x-cmu ph="W IH1 N D">wind</vtml_phoneme>', '<vtml_phoneme alphabet="x-cmu" ph="W IH1 N D">wind</vtml_phoneme>'],
+        ['<rate absspeed=5 >fast</rate>', '<rate absspeed="5">fast</rate>'],
+        ['<vtml_speed  value="117"  >a</vtml_speed>', '<vtml_speed value="117">a</vtml_speed>'],
+    ])('quotes and canonicalizes %s', (input, output) => {
+        expect(normalizeMarkupTags(input)).toBe(output);
+        expect(normalizeMarkupTags(output)).toBe(output);
+    });
+
+    it.each([
+        'plain text, no tags',
+        'winds 5 <10 mph',
+        'a < b and c > d',
+        '<vtml_phoneme ph=W IH1 N D>wind</vtml_phoneme>',
+        '<vtml_speed value=117',
+        '<!-- note --> <?xml version="1.0"?> </vtml_speed>',
+        '<a href=http://x/y>link</a>',
+        '&lt;vtml_speed value=117&gt;',
+    ])('leaves %s alone', (input) => {
+        expect(normalizeMarkupTags(input)).toBe(input);
+    });
+
+    it('handles nullish input', () => {
+        expect(normalizeMarkupTags(undefined)).toBe('');
+        expect(normalizeMarkupTags(null)).toBe('');
     });
 });
 

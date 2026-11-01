@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { SCHEMA_VERSION, DEFAULT_VOICES, isSetId, validateEntry, validateProsody, validatePronunciationSet, validationRules } from '../assets/js/nwr-pronunciation.js';
+import { SCHEMA_VERSION, DEFAULT_VOICES, isSetId, normalizeMarkupTags, validateEntry, validateProsody, validatePronunciationSet, validationRules } from '../assets/js/nwr-pronunciation.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const DEFAULT_DIR = path.join(ROOT, 'assets', 'nwr-pronunciation');
@@ -158,6 +158,19 @@ const PARITY_ENTRIES = [
     { id: 'bad-replace', match: 'ok', replace: null },
 ];
 
+const PARITY_MARKUP = [
+    '<vtml_speed value=117>Test</vtml_speed>',
+    '<vtml_pause time = 500 /> go',
+    "<vtml_sub alias='say \"hi\"'>x</vtml_sub>",
+    '<vtml_phoneme alphabet=x-cmu ph="W IH1 N D">wind</vtml_phoneme>',
+    '<rate absspeed=5 >fast</rate>',
+    '<vtml_speed  value="117"  >a</vtml_speed>',
+    '<vtml_phoneme ph=W IH1 N D>wind</vtml_phoneme>',
+    'winds 5 <10 mph, a < b and c > d',
+    '<a href=http://x/y>link</a> <!-- n --> &lt;vtml_speed value=117&gt;',
+    '<vtml_speed value=é>x</vtml_speed> <vé a=1>',
+];
+
 export function exportServerRules(outDir) {
     fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(path.join(outDir, 'rules.json'), JSON.stringify(validationRules(), null, 4) + '\n');
@@ -168,7 +181,8 @@ export function exportServerRules(outDir) {
         { tempo: 1 },
         { speed: { value: 100, variants: [null, { value: 1 }] } },
     ].map((p) => ({ prosody: p, paths: [...new Set(validateProsody(p).map((x) => x.path))].sort() }));
-    fs.writeFileSync(path.join(outDir, 'parity.json'), JSON.stringify({ entries: cases, prosody }, null, 4) + '\n');
+    const markup = PARITY_MARKUP.map((input) => ({ input, output: normalizeMarkupTags(input) }));
+    fs.writeFileSync(path.join(outDir, 'parity.json'), JSON.stringify({ entries: cases, prosody, markup }, null, 4) + '\n');
 }
 
 export async function main(argv) {

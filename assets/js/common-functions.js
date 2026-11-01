@@ -1,4 +1,4 @@
-import { isEligibleVoice, planRemoteSpeech } from './nwr-pronunciation.js';
+import { isEligibleVoice, normalizeMarkupTags, planRemoteSpeech } from './nwr-pronunciation.js';
 import { createPronunciationRepository, readPersonal, readSelection } from './nwr-pronunciation-store.js';
 
 export async function saveFile(filename, content, mime, opts = {}) {
@@ -1211,7 +1211,8 @@ export async function planTtsPronunciation({ text, voice, backend = '', prosody 
 
 export async function fetchRemoteTtsAudio({ text, voice, overrideTZ = 'UTC', backend = '', prosody = null, pronunciation } = {}) {
     const plan = await planTtsPronunciation({ text, voice, backend, prosody, pronunciation });
-    const spoken = plan.prosody ? applyTtsProsodyMarkup(plan.text, backend, plan.prosody) : plan.text;
+    const marked = plan.prosody ? applyTtsProsodyMarkup(plan.text, backend, plan.prosody) : plan.text;
+    const spoken = /vt|bal/.test(('' + (backend || '')).toLowerCase()) ? normalizeMarkupTags(marked) : marked;
 
     const params = new URLSearchParams();
     params.append('text', spoken);

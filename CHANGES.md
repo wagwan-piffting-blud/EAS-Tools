@@ -14,6 +14,8 @@
 
 - CI updates.
 
+- Updates to the tag handling for VTML/Balabolka. Any unquoted options are now auto-quoted for you, so the voices do not read the tag aloud. Thank you to Discord user @pringlezgameing for reporting this issue.
+
 ---
 
 2026-10-30:
