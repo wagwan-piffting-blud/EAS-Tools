@@ -1,10 +1,85 @@
 # eas-tools e2e suite (Rust + CDP)
 
-Run with `make e2e` from the repo root, or `cargo test --test e2e` from `test/e2e-rs`. `make quality` and CI include it. It runs 8 slots by default (`EAS_TOOLS_TABS`). Each slot is its own headless Chrome with one browser context that its tests take turns in. An in-process static server serves the repo at `/eas-tools` unless `EAS_TOOLS_BASE_URL` is set. Tests slower than 2 s print `[slow]` to stderr; `EAS_TOOLS_SLOW_SECS` changes the threshold (`0` turns it off), and it is off by default when `CI` is set. libtest-mimic takes ONE name filter (substring), plus `--skip`.
+Run with `make e2e` from the repo root. `make quality` and CI include it. It runs
+8 slots by default (`EAS_TOOLS_TABS`). Each slot is its own headless Chrome with
+one browser context that its tests take turns in. An in-process static server
+serves the repo at `/eas-tools` unless `EAS_TOOLS_BASE_URL` is set. Tests slower
+than 2 s print `[slow]` to stderr; `EAS_TOOLS_SLOW_SECS` changes the threshold
+(`0` turns it off), and it is off by default when `CI` is set. libtest-mimic takes
+ONE name filter (substring), plus `--skip`.
 
-Chrome comes from `EAS_TOOLS_CHROME` if set, else `C:\Program Files\Google\Chrome\Application\chrome.exe` if present, else chromiumoxide's own lookup (`google-chrome`, `chromium`, ... on `PATH`).
+## Native and container runners
 
-After adding a suite file, run `node gen_main.mjs`; it regenerates `suites/main.rs` from `suites/*.rs`. `make e2e-check` (`node gen_main.mjs --check`) fails when the registry is stale, since an unregistered suite is never compiled.
+The harness consumes `--runner auto|native|container` before passing the remaining
+arguments to libtest-mimic. `auto` is the default: it uses a usable native
+Chromium first, then a Docker-compatible E2E runner. With Cargo, put harness
+arguments after `--`:
+
+```bash
+# Automatically choose native Chromium or the container
+make e2e
+cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e decoder_same
+
+# Force a specific backend when needed
+cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e -- --runner native decoder_same
+
+# Build and run the primary distroless chromium-headless-shell image
+make e2e-container
+cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e -- --runner container decoder_same
+
+# Explicit compatibility alias for the primary image
+make e2e-container-headless-shell
+
+# Build and run the secondary full Chromium image
+make e2e-container-full-chromium
+```
+
+Container mode runs `docker build` against `test/e2e-rs/Dockerfile`, then starts
+the image read-only as its distroless non-root user. It drops Linux capabilities,
+sets `no-new-privileges`, and gives Chromium only a temporary `/tmp`. The final
+image contains the release E2E binary, Chromium and its runtime library closure,
+font configuration, and the application/fixture files used by the suite. It does
+not contain Cargo, a shell, a package manager, unrelated voice engines, Piper
+models, Windows VST DLLs, or the unused FFmpeg.wasm payload.
+
+The eSpeak synthesis cases require the real Git LFS object. Fetch it before the
+first container build; the Dockerfile fails explicitly if it sees a pointer:
+
+```bash
+git lfs pull --include="assets/wasm_tts_voices/espeak/espeak-ng.eas.data"
+```
+
+`EAS_TOOLS_E2E_IMAGE` changes the local image tag (default
+`eas-tools-e2e:local`, now the headless-shell image), `EAS_TOOLS_DOCKER` selects a Docker-compatible CLI, and
+`EAS_TOOLS_E2E_SKIP_BUILD=1` runs an image that was built separately.
+`EAS_TOOLS_E2E_DOCKERFILE` selects the Dockerfile and
+`EAS_TOOLS_E2E_BUILD_ARGS` supplies whitespace-separated build arguments.
+The default Dockerfile build uses Debian's `chromium-headless-shell` executable
+at `/usr/lib/chromium/chromium-headless-shell`. The secondary
+`make e2e-container-full-chromium` target builds `eas-tools-e2e:full-chromium`
+with the regular `/usr/lib/chromium/chromium` binary for compatibility fallback.
+Container mode forwards `EAS_TOOLS_TABS`; native-only browser/server overrides are
+not forwarded into the hermetic image.
+
+In native mode Chrome comes from `EAS_TOOLS_CHROME` if set, else
+`C:\Program Files\Google\Chrome\Application\chrome.exe` if present, else
+one of the usual `google-chrome`, `chromium`, or `chrome` commands on `PATH`.
+If no native browser is found, auto mode checks that the configured Docker CLI
+can reach a container engine. It reuses the requested image when it already
+exists; otherwise it checks that the build inputs are usable before selecting
+the container runner. With `EAS_TOOLS_E2E_SKIP_BUILD=1`, the image must exist.
+Set `E2E_RUNNER=native|container|auto` for Make-based commands, or pass
+`--runner` directly to Cargo.
+
+After adding a suite file, run `node gen_main.mjs`; it regenerates
+`suites/main.rs` from `suites/*.rs`. `make e2e-check` verifies that registry,
+`rustfmt` formatting, `cargo check --all-targets`, and Clippy with warnings denied.
+It also enforces 90% line coverage through `cargo llvm-cov` for the deterministic
+support modules (`img.rs`, `runner.rs`, and `server.rs`). The CDP adapters and
+top-level browser orchestration are intentionally covered by live browser cases,
+not the unit-only coverage boundary. The check fails when the registry is stale,
+since an unregistered suite is never compiled. `make e2e`, the pnpm E2E commands,
+and CI run this preflight before the browser suite.
 
 ## Status: this is the only browser suite
 It replaced the Selenium/pytest suite on 2026-10-15. Each Python file became a suite of the same name (minus `test_`). `encoder_events` holds both EMNet and the AWIPS location limit; `number_inputs` holds both slider and wheel tests. axe-core 4.11.4 (MPL-2.0) is vendored at `vendor/axe.min.js`.

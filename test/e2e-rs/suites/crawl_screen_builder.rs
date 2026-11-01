@@ -9,12 +9,20 @@ use std::collections::BTreeSet;
 
 use eas_tools_e2e::*;
 
-use crate::common::{capture_download, click_later, copy_text, open_tool, temp_file, wait_for_dialog};
+use crate::common::{
+    capture_download, click_later, copy_text, open_tool, temp_file, wait_for_dialog,
+};
 
 const WARNING_HEADER: &str = "ZCZC-CIV-CAE-006000+0000-2521800-KTLA TV5-";
 const WATCH_HEADER: &str = "ZCZC-WXR-SVA-039045-039073-039129+0300-2521800-KEPZ/NWS-";
 const MODULE: &str = "./assets/js/crawl-screen-builder.js";
-const LOCKABLE: [&str; 5] = ["crawlWidth", "crawlHeight", "crawlInset", "crawlTopLeftPixelX", "crawlTopLeftPixelY"];
+const LOCKABLE: [&str; 5] = [
+    "crawlWidth",
+    "crawlHeight",
+    "crawlInset",
+    "crawlTopLeftPixelX",
+    "crawlTopLeftPixelY",
+];
 
 const SET_HEADER_JS: &str = "
 const header = arguments[0];
@@ -98,7 +106,8 @@ return out;";
 
 async fn open_crawl(tab: &Tab) -> Result<()> {
     open_tool(tab, "crawl").await?;
-    tab.wait_for_selector("#crawlOpenScreenBuilder", Duration::from_secs(40)).await
+    tab.wait_for_selector("#crawlOpenScreenBuilder", Duration::from_secs(40))
+        .await
 }
 
 async fn template(tab: &Tab, kind: &str) -> Result<Value> {
@@ -112,7 +121,9 @@ async fn template(tab: &Tab, kind: &str) -> Result<Value> {
 }
 
 async fn save_and_use(tab: &Tab, layout: &Value) -> Result<String> {
-    let used: Value = tab.js_async(SAVE_AND_USE_JS, json!([MODULE, layout])).await?;
+    let used: Value = tab
+        .js_async(SAVE_AND_USE_JS, json!([MODULE, layout]))
+        .await?;
     ensure!(used["ok"] == true, "{used}");
     Ok(used["id"].as_str().unwrap_or_default().to_string())
 }
@@ -125,14 +136,20 @@ async fn wait_background(tab: &Tab, pages: usize) -> Result<Value> {
 
 async fn static_image(tab: &Tab) -> Result<image::RgbImage> {
     let result: Value = tab.js_async(WAIT_FOR_STATIC_IMAGE_JS, json!([])).await?;
-    ensure!(result["ok"] == true, "the custom screen never became the crawl background");
+    ensure!(
+        result["ok"] == true,
+        "the custom screen never became the crawl background"
+    );
     img::decode_data_url(result["src"].as_str().unwrap_or_default())
 }
 
 async fn open_builder(tab: &Tab) -> Result<()> {
     tab.click("#crawlOpenScreenBuilder").await?;
-    tab.wait_until("(() => { const b = document.querySelector('.sb-backdrop'); return !!b && !b.hidden; })()", Duration::from_secs(20))
-        .await
+    tab.wait_until(
+        "(() => { const b = document.querySelector('.sb-backdrop'); return !!b && !b.hidden; })()",
+        Duration::from_secs(20),
+    )
+    .await
 }
 
 async fn start_template(tab: &Tab, kind: &str, expected_name: &str) -> Result<()> {
@@ -145,7 +162,17 @@ async fn start_template(tab: &Tab, kind: &str, expected_name: &str) -> Result<()
     )
     .await?;
     tab.click("#sb-start-btn").await?;
-    if tab.wait_until(&format!("document.getElementById('sb-name').value === {}", json!(expected_name)), Duration::from_secs(15)).await.is_err() {
+    if tab
+        .wait_until(
+            &format!(
+                "document.getElementById('sb-name').value === {}",
+                json!(expected_name)
+            ),
+            Duration::from_secs(15),
+        )
+        .await
+        .is_err()
+    {
         let state: Value = tab
             .eval("({ name: document.getElementById('sb-name').value, status: document.getElementById('sb-status').textContent, errors: window.__sbErrors })")
             .await?;
@@ -180,7 +207,12 @@ async fn settled_layout_element(tab: &Tab) -> Result<Value> {
 }
 
 fn locked(state: &Value) -> BTreeSet<String> {
-    state["locked"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(str::to_string)).collect()
+    state["locked"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|v| v.as_str().map(str::to_string))
+        .collect()
 }
 
 fn set_of(ids: &[&str]) -> BTreeSet<String> {
@@ -191,19 +223,44 @@ pub fn cases() -> Vec<Case> {
     let mut cases: Vec<Case> = ["dark", "light"]
         .into_iter()
         .map(|scheme| {
-            case(format!("the_open_dialog_has_no_serious_axe_violations[{scheme}]"), move |tab| async move {
-                tab.emulate_media(&[("prefers-color-scheme", scheme)]).await?;
-                open_crawl(&tab).await?;
-                open_builder(&tab).await?;
-                axe::assert_clean(&tab, json!(".sb-modal"), &[], &format!("{scheme}: screen builder, text selected")).await?;
-                start_template(&tab, "template:dasdec", "My DASDEC Screen").await?;
-                let spacing: String = tab.eval("document.getElementById('sb-prop-letter-spacing').value").await?;
-                ensure!(spacing == "0", "letter spacing {spacing}");
-                axe::assert_clean(&tab, json!(".sb-modal"), &[], &format!("{scheme}: screen builder, DASDEC text selected")).await?;
-                tab.click("#sb-add-box").await?;
-                tab.wait_for_selector("#sb-prop-stroke-width", Duration::from_secs(10)).await?;
-                axe::assert_clean(&tab, json!(".sb-modal"), &[], &format!("{scheme}: screen builder, box selected")).await
-            })
+            case(
+                format!("the_open_dialog_has_no_serious_axe_violations[{scheme}]"),
+                move |tab| async move {
+                    tab.emulate_media(&[("prefers-color-scheme", scheme)])
+                        .await?;
+                    open_crawl(&tab).await?;
+                    open_builder(&tab).await?;
+                    axe::assert_clean(
+                        &tab,
+                        json!(".sb-modal"),
+                        &[],
+                        &format!("{scheme}: screen builder, text selected"),
+                    )
+                    .await?;
+                    start_template(&tab, "template:dasdec", "My DASDEC Screen").await?;
+                    let spacing: String = tab
+                        .eval("document.getElementById('sb-prop-letter-spacing').value")
+                        .await?;
+                    ensure!(spacing == "0", "letter spacing {spacing}");
+                    axe::assert_clean(
+                        &tab,
+                        json!(".sb-modal"),
+                        &[],
+                        &format!("{scheme}: screen builder, DASDEC text selected"),
+                    )
+                    .await?;
+                    tab.click("#sb-add-box").await?;
+                    tab.wait_for_selector("#sb-prop-stroke-width", Duration::from_secs(10))
+                        .await?;
+                    axe::assert_clean(
+                        &tab,
+                        json!(".sb-modal"),
+                        &[],
+                        &format!("{scheme}: screen builder, box selected"),
+                    )
+                    .await
+                },
+            )
         })
         .collect();
     cases.extend(vec![

@@ -5,20 +5,67 @@
 use eas_tools_e2e::*;
 
 /// (id, pil, name, MND header, SAME code, WHAT line)
-const WARNINGS: [(&str, &str, &str, &str, Option<&str>, &str); 5] = [
-    ("WS.W", "WSW", "Winter Storm Warning", "URGENT - WINTER WEATHER MESSAGE", Some("WSW"),
-     "* WHAT...Heavy snow expected. Total snow accumulations between 8 and"),
-    ("BZ.W", "WSW", "Blizzard Warning", "URGENT - WINTER WEATHER MESSAGE", Some("BZW"),
-     "* WHAT...Blizzard conditions expected. Total snow accumulations"),
-    ("IS.W", "WSW", "Ice Storm Warning", "URGENT - WINTER WEATHER MESSAGE", Some("WSW"),
-     "* WHAT...Significant icing expected. Total ice accumulations of one"),
-    ("EC.W", "NPW", "Extreme Cold Warning", "URGENT - WEATHER MESSAGE", None,
-     "* WHAT...Dangerously cold wind chills as low as 40 below expected."),
-    ("HW.W", "NPW", "High Wind Warning", "URGENT - WEATHER MESSAGE", Some("HWW"),
-     "* WHAT...Southwest winds 30 to 40 mph with gusts up to 65 mph"),
+type Warning = (
+    &'static str,
+    &'static str,
+    &'static str,
+    &'static str,
+    Option<&'static str>,
+    &'static str,
+);
+const WARNINGS: [Warning; 5] = [
+    (
+        "WS.W",
+        "WSW",
+        "Winter Storm Warning",
+        "URGENT - WINTER WEATHER MESSAGE",
+        Some("WSW"),
+        "* WHAT...Heavy snow expected. Total snow accumulations between 8 and",
+    ),
+    (
+        "BZ.W",
+        "WSW",
+        "Blizzard Warning",
+        "URGENT - WINTER WEATHER MESSAGE",
+        Some("BZW"),
+        "* WHAT...Blizzard conditions expected. Total snow accumulations",
+    ),
+    (
+        "IS.W",
+        "WSW",
+        "Ice Storm Warning",
+        "URGENT - WINTER WEATHER MESSAGE",
+        Some("WSW"),
+        "* WHAT...Significant icing expected. Total ice accumulations of one",
+    ),
+    (
+        "EC.W",
+        "NPW",
+        "Extreme Cold Warning",
+        "URGENT - WEATHER MESSAGE",
+        None,
+        "* WHAT...Dangerously cold wind chills as low as 40 below expected.",
+    ),
+    (
+        "HW.W",
+        "NPW",
+        "High Wind Warning",
+        "URGENT - WEATHER MESSAGE",
+        Some("HWW"),
+        "* WHAT...Southwest winds 30 to 40 mph with gusts up to 65 mph",
+    ),
 ];
 
-fn warning(id: &str) -> (&'static str, &'static str, &'static str, &'static str, Option<&'static str>, &'static str) {
+fn warning(
+    id: &str,
+) -> (
+    &'static str,
+    &'static str,
+    &'static str,
+    &'static str,
+    Option<&'static str>,
+    &'static str,
+) {
     *WARNINGS.iter().find(|w| w.0 == id).unwrap()
 }
 
@@ -78,7 +125,8 @@ async fn render_state(tab: &Tab, template: &str, action: &str, iw: Value) -> Res
         "form": { "template": template, "era": "modern", "office": "OAX", "mode": "O", "etn": "1",
                   "action": action, "issued": "2026-01-14T15:12", "allcaps": false, "wrap": true },
     });
-    tab.local_storage_set("warngen-state-v1", &state.to_string()).await?;
+    tab.local_storage_set("warngen-state-v1", &state.to_string())
+        .await?;
     tab.goto("warngen/").await?;
     tab.wait_until(
         "typeof lastRawOutput !== 'undefined' && /^WWUS\\d\\d /.test(lastRawOutput || '')
@@ -95,9 +143,11 @@ async fn render_state(tab: &Tab, template: &str, action: &str, iw: Value) -> Res
 }
 
 pub fn cases() -> Vec<Case> {
-    let mut cases = vec![case("warnings_have_their_own_group_and_watches_keep_theirs", |tab| async move {
-        open(&tab).await?;
-        let groups: std::collections::HashMap<String, Vec<String>> = tab
+    let mut cases = vec![case(
+        "warnings_have_their_own_group_and_watches_keep_theirs",
+        |tab| async move {
+            open(&tab).await?;
+            let groups: std::collections::HashMap<String, Vec<String>> = tab
             .eval(
                 "(() => { const out = {};
                    document.querySelectorAll('#template-select optgroup').forEach(g => {
@@ -105,44 +155,91 @@ pub fn cases() -> Vec<Case> {
                    return out; })()",
             )
             .await?;
-        let warnings = groups.get("Warnings (office)").context("no Warnings (office) group")?;
-        ensure!(
-            warnings
-                == &[
-                    "watch:WS.W|Winter Storm Warning (WSW)",
-                    "watch:BZ.W|Blizzard Warning (WSW)",
-                    "watch:IS.W|Ice Storm Warning (WSW)",
-                    "watch:EC.W|Extreme Cold Warning (NPW)",
-                    "watch:HW.W|High Wind Warning (NPW)",
-                ],
-            "{warnings:?}"
-        );
-        let watches = groups.get("Watches (office)").context("no Watches (office) group")?;
-        for value in ["watch:WCN", "watch:WS", "watch:EC", "watch:HW", "watch:FA", "watch:FW", "watch:CF"] {
-            ensure!(watches.iter().any(|o| o.starts_with(&format!("{value}|"))), "{value} missing from {watches:?}");
-        }
-        Ok(())
-    })];
-    for (id, pil, name, header, _, what) in WARNINGS {
-        cases.push(case(format!("each_warning_renders_gfe_layout[{id}]"), move |tab| async move {
-            open(&tab).await?;
-            let extra = if id == "IS.W" { json!({ "fields": { "ice": "one quarter of an inch", "gust": "40" } }) } else { Value::Null };
-            let text = build(&tab, id, "NEW", extra).await?;
-            let lines: Vec<&str> = text.split('\n').collect();
-            let (phen, sig) = id.split_once('.').unwrap();
-            ensure!(lines[0] == "WWUS43 KOAX 142112", "{text}");
-            ensure!(lines[1] == format!("{pil}OAX"), "{text}");
-            ensure!(lines[3] == header, "{text}");
-            ensure!(lines.contains(&format!("/O.NEW.KOAX.{phen}.{sig}.0001.260115T1200Z-260116T1200Z/").as_str()), "{text}");
-            ensure!(text.contains(&format!("...{} IN EFFECT FROM 6 AM THURSDAY TO 6 AM CST", name.to_uppercase())), "{text}");
-            ensure!(text.contains("* WHEN...From 6 AM Thursday to 6 AM CST Friday."), "{text}");
-            ensure!(text.contains(what), "{text}");
-            let what_block = text.split("* WHERE").next().unwrap().split("* WHAT").nth(1).unwrap_or_default();
-            ensure!(!what_block.contains(" possible"), "{what_block}");
-            ensure!(text.contains("PRECAUTIONARY/PREPAREDNESS ACTIONS..."), "{text}");
-            ensure!(text.trim_end().ends_with("&&\n\n$$"), "{text}");
+            let warnings = groups
+                .get("Warnings (office)")
+                .context("no Warnings (office) group")?;
+            ensure!(
+                warnings
+                    == &[
+                        "watch:WS.W|Winter Storm Warning (WSW)",
+                        "watch:BZ.W|Blizzard Warning (WSW)",
+                        "watch:IS.W|Ice Storm Warning (WSW)",
+                        "watch:EC.W|Extreme Cold Warning (NPW)",
+                        "watch:HW.W|High Wind Warning (NPW)",
+                    ],
+                "{warnings:?}"
+            );
+            let watches = groups
+                .get("Watches (office)")
+                .context("no Watches (office) group")?;
+            for value in [
+                "watch:WCN",
+                "watch:WS",
+                "watch:EC",
+                "watch:HW",
+                "watch:FA",
+                "watch:FW",
+                "watch:CF",
+            ] {
+                ensure!(
+                    watches.iter().any(|o| o.starts_with(&format!("{value}|"))),
+                    "{value} missing from {watches:?}"
+                );
+            }
             Ok(())
-        }));
+        },
+    )];
+    for (id, pil, name, header, _, what) in WARNINGS {
+        cases.push(case(
+            format!("each_warning_renders_gfe_layout[{id}]"),
+            move |tab| async move {
+                open(&tab).await?;
+                let extra = if id == "IS.W" {
+                    json!({ "fields": { "ice": "one quarter of an inch", "gust": "40" } })
+                } else {
+                    Value::Null
+                };
+                let text = build(&tab, id, "NEW", extra).await?;
+                let lines: Vec<&str> = text.split('\n').collect();
+                let (phen, sig) = id.split_once('.').unwrap();
+                ensure!(lines[0] == "WWUS43 KOAX 142112", "{text}");
+                ensure!(lines[1] == format!("{pil}OAX"), "{text}");
+                ensure!(lines[3] == header, "{text}");
+                ensure!(
+                    lines.contains(
+                        &format!("/O.NEW.KOAX.{phen}.{sig}.0001.260115T1200Z-260116T1200Z/")
+                            .as_str()
+                    ),
+                    "{text}"
+                );
+                ensure!(
+                    text.contains(&format!(
+                        "...{} IN EFFECT FROM 6 AM THURSDAY TO 6 AM CST",
+                        name.to_uppercase()
+                    )),
+                    "{text}"
+                );
+                ensure!(
+                    text.contains("* WHEN...From 6 AM Thursday to 6 AM CST Friday."),
+                    "{text}"
+                );
+                ensure!(text.contains(what), "{text}");
+                let what_block = text
+                    .split("* WHERE")
+                    .next()
+                    .unwrap()
+                    .split("* WHAT")
+                    .nth(1)
+                    .unwrap_or_default();
+                ensure!(!what_block.contains(" possible"), "{what_block}");
+                ensure!(
+                    text.contains("PRECAUTIONARY/PREPAREDNESS ACTIONS..."),
+                    "{text}"
+                );
+                ensure!(text.trim_end().ends_with("&&\n\n$$"), "{text}");
+                Ok(())
+            },
+        ));
     }
     cases.push(case("warning_cta_and_impacts_follow_the_hazard", |tab| async move {
         open(&tab).await?;
@@ -164,26 +261,55 @@ pub fn cases() -> Vec<Case> {
         ensure!(ice.contains("Prepare for") && ice.contains("extended power outages."), "{ice}");
         Ok(())
     }));
-    cases.push(case("upgrade_puts_the_watch_upg_line_over_the_warning", |tab| async move {
-        open(&tab).await?;
-        let text = build(&tab, "IS.W", "UPG", json!({ "upgrade": { "etn": 3, "start": null, "end": null } })).await?;
-        let lines: Vec<&str> = text.split('\n').collect();
-        let upg = lines.iter().position(|l| *l == "/O.UPG.KOAX.WS.A.0003.260115T1200Z-260116T1200Z/").context("no UPG line")?;
-        ensure!(lines[upg + 1] == "/O.NEW.KOAX.IS.W.0001.260115T1200Z-260116T1200Z/", "{text}");
-        ensure!(text.contains("...ICE STORM WARNING IN EFFECT FROM 6 AM THURSDAY"), "{text}");
-        ensure!(!text.contains("NO LONGER IN EFFECT"), "{text}");
-        let ec = build(&tab, "EC.W", "UPG", Value::Null).await?;
-        ensure!(ec.contains("/O.UPG.KOAX.EC.A.0001."), "{ec}");
-        Ok(())
-    }));
-    cases.push(case("followup_actions_use_the_warning_wording", |tab| async move {
-        open(&tab).await?;
-        let con = build(&tab, "HW.W", "CON", Value::Null).await?;
-        ensure!(con.contains("/O.CON.KOAX.HW.W.0001.") && con.contains("...HIGH WIND WARNING REMAINS IN EFFECT FROM"), "{con}");
-        let can = build(&tab, "BZ.W", "CAN", Value::Null).await?;
-        ensure!(can.contains("...BLIZZARD WARNING IS CANCELLED...") && can.contains("has cancelled the\nBlizzard Warning."), "{can}");
-        Ok(())
-    }));
+    cases.push(case(
+        "upgrade_puts_the_watch_upg_line_over_the_warning",
+        |tab| async move {
+            open(&tab).await?;
+            let text = build(
+                &tab,
+                "IS.W",
+                "UPG",
+                json!({ "upgrade": { "etn": 3, "start": null, "end": null } }),
+            )
+            .await?;
+            let lines: Vec<&str> = text.split('\n').collect();
+            let upg = lines
+                .iter()
+                .position(|l| *l == "/O.UPG.KOAX.WS.A.0003.260115T1200Z-260116T1200Z/")
+                .context("no UPG line")?;
+            ensure!(
+                lines[upg + 1] == "/O.NEW.KOAX.IS.W.0001.260115T1200Z-260116T1200Z/",
+                "{text}"
+            );
+            ensure!(
+                text.contains("...ICE STORM WARNING IN EFFECT FROM 6 AM THURSDAY"),
+                "{text}"
+            );
+            ensure!(!text.contains("NO LONGER IN EFFECT"), "{text}");
+            let ec = build(&tab, "EC.W", "UPG", Value::Null).await?;
+            ensure!(ec.contains("/O.UPG.KOAX.EC.A.0001."), "{ec}");
+            Ok(())
+        },
+    ));
+    cases.push(case(
+        "followup_actions_use_the_warning_wording",
+        |tab| async move {
+            open(&tab).await?;
+            let con = build(&tab, "HW.W", "CON", Value::Null).await?;
+            ensure!(
+                con.contains("/O.CON.KOAX.HW.W.0001.")
+                    && con.contains("...HIGH WIND WARNING REMAINS IN EFFECT FROM"),
+                "{con}"
+            );
+            let can = build(&tab, "BZ.W", "CAN", Value::Null).await?;
+            ensure!(
+                can.contains("...BLIZZARD WARNING IS CANCELLED...")
+                    && can.contains("has cancelled the\nBlizzard Warning."),
+                "{can}"
+            );
+            Ok(())
+        },
+    ));
     cases.push(case("watch_wording_is_untouched", |tab| async move {
         open(&tab).await?;
         let text = build(&tab, "WS", "NEW", json!({ "sig": null })).await?;
@@ -198,21 +324,49 @@ pub fn cases() -> Vec<Case> {
         Ok(())
     }));
     for id in ["WS.W", "IS.W", "EC.W"] {
-        cases.push(case(format!("panel_renders_warning_with_its_same_code[{id}]"), move |tab| async move {
-            let (_, _, name, _, same, _) = warning(id);
-            open(&tab).await?;
-            let result = render_state(&tab, &format!("watch:{id}"), "NEW", Value::Null).await?;
-            let (phen, sig) = id.split_once('.').unwrap();
-            ensure!(result.raw.contains(&format!("/O.NEW.KOAX.{phen}.{sig}.0001.")), "{}", result.raw);
-            ensure!(result.status.starts_with(&format!("Rendered {name}")), "{}", result.status);
-            match same {
-                Some(code) => ensure!(result.status.contains(&format!("SAME {code}]")), "{}", result.status),
-                None => ensure!(!result.status.contains("SAME"), "{}", result.status),
-            }
-            ensure!(result.actions.iter().any(|a| a == "NEW=NEW -- new warning"), "{:?}", result.actions);
-            ensure!(result.actions.iter().any(|a| a == "UPG=UPG -- upgrade watch to warning"), "{:?}", result.actions);
-            Ok(())
-        }));
+        cases.push(case(
+            format!("panel_renders_warning_with_its_same_code[{id}]"),
+            move |tab| async move {
+                let (_, _, name, _, same, _) = warning(id);
+                open(&tab).await?;
+                let result = render_state(&tab, &format!("watch:{id}"), "NEW", Value::Null).await?;
+                let (phen, sig) = id.split_once('.').unwrap();
+                ensure!(
+                    result
+                        .raw
+                        .contains(&format!("/O.NEW.KOAX.{phen}.{sig}.0001.")),
+                    "{}",
+                    result.raw
+                );
+                ensure!(
+                    result.status.starts_with(&format!("Rendered {name}")),
+                    "{}",
+                    result.status
+                );
+                match same {
+                    Some(code) => ensure!(
+                        result.status.contains(&format!("SAME {code}]")),
+                        "{}",
+                        result.status
+                    ),
+                    None => ensure!(!result.status.contains("SAME"), "{}", result.status),
+                }
+                ensure!(
+                    result.actions.iter().any(|a| a == "NEW=NEW -- new warning"),
+                    "{:?}",
+                    result.actions
+                );
+                ensure!(
+                    result
+                        .actions
+                        .iter()
+                        .any(|a| a == "UPG=UPG -- upgrade watch to warning"),
+                    "{:?}",
+                    result.actions
+                );
+                Ok(())
+            },
+        ));
     }
     cases.push(case("panel_upgrade_shows_the_watch_fields", |tab| async move {
         open(&tab).await?;
@@ -225,14 +379,34 @@ pub fn cases() -> Vec<Case> {
         ensure!(hidden == [false, false, false, false, true], "{hidden:?}");
         Ok(())
     }));
-    cases.push(case("saved_watch_values_still_render_watches", |tab| async move {
-        open(&tab).await?;
-        let result = render_state(&tab, "watch:WS", "NEW", Value::Null).await?;
-        ensure!(result.raw.contains("/O.NEW.KOAX.WS.A.0001."), "{}", result.raw);
-        ensure!(result.status.starts_with("Rendered Winter Storm Watch") && result.status.contains("SAME WSA]"), "{}", result.status);
-        ensure!(result.actions.iter().any(|a| a == "NEW=NEW -- new watch"), "{:?}", result.actions);
-        ensure!(!result.actions.iter().any(|a| a.starts_with("UPG=")), "{:?}", result.actions);
-        Ok(())
-    }));
+    cases.push(case(
+        "saved_watch_values_still_render_watches",
+        |tab| async move {
+            open(&tab).await?;
+            let result = render_state(&tab, "watch:WS", "NEW", Value::Null).await?;
+            ensure!(
+                result.raw.contains("/O.NEW.KOAX.WS.A.0001."),
+                "{}",
+                result.raw
+            );
+            ensure!(
+                result.status.starts_with("Rendered Winter Storm Watch")
+                    && result.status.contains("SAME WSA]"),
+                "{}",
+                result.status
+            );
+            ensure!(
+                result.actions.iter().any(|a| a == "NEW=NEW -- new watch"),
+                "{:?}",
+                result.actions
+            );
+            ensure!(
+                !result.actions.iter().any(|a| a.starts_with("UPG=")),
+                "{:?}",
+                result.actions
+            );
+            Ok(())
+        },
+    ));
     cases
 }

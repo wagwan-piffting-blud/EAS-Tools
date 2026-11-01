@@ -5,7 +5,9 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use chromiumoxide::browser::{Browser, BrowserConfig};
 use chromiumoxide::cdp::browser_protocol::browser::BrowserContextId;
-use chromiumoxide::cdp::browser_protocol::target::{CreateBrowserContextParams, CreateTargetParams};
+use chromiumoxide::cdp::browser_protocol::target::{
+    CreateBrowserContextParams, CreateTargetParams,
+};
 use futures::StreamExt;
 use tokio::runtime::Runtime;
 use tokio::sync::{OnceCell, RwLock, Semaphore};
@@ -15,6 +17,16 @@ use crate::tab::Tab;
 
 pub const DEFAULT_TABS: usize = 8;
 const WINDOWS_CHROME: &str = r"C:\Program Files\Google\Chrome\Application\chrome.exe";
+const CHROME_COMMANDS: &[&str] = &[
+    "google-chrome",
+    "google-chrome-stable",
+    "chromium",
+    "chromium-browser",
+    "chrome",
+    "google-chrome.exe",
+    "chromium.exe",
+    "chrome.exe",
+];
 
 /// One Chrome and the single browser context its tests take turns in. A browser per slot,
 /// rather than tabs in one browser, because every tab of a browser shares its one browser
@@ -46,11 +58,23 @@ pub fn runtime() -> &'static Runtime {
 }
 
 pub fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").canonicalize().expect("repo root")
+    let configured = std::env::var_os("EAS_TOOLS_REPO_ROOT").map(PathBuf::from);
+    configured
+        .unwrap_or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("..")
+                .join("..")
+        })
+        .canonicalize()
+        .expect("repo root")
 }
 
 fn tab_limit() -> usize {
-    std::env::var("EAS_TOOLS_TABS").ok().and_then(|v| v.parse().ok()).filter(|n| *n > 0).unwrap_or(DEFAULT_TABS)
+    std::env::var("EAS_TOOLS_TABS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|n| *n > 0)
+        .unwrap_or(DEFAULT_TABS)
 }
 
 fn base_url() -> String {
@@ -62,22 +86,65 @@ fn base_url() -> String {
 
 fn origin_of(base: &str) -> String {
     let after_scheme = base.find("://").map(|i| i + 3).unwrap_or(0);
-    let end = base[after_scheme..].find('/').map(|i| i + after_scheme).unwrap_or(base.len());
+    let end = base[after_scheme..]
+        .find('/')
+        .map(|i| i + after_scheme)
+        .unwrap_or(base.len());
     base[..end].to_string()
 }
 
-/// EAS_TOOLS_CHROME wins; otherwise the stock Windows install, and failing that chromiumoxide's
-/// own lookup (google-chrome, chromium, ... on PATH).
+/// EAS_TOOLS_CHROME wins; otherwise the stock Windows install, then a browser
+/// command on PATH.
 fn chrome_executable() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("EAS_TOOLS_CHROME").filter(|v| !v.is_empty()) {
         return Some(PathBuf::from(path));
     }
     let windows = PathBuf::from(WINDOWS_CHROME);
-    windows.exists().then_some(windows)
+    if executable_file(&windows) {
+        return Some(windows);
+    }
+    CHROME_COMMANDS
+        .iter()
+        .find_map(|command| command_on_path(command))
+}
+
+pub(crate) fn native_chrome_available() -> bool {
+    chrome_executable().is_some_and(|path| executable_file(&path))
+}
+
+fn command_on_path(command: &str) -> Option<PathBuf> {
+    let command = PathBuf::from(command);
+    if command.components().count() > 1 {
+        return executable_file(&command).then_some(command);
+    }
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .map(|directory| directory.join(&command))
+        .find(|path| executable_file(path))
+}
+
+fn executable_file(path: &std::path::Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        path.metadata()
+            .map(|metadata| metadata.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false)
+    }
+    #[cfg(not(unix))]
+    {
+        true
+    }
 }
 
 fn profile_dir(slot: usize) -> PathBuf {
-    std::env::temp_dir().join(format!("eas-tools-e2e-chrome-{}-{slot}", std::process::id()))
+    std::env::temp_dir().join(format!(
+        "eas-tools-e2e-chrome-{}-{slot}",
+        std::process::id()
+    ))
 }
 
 pub fn shared() -> Arc<Shared> {
@@ -89,15 +156,29 @@ pub fn shared() -> Arc<Shared> {
             base,
             origin,
             tabs: Arc::new(Semaphore::new(count)),
-            slots: (0..count).map(|_| Slot { browser: OnceCell::new(), context: std::sync::Mutex::new(None) }).collect(),
+            slots: (0..count)
+                .map(|_| Slot {
+                    browser: OnceCell::new(),
+                    context: std::sync::Mutex::new(None),
+                })
+                .collect(),
             free: std::sync::Mutex::new((0..count).rev().collect()),
         })
     }))
 }
 
 async fn launch(origin: &str, slot: usize) -> Result<RwLock<Browser>> {
-    let host = origin.split("://").nth(1).unwrap_or("127.0.0.1").split(':').next().unwrap_or("127.0.0.1").to_string();
-    let headless = std::env::var("EAS_TOOLS_HEADLESS").map(|v| v != "0" && v.to_lowercase() != "false").unwrap_or(true);
+    let host = origin
+        .split("://")
+        .nth(1)
+        .unwrap_or("127.0.0.1")
+        .split(':')
+        .next()
+        .unwrap_or("127.0.0.1")
+        .to_string();
+    let headless = std::env::var("EAS_TOOLS_HEADLESS")
+        .map(|v| v != "0" && v.to_lowercase() != "false")
+        .unwrap_or(true);
     let mut builder = BrowserConfig::builder();
     if let Some(chrome) = chrome_executable() {
         builder = builder.chrome_executable(chrome);
@@ -118,13 +199,25 @@ async fn launch(origin: &str, slot: usize) -> Result<RwLock<Browser>> {
             "disable-dev-shm-usage".to_string(),
             "log-level=3".to_string(),
         ]);
-    if std::env::var("EAS_TOOLS_NETLOG").map(|v| v == "1").unwrap_or(false) {
+    if std::env::var("EAS_TOOLS_NETLOG")
+        .map(|v| v == "1")
+        .unwrap_or(false)
+    {
         let path = std::env::temp_dir().join(format!("eas-tools-netlog-{slot}.json"));
-        builder = builder.args([format!("log-net-log={}", path.display()), "net-log-capture-mode=Everything".to_string()]);
+        builder = builder.args([
+            format!("log-net-log={}", path.display()),
+            "net-log-capture-mode=Everything".to_string(),
+        ]);
     }
-    builder = if headless { builder.new_headless_mode() } else { builder.with_head() };
+    builder = if headless {
+        builder.new_headless_mode()
+    } else {
+        builder.with_head()
+    };
     let config = builder.build().map_err(|e| anyhow!(e))?;
-    let (browser, mut handler) = Browser::launch(config).await.with_context(|| format!("launch Chrome for slot {slot}"))?;
+    let (browser, mut handler) = Browser::launch(config)
+        .await
+        .with_context(|| format!("launch Chrome for slot {slot}"))?;
     tokio::spawn(async move { while handler.next().await.is_some() {} });
     Ok(RwLock::new(browser))
 }
@@ -135,8 +228,16 @@ async fn launch(origin: &str, slot: usize) -> Result<RwLock<Browser>> {
 /// refetching and recompiling the tool bundles.
 pub async fn open_tab() -> Result<Tab> {
     let shared = shared();
-    let permit = Arc::clone(&shared.tabs).acquire_owned().await.context("tab semaphore closed")?;
-    let slot = shared.free.lock().unwrap().pop().context("no free browser slot")?;
+    let permit = Arc::clone(&shared.tabs)
+        .acquire_owned()
+        .await
+        .context("tab semaphore closed")?;
+    let slot = shared
+        .free
+        .lock()
+        .unwrap()
+        .pop()
+        .context("no free browser slot")?;
     match open_in_slot(&shared, slot).await {
         Ok((page, context, reused)) => {
             let tab = Tab::attach(page, slot, context, Arc::clone(&shared), permit).await?;
@@ -155,8 +256,16 @@ pub async fn open_tab() -> Result<Tab> {
     }
 }
 
-async fn open_in_slot(shared: &Shared, slot: usize) -> Result<(chromiumoxide::Page, BrowserContextId, bool)> {
-    let browser = shared.slots[slot].browser.get_or_try_init(|| launch(&shared.origin, slot)).await?.read().await;
+async fn open_in_slot(
+    shared: &Shared,
+    slot: usize,
+) -> Result<(chromiumoxide::Page, BrowserContextId, bool)> {
+    let browser = shared.slots[slot]
+        .browser
+        .get_or_try_init(|| launch(&shared.origin, slot))
+        .await?
+        .read()
+        .await;
     let pooled = shared.slots[slot].context.lock().unwrap().take();
     let reused = pooled.is_some();
     let context = match pooled {
@@ -189,11 +298,16 @@ impl Shared {
 
 pub async fn shutdown() {
     let Some(shared) = SHARED.get() else { return };
-    let closing = shared.slots.iter().enumerate().filter_map(|(i, slot)| slot.browser.get().map(|b| (i, b))).map(|(i, browser)| async move {
-        let mut browser = browser.write().await;
-        let _ = browser.close().await;
-        let _ = browser.wait().await;
-        let _ = std::fs::remove_dir_all(profile_dir(i));
-    });
+    let closing = shared
+        .slots
+        .iter()
+        .enumerate()
+        .filter_map(|(i, slot)| slot.browser.get().map(|b| (i, b)))
+        .map(|(i, browser)| async move {
+            let mut browser = browser.write().await;
+            let _ = browser.close().await;
+            let _ = browser.wait().await;
+            let _ = std::fs::remove_dir_all(profile_dir(i));
+        });
     futures::future::join_all(closing).await;
 }

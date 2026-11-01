@@ -11,17 +11,29 @@ const FAILING_IMPACTS: [&str; 2] = ["critical", "serious"];
 fn source() -> &'static str {
     static SRC: OnceLock<String> = OnceLock::new();
     SRC.get_or_init(|| {
-        std::fs::read_to_string(repo_root().join("test/e2e-rs/vendor/axe.min.js")).expect("vendored axe.min.js")
+        std::fs::read_to_string(repo_root().join("test/e2e-rs/vendor/axe.min.js"))
+            .expect("vendored axe.min.js")
     })
 }
 
 /// Runs axe-core and returns the violations whose impact fails the build, minus `allowed` rule ids.
 pub async fn failing(tab: &Tab, context: Value, allowed: &[&str]) -> Result<Vec<Value>> {
-    failing_with(tab, context, json!({ "resultTypes": ["violations"] }), allowed).await
+    failing_with(
+        tab,
+        context,
+        json!({ "resultTypes": ["violations"] }),
+        allowed,
+    )
+    .await
 }
 
 /// Like `failing`, with explicit axe.run options (e.g. `runOnly`).
-pub async fn failing_with(tab: &Tab, context: Value, options: Value, allowed: &[&str]) -> Result<Vec<Value>> {
+pub async fn failing_with(
+    tab: &Tab,
+    context: Value,
+    options: Value,
+    allowed: &[&str],
+) -> Result<Vec<Value>> {
     let present: bool = tab.eval("typeof window.axe !== 'undefined'").await?;
     if !present {
         tab.exec(source(), json!([])).await?;

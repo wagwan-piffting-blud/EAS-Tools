@@ -16,7 +16,11 @@ const ESPEAK_LABELS: [&str; 9] = [
 
 async fn open_demos(tab: &Tab) -> Result<()> {
     tab.goto("demos.html").await?;
-    tab.wait_until("document.querySelectorAll('#voice-list li').length > 0", Duration::from_secs(25)).await
+    tab.wait_until(
+        "document.querySelectorAll('#voice-list li').length > 0",
+        Duration::from_secs(25),
+    )
+    .await
 }
 
 pub fn cases() -> Vec<Case> {
@@ -25,8 +29,15 @@ pub fn cases() -> Vec<Case> {
             open_demos(&tab).await?;
             let labels: Vec<String> =
                 tab.eval("Array.from(document.querySelectorAll('#voice-list li span')).map(s => s.textContent)").await?;
-            let missing: Vec<&str> = ESPEAK_LABELS.iter().copied().filter(|l| !labels.iter().any(|x| x == l)).collect();
-            ensure!(missing.is_empty(), "demos.html is missing eSpeak rows: {missing:?}");
+            let missing: Vec<&str> = ESPEAK_LABELS
+                .iter()
+                .copied()
+                .filter(|l| !labels.iter().any(|x| x == l))
+                .collect();
+            ensure!(
+                missing.is_empty(),
+                "demos.html is missing eSpeak rows: {missing:?}"
+            );
             Ok(())
         }),
         case("voice_count_matches_rendered_rows", |tab| async move {
@@ -34,7 +45,10 @@ pub fn cases() -> Vec<Case> {
             let (rendered, reported): (i64, String) = tab
                 .eval("[document.querySelectorAll('#voice-list li').length, document.getElementById('voice-count').innerText.trim()]")
                 .await?;
-            ensure!(reported == rendered.to_string(), "voice-count says {reported}, page rendered {rendered} rows");
+            ensure!(
+                reported == rendered.to_string(),
+                "voice-count says {reported}, page rendered {rendered} rows"
+            );
             Ok(())
         }),
         case("every_row_has_an_accessible_name", |tab| async move {
@@ -51,7 +65,14 @@ pub fn cases() -> Vec<Case> {
             ensure!(!rows.is_empty());
             for row in rows {
                 ensure!(row["text"] == "Play Demo", "{row}");
-                ensure!(row["aria"] == format!("Play demo for {}", row["label"].as_str().unwrap_or_default()), "{row}");
+                ensure!(
+                    row["aria"]
+                        == format!(
+                            "Play demo for {}",
+                            row["label"].as_str().unwrap_or_default()
+                        ),
+                    "{row}"
+                );
             }
             Ok(())
         }),
@@ -103,8 +124,17 @@ pub fn cases() -> Vec<Case> {
                     Duration::from_secs(180),
                 )
                 .await?;
-            ensure!(results["checked"].as_i64().unwrap_or(0) > 0, "no demo rows rendered");
-            ensure!(results["failures"].as_array().map_or(true, |f| f.is_empty()), "undecodable demo audio: {}", results["failures"]);
+            ensure!(
+                results["checked"].as_i64().unwrap_or(0) > 0,
+                "no demo rows rendered"
+            );
+            ensure!(
+                results["failures"]
+                    .as_array()
+                    .is_none_or(|failures| failures.is_empty()),
+                "undecodable demo audio: {}",
+                results["failures"]
+            );
             Ok(())
         }),
     ]

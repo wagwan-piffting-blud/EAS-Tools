@@ -17,7 +17,8 @@ const FILL: Rgb = (69, 69, 99);
 const BLACK: Rgb = (0, 0, 0);
 const BLUE: Rgb = (0, 0, 255);
 
-const LONG_HEADER: &str = "ZCZC-WXR-SVR-051093-037091-051800-051175-037073-051620-037185-051550+0045-2422117-KAKQ/NWS-";
+const LONG_HEADER: &str =
+    "ZCZC-WXR-SVR-051093-037091-051800-051175-037073-051620-037185-051550+0045-2422117-KAKQ/NWS-";
 const SHORT_HEADER: &str = "ZCZC-WXR-SVR-055035+0045-1722337-KMPX/NWS-";
 
 pub const BUILD_PAGES_JS: &str = r#"
@@ -76,9 +77,16 @@ const [premade, mode, value] = [arguments[0], arguments[1], arguments[2]];
 })();
 "#;
 
-async fn build(tab: &Tab, premade: &str, value: &str, mode: &str) -> Result<(Value, Vec<RgbImage>)> {
+async fn build(
+    tab: &Tab,
+    premade: &str,
+    value: &str,
+    mode: &str,
+) -> Result<(Value, Vec<RgbImage>)> {
     open_tool(tab, "crawl").await?;
-    let result: Value = tab.js_async(BUILD_PAGES_JS, json!([premade, mode, value])).await?;
+    let result: Value = tab
+        .js_async(BUILD_PAGES_JS, json!([premade, mode, value]))
+        .await?;
     ensure!(result["ok"] == true, "{result}");
     let pages = result["pages"]
         .as_array()
@@ -135,82 +143,158 @@ const [header, text] = [arguments[0], arguments[1]];
 
 pub fn cases() -> Vec<Case> {
     let mut cases = vec![
-        case("app_export_keeps_the_previewed_header_layout", |tab| async move {
-            tab.add_init_script(FAKE_BRIDGE_JS).await?;
-            open_tool(&tab, "crawl").await?;
-            tab.wait_until("!!(window.__bridgeHandlers && window.__bridgeHandlers['crawl:export'])", Duration::from_secs(30))
+        case(
+            "app_export_keeps_the_previewed_header_layout",
+            |tab| async move {
+                tab.add_init_script(FAKE_BRIDGE_JS).await?;
+                open_tool(&tab, "crawl").await?;
+                tab.wait_until(
+                    "!!(window.__bridgeHandlers && window.__bridgeHandlers['crawl:export'])",
+                    Duration::from_secs(30),
+                )
                 .await?;
-            let text = "The National Weather Service has issued a Severe Thunderstorm Warning for the following counties or areas: Minnesota; at 5:37 PM on JUN 17, 2026 Effective until 6:22 PM. Message from KMPX/NWS.";
-            let result: Value = tab.js_async(BRIDGE_PREVIEW_THEN_EXPORT_JS, json!([SHORT_HEADER, text])).await?;
-            ensure!(result.get("error").is_none(), "{result}");
-            ensure!(result["mode"] == "header", "export switched the crawl mode: {}", result["mode"]);
-            let preview = result["preview"].as_array().context("preview")?;
-            ensure!(!preview.is_empty(), "no preview pages");
-            ensure!(result["exported"] == result["preview"], "exported DASDEC pages differ from the preview");
-            Ok(())
-        }),
-        case("dasdec_draws_the_screen_image_instead_of_a_built_border", |tab| async move {
-            let (result, pages) = build(&tab, "dasdec:dasdec", SHORT_HEADER, "header").await?;
-            ensure!(result["width"] == 640 && result["height"] == 480, "{result}");
-            ensure!(result["rotationDelayMs"] == 4000 && result["drivesTotalFrames"] == true, "{result}");
-            ensure!(result["locked"] == true, "the size inputs are not locked");
-            for page in &pages {
-                ensure!(page.dimensions() == (640, 480));
-                for (x, y, tol) in [(320, 0, 16), (320, 479, 16), (0, 240, 24), (639, 240, 24)] {
-                    let p = img::px(page, x, y);
-                    ensure!(img::near(p, BORDER_RED, tol), "({x},{y}) is {p:?}, not the border red");
+                let text = "The National Weather Service has issued a Severe Thunderstorm Warning for the following counties or areas: Minnesota; at 5:37 PM on JUN 17, 2026 Effective until 6:22 PM. Message from KMPX/NWS.";
+                let result: Value = tab
+                    .js_async(BRIDGE_PREVIEW_THEN_EXPORT_JS, json!([SHORT_HEADER, text]))
+                    .await?;
+                ensure!(result.get("error").is_none(), "{result}");
+                ensure!(
+                    result["mode"] == "header",
+                    "export switched the crawl mode: {}",
+                    result["mode"]
+                );
+                let preview = result["preview"].as_array().context("preview")?;
+                ensure!(!preview.is_empty(), "no preview pages");
+                ensure!(
+                    result["exported"] == result["preview"],
+                    "exported DASDEC pages differ from the preview"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "dasdec_draws_the_screen_image_instead_of_a_built_border",
+            |tab| async move {
+                let (result, pages) = build(&tab, "dasdec:dasdec", SHORT_HEADER, "header").await?;
+                ensure!(
+                    result["width"] == 640 && result["height"] == 480,
+                    "{result}"
+                );
+                ensure!(
+                    result["rotationDelayMs"] == 4000 && result["drivesTotalFrames"] == true,
+                    "{result}"
+                );
+                ensure!(result["locked"] == true, "the size inputs are not locked");
+                for page in &pages {
+                    ensure!(page.dimensions() == (640, 480));
+                    for (x, y, tol) in [(320, 0, 16), (320, 479, 16), (0, 240, 24), (639, 240, 24)]
+                    {
+                        let p = img::px(page, x, y);
+                        ensure!(
+                            img::near(p, BORDER_RED, tol),
+                            "({x},{y}) is {p:?}, not the border red"
+                        );
+                    }
+                    ensure!(img::px(page, 60, 466) == FILL);
+                    ensure!(img::px(page, 620, 30) == FILL);
+                    ensure!(
+                        !img::near(img::px(page, 60, 466), (46, 50, 81), 4),
+                        "still the old built fill"
+                    );
                 }
-                ensure!(img::px(page, 60, 466) == FILL);
-                ensure!(img::px(page, 620, 30) == FILL);
-                ensure!(!img::near(img::px(page, 60, 466), (46, 50, 81), 4), "still the old built fill");
-            }
-            Ok(())
-        }),
-        case("dasdec_text_stays_inside_the_border_at_the_default_size", |tab| async move {
-            let (_, pages) = build(&tab, "dasdec:dasdec", LONG_HEADER, "header").await?;
-            ensure!(pages.len() == 2, "{} pages", pages.len());
-            let mut widest = 0;
-            for (index, page) in pages.iter().enumerate() {
-                let (left, top, right, bottom) = text_bounds(page).with_context(|| format!("page {} has no text", index + 1))?;
-                ensure!(left >= 12 && right <= 627, "page {index}: {left}..{right}");
-                ensure!(top >= 12 && bottom <= 467, "page {index}: {top}..{bottom}");
-                widest = widest.max(right - left);
-            }
-            ensure!((450..=580).contains(&widest), "widest line {widest}px");
-            let rows = text_rows(&pages[0]);
-            let tallest = rows.iter().map(|(_, t, b)| b - t).max().unwrap_or(0);
-            ensure!(tallest <= 30, "glyph rows up to {tallest}px tall");
-            ensure!(rows[0].1 >= 50, "the empty title band keeps the body off the top border");
-            ensure!((427..=432).contains(&rows.last().unwrap().2), "the page counter sits on baseline 427");
-            Ok(())
-        }),
-        case("dasdec_uses_the_fonts_own_advance_with_no_added_tracking", |tab| async move {
-            let (_, pages) = build(&tab, "dasdec:dasdec", "IIIIIIIIII", "custom").await?;
-            let middle = text_rows(&pages[0])[0].0 as u32;
-            let lit: Vec<u32> = (0..640).filter(|&x| img::min_channel(img::px(&pages[0], x, middle)) >= 170).collect();
-            let starts: Vec<u32> = lit.iter().copied().filter(|x| *x == 0 || !lit.contains(&(x - 1))).collect();
-            ensure!(starts.len() == 10, "{starts:?}");
-            let pitches: std::collections::BTreeSet<u32> = starts.windows(2).map(|w| w[1] - w[0]).collect();
-            ensure!(pitches.iter().all(|p| *p == 15), "Luxi Mono Bold advances 15px at 25px: {pitches:?}");
-            Ok(())
-        }),
-        case("dasdec_header_text_matches_the_reference_unit", |tab| async move {
-            build(&tab, "dasdec:dasdec", "ZCZC-EAS-RMT-018000+0300-0781849-WFBQ FM -", "header").await?;
-            let text = copy_text(&tab, "copyCrawlText").await?;
-            let lines: Vec<&str> = text.split('\n').collect();
-            ensure!(
-                lines[..4] == ["An EAS Participant has issued A", "REQUIRED MONTHLY TEST for the", "following counties or areas:", "Indiana;"],
-                "{lines:?}"
-            );
-            ensure!(*lines.last().unwrap() == "Message from WFBQ FM.", "{lines:?}");
-            Ok(())
-        }),
+                Ok(())
+            },
+        ),
+        case(
+            "dasdec_text_stays_inside_the_border_at_the_default_size",
+            |tab| async move {
+                let (_, pages) = build(&tab, "dasdec:dasdec", LONG_HEADER, "header").await?;
+                ensure!(pages.len() == 2, "{} pages", pages.len());
+                let mut widest = 0;
+                for (index, page) in pages.iter().enumerate() {
+                    let (left, top, right, bottom) = text_bounds(page)
+                        .with_context(|| format!("page {} has no text", index + 1))?;
+                    ensure!(left >= 12 && right <= 627, "page {index}: {left}..{right}");
+                    ensure!(top >= 12 && bottom <= 467, "page {index}: {top}..{bottom}");
+                    widest = widest.max(right - left);
+                }
+                ensure!((450..=580).contains(&widest), "widest line {widest}px");
+                let rows = text_rows(&pages[0]);
+                let tallest = rows.iter().map(|(_, t, b)| b - t).max().unwrap_or(0);
+                ensure!(tallest <= 30, "glyph rows up to {tallest}px tall");
+                ensure!(
+                    rows[0].1 >= 50,
+                    "the empty title band keeps the body off the top border"
+                );
+                ensure!(
+                    (427..=432).contains(&rows.last().unwrap().2),
+                    "the page counter sits on baseline 427"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "dasdec_uses_the_fonts_own_advance_with_no_added_tracking",
+            |tab| async move {
+                let (_, pages) = build(&tab, "dasdec:dasdec", "IIIIIIIIII", "custom").await?;
+                let middle = text_rows(&pages[0])[0].0 as u32;
+                let lit: Vec<u32> = (0..640)
+                    .filter(|&x| img::min_channel(img::px(&pages[0], x, middle)) >= 170)
+                    .collect();
+                let starts: Vec<u32> = lit
+                    .iter()
+                    .copied()
+                    .filter(|x| *x == 0 || !lit.contains(&(x - 1)))
+                    .collect();
+                ensure!(starts.len() == 10, "{starts:?}");
+                let pitches: std::collections::BTreeSet<u32> =
+                    starts.windows(2).map(|w| w[1] - w[0]).collect();
+                ensure!(
+                    pitches.iter().all(|p| *p == 15),
+                    "Luxi Mono Bold advances 15px at 25px: {pitches:?}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "dasdec_header_text_matches_the_reference_unit",
+            |tab| async move {
+                build(
+                    &tab,
+                    "dasdec:dasdec",
+                    "ZCZC-EAS-RMT-018000+0300-0781849-WFBQ FM -",
+                    "header",
+                )
+                .await?;
+                let text = copy_text(&tab, "copyCrawlText").await?;
+                let lines: Vec<&str> = text.split('\n').collect();
+                ensure!(
+                    lines[..4]
+                        == [
+                            "An EAS Participant has issued A",
+                            "REQUIRED MONTHLY TEST for the",
+                            "following counties or areas:",
+                            "Indiana;"
+                        ],
+                    "{lines:?}"
+                );
+                ensure!(
+                    *lines.last().unwrap() == "Message from WFBQ FM.",
+                    "{lines:?}"
+                );
+                Ok(())
+            },
+        ),
         case("dasdec_wraps_like_the_reference_unit", |tab| async move {
             let text = "An EAS Participant has issued A REQUIRED MONTHLY TEST for the following counties or areas:\n\
                         Indiana;\nat 1:49 PM\non MAR 19, 2026\nEffective until 4:49 PM.\nMessage from WFBQ FM.";
             let (_, pages) = build(&tab, "dasdec:dasdec", text, "custom").await?;
             let rows = text_rows(&pages[0]);
-            ensure!(rows.len() == 9, "{:?}", rows.iter().map(|r| r.0.round()).collect::<Vec<_>>());
+            ensure!(
+                rows.len() == 9,
+                "{:?}",
+                rows.iter().map(|r| r.0.round()).collect::<Vec<_>>()
+            );
             let first = ink_width(&pages[0], rows[0].1, rows[0].2);
             let second = ink_width(&pages[0], rows[1].1, rows[1].2);
             ensure!((440..=465).contains(&first), "first line {first}px");
@@ -219,52 +303,63 @@ pub fn cases() -> Vec<Case> {
             ensure!(approx(pitch, 34.0, 0.5), "line pitch {pitch}");
             Ok(())
         }),
-        case("an_unbreakable_line_shrinks_the_page_to_fit", |tab| async move {
-            let text = format!("SHORT LINE {}", "X".repeat(40));
-            let (_, pages) = build(&tab, "dasdec:dasdec", &text, "custom").await?;
-            let (left, _, right, _) = text_bounds(&pages[0]).context("no text")?;
-            ensure!(left >= 12 && right <= 627, "{left}..{right}");
-            Ok(())
-        }),
-        case("the_blue_variant_wraps_like_the_reference_unit", |tab| async move {
-            build(&tab, "dasdec:dasdec_blue", LONG_HEADER, "header").await?;
-            let text = copy_text(&tab, "copyCrawlText").await?;
-            let lines: Vec<&str> = text.split('\n').collect();
-            ensure!(
-                lines[..5]
-                    == [
-                        "Emergency Alert System",
-                        "The National Weather Service has issued A",
-                        "SEVERE THUNDERSTORM WARNING for the",
-                        "following counties or areas:",
-                        "Isle of Wight;",
-                    ],
-                "{lines:?}"
-            );
-            Ok(())
-        }),
-        case("the_black_variant_wraps_at_thirty_six_columns", |tab| async move {
-            build(&tab, "dasdec:dasdec_black", SHORT_HEADER, "header").await?;
-            let text = copy_text(&tab, "copyCrawlText").await?;
-            let lines: Vec<&str> = text.split('\n').collect();
-            ensure!(
-                lines[..5]
-                    == [
-                        "Emergency Alert System",
-                        "The National Weather Service has",
-                        "issued A SEVERE THUNDERSTORM WARNING",
-                        "for the following counties or areas:",
-                        "Eau Claire, WI;",
-                    ],
-                "{lines:?}"
-            );
-            Ok(())
-        }),
-        case("builder_templates_match_the_built_in_screens", |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            let layouts: Value = tab
-                .js_async(
-                    "const done = arguments[arguments.length - 1];
+        case(
+            "an_unbreakable_line_shrinks_the_page_to_fit",
+            |tab| async move {
+                let text = format!("SHORT LINE {}", "X".repeat(40));
+                let (_, pages) = build(&tab, "dasdec:dasdec", &text, "custom").await?;
+                let (left, _, right, _) = text_bounds(&pages[0]).context("no text")?;
+                ensure!(left >= 12 && right <= 627, "{left}..{right}");
+                Ok(())
+            },
+        ),
+        case(
+            "the_blue_variant_wraps_like_the_reference_unit",
+            |tab| async move {
+                build(&tab, "dasdec:dasdec_blue", LONG_HEADER, "header").await?;
+                let text = copy_text(&tab, "copyCrawlText").await?;
+                let lines: Vec<&str> = text.split('\n').collect();
+                ensure!(
+                    lines[..5]
+                        == [
+                            "Emergency Alert System",
+                            "The National Weather Service has issued A",
+                            "SEVERE THUNDERSTORM WARNING for the",
+                            "following counties or areas:",
+                            "Isle of Wight;",
+                        ],
+                    "{lines:?}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "the_black_variant_wraps_at_thirty_six_columns",
+            |tab| async move {
+                build(&tab, "dasdec:dasdec_black", SHORT_HEADER, "header").await?;
+                let text = copy_text(&tab, "copyCrawlText").await?;
+                let lines: Vec<&str> = text.split('\n').collect();
+                ensure!(
+                    lines[..5]
+                        == [
+                            "Emergency Alert System",
+                            "The National Weather Service has",
+                            "issued A SEVERE THUNDERSTORM WARNING",
+                            "for the following counties or areas:",
+                            "Eau Claire, WI;",
+                        ],
+                    "{lines:?}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "builder_templates_match_the_built_in_screens",
+            |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                let layouts: Value = tab
+                    .js_async(
+                        "const done = arguments[arguments.length - 1];
                      import(arguments[0]).then(async (m) => {
                          const out = {};
                          for (const kind of ['dasdec', 'dasdec_black', 'dasdec_blue']) {
@@ -273,36 +368,74 @@ pub fn cases() -> Vec<Case> {
                          out.choices = m.templateChoices().map((choice) => choice.value);
                          done(out);
                      }).catch((e) => done({ error: String(e) }));",
-                    json!(["./assets/js/crawl-screen-builder.js"]),
-                )
-                .await?;
-            ensure!(layouts.get("error").is_none(), "{layouts}");
-            let choices: Vec<&str> = layouts["choices"].as_array().unwrap().iter().filter_map(|v| v.as_str()).collect();
-            for kind in ["dasdec", "dasdec_black", "dasdec_blue"] {
-                ensure!(choices.contains(&kind), "{kind} missing from {choices:?}");
-            }
-            let dasdec = &layouts["dasdec"];
-            ensure!(dasdec["name"] == "My DASDEC Screen");
-            ensure!(dasdec["background"]["image"].as_str().unwrap_or("").starts_with("data:image/png;base64,"));
-            let elements = dasdec["elements"].as_array().unwrap();
-            ensure!(elements.len() == 2 && elements.iter().all(|e| e["type"] == "text"), "{elements:?}");
-            let text = &elements[0];
-            ensure!(text["font"] == "Luxi Mono" && text["size"] == 25 && text["letterSpacing"] == 0, "{text}");
-            ensure!(text["x"] == 32 && text["width"] == 576 && text["wrap"] == "width", "{text}");
-            ensure!(text["maxLines"] == 10 && text["overflow"] == "continue", "{text}");
-            ensure!(elements[1]["text"] == "{PAGE}/{PAGES}" && elements[1]["page"] == -1, "{}", elements[1]);
-            ensure!(layouts["dasdec_black"]["background"]["color"] == "#000000");
-            ensure!(layouts["dasdec_blue"]["background"]["color"] == "#0000FF");
-            for kind in ["dasdec_black", "dasdec_blue"] {
-                let texts: Vec<&str> = layouts[kind]["elements"].as_array().unwrap().iter().filter_map(|e| e["text"].as_str()).collect();
-                ensure!(texts == ["Emergency Alert System", "{TEXT}", "{PAGE}/{PAGES}"], "{kind}: {texts:?}");
-            }
-            Ok(())
-        }),
-        case("builder_template_pages_long_text_like_the_built_in_screen", |tab| async move {
-            let text: String = (1..=15).map(|n| format!("LINE {n}")).collect::<Vec<_>>().join("\n");
-            let (_, built_in) = build(&tab, "dasdec:dasdec_black", &text, "custom").await?;
-            let rendered: Value = tab
+                        json!(["./assets/js/crawl-screen-builder.js"]),
+                    )
+                    .await?;
+                ensure!(layouts.get("error").is_none(), "{layouts}");
+                let choices: Vec<&str> = layouts["choices"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|v| v.as_str())
+                    .collect();
+                for kind in ["dasdec", "dasdec_black", "dasdec_blue"] {
+                    ensure!(choices.contains(&kind), "{kind} missing from {choices:?}");
+                }
+                let dasdec = &layouts["dasdec"];
+                ensure!(dasdec["name"] == "My DASDEC Screen");
+                ensure!(dasdec["background"]["image"]
+                    .as_str()
+                    .unwrap_or("")
+                    .starts_with("data:image/png;base64,"));
+                let elements = dasdec["elements"].as_array().unwrap();
+                ensure!(
+                    elements.len() == 2 && elements.iter().all(|e| e["type"] == "text"),
+                    "{elements:?}"
+                );
+                let text = &elements[0];
+                ensure!(
+                    text["font"] == "Luxi Mono" && text["size"] == 25 && text["letterSpacing"] == 0,
+                    "{text}"
+                );
+                ensure!(
+                    text["x"] == 32 && text["width"] == 576 && text["wrap"] == "width",
+                    "{text}"
+                );
+                ensure!(
+                    text["maxLines"] == 10 && text["overflow"] == "continue",
+                    "{text}"
+                );
+                ensure!(
+                    elements[1]["text"] == "{PAGE}/{PAGES}" && elements[1]["page"] == -1,
+                    "{}",
+                    elements[1]
+                );
+                ensure!(layouts["dasdec_black"]["background"]["color"] == "#000000");
+                ensure!(layouts["dasdec_blue"]["background"]["color"] == "#0000FF");
+                for kind in ["dasdec_black", "dasdec_blue"] {
+                    let texts: Vec<&str> = layouts[kind]["elements"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter_map(|e| e["text"].as_str())
+                        .collect();
+                    ensure!(
+                        texts == ["Emergency Alert System", "{TEXT}", "{PAGE}/{PAGES}"],
+                        "{kind}: {texts:?}"
+                    );
+                }
+                Ok(())
+            },
+        ),
+        case(
+            "builder_template_pages_long_text_like_the_built_in_screen",
+            |tab| async move {
+                let text: String = (1..=15)
+                    .map(|n| format!("LINE {n}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let (_, built_in) = build(&tab, "dasdec:dasdec_black", &text, "custom").await?;
+                let rendered: Value = tab
                 .js_async(
                     "const done = arguments[arguments.length - 1];
                      import(arguments[0]).then(async (m) => {
@@ -313,46 +446,88 @@ pub fn cases() -> Vec<Case> {
                     json!(["./assets/js/crawl-screen-builder.js", text]),
                 )
                 .await?;
-            ensure!(rendered.get("error").is_none(), "{rendered}");
-            ensure!(rendered["pageCount"] == 2 && rendered["rotationDelayMs"] == 4000, "{}", rendered["pageCount"]);
-            ensure!(built_in.len() == 2, "the built-in screen made {} pages", built_in.len());
-            let custom = rendered["pages"]
-                .as_array()
-                .context("pages")?
-                .iter()
-                .map(|src| img::decode_data_url(src.as_str().unwrap_or_default()))
-                .collect::<Result<Vec<_>>>()?;
-            for (index, (ours, theirs)) in custom.iter().zip(&built_in).enumerate() {
-                let ours = text_rows(ours);
-                let theirs = text_rows(theirs);
-                ensure!(ours.len() == theirs.len(), "page {}: {} rows vs the built-in's {}", index + 1, ours.len(), theirs.len());
-                for (a, b) in ours.iter().zip(&theirs) {
-                    ensure!(approx(a.0, b.0, 3.0), "page {}: row at {} vs the built-in's {}", index + 1, a.0, b.0);
+                ensure!(rendered.get("error").is_none(), "{rendered}");
+                ensure!(
+                    rendered["pageCount"] == 2 && rendered["rotationDelayMs"] == 4000,
+                    "{}",
+                    rendered["pageCount"]
+                );
+                ensure!(
+                    built_in.len() == 2,
+                    "the built-in screen made {} pages",
+                    built_in.len()
+                );
+                let custom = rendered["pages"]
+                    .as_array()
+                    .context("pages")?
+                    .iter()
+                    .map(|src| img::decode_data_url(src.as_str().unwrap_or_default()))
+                    .collect::<Result<Vec<_>>>()?;
+                for (index, (ours, theirs)) in custom.iter().zip(&built_in).enumerate() {
+                    let ours = text_rows(ours);
+                    let theirs = text_rows(theirs);
+                    ensure!(
+                        ours.len() == theirs.len(),
+                        "page {}: {} rows vs the built-in's {}",
+                        index + 1,
+                        ours.len(),
+                        theirs.len()
+                    );
+                    for (a, b) in ours.iter().zip(&theirs) {
+                        ensure!(
+                            approx(a.0, b.0, 3.0),
+                            "page {}: row at {} vs the built-in's {}",
+                            index + 1,
+                            a.0,
+                            b.0
+                        );
+                    }
                 }
-            }
-            Ok(())
-        }),
+                Ok(())
+            },
+        ),
     ];
-    for (id, premade, background) in [("black", "dasdec:dasdec_black", BLACK), ("blue", "dasdec:dasdec_blue", BLUE)] {
-        cases.push(case(format!("variants_page_a_long_alert_on_a_plain_background[{id}]"), move |tab| async move {
-            let (result, pages) = build(&tab, premade, LONG_HEADER, "header").await?;
-            ensure!(result["width"] == 640 && result["height"] == 480 && result["rotationDelayMs"] == 4000, "{result}");
-            ensure!(result["locked"] == true);
-            ensure!(pages.len() == 2, "{} pages", pages.len());
-            for page in &pages {
-                for (x, y) in [(4, 4), (636, 476), (4, 240)] {
-                    ensure!(img::px(page, x, y) == background, "({x},{y}) is {:?}", img::px(page, x, y));
+    for (id, premade, background) in [
+        ("black", "dasdec:dasdec_black", BLACK),
+        ("blue", "dasdec:dasdec_blue", BLUE),
+    ] {
+        cases.push(case(
+            format!("variants_page_a_long_alert_on_a_plain_background[{id}]"),
+            move |tab| async move {
+                let (result, pages) = build(&tab, premade, LONG_HEADER, "header").await?;
+                ensure!(
+                    result["width"] == 640
+                        && result["height"] == 480
+                        && result["rotationDelayMs"] == 4000,
+                    "{result}"
+                );
+                ensure!(result["locked"] == true);
+                ensure!(pages.len() == 2, "{} pages", pages.len());
+                for page in &pages {
+                    for (x, y) in [(4, 4), (636, 476), (4, 240)] {
+                        ensure!(
+                            img::px(page, x, y) == background,
+                            "({x},{y}) is {:?}",
+                            img::px(page, x, y)
+                        );
+                    }
+                    let (left, _, right, _) = text_bounds(page).context("no text")?;
+                    ensure!(left >= 12 && right <= 627, "{premade}: {left}..{right}");
+                    let rows = text_rows(page);
+                    ensure!(
+                        rows[0].0 < 90.0,
+                        "the Emergency Alert System title belongs at the top"
+                    );
+                    ensure!(
+                        approx(rows.last().unwrap().0, 450.0, 6.0),
+                        "the page counter sits at the bottom"
+                    );
                 }
-                let (left, _, right, _) = text_bounds(page).context("no text")?;
-                ensure!(left >= 12 && right <= 627, "{premade}: {left}..{right}");
-                let rows = text_rows(page);
-                ensure!(rows[0].0 < 90.0, "the Emergency Alert System title belongs at the top");
-                ensure!(approx(rows.last().unwrap().0, 450.0, 6.0), "the page counter sits at the bottom");
-            }
-            let second = text_rows(&pages[1]);
-            ensure!(second[second.len() - 1].0 - second[second.len() - 2].0 > 150.0);
-            Ok(())
-        }));
+                let second = text_rows(&pages[1]);
+                ensure!(second[second.len() - 1].0 - second[second.len() - 2].0 > 150.0);
+                Ok(())
+            },
+        ));
     }
     cases
 }

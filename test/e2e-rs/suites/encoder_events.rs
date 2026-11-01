@@ -17,7 +17,11 @@ const EMNET_EVENTS: [(&str, &str); 8] = [
 
 async fn open_encoder_with_emnet(tab: &Tab) -> Result<()> {
     tab.goto("index.html?tool=encoder").await?;
-    tab.wait_until("document.querySelectorAll('optgroup[data-event-group=\"emnet\"] option').length > 0", Duration::from_secs(40)).await
+    tab.wait_until(
+        "document.querySelectorAll('optgroup[data-event-group=\"emnet\"] option').length > 0",
+        Duration::from_secs(40),
+    )
+    .await
 }
 
 fn product(ugc: &str) -> String {
@@ -30,7 +34,12 @@ async fn resolve(tab: &Tab, text: &str) -> Result<Value> {
     tab.goto("index.html?tool=encoder").await?;
     tab.wait_until("typeof window.resolveHeaderInput === 'function' && Object.keys(window.state || {}).length > 40", Duration::from_secs(40))
         .await?;
-    let result: Value = tab.js("return window.resolveHeaderInput(arguments[0]);", json!([text])).await?;
+    let result: Value = tab
+        .js(
+            "return window.resolveHeaderInput(arguments[0]);",
+            json!([text]),
+        )
+        .await?;
     ensure!(result["ok"] == true, "{result}");
     Ok(result)
 }
@@ -39,28 +48,42 @@ async fn resolve(tab: &Tab, text: &str) -> Result<Value> {
 fn header_locations(header: &str) -> Vec<String> {
     let body = header.split('+').next().unwrap_or_default();
     let rest = body.splitn(4, '-').nth(3).unwrap_or_default();
-    rest.split('-').filter(|p| p.len() == 6 && p.chars().all(|c| c.is_ascii_digit())).map(str::to_string).collect()
+    rest.split('-')
+        .filter(|p| p.len() == 6 && p.chars().all(|c| c.is_ascii_digit()))
+        .map(str::to_string)
+        .collect()
 }
 
 fn notes(result: &Value) -> Vec<String> {
-    result["notes"].as_array().into_iter().flatten().filter_map(|n| n.as_str().map(str::to_string)).collect()
+    result["notes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|n| n.as_str().map(str::to_string))
+        .collect()
 }
 
 pub fn cases() -> Vec<Case> {
     vec![
-        case("the_encoder_lists_every_emnet_code_in_its_own_group", |tab| async move {
-            open_encoder_with_emnet(&tab).await?;
-            let options: Vec<(String, String)> = tab
+        case(
+            "the_encoder_lists_every_emnet_code_in_its_own_group",
+            |tab| async move {
+                open_encoder_with_emnet(&tab).await?;
+                let options: Vec<(String, String)> = tab
                 .eval("Array.from(document.querySelectorAll('optgroup[data-event-group=\"emnet\"] option')).map(o => [o.value, o.textContent])")
                 .await?;
-            let codes: BTreeSet<&str> = options.iter().map(|(v, _)| v.as_str()).collect();
-            ensure!(codes == EMNET_EVENTS.iter().map(|(c, _)| *c).collect(), "{codes:?}");
-            for (value, text) in &options {
-                let name = EMNET_EVENTS.iter().find(|(c, _)| c == value).unwrap().1;
-                ensure!(*text == format!("{name} ({value})"), "{text}");
-            }
-            Ok(())
-        }),
+                let codes: BTreeSet<&str> = options.iter().map(|(v, _)| v.as_str()).collect();
+                ensure!(
+                    codes == EMNET_EVENTS.iter().map(|(c, _)| *c).collect(),
+                    "{codes:?}"
+                );
+                for (value, text) in &options {
+                    let name = EMNET_EVENTS.iter().find(|(c, _)| c == value).unwrap().1;
+                    ensure!(*text == format!("{name} ({value})"), "{text}");
+                }
+                Ok(())
+            },
+        ),
         case("e2t_decodes_every_emnet_code", |tab| async move {
             open_encoder_with_emnet(&tab).await?;
             let codes: Vec<&str> = EMNET_EVENTS.iter().map(|(c, _)| *c).collect();
@@ -86,24 +109,48 @@ pub fn cases() -> Vec<Case> {
             ensure!(result["ok"] == true, "{result}");
             for (code, name) in EMNET_EVENTS {
                 let text = result["out"][code].as_str().unwrap_or_default();
-                ensure!(text.to_uppercase().contains(&name.to_uppercase()), "{code}: {text}");
+                ensure!(
+                    text.to_uppercase().contains(&name.to_uppercase()),
+                    "{code}: {text}"
+                );
             }
             Ok(())
         }),
-        case("a_product_over_31_counties_is_truncated_to_the_same_limit", |tab| async move {
-            let result = resolve(&tab, &product("KYC001>080-271545-")).await?;
-            let header = result["header"].as_str().unwrap_or_default();
-            let locations = header_locations(header);
-            ensure!(locations.len() == 31 && locations[0] == "021001", "{locations:?}");
-            ensure!(header.starts_with("ZCZC-WXR-TOR-"), "{header}");
-            ensure!(notes(&result).iter().any(|n| n.contains("Dropped 49 FIPS code(s)")), "{:?}", notes(&result));
-            Ok(())
-        }),
-        case("a_product_at_exactly_31_counties_is_left_alone", |tab| async move {
-            let result = resolve(&tab, &product("KYC001>031-271545-")).await?;
-            ensure!(header_locations(result["header"].as_str().unwrap_or_default()).len() == 31);
-            ensure!(!notes(&result).iter().any(|n| n.contains("Dropped")), "{:?}", notes(&result));
-            Ok(())
-        }),
+        case(
+            "a_product_over_31_counties_is_truncated_to_the_same_limit",
+            |tab| async move {
+                let result = resolve(&tab, &product("KYC001>080-271545-")).await?;
+                let header = result["header"].as_str().unwrap_or_default();
+                let locations = header_locations(header);
+                ensure!(
+                    locations.len() == 31 && locations[0] == "021001",
+                    "{locations:?}"
+                );
+                ensure!(header.starts_with("ZCZC-WXR-TOR-"), "{header}");
+                ensure!(
+                    notes(&result)
+                        .iter()
+                        .any(|n| n.contains("Dropped 49 FIPS code(s)")),
+                    "{:?}",
+                    notes(&result)
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "a_product_at_exactly_31_counties_is_left_alone",
+            |tab| async move {
+                let result = resolve(&tab, &product("KYC001>031-271545-")).await?;
+                ensure!(
+                    header_locations(result["header"].as_str().unwrap_or_default()).len() == 31
+                );
+                ensure!(
+                    !notes(&result).iter().any(|n| n.contains("Dropped")),
+                    "{:?}",
+                    notes(&result)
+                );
+                Ok(())
+            },
+        ),
     ]
 }

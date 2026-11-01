@@ -62,13 +62,23 @@ async fn generate(tab: &Tab) -> Result<()> {
 async fn save(tab: &Tab, button: &str) -> Result<(String, Vec<u8>)> {
     tab.exec(CAPTURE_JS, json!([])).await?;
     tab.click(&format!("#{button}")).await?;
-    tab.wait_until("window.__saved.length === 1 && !!window.__saved[0].b64", Duration::from_secs(60)).await?;
-    let (name, b64): (String, String) = tab.eval("[window.__saved[0].name, window.__saved[0].b64]").await?;
+    tab.wait_until(
+        "window.__saved.length === 1 && !!window.__saved[0].b64",
+        Duration::from_secs(60),
+    )
+    .await?;
+    let (name, b64): (String, String) = tab
+        .eval("[window.__saved[0].name, window.__saved[0].b64]")
+        .await?;
     Ok((name, base64::engine::general_purpose::STANDARD.decode(b64)?))
 }
 
 async fn disabled(tab: &Tab) -> Result<Vec<bool>> {
-    tab.js("return arguments[0].map((id) => document.getElementById(id).disabled);", json!([IDS])).await
+    tab.js(
+        "return arguments[0].map((id) => document.getElementById(id).disabled);",
+        json!([IDS]),
+    )
+    .await
 }
 
 fn png_chunks(data: &[u8]) -> Result<Vec<([u8; 4], Vec<u8>)>> {
@@ -80,7 +90,11 @@ fn png_chunks(data: &[u8]) -> Result<Vec<([u8; 4], Vec<u8>)>> {
         let kind: [u8; 4] = data[pos + 4..pos + 8].try_into()?;
         let body = &data[pos + 8..pos + 8 + length];
         let crc = u32::from_be_bytes(data[pos + 8 + length..pos + 12 + length].try_into()?);
-        ensure!(crc32fast::hash(&data[pos + 4..pos + 8 + length]) == crc, "bad CRC on {}", String::from_utf8_lossy(&kind));
+        ensure!(
+            crc32fast::hash(&data[pos + 4..pos + 8 + length]) == crc,
+            "bad CRC on {}",
+            String::from_utf8_lossy(&kind)
+        );
         chunks.push((kind, body.to_vec()));
         pos += 12 + length;
     }
@@ -100,44 +114,85 @@ pub fn cases() -> Vec<Case> {
             ensure!(disabled(&tab).await? == [false, false]);
             let names: Vec<String> =
                 tab.js("return arguments[0].map((id) => document.getElementById(id).getAttribute('aria-label'));", json!([IDS])).await?;
-            ensure!(names == ["Save PNG radar image", "Save SVG radar image"], "{names:?}");
+            ensure!(
+                names == ["Save PNG radar image", "Save SVG radar image"],
+                "{names:?}"
+            );
             tab.click("#radar-clear-btn").await?;
             ensure!(disabled(&tab).await? == [true, true]);
             Ok(())
         }),
-        case("png_export_is_a_georeferenced_radar_image", |tab| async move {
-            open_warngen(&tab).await?;
-            generate(&tab).await?;
-            let (name, data) = save(&tab, "radar-save-png-btn").await?;
-            ensure!(name == "KOAX_SYNTH_REF_0.5_20260520T2200Z.png", "{name}");
-            let chunks = png_chunks(&data)?;
-            let text: HashMap<String, String> = chunks
-                .iter()
-                .filter(|(kind, _)| kind == b"tEXt")
-                .filter_map(|(_, body)| {
-                    let split = body.iter().position(|&b| b == 0)?;
-                    let latin1 = |b: &[u8]| b.iter().map(|&c| c as char).collect::<String>();
-                    Some((latin1(&body[..split]), latin1(&body[split + 1..])))
-                })
-                .collect();
-            ensure!(text["Title"].starts_with("SYNTHETIC KOAX Reflectivity (REF) 0.5"), "{text:?}");
-            ensure!(text["Warning"].contains("not a real radar scan"), "{text:?}");
-            let world: Vec<f64> = text["WorldFile"].split('\n').map(str::parse).collect::<Result<_, _>>()?;
-            ensure!(world.len() == 6 && world[0] > 0.0 && world[3] == -world[0], "{world:?}");
-            ensure!(text["Georeference"].contains("EPSG:3857"), "{text:?}");
-            let ihdr = &chunks.iter().find(|(kind, _)| kind == b"IHDR").context("no IHDR")?.1;
-            ensure!((ihdr[8], ihdr[9]) == (8, 6), "expected 8-bit RGBA, got depth {} type {}", ihdr[8], ihdr[9]);
+        case(
+            "png_export_is_a_georeferenced_radar_image",
+            |tab| async move {
+                open_warngen(&tab).await?;
+                generate(&tab).await?;
+                let (name, data) = save(&tab, "radar-save-png-btn").await?;
+                ensure!(name == "KOAX_SYNTH_REF_0.5_20260520T2200Z.png", "{name}");
+                let chunks = png_chunks(&data)?;
+                let text: HashMap<String, String> = chunks
+                    .iter()
+                    .filter(|(kind, _)| kind == b"tEXt")
+                    .filter_map(|(_, body)| {
+                        let split = body.iter().position(|&b| b == 0)?;
+                        let latin1 = |b: &[u8]| b.iter().map(|&c| c as char).collect::<String>();
+                        Some((latin1(&body[..split]), latin1(&body[split + 1..])))
+                    })
+                    .collect();
+                ensure!(
+                    text["Title"].starts_with("SYNTHETIC KOAX Reflectivity (REF) 0.5"),
+                    "{text:?}"
+                );
+                ensure!(
+                    text["Warning"].contains("not a real radar scan"),
+                    "{text:?}"
+                );
+                let world: Vec<f64> = text["WorldFile"]
+                    .split('\n')
+                    .map(str::parse)
+                    .collect::<Result<_, _>>()?;
+                ensure!(
+                    world.len() == 6 && world[0] > 0.0 && world[3] == -world[0],
+                    "{world:?}"
+                );
+                ensure!(text["Georeference"].contains("EPSG:3857"), "{text:?}");
+                let ihdr = &chunks
+                    .iter()
+                    .find(|(kind, _)| kind == b"IHDR")
+                    .context("no IHDR")?
+                    .1;
+                ensure!(
+                    (ihdr[8], ihdr[9]) == (8, 6),
+                    "expected 8-bit RGBA, got depth {} type {}",
+                    ihdr[8],
+                    ihdr[9]
+                );
 
-            let decoded: Value = tab.js_async(DECODE_JS, json!([])).await?;
-            ensure!(decoded["ok"] == true, "{decoded}");
-            ensure!(decoded["width"] == 2048 && decoded["height"].as_i64().unwrap_or(0) > 2048, "{decoded}");
-            ensure!(decoded["corner"] == 0, "radar square should be transparent outside the coverage");
-            ensure!(decoded["painted"].as_i64().unwrap_or(0) > 20000, "{decoded}");
-            ensure!(decoded["strip"][3] == 255, "legend strip should be opaque");
-            let status: String = tab.eval("document.getElementById('status').innerText").await?;
-            ensure!(status.starts_with("Saved KOAX_SYNTH_REF_0.5_20260520T2200Z.png"), "{status}");
-            Ok(())
-        }),
+                let decoded: Value = tab.js_async(DECODE_JS, json!([])).await?;
+                ensure!(decoded["ok"] == true, "{decoded}");
+                ensure!(
+                    decoded["width"] == 2048 && decoded["height"].as_i64().unwrap_or(0) > 2048,
+                    "{decoded}"
+                );
+                ensure!(
+                    decoded["corner"] == 0,
+                    "radar square should be transparent outside the coverage"
+                );
+                ensure!(
+                    decoded["painted"].as_i64().unwrap_or(0) > 20000,
+                    "{decoded}"
+                );
+                ensure!(decoded["strip"][3] == 255, "legend strip should be opaque");
+                let status: String = tab
+                    .eval("document.getElementById('status').innerText")
+                    .await?;
+                ensure!(
+                    status.starts_with("Saved KOAX_SYNTH_REF_0.5_20260520T2200Z.png"),
+                    "{status}"
+                );
+                Ok(())
+            },
+        ),
         case("png_pixel_lands_over_the_storm_core", |tab| async move {
             open_warngen(&tab).await?;
             generate(&tab).await?;
@@ -158,7 +213,10 @@ pub fn cases() -> Vec<Case> {
                 .await?;
             ensure!(hit.is_array(), "{hit}");
             ensure!(hit[2][3] == 255, "{hit}");
-            ensure!(hit[2][0].as_i64().unwrap_or(0) > 150, "core should paint a hot reflectivity color: {hit}");
+            ensure!(
+                hit[2][0].as_i64().unwrap_or(0) > 150,
+                "core should paint a hot reflectivity color: {hit}"
+            );
             Ok(())
         }),
         case("svg_export_is_editable_vector", |tab| async move {
@@ -171,31 +229,64 @@ pub fn cases() -> Vec<Case> {
             let doc = roxmltree::Document::parse(&source)?;
             let root = doc.root_element();
             ensure!(is(&root, SVG_NS, "svg"), "root is {:?}", root.tag_name());
-            let title = root.children().find(|n| is(n, SVG_NS, "title")).and_then(|n| n.text()).unwrap_or_default();
+            let title = root
+                .children()
+                .find(|n| is(n, SVG_NS, "title"))
+                .and_then(|n| n.text())
+                .unwrap_or_default();
             ensure!(title.starts_with("SYNTHETIC KOAX Reflectivity"), "{title}");
-            let meta = root.children().find(|n| is(n, SVG_NS, "metadata")).context("no <metadata>")?;
-            let radar = meta.children().find(|n| is(n, WARNGEN_NS, "radar")).context("no warngen:radar")?;
-            let georef = meta.children().find(|n| is(n, WARNGEN_NS, "georef")).context("no warngen:georef")?;
+            let meta = root
+                .children()
+                .find(|n| is(n, SVG_NS, "metadata"))
+                .context("no <metadata>")?;
+            let radar = meta
+                .children()
+                .find(|n| is(n, WARNGEN_NS, "radar"))
+                .context("no warngen:radar")?;
+            let georef = meta
+                .children()
+                .find(|n| is(n, WARNGEN_NS, "georef"))
+                .context("no warngen:georef")?;
             ensure!(
-                radar.attribute("icao") == Some("KOAX") && radar.attribute("product") == Some("REF") && radar.attribute("synthetic") == Some("true"),
+                radar.attribute("icao") == Some("KOAX")
+                    && radar.attribute("product") == Some("REF")
+                    && radar.attribute("synthetic") == Some("true"),
                 "{:?}",
                 radar.attributes().collect::<Vec<_>>()
             );
-            ensure!(georef.attribute("crs").unwrap_or("").contains("+proj=aeqd") && georef.attribute("siteLat") == Some("41.32"));
+            ensure!(
+                georef.attribute("crs").unwrap_or("").contains("+proj=aeqd")
+                    && georef.attribute("siteLat") == Some("41.32")
+            );
 
-            let groups: HashMap<&str, roxmltree::Node> =
-                root.descendants().filter(|n| is(n, SVG_NS, "g")).filter_map(|g| Some((g.attribute("id")?, g))).collect();
+            let groups: HashMap<&str, roxmltree::Node> = root
+                .descendants()
+                .filter(|n| is(n, SVG_NS, "g"))
+                .filter_map(|g| Some((g.attribute("id")?, g)))
+                .collect();
             let radar_group = groups.get("radar").context("no radar group")?;
-            let bands: Vec<roxmltree::Node> = radar_group.children().filter(|n| is(n, SVG_NS, "g")).collect();
-            let paths = bands.iter().flat_map(|g| g.descendants()).filter(|n| is(n, SVG_NS, "path")).count();
+            let bands: Vec<roxmltree::Node> = radar_group
+                .children()
+                .filter(|n| is(n, SVG_NS, "g"))
+                .collect();
+            let paths = bands
+                .iter()
+                .flat_map(|g| g.descendants())
+                .filter(|n| is(n, SVG_NS, "path"))
+                .count();
             ensure!(bands.len() >= 10, "{} bands", bands.len());
             ensure!(paths > 1000, "{paths} paths");
-            ensure!(bands.iter().all(|g| g.attribute("fill").unwrap_or("").starts_with('#')));
+            ensure!(bands
+                .iter()
+                .all(|g| g.attribute("fill").unwrap_or("").starts_with('#')));
             let legend = groups.get("legend").context("no legend group")?;
             let bar = groups.get("legend-bar").context("no legend-bar group")?;
             ensure!(bar.descendants().filter(|n| is(n, SVG_NS, "rect")).count() >= 10);
             ensure!(
-                legend.descendants().filter(|n| is(n, SVG_NS, "text")).any(|t| t.text().unwrap_or("").contains("not a real radar scan")),
+                legend
+                    .descendants()
+                    .filter(|n| is(n, SVG_NS, "text"))
+                    .any(|t| t.text().unwrap_or("").contains("not a real radar scan")),
                 "the legend lacks the synthetic warning"
             );
             Ok(())

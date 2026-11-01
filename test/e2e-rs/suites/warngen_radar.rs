@@ -21,7 +21,12 @@ fn reference_records(data: &[u8]) -> Result<Vec<String>> {
         let len = size.unsigned_abs() as usize;
         let mut raw = Vec::new();
         bzip2::read::BzDecoder::new(&data[pos + 4..pos + 4 + len]).read_to_end(&mut raw)?;
-        digests.push(sha1::Sha1::digest(&raw).iter().map(|b| format!("{b:02x}")).collect());
+        digests.push(
+            sha1::Sha1::digest(&raw)
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect(),
+        );
         pos += 4 + len;
         if size < 0 {
             break;
@@ -32,14 +37,20 @@ fn reference_records(data: &[u8]) -> Result<Vec<String>> {
 
 pub async fn open_warngen(tab: &Tab) -> Result<()> {
     tab.goto("warngen/").await?;
-    tab.wait_until("!!document.querySelector('.bullet-option')", Duration::from_secs(40)).await
+    tab.wait_until(
+        "!!document.querySelector('.bullet-option')",
+        Duration::from_secs(40),
+    )
+    .await
 }
 
 /// The office's area fit lands after boot; a view set before it gets overwritten.
 pub async fn wait_for_map_to_settle(tab: &Tab) -> Result<()> {
     let mut last: Option<Vec<f64>> = None;
     for _ in 0..40 {
-        let now: Vec<f64> = tab.eval("(() => { const c = map.getCenter(); return [map.getZoom(), c.lat, c.lng]; })()").await?;
+        let now: Vec<f64> = tab
+            .eval("(() => { const c = map.getCenter(); return [map.getZoom(), c.lat, c.lng]; })()")
+            .await?;
         if last.as_ref() == Some(&now) {
             return Ok(());
         }
@@ -51,9 +62,18 @@ pub async fn wait_for_map_to_settle(tab: &Tab) -> Result<()> {
 
 async fn load_sample(tab: &Tab) -> Result<()> {
     wait_for_map_to_settle(tab).await?;
-    tab.exec("document.getElementById('status').textContent = '';", json!([])).await?;
-    tab.set_files("#radar-file", &[repo_root().join(SAMPLE_PATH)]).await?;
-    tab.wait_until("/^(Loaded|Couldn)/.test(document.getElementById('status').textContent)", Duration::from_secs(30)).await
+    tab.exec(
+        "document.getElementById('status').textContent = '';",
+        json!([]),
+    )
+    .await?;
+    tab.set_files("#radar-file", &[repo_root().join(SAMPLE_PATH)])
+        .await?;
+    tab.wait_until(
+        "/^(Loaded|Couldn)/.test(document.getElementById('status').textContent)",
+        Duration::from_secs(30),
+    )
+    .await
 }
 
 pub fn cases() -> Vec<Case> {
@@ -82,19 +102,34 @@ pub fn cases() -> Vec<Case> {
                 )
                 .await?;
             let expected = reference_records(&std::fs::read(repo_root().join(SAMPLE_PATH))?)?;
-            ensure!(js == json!(expected), "JS digests {js} differ from {expected:?}");
+            ensure!(
+                js == json!(expected),
+                "JS digests {js} differ from {expected:?}"
+            );
             Ok(())
         }),
         case("sample_volume_loads_into_controls", |tab| async move {
             open_warngen(&tab).await?;
             load_sample(&tab).await?;
-            let status: String = tab.eval("document.getElementById('status').innerText").await?;
+            let status: String = tab
+                .eval("document.getElementById('status').innerText")
+                .await?;
             ensure!(status == "Loaded KHGX radar: 3 tilts.", "{status}");
-            let info: String = tab.eval("document.getElementById('radar-info').innerText").await?;
-            ensure!(info.starts_with("KHGX 2026-09-27 03:43:06Z") && info.contains("VCP 212"), "{info}");
+            let info: String = tab
+                .eval("document.getElementById('radar-info').innerText")
+                .await?;
+            ensure!(
+                info.starts_with("KHGX 2026-09-27 03:43:06Z") && info.contains("VCP 212"),
+                "{info}"
+            );
             let tilts: Vec<String> = tab.eval("Array.from(document.querySelectorAll('#radar-tilt option'), (o) => o.textContent)").await?;
             ensure!(
-                tilts == ["0.5° (cut 1, 03:43:06Z)", "0.9° (cut 2, 03:43:19Z)", "1.3° (cut 3, 03:43:32Z)"],
+                tilts
+                    == [
+                        "0.5° (cut 1, 03:43:06Z)",
+                        "0.9° (cut 2, 03:43:19Z)",
+                        "1.3° (cut 3, 03:43:32Z)"
+                    ],
                 "{tilts:?}"
             );
             let products: Vec<String> = tab.eval("Array.from(document.querySelectorAll('#radar-product option'), (o) => o.value)").await?;
@@ -139,13 +174,18 @@ pub fn cases() -> Vec<Case> {
             // The strongest gate in the sample: 312.75 deg, gate 419 (slant 106.875 km).
             ensure!(result["painted"].as_i64().unwrap_or(0) > 500, "{result}");
             ensure!(result["value"] == 54.5, "{result}");
-            ensure!((result["bearing"].as_f64().unwrap_or(0.0) - 312.75).abs() < 0.25, "{result}");
+            ensure!(
+                (result["bearing"].as_f64().unwrap_or(0.0) - 312.75).abs() < 0.25,
+                "{result}"
+            );
             Ok(())
         }),
-        case("shipped_reflectivity_table_matches_the_awips_file", |tab| async move {
-            open_warngen(&tab).await?;
-            let text = std::fs::read_to_string(repo_root().join(PALETTE_PATH))?;
-            let same: Value = tab
+        case(
+            "shipped_reflectivity_table_matches_the_awips_file",
+            |tab| async move {
+                open_warngen(&tab).await?;
+                let text = std::fs::read_to_string(repo_root().join(PALETTE_PATH))?;
+                let same: Value = tab
                 .js(
                     "const a = WarngenRadarPalette.parse(arguments[0]);
                      const b = WarngenRadarPalette.defaultTable('REF');
@@ -155,21 +195,29 @@ pub fn cases() -> Vec<Case> {
                     json!([text]),
                 )
                 .await?;
-            ensure!(!same.is_null(), "defaultTable('REF') drifted from the AWIPS .pal");
-            ensure!(same == json!([14, [255, 177, 0, 255], null]), "{same}");
-            Ok(())
-        }),
+                ensure!(
+                    !same.is_null(),
+                    "defaultTable('REF') drifted from the AWIPS .pal"
+                );
+                ensure!(same == json!([14, [255, 177, 0, 255], null]), "{same}");
+                Ok(())
+            },
+        ),
         case("non_radar_file_reports_an_error", |tab| async move {
             open_warngen(&tab).await?;
             let mut junk = b"AR2V0006.001".to_vec();
             junk.extend([0u8; 64]);
-            tab.set_files("#radar-file", &[temp_file("not_radar.ar2v", &junk)?]).await?;
+            tab.set_files("#radar-file", &[temp_file("not_radar.ar2v", &junk)?])
+                .await?;
             tab.wait_until(
                 "document.getElementById('status').textContent.startsWith(\"Couldn't read that radar file\")",
                 Duration::from_secs(20),
             )
             .await?;
-            ensure!(tab.eval::<bool>("document.getElementById('radar-tilt').disabled").await?);
+            ensure!(
+                tab.eval::<bool>("document.getElementById('radar-tilt').disabled")
+                    .await?
+            );
             Ok(())
         }),
     ]

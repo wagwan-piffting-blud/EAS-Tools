@@ -5,14 +5,16 @@ use anyhow::{anyhow, bail, Context, Result};
 use chromiumoxide::cdp::browser_protocol::browser::BrowserContextId;
 use chromiumoxide::cdp::browser_protocol::dom::SetFileInputFilesParams;
 use chromiumoxide::cdp::browser_protocol::emulation::{
-    ClearDeviceMetricsOverrideParams, MediaFeature, SetDeviceMetricsOverrideParams, SetEmulatedMediaParams,
+    ClearDeviceMetricsOverrideParams, MediaFeature, SetDeviceMetricsOverrideParams,
+    SetEmulatedMediaParams,
 };
 use chromiumoxide::cdp::browser_protocol::input::{
-    DispatchKeyEventParams, DispatchKeyEventType, DispatchMouseEventParams, DispatchMouseEventType, InsertTextParams,
-    MouseButton,
+    DispatchKeyEventParams, DispatchKeyEventType, DispatchMouseEventParams, DispatchMouseEventType,
+    InsertTextParams, MouseButton,
 };
 use chromiumoxide::cdp::browser_protocol::page::{
-    AddScriptToEvaluateOnNewDocumentParams, EventJavascriptDialogOpening, HandleJavaScriptDialogParams, NavigateParams,
+    AddScriptToEvaluateOnNewDocumentParams, EventJavascriptDialogOpening,
+    HandleJavaScriptDialogParams, NavigateParams,
 };
 use chromiumoxide::cdp::browser_protocol::storage::ClearDataForOriginParams;
 use chromiumoxide::cdp::js_protocol::runtime::EvaluateParams;
@@ -27,7 +29,8 @@ use crate::browser::Shared;
 pub const SCRIPT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Everything a test can leave behind for its origin, except the HTTP cache.
-const STORAGE_TYPES: &str = "cookies,file_systems,indexeddb,local_storage,websql,service_workers,cache_storage";
+const STORAGE_TYPES: &str =
+    "cookies,file_systems,indexeddb,local_storage,websql,service_workers,cache_storage";
 
 /// A same-origin page that runs no site code, for scrub_storage.
 const BLANK_PAGE: &str = "test/e2e-rs/fixtures/blank.html";
@@ -54,18 +57,30 @@ impl Tab {
         permit: OwnedSemaphorePermit,
     ) -> Result<Tab> {
         let dialogs = Arc::new(Mutex::new(Vec::new()));
-        let mut events = page.event_listener::<EventJavascriptDialogOpening>().await?;
+        let mut events = page
+            .event_listener::<EventJavascriptDialogOpening>()
+            .await?;
         let seen = Arc::clone(&dialogs);
         let dialog_page = page.clone();
         tokio::spawn(async move {
             while let Some(event) = events.next().await {
                 seen.lock().unwrap().push(event.message.clone());
-                let _ = dialog_page.execute(HandleJavaScriptDialogParams::new(false)).await;
+                let _ = dialog_page
+                    .execute(HandleJavaScriptDialogParams::new(false))
+                    .await;
             }
         });
-        let tab = Tab(Arc::new(Inner { page, slot, context: Mutex::new(Some(context)), shared, dialogs, _permit: permit }));
+        let tab = Tab(Arc::new(Inner {
+            page,
+            slot,
+            context: Mutex::new(Some(context)),
+            shared,
+            dialogs,
+            _permit: permit,
+        }));
         // Chrome otherwise follows the OS theme: dark on the dev desktop, light on CI runners.
-        tab.emulate_media(&[("prefers-color-scheme", "dark")]).await?;
+        tab.emulate_media(&[("prefers-color-scheme", "dark")])
+            .await?;
         Ok(tab)
     }
 
@@ -97,17 +112,19 @@ impl Tab {
     pub(crate) async fn close(&self) {
         let left = tokio::time::timeout(
             Duration::from_secs(5),
-            self.0.page.goto(NavigateParams::new("about:blank".to_string())),
+            self.0
+                .page
+                .goto(NavigateParams::new("about:blank".to_string())),
         )
         .await
-        .map_or(false, |r| r.is_ok());
+        .is_ok_and(|result| result.is_ok());
         let wiped = left
             && self
-            .0
-            .page
-            .execute(ClearDataForOriginParams::new(self.origin(), STORAGE_TYPES))
-            .await
-            .is_ok();
+                .0
+                .page
+                .execute(ClearDataForOriginParams::new(self.origin(), STORAGE_TYPES))
+                .await
+                .is_ok();
         let _ = self.0.page.clone().close().await;
         let context = self.0.context.lock().unwrap().take();
         if let Some(context) = context {
@@ -125,15 +142,30 @@ impl Tab {
         let leftover: Vec<String> =
             self.eval("(() => { const keys = Object.keys(localStorage); localStorage.clear(); return keys; })()").await?;
         if !leftover.is_empty() {
-            eprintln!("[e2e] slot {}: cleared localStorage keys that outlived the wipe: {leftover:?}", self.0.slot);
+            eprintln!(
+                "[e2e] slot {}: cleared localStorage keys that outlived the wipe: {leftover:?}",
+                self.0.slot
+            );
         }
         Ok(())
     }
 
     pub async fn goto(&self, path: &str) -> Result<()> {
-        let url = if path.starts_with("http") || path.starts_with("about:") { path.to_string() } else { self.url(path) };
-        self.0.page.goto(NavigateParams::new(url.clone())).await.with_context(|| format!("navigate to {url}"))?;
-        self.wait_until("document.readyState === 'complete'", Duration::from_secs(45)).await
+        let url = if path.starts_with("http") || path.starts_with("about:") {
+            path.to_string()
+        } else {
+            self.url(path)
+        };
+        self.0
+            .page
+            .goto(NavigateParams::new(url.clone()))
+            .await
+            .with_context(|| format!("navigate to {url}"))?;
+        self.wait_until(
+            "document.readyState === 'complete'",
+            Duration::from_secs(45),
+        )
+        .await
     }
 
     async fn evaluate_raw(&self, expression: String, timeout: Duration) -> Result<Value> {
@@ -160,29 +192,43 @@ impl Tab {
 
     /// Evaluates an expression; promises are awaited.
     pub async fn eval<T: DeserializeOwned>(&self, expression: &str) -> Result<T> {
-        let value = self.evaluate_raw(expression.to_string(), SCRIPT_TIMEOUT).await?;
-        serde_json::from_value(value.clone()).with_context(|| format!("unexpected script result {value}"))
+        let value = self
+            .evaluate_raw(expression.to_string(), SCRIPT_TIMEOUT)
+            .await?;
+        serde_json::from_value(value.clone())
+            .with_context(|| format!("unexpected script result {value}"))
     }
 
     /// Runs a Selenium execute_script style body: `arguments[n]` holds `args` and `return` hands back the value.
     pub async fn js<T: DeserializeOwned>(&self, body: &str, args: Value) -> Result<T> {
-        let expression = format!("(function() {{\n{body}\n}}).apply(null, {})", args_array(args));
+        let expression = format!(
+            "(function() {{\n{body}\n}}).apply(null, {})",
+            args_array(args)
+        );
         let value = self.evaluate_raw(expression, SCRIPT_TIMEOUT).await?;
-        serde_json::from_value(value.clone()).with_context(|| format!("unexpected script result {value}"))
+        serde_json::from_value(value.clone())
+            .with_context(|| format!("unexpected script result {value}"))
     }
 
     /// Runs a Selenium execute_async_script style body: the last argument is the `done` callback.
     pub async fn js_async<T: DeserializeOwned>(&self, body: &str, args: Value) -> Result<T> {
-        self.js_async_timeout(body, args, Duration::from_secs(90)).await
+        self.js_async_timeout(body, args, Duration::from_secs(90))
+            .await
     }
 
-    pub async fn js_async_timeout<T: DeserializeOwned>(&self, body: &str, args: Value, timeout: Duration) -> Result<T> {
+    pub async fn js_async_timeout<T: DeserializeOwned>(
+        &self,
+        body: &str,
+        args: Value,
+        timeout: Duration,
+    ) -> Result<T> {
         let expression = format!(
             "new Promise((__done, __fail) => {{ try {{ (function() {{\n{body}\n}}).apply(null, [...{}, __done]); }} catch (e) {{ __fail(e); }} }})",
             args_array(args)
         );
         let value = self.evaluate_raw(expression, timeout).await?;
-        serde_json::from_value(value.clone()).with_context(|| format!("unexpected script result {value}"))
+        serde_json::from_value(value.clone())
+            .with_context(|| format!("unexpected script result {value}"))
     }
 
     pub async fn exec(&self, body: &str, args: Value) -> Result<()> {
@@ -193,10 +239,15 @@ impl Tab {
     /// Polls a JS expression until it is truthy. Evaluation errors (e.g. mid-navigation) count as not yet.
     pub async fn wait_until(&self, expression: &str, timeout: Duration) -> Result<()> {
         let deadline = Instant::now() + timeout;
-        let check = format!("!!(() => {{ try {{ return ({expression}); }} catch (e) {{ return false; }} }})()");
+        let check = format!(
+            "!!(() => {{ try {{ return ({expression}); }} catch (e) {{ return false; }} }})()"
+        );
         let mut last_error = None;
         loop {
-            match self.evaluate_raw(check.clone(), Duration::from_secs(10)).await {
+            match self
+                .evaluate_raw(check.clone(), Duration::from_secs(10))
+                .await
+            {
                 Ok(Value::Bool(true)) => return Ok(()),
                 Ok(_) => {}
                 Err(e) => last_error = Some(e),
@@ -233,11 +284,18 @@ impl Tab {
     }
 
     pub async fn exists(&self, selector: &str) -> Result<bool> {
-        self.js("return !!document.querySelector(arguments[0]);", serde_json::json!([selector])).await
+        self.js(
+            "return !!document.querySelector(arguments[0]);",
+            serde_json::json!([selector]),
+        )
+        .await
     }
 
     pub async fn wait_for_selector(&self, selector: &str, timeout: Duration) -> Result<()> {
-        let expr = format!("!!document.querySelector({})", serde_json::to_string(selector)?);
+        let expr = format!(
+            "!!document.querySelector({})",
+            serde_json::to_string(selector)?
+        );
         self.wait_until(&expr, timeout).await
     }
 
@@ -264,9 +322,12 @@ impl Tab {
 
     pub async fn click_at(&self, x: f64, y: f64) -> Result<()> {
         let page = &self.0.page;
-        page.execute(mouse(DispatchMouseEventType::MouseMoved, x, y, None)?).await?;
-        page.execute(mouse(DispatchMouseEventType::MousePressed, x, y, Some(1))?).await?;
-        page.execute(mouse(DispatchMouseEventType::MouseReleased, x, y, Some(1))?).await?;
+        page.execute(mouse(DispatchMouseEventType::MouseMoved, x, y, None)?)
+            .await?;
+        page.execute(mouse(DispatchMouseEventType::MousePressed, x, y, Some(1))?)
+            .await?;
+        page.execute(mouse(DispatchMouseEventType::MouseReleased, x, y, Some(1))?)
+            .await?;
         Ok(())
     }
 
@@ -275,8 +336,15 @@ impl Tab {
         let (x0, y0) = self.center_of(from).await?;
         let (x1, y1) = self.center_of(to).await?;
         let page = &self.0.page;
-        page.execute(mouse(DispatchMouseEventType::MouseMoved, x0, y0, None)?).await?;
-        page.execute(mouse(DispatchMouseEventType::MousePressed, x0, y0, Some(1))?).await?;
+        page.execute(mouse(DispatchMouseEventType::MouseMoved, x0, y0, None)?)
+            .await?;
+        page.execute(mouse(
+            DispatchMouseEventType::MousePressed,
+            x0,
+            y0,
+            Some(1),
+        )?)
+        .await?;
         const STEPS: u32 = 8;
         for step in 1..=STEPS {
             let t = f64::from(step) / f64::from(STEPS);
@@ -290,7 +358,13 @@ impl Tab {
                 .map_err(|e| anyhow!(e))?;
             page.execute(held).await?;
         }
-        page.execute(mouse(DispatchMouseEventType::MouseReleased, x1, y1, Some(1))?).await?;
+        page.execute(mouse(
+            DispatchMouseEventType::MouseReleased,
+            x1,
+            y1,
+            Some(1),
+        )?)
+        .await?;
         Ok(())
     }
 
@@ -359,8 +433,16 @@ impl Tab {
                 _ => 0,
             }
         });
-        let text = if mask & 0b110 == 0 { spec.text.clone() } else { None };
-        let down_type = if text.is_some() { DispatchKeyEventType::KeyDown } else { DispatchKeyEventType::RawKeyDown };
+        let text = if mask & 0b110 == 0 {
+            spec.text.clone()
+        } else {
+            None
+        };
+        let down_type = if text.is_some() {
+            DispatchKeyEventType::KeyDown
+        } else {
+            DispatchKeyEventType::RawKeyDown
+        };
         let mut down = DispatchKeyEventParams::builder()
             .r#type(down_type)
             .key(spec.key.clone())
@@ -371,7 +453,10 @@ impl Tab {
         if let Some(text) = text {
             down = down.text(text.clone()).unmodified_text(text);
         }
-        self.0.page.execute(down.build().map_err(|e| anyhow!(e))?).await?;
+        self.0
+            .page
+            .execute(down.build().map_err(|e| anyhow!(e))?)
+            .await?;
         let up = DispatchKeyEventParams::builder()
             .r#type(DispatchKeyEventType::KeyUp)
             .key(spec.key)
@@ -393,7 +478,10 @@ impl Tab {
                 let shift = ch.is_ascii_uppercase();
                 self.press(&s, if shift { &["Shift"] } else { &[] }).await?;
             } else {
-                self.0.page.execute(InsertTextParams::new(ch.to_string())).await?;
+                self.0
+                    .page
+                    .execute(InsertTextParams::new(ch.to_string()))
+                    .await?;
             }
         }
         Ok(())
@@ -412,20 +500,37 @@ impl Tab {
     }
 
     pub async fn clear_viewport(&self) -> Result<()> {
-        self.0.page.execute(ClearDeviceMetricsOverrideParams::default()).await?;
+        self.0
+            .page
+            .execute(ClearDeviceMetricsOverrideParams::default())
+            .await?;
         Ok(())
     }
 
     pub async fn emulate_media(&self, features: &[(&str, &str)]) -> Result<()> {
-        let features: Vec<MediaFeature> = features.iter().map(|(n, v)| MediaFeature::new(*n, *v)).collect();
-        self.0.page.execute(SetEmulatedMediaParams::builder().features(features).build()).await?;
+        let features: Vec<MediaFeature> = features
+            .iter()
+            .map(|(n, v)| MediaFeature::new(*n, *v))
+            .collect();
+        self.0
+            .page
+            .execute(SetEmulatedMediaParams::builder().features(features).build())
+            .await?;
         Ok(())
     }
 
     /// Puts files on an `<input type=file>` and fires its change event, like send_keys(path).
     pub async fn set_files(&self, selector: &str, paths: &[std::path::PathBuf]) -> Result<()> {
-        let element = self.0.page.find_element(selector).await.with_context(|| format!("no `{selector}`"))?;
-        let files = paths.iter().map(|p| p.to_string_lossy().into_owned()).collect::<Vec<_>>();
+        let element = self
+            .0
+            .page
+            .find_element(selector)
+            .await
+            .with_context(|| format!("no `{selector}`"))?;
+        let files = paths
+            .iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
         let params = SetFileInputFilesParams::builder()
             .files(files)
             .backend_node_id(element.backend_node_id)
@@ -437,16 +542,24 @@ impl Tab {
 
     /// Runs `source` before any page script on every later navigation of this tab.
     pub async fn add_init_script(&self, source: &str) -> Result<()> {
-        self.0.page.execute(AddScriptToEvaluateOnNewDocumentParams::new(source)).await?;
+        self.0
+            .page
+            .execute(AddScriptToEvaluateOnNewDocumentParams::new(source))
+            .await?;
         Ok(())
     }
 
     pub async fn active_id(&self) -> Result<String> {
-        self.eval("document.activeElement ? (document.activeElement.id || '') : ''").await
+        self.eval("document.activeElement ? (document.activeElement.id || '') : ''")
+            .await
     }
 
     pub async fn local_storage_set(&self, key: &str, value: &str) -> Result<()> {
-        self.exec("localStorage.setItem(arguments[0], arguments[1]);", serde_json::json!([key, value])).await
+        self.exec(
+            "localStorage.setItem(arguments[0], arguments[1]);",
+            serde_json::json!([key, value]),
+        )
+        .await
     }
 }
 
@@ -458,10 +571,18 @@ fn args_array(args: Value) -> String {
     }
 }
 
-fn mouse(kind: DispatchMouseEventType, x: f64, y: f64, clicks: Option<i64>) -> Result<DispatchMouseEventParams> {
+fn mouse(
+    kind: DispatchMouseEventType,
+    x: f64,
+    y: f64,
+    clicks: Option<i64>,
+) -> Result<DispatchMouseEventParams> {
     let mut builder = DispatchMouseEventParams::builder().r#type(kind).x(x).y(y);
     if let Some(count) = clicks {
-        builder = builder.button(MouseButton::Left).buttons(1).click_count(count);
+        builder = builder
+            .button(MouseButton::Left)
+            .buttons(1)
+            .click_count(count);
     }
     builder.build().map_err(|e| anyhow!(e))
 }
@@ -505,7 +626,12 @@ fn key_spec(key: &str) -> KeySpec {
             } else {
                 (String::new(), 0)
             };
-            KeySpec { key: other.to_string(), code, vk, text: Some(other.to_string()) }
+            KeySpec {
+                key: other.to_string(),
+                code,
+                vk,
+                text: Some(other.to_string()),
+            }
         }
     }
 }

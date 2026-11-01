@@ -45,7 +45,11 @@ async fn open_with_rate_pitch_visible(tab: &Tab, tool: &str) -> Result<()> {
         )
         .await?;
     }
-    let select = if tool == "encoder" { "ttsVoice" } else { "ttsVoice2" };
+    let select = if tool == "encoder" {
+        "ttsVoice"
+    } else {
+        "ttsVoice2"
+    };
     tab.exec(
         "const s = document.getElementById(arguments[0]); s.value = 'espeak:en-us'; s.dispatchEvent(new Event('change', { bubbles: true }));",
         json!([select]),
@@ -78,15 +82,21 @@ fn pair(v: &str) -> (String, String) {
 }
 
 pub fn cases() -> Vec<Case> {
-    let mut cases = vec![case("wheel_guard_leaves_other_inputs_alone", |tab| async move {
-        open(&tab, "encoder").await?;
-        tab.click("#par").await?;
-        ensure!(tab.active_id().await? == "par");
-        tab.wheel("#par", -120.0).await?;
-        let active = tab.active_id().await?;
-        ensure!(active == "par", "wheel blurred a non-number field (active is now {active:?})");
-        Ok(())
-    })];
+    let mut cases = vec![case(
+        "wheel_guard_leaves_other_inputs_alone",
+        |tab| async move {
+            open(&tab, "encoder").await?;
+            tab.click("#par").await?;
+            ensure!(tab.active_id().await? == "par");
+            tab.wheel("#par", -120.0).await?;
+            let active = tab.active_id().await?;
+            ensure!(
+                active == "par",
+                "wheel blurred a non-number field (active is now {active:?})"
+            );
+            Ok(())
+        },
+    )];
     for (tool, slider, number, reset) in CONTROLS {
         let id = format!("{tool}-{slider}");
         cases.push(case(format!("number_input_exists_and_is_labelled[{id}]"), move |tab| async move {
@@ -110,39 +120,68 @@ pub fn cases() -> Vec<Case> {
             ensure!(info["inputmode"].is_null(), "inputmode=numeric hides the minus key on iOS");
             Ok(())
         }));
-        cases.push(case(format!("slider_and_number_stay_in_sync[{id}]"), move |tab| async move {
-            open_with_rate_pitch_visible(&tab, tool).await?;
-            ensure!(values(&tab, slider, number).await? == pair("0"));
-            set_slider(&tab, slider, "7").await?;
-            ensure!(values(&tab, slider, number).await? == pair("7"));
-            Ok(())
-        }));
-        cases.push(case(format!("typing_into_number_drives_the_slider[{id}]"), move |tab| async move {
-            open_with_rate_pitch_visible(&tab, tool).await?;
-            type_and_commit(&tab, number, "-4").await?;
-            ensure!(values(&tab, slider, number).await? == pair("-4"), "{:?}", values(&tab, slider, number).await?);
-            type_and_commit(&tab, number, "9").await?;
-            ensure!(values(&tab, slider, number).await? == pair("9"), "{:?}", values(&tab, slider, number).await?);
-            Ok(())
-        }));
-        cases.push(case(format!("out_of_range_and_empty_values_are_normalised[{id}]"), move |tab| async move {
-            open_with_rate_pitch_visible(&tab, tool).await?;
-            type_and_commit(&tab, number, "250").await?;
-            ensure!(values(&tab, slider, number).await? == pair("10"), "above-max value was not clamped");
-            type_and_commit(&tab, number, "-250").await?;
-            ensure!(values(&tab, slider, number).await? == pair("-10"), "below-min value was not clamped");
-            type_and_commit(&tab, number, "").await?;
-            ensure!(values(&tab, slider, number).await? == pair("0"), "cleared field did not fall back to the default");
-            Ok(())
-        }));
-        cases.push(case(format!("reset_button_clears_both_controls[{id}]"), move |tab| async move {
-            open_with_rate_pitch_visible(&tab, tool).await?;
-            set_slider(&tab, slider, "-8").await?;
-            ensure!(values(&tab, slider, number).await? == pair("-8"));
-            tab.click(&format!("#{reset}")).await?;
-            ensure!(values(&tab, slider, number).await? == pair("0"));
-            Ok(())
-        }));
+        cases.push(case(
+            format!("slider_and_number_stay_in_sync[{id}]"),
+            move |tab| async move {
+                open_with_rate_pitch_visible(&tab, tool).await?;
+                ensure!(values(&tab, slider, number).await? == pair("0"));
+                set_slider(&tab, slider, "7").await?;
+                ensure!(values(&tab, slider, number).await? == pair("7"));
+                Ok(())
+            },
+        ));
+        cases.push(case(
+            format!("typing_into_number_drives_the_slider[{id}]"),
+            move |tab| async move {
+                open_with_rate_pitch_visible(&tab, tool).await?;
+                type_and_commit(&tab, number, "-4").await?;
+                ensure!(
+                    values(&tab, slider, number).await? == pair("-4"),
+                    "{:?}",
+                    values(&tab, slider, number).await?
+                );
+                type_and_commit(&tab, number, "9").await?;
+                ensure!(
+                    values(&tab, slider, number).await? == pair("9"),
+                    "{:?}",
+                    values(&tab, slider, number).await?
+                );
+                Ok(())
+            },
+        ));
+        cases.push(case(
+            format!("out_of_range_and_empty_values_are_normalised[{id}]"),
+            move |tab| async move {
+                open_with_rate_pitch_visible(&tab, tool).await?;
+                type_and_commit(&tab, number, "250").await?;
+                ensure!(
+                    values(&tab, slider, number).await? == pair("10"),
+                    "above-max value was not clamped"
+                );
+                type_and_commit(&tab, number, "-250").await?;
+                ensure!(
+                    values(&tab, slider, number).await? == pair("-10"),
+                    "below-min value was not clamped"
+                );
+                type_and_commit(&tab, number, "").await?;
+                ensure!(
+                    values(&tab, slider, number).await? == pair("0"),
+                    "cleared field did not fall back to the default"
+                );
+                Ok(())
+            },
+        ));
+        cases.push(case(
+            format!("reset_button_clears_both_controls[{id}]"),
+            move |tab| async move {
+                open_with_rate_pitch_visible(&tab, tool).await?;
+                set_slider(&tab, slider, "-8").await?;
+                ensure!(values(&tab, slider, number).await? == pair("-8"));
+                tab.click(&format!("#{reset}")).await?;
+                ensure!(values(&tab, slider, number).await? == pair("0"));
+                Ok(())
+            },
+        ));
     }
     for (tool, field, value) in WHEEL_CASES {
         cases.push(case(format!("wheel_does_not_change_a_focused_number_input[{tool}-{field}]"), move |tab| async move {

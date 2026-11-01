@@ -37,7 +37,8 @@ struct Out {
 }
 
 async fn render(tab: &Tab, name: &str, action: &str, bullets: &[&str]) -> Result<Out> {
-    tab.js(RENDER_JS, json!([name, action, bullets, null])).await
+    tab.js(RENDER_JS, json!([name, action, bullets, null]))
+        .await
 }
 
 fn with(base: &[&'static str], more: &[&'static str]) -> Vec<&'static str> {
@@ -45,7 +46,9 @@ fn with(base: &[&'static str], more: &[&'static str]) -> Vec<&'static str> {
 }
 
 fn body(text: &str) -> &str {
-    text.splitn(3, "617 PM CDT Mon Jun 15 2026\n\n").last().unwrap_or(text)
+    text.splitn(3, "617 PM CDT Mon Jun 15 2026\n\n")
+        .last()
+        .unwrap_or(text)
 }
 
 pub fn cases() -> Vec<Case> {
@@ -56,23 +59,52 @@ pub fn cases() -> Vec<Case> {
         ("arealFloodAdvisoryFollowup.vm", "CON", &ADVISORY[..]),
         ("arealFloodWarningFollowup.vm", "CON", &WARNING[..]),
     ] {
-        cases.push(case(format!("option_off_keeps_the_classic_layout[{name}]"), move |tab| async move {
-            open(&tab).await?;
-            let text = render(&tab, name, action, bullets).await?.raw;
-            ensure!(!text.contains("* WHAT..."), "{text}");
-            ensure!(!text.contains("http://www.weather.gov/safety/flood"), "{text}");
-            if action == "NEW" {
-                ensure!(text.contains("The National Weather Service in {OFFICE_LOCATION} has issued a"), "{text}");
-            }
-            Ok(())
-        }));
+        cases.push(case(
+            format!("option_off_keeps_the_classic_layout[{name}]"),
+            move |tab| async move {
+                open(&tab).await?;
+                let text = render(&tab, name, action, bullets).await?.raw;
+                ensure!(!text.contains("* WHAT..."), "{text}");
+                ensure!(
+                    !text.contains("http://www.weather.gov/safety/flood"),
+                    "{text}"
+                );
+                if action == "NEW" {
+                    ensure!(
+                        text.contains(
+                            "The National Weather Service in {OFFICE_LOCATION} has issued a"
+                        ),
+                        "{text}"
+                    );
+                }
+                Ok(())
+            },
+        ));
     }
-    cases.push(case("advisory_new_matches_the_hazard_services_layout", |tab| async move {
-        open(&tab).await?;
-        let bullets = ["uss", "ER", "doppler", "thunder", "rain2", "listofcities", "addRainfall", "TADD_CTA", "hazSimp"];
-        let text = render(&tab, "arealFloodAdvisory.vm", "NEW", &bullets).await?.wrapped;
-        ensure!(!text.contains("The National Weather Service in"), "{}", body(&text));
-        let expected = r"...FLOOD ADVISORY IN EFFECT UNTIL 645 PM CDT THIS EVENING...
+    cases.push(case(
+        "advisory_new_matches_the_hazard_services_layout",
+        |tab| async move {
+            open(&tab).await?;
+            let bullets = [
+                "uss",
+                "ER",
+                "doppler",
+                "thunder",
+                "rain2",
+                "listofcities",
+                "addRainfall",
+                "TADD_CTA",
+                "hazSimp",
+            ];
+            let text = render(&tab, "arealFloodAdvisory.vm", "NEW", &bullets)
+                .await?
+                .wrapped;
+            ensure!(
+                !text.contains("The National Weather Service in"),
+                "{}",
+                body(&text)
+            );
+            let expected = r"...FLOOD ADVISORY IN EFFECT UNTIL 645 PM CDT THIS EVENING...
 
 * WHAT...Urban and small stream flooding caused by excessive rainfall
   is expected.
@@ -103,15 +135,19 @@ deaths occur in vehicles.
 
 &&
 ";
-        ensure!(text.contains(expected), "{}", body(&text));
-        ensure!(text.contains("/O.NEW.KOAX.FA.Y.0042.260615T2317Z-260615T2345Z/"), "{text}");
-        for line in text.split('\n') {
-            if line.starts_with("  - ") || line.starts_with("    ") {
-                ensure!(line.len() <= 65, "{line}");
+            ensure!(text.contains(expected), "{}", body(&text));
+            ensure!(
+                text.contains("/O.NEW.KOAX.FA.Y.0042.260615T2317Z-260615T2345Z/"),
+                "{text}"
+            );
+            for line in text.split('\n') {
+                if line.starts_with("  - ") || line.starts_with("    ") {
+                    ensure!(line.len() <= 65, "{line}");
+                }
             }
-        }
-        Ok(())
-    }));
+            Ok(())
+        },
+    ));
     cases.push(case("warning_new_and_ext", |tab| async move {
         open(&tab).await?;
         let new = render(&tab, "arealFloodWarning.vm", "NEW", &with(&WARNING, &["hazSimp", "sm"])).await?.wrapped;
@@ -131,12 +167,35 @@ deaths occur in vehicles.
     }));
     cases.push(case("followups", |tab| async move {
         open(&tab).await?;
-        let con = render(&tab, "arealFloodAdvisoryFollowup.vm", "CON", &with(&ADVISORY, &["hazSimp"])).await?.wrapped;
-        ensure!(con.contains("...FLOOD ADVISORY REMAINS IN EFFECT UNTIL 645 PM CDT THIS EVENING..."), "{con}");
-        ensure!(con.contains("* WHAT...Flooding caused by excessive rainfall continues."), "{con}");
-        ensure!(con.contains("/O.CON.KOAX.FA.Y.0042.000000T0000Z-260615T2345Z/"), "{con}");
+        let con = render(
+            &tab,
+            "arealFloodAdvisoryFollowup.vm",
+            "CON",
+            &with(&ADVISORY, &["hazSimp"]),
+        )
+        .await?
+        .wrapped;
+        ensure!(
+            con.contains("...FLOOD ADVISORY REMAINS IN EFFECT UNTIL 645 PM CDT THIS EVENING..."),
+            "{con}"
+        );
+        ensure!(
+            con.contains("* WHAT...Flooding caused by excessive rainfall continues."),
+            "{con}"
+        );
+        ensure!(
+            con.contains("/O.CON.KOAX.FA.Y.0042.000000T0000Z-260615T2345Z/"),
+            "{con}"
+        );
 
-        let can = render(&tab, "arealFloodAdvisoryFollowup.vm", "CAN", &["general", "ER", "recedingWater", "hazSimp"]).await?.wrapped;
+        let can = render(
+            &tab,
+            "arealFloodAdvisoryFollowup.vm",
+            "CAN",
+            &["general", "ER", "recedingWater", "hazSimp"],
+        )
+        .await?
+        .wrapped;
         ensure!(
             can.contains(
                 "...FLOOD ADVISORY IS CANCELLED...\n\n\
@@ -148,13 +207,39 @@ deaths occur in vehicles.
         );
         ensure!(can.contains("\n&&\n\nLAT...LON"), "{can}");
 
-        let exp = render(&tab, "arealFloodWarningFollowup.vm", "EXP", &["er", "rainEnded", "hazSimp"]).await?.wrapped;
-        ensure!(exp.contains("...FLOOD WARNING WILL EXPIRE AT 645 PM CDT THIS EVENING..."), "{exp}");
-        ensure!(exp.contains("The Flood Warning will expire at 645 PM CDT this evening for a"), "{exp}");
+        let exp = render(
+            &tab,
+            "arealFloodWarningFollowup.vm",
+            "EXP",
+            &["er", "rainEnded", "hazSimp"],
+        )
+        .await?
+        .wrapped;
+        ensure!(
+            exp.contains("...FLOOD WARNING WILL EXPIRE AT 645 PM CDT THIS EVENING..."),
+            "{exp}"
+        );
+        ensure!(
+            exp.contains("The Flood Warning will expire at 645 PM CDT this evening for a"),
+            "{exp}"
+        );
 
-        let wcon = render(&tab, "arealFloodWarningFollowup.vm", "CON", &with(&WARNING, &["hazSimp"])).await?.wrapped;
-        ensure!(wcon.contains("...FLOOD WARNING REMAINS IN EFFECT UNTIL 645 PM CDT THIS EVENING..."), "{wcon}");
-        ensure!(wcon.contains("* WHAT...Flooding caused by excessive rainfall continues."), "{wcon}");
+        let wcon = render(
+            &tab,
+            "arealFloodWarningFollowup.vm",
+            "CON",
+            &with(&WARNING, &["hazSimp"]),
+        )
+        .await?
+        .wrapped;
+        ensure!(
+            wcon.contains("...FLOOD WARNING REMAINS IN EFFECT UNTIL 645 PM CDT THIS EVENING..."),
+            "{wcon}"
+        );
+        ensure!(
+            wcon.contains("* WHAT...Flooding caused by excessive rainfall continues."),
+            "{wcon}"
+        );
         Ok(())
     }));
     cases.push(case("where_and_headline_time_follow_hazard_services", |tab| async move {

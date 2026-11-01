@@ -7,7 +7,8 @@ use eas_tools_e2e::*;
 
 use crate::common::{open_tool, temp_file};
 
-const NWR_HEADER: &str = "ZCZC-WXR-ADR-048000-040000-005000-022000-028000-047000-021000-001000-012000-013000\
+const NWR_HEADER: &str =
+    "ZCZC-WXR-ADR-048000-040000-005000-022000-028000-047000-021000-001000-012000-013000\
                           -045000-037000-051000-054000+0150-1121738-KFWD/NWS-";
 const SYNTH_HEADER: &str = "ZCZC-WXR-TOR-029095-029047+0030-2521820-KEAX/NWS-";
 const TONE_TEXT: &str = "1050 Hz NWR alert tone detected";
@@ -20,11 +21,16 @@ fn nwr_recording() -> std::path::PathBuf {
 
 async fn open_decoder(tab: &Tab) -> Result<()> {
     open_tool(tab, "decoder").await?;
-    tab.exec("document.getElementById('output').innerHTML = '';", json!([])).await
+    tab.exec(
+        "document.getElementById('output').innerHTML = '';",
+        json!([]),
+    )
+    .await
 }
 
 async fn output_text(tab: &Tab) -> Result<String> {
-    tab.eval("document.getElementById('output').innerText").await
+    tab.eval("document.getElementById('output').innerText")
+        .await
 }
 
 async fn wait_output(tab: &Tab, done: impl Fn(&str) -> bool) -> Result<String> {
@@ -34,12 +40,19 @@ async fn wait_output(tab: &Tab, done: impl Fn(&str) -> bool) -> Result<String> {
         if done(&text) {
             return Ok(text);
         }
-        ensure!(std::time::Instant::now() < deadline, "decode never finished; output so far:\n{text}");
+        ensure!(
+            std::time::Instant::now() < deadline,
+            "decode never finished; output so far:\n{text}"
+        );
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
 }
 
-async fn decode_until(tab: &Tab, path: &std::path::Path, done: impl Fn(&str) -> bool) -> Result<String> {
+async fn decode_until(
+    tab: &Tab,
+    path: &std::path::Path,
+    done: impl Fn(&str) -> bool,
+) -> Result<String> {
     tab.set_files("#audiofile", &[path.to_path_buf()]).await?;
     wait_output(tab, done).await
 }
@@ -49,11 +62,16 @@ fn count(text: &str, needle: &str) -> usize {
 }
 
 fn byte_bits(bytes: &[u8]) -> Vec<u8> {
-    bytes.iter().flat_map(|byte| (0..8).map(move |i| (byte >> i) & 1)).collect()
+    bytes
+        .iter()
+        .flat_map(|byte| (0..8).map(move |i| (byte >> i) & 1))
+        .collect()
 }
 
 fn afsk_at(text: &str, amplitude: f64, rate: u32) -> Vec<f64> {
-    let data: Vec<u8> = std::iter::repeat(0xABu8).take(16).chain(text.bytes()).collect();
+    let data: Vec<u8> = std::iter::repeat_n(0xABu8, 16)
+        .chain(text.bytes())
+        .collect();
     afsk_bits(&byte_bits(&data), amplitude, rate)
 }
 
@@ -78,7 +96,9 @@ fn silence(seconds: usize) -> Vec<f64> {
 }
 
 fn tone(seconds: usize) -> Vec<f64> {
-    (0..seconds * RATE as usize).map(|n| 0.3 * (2.0 * PI * 1050.0 * n as f64 / RATE as f64).sin()).collect()
+    (0..seconds * RATE as usize)
+        .map(|n| 0.3 * (2.0 * PI * 1050.0 * n as f64 / RATE as f64).sin())
+        .collect()
 }
 
 fn riff(format: u16, rate: u32, bits: u16, extra_fmt: &[u8], body: &[u8]) -> Vec<u8> {
@@ -138,7 +158,11 @@ fn nwr_done(t: &str) -> bool {
 }
 
 async fn wait_sync_waiting(tab: &Tab) -> Result<()> {
-    tab.wait_until("document.getElementById('sync').innerText.includes('WAITING')", Duration::from_secs(30)).await
+    tab.wait_until(
+        "document.getElementById('sync').innerText.includes('WAITING')",
+        Duration::from_secs(30),
+    )
+    .await
 }
 
 async fn warnings(tab: &Tab) -> Result<Vec<String>> {
@@ -162,9 +186,24 @@ fn endec_product(name: &str, framing: &Framing) -> Result<std::path::PathBuf> {
     let rate = framing.rate;
     let gap = vec![0.0; (framing.gap_ms * rate as f64 / 1000.0).round() as usize];
     let mut parts: Vec<Vec<f64>> = vec![vec![0.0; rate as usize]];
-    for (i, text) in [SYNTH_HEADER, SYNTH_HEADER, SYNTH_HEADER, "NNNN", "NNNN", "NNNN"].iter().enumerate() {
+    for (i, text) in [
+        SYNTH_HEADER,
+        SYNTH_HEADER,
+        SYNTH_HEADER,
+        "NNNN",
+        "NNNN",
+        "NNNN",
+    ]
+    .iter()
+    .enumerate()
+    {
         let (lead, tail) = (framing.frame)(i);
-        let data: Vec<u8> = lead.into_iter().chain(std::iter::repeat(0xABu8).take(16)).chain(text.bytes()).chain(tail).collect();
+        let data: Vec<u8> = lead
+            .into_iter()
+            .chain(std::iter::repeat_n(0xABu8, 16))
+            .chain(text.bytes())
+            .chain(tail)
+            .collect();
         if let Some((start, _)) = &framing.pops {
             parts.push(start.clone());
         }
@@ -172,7 +211,11 @@ fn endec_product(name: &str, framing: &Framing) -> Result<std::path::PathBuf> {
         if let Some((_, end)) = &framing.pops {
             parts.push(end.clone());
         }
-        parts.push(if i == 2 { vec![0.0; 3 * rate as usize] } else { gap.clone() });
+        parts.push(if i == 2 {
+            vec![0.0; 3 * rate as usize]
+        } else {
+            gap.clone()
+        });
     }
     let mut seed: u32 = 0x9E37_79B9;
     let body: Vec<u8> = parts
@@ -190,26 +233,56 @@ fn endec_product(name: &str, framing: &Framing) -> Result<std::path::PathBuf> {
 /// The encoder's relay pops (48 kHz stereo 16-bit), mixed to mono.
 fn relay_pop(file: &str) -> Result<Vec<f64>> {
     let bytes = std::fs::read(repo_root().join("assets").join(file))?;
-    let data = bytes.windows(4).position(|w| w == b"data").context("no data chunk")? + 8;
+    let data = bytes
+        .windows(4)
+        .position(|w| w == b"data")
+        .context("no data chunk")?
+        + 8;
     Ok(bytes[data..]
-        .chunks_exact(4)
-        .map(|f| (i16::from_le_bytes([f[0], f[1]]) as f64 + i16::from_le_bytes([f[2], f[3]]) as f64) / 65536.0)
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|f| {
+            (i16::from_le_bytes([f[0], f[1]]) as f64 + i16::from_le_bytes([f[2], f[3]]) as f64)
+                / 65536.0
+        })
         .collect())
 }
 
 fn plain(rate: u32, gap_ms: f64) -> Framing {
-    Framing { rate, gap_ms, noise_floor: 0.0, pops: None, frame: |_| (vec![], vec![]) }
+    Framing {
+        rate,
+        gap_ms,
+        noise_floor: 0.0,
+        pops: None,
+        frame: |_| (vec![], vec![]),
+    }
 }
 
 /// The decoder's ENDEC verdict for a file, and its rule and measurements for failure messages.
 async fn detected_endec(tab: &Tab, path: &std::path::Path) -> Result<(String, String)> {
     open_decoder(tab).await?;
-    tab.exec("window.endecDebug = true; window.endecDebugHistory = []; window.lastEndecDebug = null;", json!([])).await?;
+    tab.exec(
+        "window.endecDebug = true; window.endecDebugHistory = []; window.lastEndecDebug = null;",
+        json!([]),
+    )
+    .await?;
     tab.set_files("#audiofile", &[path.to_path_buf()]).await?;
-    tab.wait_until("!!(window.lastEndecDebug && window.lastEndecDebug.mode)", Duration::from_secs(90)).await?;
+    tab.wait_until(
+        "!!(window.lastEndecDebug && window.lastEndecDebug.mode)",
+        Duration::from_secs(90),
+    )
+    .await?;
     let record: Value = tab.eval("window.lastEndecDebug").await?;
     let mode = record["mode"].as_str().unwrap_or("?").to_string();
-    Ok((mode, format!("rule {} segments {}", record["rule"].as_str().unwrap_or("?"), record["segments"])))
+    Ok((
+        mode,
+        format!(
+            "rule {} segments {}",
+            record["rule"].as_str().unwrap_or("?"),
+            record["segments"]
+        ),
+    ))
 }
 
 /// Each ENDEC profile's framing (assets/js/common-functions.js), recorded at the rate the
@@ -221,24 +294,82 @@ fn endec_framings() -> Result<Vec<(&'static str, &'static str, Framing)>> {
         ("tft", "TFT", plain(8000, 1000.0)),
         ("dasdec", "DASDEC", plain(48000, 1000.0)),
         ("hollyanne", "HOLLYANNE", plain(5000, 1000.0)),
-        ("nws", "NWS", Framing { frame: |_| (vec![], vec![0, 0]), ..plain(11025, 1000.0) }),
-        ("nws_crs", "NWS CRS", Framing { frame: |i| if i < 3 { (vec![], vec![0, 0, 0]) } else { (vec![0], vec![0]) }, ..plain(11025, 1000.0) }),
-        ("nws_bmh", "NWS BMH", Framing { frame: |_| (vec![], vec![0, 0, 0]), ..plain(11025, 1000.0) }),
-        ("sage_3644", "SAGE DIGITAL 3644", Framing {
-            frame: |i| (match i { 0 | 3 => vec![0x00], 1 | 2 => vec![0xAB], _ => vec![] }, vec![0xFF, 0xFF, 0xFF]),
-            ..plain(44100, 1000.0)
-        }),
+        (
+            "nws",
+            "NWS",
+            Framing {
+                frame: |_| (vec![], vec![0, 0]),
+                ..plain(11025, 1000.0)
+            },
+        ),
+        (
+            "nws_crs",
+            "NWS CRS",
+            Framing {
+                frame: |i| {
+                    if i < 3 {
+                        (vec![], vec![0, 0, 0])
+                    } else {
+                        (vec![0], vec![0])
+                    }
+                },
+                ..plain(11025, 1000.0)
+            },
+        ),
+        (
+            "nws_bmh",
+            "NWS BMH",
+            Framing {
+                frame: |_| (vec![], vec![0, 0, 0]),
+                ..plain(11025, 1000.0)
+            },
+        ),
+        (
+            "sage_3644",
+            "SAGE DIGITAL 3644",
+            Framing {
+                frame: |i| {
+                    (
+                        match i {
+                            0 | 3 => vec![0x00],
+                            1 | 2 => vec![0xAB],
+                            _ => vec![],
+                        },
+                        vec![0xFF, 0xFF, 0xFF],
+                    )
+                },
+                ..plain(44100, 1000.0)
+            },
+        ),
         // Measured on real SAGE 1822 units (#145 videos -xZYY3N1Pw0, zddMfd6n54k, and TPT 2 from
         // 2000): about one byte of mark before the preamble and one after the text.
-        ("sage_1822", "SAGE ANALOG 1822", Framing { frame: |_| (vec![0xFF], vec![0xFF]), ..plain(44100, 1000.0) }),
+        (
+            "sage_1822",
+            "SAGE ANALOG 1822",
+            Framing {
+                frame: |_| (vec![0xFF], vec![0xFF]),
+                ..plain(44100, 1000.0)
+            },
+        ),
         // The demo recordings only got a clean terminator on some bursts; the rest ended in noise.
-        ("sage_1822_noisy_tails", "SAGE ANALOG 1822", Framing {
-            noise_floor: 0.02,
-            frame: |i| (vec![], if i < 2 { vec![0xFF] } else { vec![] }),
-            ..plain(44100, 1000.0)
-        }),
+        (
+            "sage_1822_noisy_tails",
+            "SAGE ANALOG 1822",
+            Framing {
+                noise_floor: 0.02,
+                frame: |i| (vec![], if i < 2 { vec![0xFF] } else { vec![] }),
+                ..plain(44100, 1000.0)
+            },
+        ),
         ("trilithic", "TRILITHIC", plain(44100, 868.0)),
-        ("trilithic_pop", "TRILITHIC (POP)", Framing { pops: Some(pops), ..plain(48000, 868.0) }),
+        (
+            "trilithic_pop",
+            "TRILITHIC (POP)",
+            Framing {
+                pops: Some(pops),
+                ..plain(48000, 868.0)
+            },
+        ),
         ("xfinity", "XFINITY", plain(44100, 1500.0)),
     ])
 }
@@ -249,15 +380,21 @@ pub fn cases() -> Vec<Case> {
         .into_iter()
         .map(|(name, expected, framing)| {
             let framing = std::sync::Arc::new(framing);
-            case(format!("endec_framing_decodes_as_its_endec[{name}]"), move |tab| {
-                let framing = framing.clone();
-                async move {
-                    let path = endec_product(&format!("endec_{name}.wav"), &framing)?;
-                    let (mode, detail) = detected_endec(&tab, &path).await?;
-                    ensure!(mode == expected, "expected {expected}, got {mode}: {detail}");
-                    Ok(())
-                }
-            })
+            case(
+                format!("endec_framing_decodes_as_its_endec[{name}]"),
+                move |tab| {
+                    let framing = framing.clone();
+                    async move {
+                        let path = endec_product(&format!("endec_{name}.wav"), &framing)?;
+                        let (mode, detail) = detected_endec(&tab, &path).await?;
+                        ensure!(
+                            mode == expected,
+                            "expected {expected}, got {mode}: {detail}"
+                        );
+                        Ok(())
+                    }
+                },
+            )
         })
         .collect();
     cases.extend(vec![

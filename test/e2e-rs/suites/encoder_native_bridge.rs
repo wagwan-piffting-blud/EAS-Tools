@@ -17,7 +17,11 @@ window.EASBridge = {
 async fn open(tab: &Tab) -> Result<()> {
     tab.add_init_script(FAKE_BRIDGE_JS).await?;
     open_tool_tracking_errors(tab, "encoder").await?;
-    tab.wait_until("!!(window.__bridgeHandlers && window.__bridgeHandlers['encoder:saveCustomEvent'])", Duration::from_secs(30)).await
+    tab.wait_until(
+        "!!(window.__bridgeHandlers && window.__bridgeHandlers['encoder:saveCustomEvent'])",
+        Duration::from_secs(30),
+    )
+    .await
 }
 
 /// Calls a bridge handler and returns everything the page sent back, in order.
@@ -27,77 +31,201 @@ async fn call(tab: &Tab, channel: &str, payload: Value) -> Result<Vec<(String, V
 }
 
 fn last<'a>(sent: &'a [(String, Value)], channel: &str) -> Option<&'a Value> {
-    sent.iter().rev().find(|(name, _)| name == channel).map(|(_, payload)| payload)
+    sent.iter()
+        .rev()
+        .find(|(name, _)| name == channel)
+        .map(|(_, payload)| payload)
 }
 
 pub fn cases() -> Vec<Case> {
     vec![
-        case("the_location_index_matches_the_web_search_for_both_modes", |tab| async move {
-            open(&tab).await?;
-            let sent = call(&tab, "encoder:requestLocationIndex", json!({ "mode": "us" })).await?;
-            let index = last(&sent, "encoder:locationIndex").ok_or_else(|| anyhow!("no index sent: {sent:?}"))?;
-            ensure!(index["mode"] == "us");
-            let entries = index["entries"].as_array().cloned().unwrap_or_default();
-            ensure!(entries.len() > 3500, "{} US entries", entries.len());
-            let find = |code: &str| entries.iter().find(|e| e["code"] == code).cloned();
-            let travis = find("48453").ok_or_else(|| anyhow!("no Travis County"))?;
-            ensure!(travis["label"] == "Travis County, TX" && travis["hay"].as_str().unwrap_or("").contains("texas"), "{travis}");
-            let caribbean = find("75040").ok_or_else(|| anyhow!("marine zone 75040 missing from the index"))?;
-            ensure!(caribbean["label"].as_str().unwrap_or("").starts_with("Caribbean N of 18N"), "{caribbean}");
+        case(
+            "the_location_index_matches_the_web_search_for_both_modes",
+            |tab| async move {
+                open(&tab).await?;
+                let sent = call(
+                    &tab,
+                    "encoder:requestLocationIndex",
+                    json!({ "mode": "us" }),
+                )
+                .await?;
+                let index = last(&sent, "encoder:locationIndex")
+                    .ok_or_else(|| anyhow!("no index sent: {sent:?}"))?;
+                ensure!(index["mode"] == "us");
+                let entries = index["entries"].as_array().cloned().unwrap_or_default();
+                ensure!(entries.len() > 3500, "{} US entries", entries.len());
+                let find = |code: &str| entries.iter().find(|e| e["code"] == code).cloned();
+                let travis = find("48453").ok_or_else(|| anyhow!("no Travis County"))?;
+                ensure!(
+                    travis["label"] == "Travis County, TX"
+                        && travis["hay"].as_str().unwrap_or("").contains("texas"),
+                    "{travis}"
+                );
+                let caribbean = find("75040")
+                    .ok_or_else(|| anyhow!("marine zone 75040 missing from the index"))?;
+                ensure!(
+                    caribbean["label"]
+                        .as_str()
+                        .unwrap_or("")
+                        .starts_with("Caribbean N of 18N"),
+                    "{caribbean}"
+                );
 
-            let sent = call(&tab, "encoder:requestLocationIndex", json!({ "mode": "ca" })).await?;
-            let index = last(&sent, "encoder:locationIndex").ok_or_else(|| anyhow!("no CA index"))?;
-            ensure!(index["mode"] == "ca" && index["entries"].as_array().map_or(0, |a| a.len()) > 100, "{}", index["mode"]);
-            let mode: String = tab.eval("document.getElementById('fipsMode').value").await?;
-            ensure!(mode == "us", "asking for the CA index must not switch the page's mode: {mode}");
-            Ok(())
-        }),
-        case("custom_event_codes_round_trip_over_the_bridge", |tab| async move {
-            open(&tab).await?;
-            let sent = call(&tab, "encoder:saveCustomEvent", json!({ "code": "wcn", "name": "Weather Watch" })).await?;
-            let order: Vec<&str> = sent.iter().map(|(name, _)| name.as_str()).collect();
-            let result_at = order.iter().position(|n| *n == "encoder:customEventResult").ok_or_else(|| anyhow!("{order:?}"))?;
-            let events_at = order.iter().position(|n| *n == "encoder:eventsData").ok_or_else(|| anyhow!("{order:?}"))?;
-            ensure!(events_at < result_at, "the refreshed event list must arrive before the result: {order:?}");
-            let result = last(&sent, "encoder:customEventResult").unwrap();
-            ensure!(*result == json!({ "ok": true, "action": "saved", "code": "WCN", "name": "Weather Watch" }), "{result}");
-            let events = last(&sent, "encoder:eventsData").unwrap()["events"].as_array().cloned().unwrap_or_default();
-            ensure!(events.iter().any(|e| e["code"] == "WCN" && e["group"] == "custom" && e["label"] == "Weather Watch"), "WCN missing from eventsData");
-            let groups = last(&sent, "encoder:eventGroupsData").unwrap()["groups"].clone();
-            ensure!(groups.as_array().unwrap().iter().any(|g| g["key"] == "custom" && g["label"] == "Custom Codes"), "{groups}");
-            ensure!(last(&sent, "encoder:customEventsData").unwrap()["events"] == json!({ "WCN": "Weather Watch" }));
+                let sent = call(
+                    &tab,
+                    "encoder:requestLocationIndex",
+                    json!({ "mode": "ca" }),
+                )
+                .await?;
+                let index =
+                    last(&sent, "encoder:locationIndex").ok_or_else(|| anyhow!("no CA index"))?;
+                ensure!(
+                    index["mode"] == "ca"
+                        && index["entries"].as_array().map_or(0, |a| a.len()) > 100,
+                    "{}",
+                    index["mode"]
+                );
+                let mode: String = tab
+                    .eval("document.getElementById('fipsMode').value")
+                    .await?;
+                ensure!(
+                    mode == "us",
+                    "asking for the CA index must not switch the page's mode: {mode}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "custom_event_codes_round_trip_over_the_bridge",
+            |tab| async move {
+                open(&tab).await?;
+                let sent = call(
+                    &tab,
+                    "encoder:saveCustomEvent",
+                    json!({ "code": "wcn", "name": "Weather Watch" }),
+                )
+                .await?;
+                let order: Vec<&str> = sent.iter().map(|(name, _)| name.as_str()).collect();
+                let result_at = order
+                    .iter()
+                    .position(|n| *n == "encoder:customEventResult")
+                    .ok_or_else(|| anyhow!("{order:?}"))?;
+                let events_at = order
+                    .iter()
+                    .position(|n| *n == "encoder:eventsData")
+                    .ok_or_else(|| anyhow!("{order:?}"))?;
+                ensure!(
+                    events_at < result_at,
+                    "the refreshed event list must arrive before the result: {order:?}"
+                );
+                let result = last(&sent, "encoder:customEventResult").unwrap();
+                ensure!(
+                    *result
+                        == json!({ "ok": true, "action": "saved", "code": "WCN", "name": "Weather Watch" }),
+                    "{result}"
+                );
+                let events = last(&sent, "encoder:eventsData").unwrap()["events"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default();
+                ensure!(
+                    events.iter().any(|e| e["code"] == "WCN"
+                        && e["group"] == "custom"
+                        && e["label"] == "Weather Watch"),
+                    "WCN missing from eventsData"
+                );
+                let groups = last(&sent, "encoder:eventGroupsData").unwrap()["groups"].clone();
+                ensure!(
+                    groups
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|g| g["key"] == "custom" && g["label"] == "Custom Codes"),
+                    "{groups}"
+                );
+                ensure!(
+                    last(&sent, "encoder:customEventsData").unwrap()["events"]
+                        == json!({ "WCN": "Weather Watch" })
+                );
 
-            let sent = call(&tab, "encoder:saveCustomEvent", json!({ "code": "TOR", "name": "Twister" })).await?;
-            let refused = last(&sent, "encoder:customEventResult").unwrap();
-            ensure!(refused["ok"] == false && refused["error"].as_str().unwrap_or("").contains("standard event code"), "{refused}");
+                let sent = call(
+                    &tab,
+                    "encoder:saveCustomEvent",
+                    json!({ "code": "TOR", "name": "Twister" }),
+                )
+                .await?;
+                let refused = last(&sent, "encoder:customEventResult").unwrap();
+                ensure!(
+                    refused["ok"] == false
+                        && refused["error"]
+                            .as_str()
+                            .unwrap_or("")
+                            .contains("standard event code"),
+                    "{refused}"
+                );
 
-            let sent = call(&tab, "encoder:removeCustomEvent", json!({ "code": "WCN" })).await?;
-            ensure!(*last(&sent, "encoder:customEventResult").unwrap() == json!({ "ok": true, "action": "removed", "code": "WCN" }));
-            let groups = last(&sent, "encoder:eventGroupsData").unwrap()["groups"].clone();
-            ensure!(!groups.as_array().unwrap().iter().any(|g| g["key"] == "custom"), "an empty Custom Codes group was sent: {groups}");
-            let sent = call(&tab, "encoder:requestCustomEvents", json!({})).await?;
-            ensure!(last(&sent, "encoder:customEventsData").unwrap()["events"] == json!({}));
-            Ok(())
-        }),
-        case("the_emnet_timezone_override_is_offered_and_applied", |tab| async move {
-            open(&tab).await?;
-            let sent = call(&tab, "encoder:requestData", json!({})).await?;
-            let options = last(&sent, "encoder:overrideTimezonesData").ok_or_else(|| anyhow!("no timezone list"))?["options"].clone();
-            ensure!(options.as_array().map_or(false, |a| a.iter().any(|o| o["value"] == "EST")), "{options}");
-            call(
+                let sent =
+                    call(&tab, "encoder:removeCustomEvent", json!({ "code": "WCN" })).await?;
+                ensure!(
+                    *last(&sent, "encoder:customEventResult").unwrap()
+                        == json!({ "ok": true, "action": "removed", "code": "WCN" })
+                );
+                let groups = last(&sent, "encoder:eventGroupsData").unwrap()["groups"].clone();
+                ensure!(
+                    !groups
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|g| g["key"] == "custom"),
+                    "an empty Custom Codes group was sent: {groups}"
+                );
+                let sent = call(&tab, "encoder:requestCustomEvents", json!({})).await?;
+                ensure!(last(&sent, "encoder:customEventsData").unwrap()["events"] == json!({}));
+                Ok(())
+            },
+        ),
+        case(
+            "the_emnet_timezone_override_is_offered_and_applied",
+            |tab| async move {
+                open(&tab).await?;
+                let sent = call(&tab, "encoder:requestData", json!({})).await?;
+                let options = last(&sent, "encoder:overrideTimezonesData")
+                    .ok_or_else(|| anyhow!("no timezone list"))?["options"]
+                    .clone();
+                ensure!(
+                    options
+                        .as_array()
+                        .is_some_and(|items| items.iter().any(|item| item["value"] == "EST")),
+                    "{options}"
+                );
+                call(
                 &tab,
                 "encoder:generate",
                 json!({ "originator": "WXR", "event": "RWT", "hours": 0, "minutes": 15, "sender": "KDMX/NWS", "locations": ["019153"],
                         "announcementType": "none", "overrideTZ": "EST" }),
             )
             .await?;
-            tab.wait_until("document.getElementById('useOverrideTZ').value === 'EST'", Duration::from_secs(10)).await
-        }),
+                tab.wait_until(
+                    "document.getElementById('useOverrideTZ').value === 'EST'",
+                    Duration::from_secs(10),
+                )
+                .await
+            },
+        ),
         case("a_custom_fips_code_resolves_as_custom", |tab| async move {
             open(&tab).await?;
-            let sent = call(&tab, "encoder:resolveFips", json!({ "codes": ["088888", "048453"] })).await?;
+            let sent = call(
+                &tab,
+                "encoder:resolveFips",
+                json!({ "codes": ["088888", "048453"] }),
+            )
+            .await?;
             let results = last(&sent, "encoder:fipsResolved").unwrap()["results"].clone();
-            ensure!(results[0]["county"] == "Custom code" && results[1]["county"] == "Travis County, TX", "{results}");
+            ensure!(
+                results[0]["county"] == "Custom code"
+                    && results[1]["county"] == "Travis County, TX",
+                "{results}"
+            );
             Ok(())
         }),
     ]

@@ -1,6 +1,6 @@
-mod common;
 mod a11y;
 mod announcement_level;
+mod common;
 mod crawl_atari;
 mod crawl_dasdec;
 mod crawl_dimension_inputs;
@@ -50,13 +50,19 @@ fn main() -> std::process::ExitCode {
         ("crawl_atari", crawl_atari::cases()),
         ("crawl_dasdec", crawl_dasdec::cases()),
         ("crawl_dimension_inputs", crawl_dimension_inputs::cases()),
-        ("crawl_easyplus_event_names", crawl_easyplus_event_names::cases()),
+        (
+            "crawl_easyplus_event_names",
+            crawl_easyplus_event_names::cases(),
+        ),
         ("crawl_premade_locks", crawl_premade_locks::cases()),
         ("crawl_screen_builder", crawl_screen_builder::cases()),
         ("crawl_sender_override", crawl_sender_override::cases()),
         ("crawl_top_left_manual", crawl_top_left_manual::cases()),
         ("crawl_video_background", crawl_video_background::cases()),
-        ("crawl_video_export_stall", crawl_video_export_stall::cases()),
+        (
+            "crawl_video_export_stall",
+            crawl_video_export_stall::cases(),
+        ),
         ("custom_event_codes", custom_event_codes::cases()),
         ("decoder_alarm", decoder_alarm::cases()),
         ("decoder_custom_alarms", decoder_custom_alarms::cases()),
@@ -85,7 +91,10 @@ fn main() -> std::process::ExitCode {
         ("warngen_radar", warngen_radar::cases()),
         ("warngen_radar_export", warngen_radar_export::cases()),
         ("warngen_radar_synth", warngen_radar_synth::cases()),
-        ("warngen_searchable_selects", warngen_searchable_selects::cases()),
+        (
+            "warngen_searchable_selects",
+            warngen_searchable_selects::cases(),
+        ),
         ("warngen_theme", warngen_theme::cases()),
         ("warngen_zone_warnings", warngen_zone_warnings::cases()),
     ])

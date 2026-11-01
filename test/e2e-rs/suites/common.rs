@@ -22,7 +22,11 @@ return true;
 pub async fn wait_for_tool(tab: &Tab, tool: &str) -> Result<()> {
     let deadline = std::time::Instant::now() + Duration::from_secs(40);
     loop {
-        if tab.js::<bool>(TOOL_READY_JS, json!([tool])).await.unwrap_or(false) {
+        if tab
+            .js::<bool>(TOOL_READY_JS, json!([tool]))
+            .await
+            .unwrap_or(false)
+        {
             return Ok(());
         }
         if std::time::Instant::now() >= deadline {
@@ -109,7 +113,10 @@ const buttonId = arguments[0];
 pub async fn capture_download(tab: &Tab, button: &str) -> Result<(String, String)> {
     let result: Value = tab.js_async(CAPTURE_DOWNLOAD_JS, json!([button])).await?;
     ensure!(result["ok"] == true, "{button} saved nothing");
-    Ok((result["name"].as_str().unwrap_or_default().to_string(), result["text"].as_str().unwrap_or_default().to_string()))
+    Ok((
+        result["name"].as_str().unwrap_or_default().to_string(),
+        result["text"].as_str().unwrap_or_default().to_string(),
+    ))
 }
 
 /// Waits for the next alert/confirm after `before` already-seen dialogs.
@@ -127,7 +134,11 @@ pub async fn wait_for_dialog(tab: &Tab, before: usize) -> Result<String> {
 
 /// Clicks via a zero-delay timer so a dialog raised by the click cannot hold up this call.
 pub async fn click_later(tab: &Tab, id: &str) -> Result<()> {
-    tab.exec("setTimeout(() => document.getElementById(arguments[0]).click(), 0);", json!([id])).await
+    tab.exec(
+        "setTimeout(() => document.getElementById(arguments[0]).click(), 0);",
+        json!([id]),
+    )
+    .await
 }
 
 pub async fn open_tool_tracking_errors(tab: &Tab, tool: &str) -> Result<()> {
@@ -173,11 +184,16 @@ pub async fn set_checkbox(tab: &Tab, id: &str, checked: bool) -> Result<()> {
 }
 
 pub async fn field_value(tab: &Tab, id: &str) -> Result<String> {
-    tab.js("return document.getElementById(arguments[0]).value;", json!([id])).await
+    tab.js(
+        "return document.getElementById(arguments[0]).value;",
+        json!([id]),
+    )
+    .await
 }
 
 pub async fn status_text(tab: &Tab) -> Result<String> {
-    tab.eval("document.getElementById('status').innerText").await
+    tab.eval("document.getElementById('status').innerText")
+        .await
 }
 
 /// A 440 Hz tone of `seconds`, handed to the encoder as if the native app had loaded it.
@@ -199,7 +215,11 @@ return true;";
 /// Clicks Generate and waits for "EAS Generated!", failing on an alert, a reported error or
 /// any page error collected since open_tool_tracking_errors.
 pub async fn generate(tab: &Tab, label: &str) -> Result<()> {
-    tab.exec("document.getElementById('status').innerHTML = '';", json!([])).await?;
+    tab.exec(
+        "document.getElementById('status').innerHTML = '';",
+        json!([]),
+    )
+    .await?;
     let dialogs = tab.dialogs().len();
     tab.wait_until(
         "(() => { const b = document.querySelector('button[data-encoder-generate]'); return !!b && !b.disabled; })()",
@@ -213,11 +233,17 @@ pub async fn generate(tab: &Tab, label: &str) -> Result<()> {
             bail!("{label}: unexpected encoder alert: {text}");
         }
         let status = status_text(tab).await?;
-        ensure!(!status.contains("Error generating alert:"), "{label}: encoder reported an error: {status}");
+        ensure!(
+            !status.contains("Error generating alert:"),
+            "{label}: encoder reported an error: {status}"
+        );
         if status.contains("EAS Generated!") {
             break;
         }
-        ensure!(std::time::Instant::now() < deadline, "{label}: generation never finished: {status}");
+        ensure!(
+            std::time::Instant::now() < deadline,
+            "{label}: generation never finished: {status}"
+        );
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
     let errors: Vec<String> = tab.eval("window.__testErrors || []").await?;
@@ -229,18 +255,29 @@ pub async fn sample_count(tab: &Tab) -> Result<i64> {
     let text = status_text(tab).await?;
     let marker = "EAS Generated! Samples: ";
     let start = text.find(marker).context("no sample count in the status")? + marker.len();
-    let digits: String = text[start..].chars().take_while(|c| c.is_ascii_digit() || *c == ',').filter(|c| *c != ',').collect();
+    let digits: String = text[start..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == ',')
+        .filter(|c| *c != ',')
+        .collect();
     Ok(digits.parse()?)
 }
 
 pub async fn wait_for_saved_encoder_settings(tab: &Tab) -> Result<()> {
-    tab.wait_until("document.getElementById('status').innerText.includes('Loaded saved encoder settings!')", Duration::from_secs(60))
-        .await
+    tab.wait_until(
+        "document.getElementById('status').innerText.includes('Loaded saved encoder settings!')",
+        Duration::from_secs(60),
+    )
+    .await
 }
 
 pub async fn checkbox_state(tab: &Tab, id: &str) -> Result<bool> {
-    let state: Option<bool> =
-        tab.js("const el = document.getElementById(arguments[0]); return el ? el.checked : null;", json!([id])).await?;
+    let state: Option<bool> = tab
+        .js(
+            "const el = document.getElementById(arguments[0]); return el ? el.checked : null;",
+            json!([id]),
+        )
+        .await?;
     state.with_context(|| format!("missing checkbox #{id}"))
 }
 
@@ -252,12 +289,17 @@ pub async fn audio_duration(tab: &Tab) -> Result<f64> {
         Duration::from_secs(120),
     )
     .await?;
-    tab.eval("document.getElementById('audioPlayback').duration").await
+    tab.eval("document.getElementById('audioPlayback').duration")
+        .await
 }
 
 /// SHA-256 of the generated WAV blob, so two runs can be compared exactly.
 pub async fn audio_digest(tab: &Tab) -> Result<String> {
-    tab.wait_until("document.getElementById('audioPlayback').src.startsWith('blob:')", Duration::from_secs(120)).await?;
+    tab.wait_until(
+        "document.getElementById('audioPlayback').src.startsWith('blob:')",
+        Duration::from_secs(120),
+    )
+    .await?;
     tab.eval(
         "(async () => {
             const buf = await (await fetch(document.getElementById('audioPlayback').src)).arrayBuffer();
@@ -286,7 +328,10 @@ pub fn sine_wav(amplitude: f64, seconds: f64, rate: u32) -> Vec<u8> {
     out.extend_from_slice(b"data");
     out.extend_from_slice(&data_len.to_le_bytes());
     for i in 0..frames {
-        let v = (amplitude * 32767.0 * (2.0 * std::f64::consts::PI * 440.0 * i as f64 / rate as f64).sin()).round() as i16;
+        let v = (amplitude
+            * 32767.0
+            * (2.0 * std::f64::consts::PI * 440.0 * i as f64 / rate as f64).sin())
+        .round() as i16;
         out.extend_from_slice(&v.to_le_bytes());
     }
     out

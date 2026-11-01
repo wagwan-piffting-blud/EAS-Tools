@@ -4,7 +4,9 @@ use std::f64::consts::PI;
 
 use eas_tools_e2e::*;
 
-use crate::common::{generate, open_tool, open_tool_tracking_errors, set_field, temp_file, wait_for_tool};
+use crate::common::{
+    generate, open_tool, open_tool_tracking_errors, set_field, temp_file, wait_for_tool,
+};
 
 const HEADER: &str = "ZCZC-WXR-TOR-029095-029047+0030-2521820-KEAX/NWS-";
 const PRODUCT: &str = "WFUS53 KEAX 201820
@@ -52,12 +54,18 @@ async fn send(tab: &Tab, scope: &str, item: &str) -> Result<()> {
 }
 
 async fn active_tool(tab: &Tab) -> Result<String> {
-    tab.eval("document.querySelector('button[data-tool].active')?.dataset.tool || ''").await
+    tab.eval("document.querySelector('button[data-tool].active')?.dataset.tool || ''")
+        .await
 }
 
 fn afsk(text: &str) -> Vec<f64> {
-    let data: Vec<u8> = std::iter::repeat(0xABu8).take(16).chain(text.bytes()).collect();
-    let bits: Vec<u8> = data.iter().flat_map(|byte| (0..8).map(move |i| (byte >> i) & 1)).collect();
+    let data: Vec<u8> = std::iter::repeat_n(0xABu8, 16)
+        .chain(text.bytes())
+        .collect();
+    let bits: Vec<u8> = data
+        .iter()
+        .flat_map(|byte| (0..8).map(move |i| (byte >> i) & 1))
+        .collect();
     let rate = RATE as f64;
     let mut phase = 0.0;
     (0..(bits.len() as f64 * rate / BAUD) as usize)
@@ -72,10 +80,12 @@ fn afsk(text: &str) -> Vec<f64> {
 fn header_wav() -> Result<std::path::PathBuf> {
     let silence = vec![0.0; RATE as usize];
     let burst = afsk(HEADER);
-    let samples: Vec<f64> = [&silence, &burst, &silence, &burst, &silence, &burst, &silence]
-        .iter()
-        .flat_map(|part| part.iter().copied())
-        .collect();
+    let samples: Vec<f64> = [
+        &silence, &burst, &silence, &burst, &silence, &burst, &silence,
+    ]
+    .iter()
+    .flat_map(|part| part.iter().copied())
+    .collect();
     let mut bytes = Vec::with_capacity(44 + samples.len() * 2);
     let data_len = (samples.len() * 2) as u32;
     bytes.extend_from_slice(b"RIFF");
@@ -107,11 +117,23 @@ async fn wait_decoded(tab: &Tab) -> Result<()> {
 /// Decodes the synthetic header and opens its alert modal, marking the page so a reload shows.
 async fn open_decoded_alert(tab: &Tab) -> Result<()> {
     open_tool(tab, "decoder").await?;
-    tab.exec("document.getElementById('output').innerHTML = ''; window.__samePage = true;", json!([])).await?;
+    tab.exec(
+        "document.getElementById('output').innerHTML = ''; window.__samePage = true;",
+        json!([]),
+    )
+    .await?;
     tab.set_files("#audiofile", &[header_wav()?]).await?;
     wait_decoded(tab).await?;
-    tab.exec("document.querySelector('#output .alert button').click();", json!([])).await?;
-    tab.wait_until("!!document.querySelector('#modal-info .send-menu__button')", Duration::from_secs(10)).await
+    tab.exec(
+        "document.querySelector('#output .alert button').click();",
+        json!([]),
+    )
+    .await?;
+    tab.wait_until(
+        "!!document.querySelector('#modal-info .send-menu__button')",
+        Duration::from_secs(10),
+    )
+    .await
 }
 
 async fn generate_alert(tab: &Tab) -> Result<()> {
@@ -153,46 +175,75 @@ pub fn cases() -> Vec<Case> {
 
 fn cases_without_endec_rates() -> Vec<Case> {
     vec![
-        case("decoder_alert_opens_in_the_encoder_without_a_reload", |tab| async move {
-            open_decoded_alert(&tab).await?;
-            send(&tab, "#modal-info", "SAME Encoder (header)").await?;
-            wait_for_tool(&tab, "encoder").await?;
-            tab.wait_until(&format!("document.getElementById('cheader').value === {HEADER:?}"), Duration::from_secs(10)).await?;
-            let state: Value = tab
+        case(
+            "decoder_alert_opens_in_the_encoder_without_a_reload",
+            |tab| async move {
+                open_decoded_alert(&tab).await?;
+                send(&tab, "#modal-info", "SAME Encoder (header)").await?;
+                wait_for_tool(&tab, "encoder").await?;
+                tab.wait_until(
+                    &format!("document.getElementById('cheader').value === {HEADER:?}"),
+                    Duration::from_secs(10),
+                )
+                .await?;
+                let state: Value = tab
                 .eval(
                     "({ same: window.__samePage === true, mode: window.mode, select: document.getElementById('encoderMode').value,
                         shown: getComputedStyle(document.getElementById('stringEncoder')).display !== 'none',
                         modal: window.modalShown })",
                 )
                 .await?;
-            ensure!(state["same"] == true, "the page reloaded: {state}");
-            ensure!(state["mode"] == "header" && state["select"] == "header" && state["shown"] == true, "{state}");
-            ensure!(state["modal"] == false, "the alert modal stayed open: {state}");
-            Ok(())
-        }),
-        case("decoder_alert_opens_in_the_crawl_header_mode", |tab| async move {
-            open_decoded_alert(&tab).await?;
-            send(&tab, "#modal-info", "Text Crawl Generator (header)").await?;
-            wait_for_tool(&tab, "crawl").await?;
-            tab.wait_until(
+                ensure!(state["same"] == true, "the page reloaded: {state}");
+                ensure!(
+                    state["mode"] == "header"
+                        && state["select"] == "header"
+                        && state["shown"] == true,
+                    "{state}"
+                );
+                ensure!(
+                    state["modal"] == false,
+                    "the alert modal stayed open: {state}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "decoder_alert_opens_in_the_crawl_header_mode",
+            |tab| async move {
+                open_decoded_alert(&tab).await?;
+                send(&tab, "#modal-info", "Text Crawl Generator (header)").await?;
+                wait_for_tool(&tab, "crawl").await?;
+                tab.wait_until(
                 &format!("document.getElementById('crawlRawHeader').value === {HEADER:?} && document.getElementById('crawlMode').value === 'header'"),
                 Duration::from_secs(20),
             )
             .await?;
-            tab.wait_until("/TORNADO/i.test(window.crawlGenerator.getCrawlText() || '')", Duration::from_secs(20)).await?;
-            Ok(())
-        }),
+                tab.wait_until(
+                    "/TORNADO/i.test(window.crawlGenerator.getCrawlText() || '')",
+                    Duration::from_secs(20),
+                )
+                .await?;
+                Ok(())
+            },
+        ),
         case("decoder_audio_opens_in_the_splicer", |tab| async move {
             open_decoded_alert(&tab).await?;
             send(&tab, "#modal-info", "Audio Splicer (decoded audio)").await?;
             wait_for_tool(&tab, "splicer").await?;
-            tab.wait_until("!document.querySelector('[data-splice-export]').disabled", Duration::from_secs(30)).await?;
+            tab.wait_until(
+                "!document.querySelector('[data-splice-export]').disabled",
+                Duration::from_secs(30),
+            )
+            .await?;
             Ok(())
         }),
         case("encoder_alert_decodes_in_the_decoder", |tab| async move {
             generate_alert(&tab).await?;
             send(&tab, "#encoderSendMenu", "Decoder").await?;
-            ensure!(active_tool(&tab).await? == "decoder", "the decoder tab did not open");
+            ensure!(
+                active_tool(&tab).await? == "decoder",
+                "the decoder tab did not open"
+            );
             wait_decoded(&tab).await?;
             Ok(())
         }),
@@ -208,47 +259,74 @@ fn cases_without_endec_rates() -> Vec<Case> {
             Ok(())
         }),
         case("header_query_param_selects_header_mode", |tab| async move {
-            tab.goto(&format!("index.html?tool=encoder&header={}", HEADER.replace('+', "%2B"))).await?;
+            tab.goto(&format!(
+                "index.html?tool=encoder&header={}",
+                HEADER.replace('+', "%2B")
+            ))
+            .await?;
             wait_for_tool(&tab, "encoder").await?;
             let state: Value = tab
                 .eval("({ mode: window.mode, header: document.getElementById('cheader').value, shown: getComputedStyle(document.getElementById('stringEncoder')).display !== 'none' })")
                 .await?;
-            ensure!(state["mode"] == "header" && state["header"] == HEADER && state["shown"] == true, "{state}");
+            ensure!(
+                state["mode"] == "header" && state["header"] == HEADER && state["shown"] == true,
+                "{state}"
+            );
             Ok(())
         }),
-        case("normalizer_output_becomes_encoder_tts_text", |tab| async move {
-            open_tool(&tab, "normalizer").await?;
-            tab.exec(
-                "window.normalizerEditor.setValue(arguments[0]);
+        case(
+            "normalizer_output_becomes_encoder_tts_text",
+            |tab| async move {
+                open_tool(&tab, "normalizer").await?;
+                tab.exec(
+                    "window.normalizerEditor.setValue(arguments[0]);
                  document.getElementById('normalizeButton').click();",
-                json!([PRODUCT]),
-            )
-            .await?;
-            let normalized: String = tab.eval("document.getElementById('normalizedProduct').textContent.trim()").await?;
-            ensure!(!normalized.is_empty(), "the normalizer produced nothing");
-            send(&tab, "#normalizer-panel", "SAME Encoder").await?;
-            wait_for_tool(&tab, "encoder").await?;
-            tab.wait_until(
+                    json!([PRODUCT]),
+                )
+                .await?;
+                let normalized: String = tab
+                    .eval("document.getElementById('normalizedProduct').textContent.trim()")
+                    .await?;
+                ensure!(!normalized.is_empty(), "the normalizer produced nothing");
+                send(&tab, "#normalizer-panel", "SAME Encoder").await?;
+                wait_for_tool(&tab, "encoder").await?;
+                tab.wait_until(
                 &format!("window.encoderEditor.getValue() === {normalized:?} && window.ttsText === {normalized:?} && document.getElementById('announcementType').value === 'tts'"),
                 Duration::from_secs(20),
             )
             .await?;
-            Ok(())
-        }),
-        case("typing_in_other_tools_leaves_the_encoder_tts_text_alone", |tab| async move {
-            open_tool(&tab, "encoder").await?;
-            tab.exec("window.encoderEditor.setValue('encoder text');", json!([])).await?;
-            tab.exec("document.getElementById('tab-normalizer').click();", json!([])).await?;
-            wait_for_tool(&tab, "normalizer").await?;
-            tab.exec("window.normalizerEditor.setValue('normalizer text');", json!([])).await?;
-            tab.exec("document.getElementById('tab-phoneme').click();", json!([])).await?;
-            wait_for_tool(&tab, "phoneme").await?;
-            tab.wait_until("!!window.phonemeEditor", Duration::from_secs(20)).await?;
-            tab.exec("window.phonemeEditor.setValue('phoneme text');", json!([])).await?;
-            let text: String = tab.eval("window.ttsText").await?;
-            ensure!(text == "encoder text", "window.ttsText became {text:?}");
-            Ok(())
-        }),
+                Ok(())
+            },
+        ),
+        case(
+            "typing_in_other_tools_leaves_the_encoder_tts_text_alone",
+            |tab| async move {
+                open_tool(&tab, "encoder").await?;
+                tab.exec("window.encoderEditor.setValue('encoder text');", json!([]))
+                    .await?;
+                tab.exec(
+                    "document.getElementById('tab-normalizer').click();",
+                    json!([]),
+                )
+                .await?;
+                wait_for_tool(&tab, "normalizer").await?;
+                tab.exec(
+                    "window.normalizerEditor.setValue('normalizer text');",
+                    json!([]),
+                )
+                .await?;
+                tab.exec("document.getElementById('tab-phoneme').click();", json!([]))
+                    .await?;
+                wait_for_tool(&tab, "phoneme").await?;
+                tab.wait_until("!!window.phonemeEditor", Duration::from_secs(20))
+                    .await?;
+                tab.exec("window.phonemeEditor.setValue('phoneme text');", json!([]))
+                    .await?;
+                let text: String = tab.eval("window.ttsText").await?;
+                ensure!(text == "encoder text", "window.ttsText became {text:?}");
+                Ok(())
+            },
+        ),
         case("send_menu_is_keyboard_operable", |tab| async move {
             open_tool(&tab, "normalizer").await?;
             tab.focus("#normalizer-panel .send-menu__button").await?;
@@ -260,8 +338,14 @@ fn cases_without_endec_rates() -> Vec<Case> {
                               disabled: document.activeElement.getAttribute('aria-disabled'), text: document.activeElement.textContent }; })()",
                 )
                 .await?;
-            ensure!(opened["expanded"] == "true" && opened["focused"] == "menuitem", "{opened}");
-            ensure!(opened["disabled"] == "true", "an empty normalizer should not offer a send: {opened}");
+            ensure!(
+                opened["expanded"] == "true" && opened["focused"] == "menuitem",
+                "{opened}"
+            );
+            ensure!(
+                opened["disabled"] == "true",
+                "an empty normalizer should not offer a send: {opened}"
+            );
             tab.press("ArrowDown", &[]).await?;
             tab.press("Escape", &[]).await?;
             let closed: Value = tab
@@ -270,39 +354,50 @@ fn cases_without_endec_rates() -> Vec<Case> {
                      return { expanded: b.getAttribute('aria-expanded'), back: document.activeElement === b, tool: document.querySelector('button[data-tool].active').dataset.tool }; })()",
                 )
                 .await?;
-            ensure!(closed["expanded"] == "false" && closed["back"] == true && closed["tool"] == "normalizer", "{closed}");
+            ensure!(
+                closed["expanded"] == "false"
+                    && closed["back"] == true
+                    && closed["tool"] == "normalizer",
+                "{closed}"
+            );
             Ok(())
         }),
-        case("warngen_stays_loaded_across_tab_switches", |tab| async move {
-            open_tool(&tab, "warngen").await?;
-            tab.wait_until(
+        case(
+            "warngen_stays_loaded_across_tab_switches",
+            |tab| async move {
+                open_tool(&tab, "warngen").await?;
+                tab.wait_until(
                 // The iframe's initial about:blank document is also 'complete', so wait for WarnGen's own.
                 "(() => { const f = document.querySelector('#warngen-container iframe'); const d = f && f.contentDocument;
                    return !!d && /\\/warngen\\/(index\\.html)?$/.test(d.location.pathname) && d.readyState === 'complete'; })()",
                 Duration::from_secs(30),
             )
             .await?;
-            tab.exec("document.querySelector('#warngen-container iframe').contentWindow.__kept = true; document.getElementById('tab-decoder').click();", json!([])).await?;
-            tab.exec("document.getElementById('tab-warngen').click();", json!([])).await?;
-            let kept: bool = tab.eval("document.querySelector('#warngen-container iframe')?.contentWindow.__kept === true").await?;
-            ensure!(kept, "the WarnGen iframe was reloaded");
-            // The menu attaches once the parent's handoff.js import lands, which may trail the iframe's load.
-            tab.wait_until(
+                tab.exec("document.querySelector('#warngen-container iframe').contentWindow.__kept = true; document.getElementById('tab-decoder').click();", json!([])).await?;
+                tab.exec("document.getElementById('tab-warngen').click();", json!([]))
+                    .await?;
+                let kept: bool = tab.eval("document.querySelector('#warngen-container iframe')?.contentWindow.__kept === true").await?;
+                ensure!(kept, "the WarnGen iframe was reloaded");
+                // The menu attaches once the parent's handoff.js import lands, which may trail the iframe's load.
+                tab.wait_until(
                 "!!document.querySelector('#warngen-container iframe').contentDocument.querySelector('.send-menu:not([hidden]) .send-menu__button')",
                 Duration::from_secs(10),
             )
             .await
             .context("WarnGen has no Send to… menu")?;
-            Ok(())
-        }),
-        case("warngen_product_resolves_to_a_header_in_the_encoder", |tab| async move {
-            open_tool(&tab, "warngen").await?;
-            tab.wait_until(
+                Ok(())
+            },
+        ),
+        case(
+            "warngen_product_resolves_to_a_header_in_the_encoder",
+            |tab| async move {
+                open_tool(&tab, "warngen").await?;
+                tab.wait_until(
                 "(() => { const f = document.querySelector('#warngen-container iframe'); return !!f && !!f.contentDocument && !!f.contentDocument.querySelector('.send-menu__button'); })()",
                 Duration::from_secs(30),
             )
             .await?;
-            let result: Value = tab
+                let result: Value = tab
                 .js(
                     "const frame = document.querySelector('#warngen-container iframe');
                      frame.contentWindow.lastFormattedOutput = arguments[0];
@@ -315,11 +410,12 @@ fn cases_without_endec_rates() -> Vec<Case> {
                     json!([PRODUCT]),
                 )
                 .await?;
-            ensure!(result["ok"] == true, "{result}");
-            wait_for_tool(&tab, "encoder").await?;
-            tab.wait_until("/^ZCZC-WXR-TOR-029095\\+/.test(document.getElementById('headerPreview').textContent)", Duration::from_secs(20))
+                ensure!(result["ok"] == true, "{result}");
+                wait_for_tool(&tab, "encoder").await?;
+                tab.wait_until("/^ZCZC-WXR-TOR-029095\\+/.test(document.getElementById('headerPreview').textContent)", Duration::from_secs(20))
                 .await?;
-            Ok(())
-        }),
+                Ok(())
+            },
+        ),
     ]
 }
