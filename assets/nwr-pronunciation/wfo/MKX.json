@@ -1,0 +1,174 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/MKX",
+    "scope": {
+        "type": "wfo",
+        "id": "MKX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 114,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "am",
+            "match": "AM",
+            "replace": {
+                "kind": "vtml",
+                "markup": "{{match}}<vtml_phoneme alphabet=\"x-cmu\" ph=\"B F\"></vtml_phoneme>"
+            },
+            "caseSensitive": true,
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "fond-du-lac",
+            "match": "Fond du Lac",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AO2 N D AH L AE K"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "mequon",
+            "match": "Mequon",
+            "replace": {
+                "kind": "respell",
+                "text": "May Quan"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        },
+        {
+            "id": "muskego",
+            "match": "Muskego",
+            "replace": {
+                "kind": "respell",
+                "text": "Musk ih go"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        },
+        {
+            "id": "ozaukee",
+            "match": "Ozaukee",
+            "replace": {
+                "kind": "respell",
+                "text": "O zaw key"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "per-hour",
+            "match": "per hour",
+            "replace": {
+                "kind": "respell",
+                "text": "an hour"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 26
+                }
+            ],
+            "notes": "They say \"an\" instead of \"per\"."
+        },
+        {
+            "id": "pm",
+            "match": "PM",
+            "replace": {
+                "kind": "vtml",
+                "markup": "{{match}}<vtml_phoneme alphabet=\"x-cmu\" ph=\"B F\"></vtml_phoneme>"
+            },
+            "caseSensitive": true,
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "waukesha",
+            "match": "Waukesha",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AO1 K AH SH AO2"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "wauwatosa",
+            "match": "Wauwatosa",
+            "replace": {
+                "kind": "respell",
+                "text": "Wawa Tosa"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "saysTimeZone": "No (special AM/PM phoneme)",
+        "hazardIndicator": "Hazard (\"an hour\" instead of \"per hour\")",
+        "reportScript": null,
+        "recap": "No"
+    }
+}

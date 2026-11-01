@@ -1,0 +1,96 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/LIX",
+    "scope": {
+        "type": "wfo",
+        "id": "LIX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 109,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "lafourche",
+            "match": "Lafourche",
+            "replace": {
+                "kind": "respell",
+                "text": "La Foosh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "tangipahoa",
+            "match": "Tangipahoa",
+            "replace": {
+                "kind": "respell",
+                "text": "Tanja-pa-hoa"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "terrebonne",
+            "match": "Terrebonne",
+            "replace": {
+                "kind": "respell",
+                "text": "terre-bone"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ],
+            "notes": "Spelled \"Terrebone\" in the guide."
+        },
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "respell",
+                "text": "tor nad ik"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 1
+                }
+            ],
+            "notes": "Tornadic variant 3."
+        }
+    ]
+}

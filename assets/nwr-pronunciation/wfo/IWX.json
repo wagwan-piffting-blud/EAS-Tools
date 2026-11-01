@@ -1,0 +1,146 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/IWX",
+    "scope": {
+        "type": "wfo",
+        "id": "IWX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 115,
+            "verified": true
+        },
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true
+        },
+        "periodPauseMs": {
+            "value": 900,
+            "verified": true
+        }
+    },
+    "entries": [
+        {
+            "id": "kosciusko",
+            "match": "Kosciusko",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH1 Z EY AH1 S K OW"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "la-porte",
+            "match": "La Porte",
+            "replace": {
+                "kind": "respell",
+                "text": "LaPorte"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "lima",
+            "match": "Lima",
+            "replace": {
+                "kind": "vtml",
+                "markup": "Lie <vtml_phoneme alphabet=\"x-cmu\" ph=\"M AH\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "noaa",
+            "match": "NOAA",
+            "replace": {
+                "kind": "respell",
+                "text": "Know-uh"
+            },
+            "variants": [
+                {
+                    "id": "no-uh",
+                    "label": "IWX variant 2",
+                    "replace": {
+                        "kind": "respell",
+                        "text": "No-uh"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "pulaski",
+            "match": "Pulaski",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AH L AE S K AY"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "steuben",
+            "match": "Steuben",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S T UW1 B EH1 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ],
+            "notes": "Spelled \"Stueben\" in the guide."
+        }
+    ],
+    "style": {
+        "preamble": "This is a (Severe Thunderstorm/Tornado) Watch (SVA and TOA only)",
+        "regionOfState": "Yes/Central (for \"central\" portions Paul says \"Indiana\": \"Elkhart County, Indiana\")",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "recap": "Yes"
+    }
+}

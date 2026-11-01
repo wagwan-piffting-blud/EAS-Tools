@@ -37,6 +37,14 @@ the decoder, EAS2Text, and text crawl use their names. Codes nobody has named
 read as "an Unrecognized Warning/Watch/Statement/Emergency" by their last
 letter, or "an Unrecognized Message".
 
+With the VT Paul voice selected, the Encoder and the Audio Splicer show "NWR
+pronunciations (VT Paul)". It applies the NWS national dictionary by default.
+Pick a forecast office or NOAA Weather Radio transmitter to add that site's
+pronunciations, speed and pauses. **Preview replacements** shows the text as it
+will be sent. **My pronunciations…** lets you add your own entries, turn shared
+ones off, import or export them, and suggest them for everyone (anonymous,
+reviewed before publishing).
+
 ## Text crawl generator
 
 1. Select custom text or generate text from a SAME header with EAS2Text.

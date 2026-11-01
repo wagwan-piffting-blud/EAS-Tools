@@ -1,0 +1,51 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/WXM32",
+    "scope": {
+        "type": "tx",
+        "id": "WXM32",
+        "wfo": "FFC"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": null,
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "talbot",
+            "match": "Talbot",
+            "replace": {
+                "kind": "respell",
+                "text": "Talbolt"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ],
+            "notes": "Station ID only."
+        }
+    ]
+}

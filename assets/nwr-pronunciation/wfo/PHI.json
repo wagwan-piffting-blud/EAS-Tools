@@ -1,0 +1,79 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/PHI",
+    "scope": {
+        "type": "wfo",
+        "id": "PHI"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 120,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "hunterdon",
+            "match": "Hunterdon",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AH1 N T ER0 D IH0 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "lehigh",
+            "match": "Lehigh",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IY HH AY"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        }
+    ],
+    "style": {
+        "marineThunderstormPhrase": "Winds and waves higher in and near <vtml_phoneme alphabet=\"x-cmu\" ph=\"TH AH1 N D ER0 S T OW0 R M Z\"></vtml_phoneme>.",
+        "preamble": "The following is a (Severe Thunderstorm/Tornado) Watch announcement from the National Weather Service (SVA and TOA only)",
+        "saysOfficeState": {
+            "value": true,
+            "note": "Not in flood alerts (FLW, FFW)"
+        },
+        "regionOfState": "Yes",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "reportScript": "None, but during COVID this went before the precautionary/preparedness lines: Protecting yourself from immediate threats to life and property shall take priority. Whenever possible, as long as it does not cause greater harm, all COVID-19 protective action guidance should be followed.",
+        "recap": "Yes"
+    }
+}

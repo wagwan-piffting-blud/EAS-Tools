@@ -1,0 +1,75 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/AKQ",
+    "scope": {
+        "type": "wfo",
+        "id": "AKQ"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 117,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "chowan",
+            "match": "Chowan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "CH OW1 W AA N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "pasquotank",
+            "match": "Pasquotank",
+            "replace": {
+                "kind": "vtml",
+                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"P AE1 S K W OW\"></vtml_phoneme>tank"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ],
+            "notes": "Spelled \"Pasqotank\" in the guide."
+        }
+    ],
+    "style": {
+        "preamble": "Issued at H:MM XM.",
+        "regionOfState": "Says the region of the state for SE VA but not for EC VA",
+        "saysTimeZone": "Not for \"until H:MM PM\", but yes for \"At H:MM PM Eastern Daylight Time\" and a one-location pathcast",
+        "hazardIndicator": "Hazard",
+        "reportScript": "Please report Severe Weather by calling 7 5 7, 8 9 9, 2 4 1 5, posting to the National Weather Service Wakefield Facebook page, or using Twitter using at n w s Wakefield, V, A.",
+        "recap": "No"
+    }
+}

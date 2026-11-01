@@ -66,6 +66,53 @@ lists and CodeMirror examples are not mirrored unless the HTML source provides
 static fallback content. These rules preserve the live HTML behavior while
 keeping the checked-in Markdown mirrors deterministic and readable.
 
+## NWR pronunciation data
+
+`assets/nwr-pronunciation/` holds the VT Paul pronunciation snapshot (GH #158).
+The files are `national.json`, `wfo/<WFO>.json` and `tx/<CALLSIGN>.json`, all
+in the set shape validated by `validatePronunciationSet` in
+`assets/js/nwr-pronunciation.js`. Alongside them, `index.json` is generated and
+`transmitters.json` is derived.
+
+- **Set:** `{schemaVersion: 1, id, scope, rev, updatedAt, voices, sources, prosody, entries, style}`.
+  `prosody` holds `speed` (the `vtml_speed` scale, 100 = normal), `commaPauseMs`
+  and `periodPauseMs`. Each is `{value, verified, notes, variants?}` or `null`;
+  `verified: false` marks the guide's "needs speed test". `style` records
+  per-office scripting habits that are transcribed but not applied yet.
+- **Entry:** `{id, match, caseSensitive?, replace, variants?, verified?, sources, notes?}`.
+  `replace` is one of `{kind: "phoneme", ph, on?}` (CMU phones; `on` limits the
+  phoneme to some words of `match`), `{kind: "respell", text}`, or
+  `{kind: "vtml", markup}`. VTML allows only `vtml_phoneme`, `vtml_pause` and
+  `vtml_break`, with `{{match}}` standing for the original words. Variants are
+  never applied automatically; users pick them in the editor.
+- **Precedence:** national, then office, then transmitter, then the user's own
+  entries. At any position the longest phrase wins.
+
+```bash
+node tools/build-nwr-transmitters.mjs [--from CCL.js]  # transmitters.json from weather.gov's county coverage list
+node tools/sync-nwr-pronunciation.mjs --reindex        # rebuild index.json after editing a set
+node tools/sync-nwr-pronunciation.mjs --check          # validate every set; fail if index.json is stale
+node tools/sync-nwr-pronunciation.mjs --url [--prune]  # pull approved sets from the backend
+node tools/sync-nwr-pronunciation.mjs --export-rules DIR  # rules.json + parity.json for the Flask blueprint
+```
+
+The backend is the Flask blueprint `eas_tts_pron`, kept outside this repository
+because the site tree is deployed to the public web root. It adds these calls
+under the existing `index.php?handler=toolkit` URL:
+
+| Method | Query | Purpose |
+|---|---|---|
+| GET | `&pron=index` | set revisions; the client prefers the backend copy when its `rev` is higher |
+| GET | `&pron=set&id=wfo/LOT` | one set |
+| GET | `&pron=bundle` | every set, for `sync --url` |
+| POST | `&pron=submit` | form `payload=<JSON>`; anonymous; returns `{id, token}` |
+| GET | `&pron=status&id=&token=` | moderation status |
+| POST | `&pron=withdraw` | withdraw a pending submission |
+
+The voice list advertises support as `features.pronunciation` and
+`features.vtProsody`. Without `vtProsody`, the client sends office speed as
+`<vtml_speed>` markup and skips the pauses.
+
 ## Common targets
 
 | Target | Purpose |

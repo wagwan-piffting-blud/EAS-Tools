@@ -38,6 +38,27 @@ const registry = [
         classification: 'derived checked-in data',
     },
     {
+        name: 'NWR transmitter registry',
+        outputs: ['assets/nwr-pronunciation/transmitters.json'],
+        inputs: ['external NWS county coverage listing https://www.weather.gov/source/nwr/JS/CCL.js (parsed as text)', 'warngen/data/civil_sites.json'],
+        generator: 'tools/build-nwr-transmitters.mjs',
+        classification: 'derived checked-in data',
+    },
+    {
+        name: 'VT Paul pronunciation sets',
+        outputs: ['assets/nwr-pronunciation/national.json', 'assets/nwr-pronunciation/wfo/', 'assets/nwr-pronunciation/tx/'],
+        inputs: ['assets/tmyk_phoneme_guide.pdf (hand-transcribed 2026-11-01)', 'the former Paul national block in assets/js/phoneme-bundle.js', 'approved sets from the TTS backend moderation queue (sync --url; source of truth after launch)'],
+        generator: 'tools/sync-nwr-pronunciation.mjs',
+        classification: 'derived checked-in data',
+    },
+    {
+        name: 'VT Paul pronunciation index',
+        outputs: ['assets/nwr-pronunciation/index.json'],
+        inputs: ['assets/nwr-pronunciation/national.json', 'assets/nwr-pronunciation/wfo/', 'assets/nwr-pronunciation/tx/'],
+        generator: 'tools/sync-nwr-pronunciation.mjs',
+        classification: 'generated output',
+    },
+    {
         name: 'EAS eSpeak data package',
         outputs: [
             'assets/wasm_tts_voices/espeak/espeak-ng.eas.data',

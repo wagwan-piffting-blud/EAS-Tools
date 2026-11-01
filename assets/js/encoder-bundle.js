@@ -1,6 +1,9 @@
-import { ENDEC_MODE_OPTIONS, responseOk, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain } from './common-functions.js';
+import { ENDEC_MODE_OPTIONS, responseOk, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain, getPronunciationRepository } from './common-functions.js';
 import { createSendMenu, receive, handIn, audioFile } from './handoff.js';
 import { addCustomEvent, removeCustomEvent, readCustomEvents, customEventTable, onCustomEventsChange } from './custom-events.js';
+import { mountPronunciationControls } from './nwr-pronunciation-ui.js';
+import { summarizePlan } from './nwr-pronunciation.js';
+import { readSelection as readPronunciationSelection, writeSelection as writePronunciationSelection, onSelectionChange as onPronunciationSelectionChange } from './nwr-pronunciation-store.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -1507,6 +1510,8 @@ async function fetchAndStore() {
                 prosody,
             });
 
+            if (result.pronunciation) addStatus("NWR pronunciations: " + summarizePlan(result.pronunciation) + ".");
+
             const pcm = resamplePcm(result.pcm, result.sampleRate, SAMPLE_RATE);
             const normalizedPcm = levelTtsPcm(pcm, {
                 targetDb: ttsNormalizationTargetDb(backend, prosody.volume),
@@ -2300,9 +2305,12 @@ async function fetchAndStore() {
 
     stime();
 
+    let nwrPronControls = null;
+
     function updateVoiceOptions(t) {
         const selectedVoice = t.value;
         const selectedBackend = resolveVoiceBackend(voiceBackendMap, selectedVoice);
+        nwrPronControls?.setVoice(selectedVoice, selectedBackend);
         window.ttsVoice = (selectedVoice || '').trim();
         const overrideTZElements = document.getElementsByClassName('overrideTZ');
         const ttsRatePitchControls = document.getElementById('ttsRatePitchControls');
@@ -3388,6 +3396,13 @@ async function fetchAndStore() {
         voiceSelect.addEventListener('change', (event) => updateVoiceOptions(event.target));
     }
 
+    nwrPronControls = mountPronunciationControls({
+        anchor: document.getElementById('ttsRatePitchControls'),
+        getText: () => window.ttsText || '',
+        getProsody: () => readTtsProsodyControls(''),
+    });
+    if (voiceSelect) nwrPronControls?.setVoice(voiceSelect.value, resolveVoiceBackend(voiceBackendMap, voiceSelect.value));
+
     const ttsTextInput = document.getElementById('ttsText');
     if (ttsTextInput) {
         ttsTextInput.addEventListener('change', (event) => window.ttsText = event.target.value.trim());
@@ -3568,6 +3583,7 @@ async function fetchAndStore() {
     }
 
     receive("encoder", (payload) => {
+        if (typeof payload.office === "string") nwrPronControls?.adoptOffice(payload.office);
         if (payload.header) loadIncomingHeader(payload.header);
         if (typeof payload.text === "string") loadIncomingText(payload.text);
     });
@@ -4032,6 +4048,7 @@ async function fetchAndStore() {
                 }
             }
             window.EASBridge.send('encoder:voicesData', { voices: voicesArr });
+            sendNwrPronunciationData();
 
             const modesArr = [];
             const modeEl = document.getElementById('overallEndecMode');
@@ -4104,6 +4121,29 @@ async function fetchAndStore() {
             window.EASBridge.send('encoder:locationIndex', { mode, entries });
         });
 
+        const sendNwrPronunciationData = () => {
+            window.EASBridge.send('encoder:nwrPronunciationData', { voices: ['paul'], selection: readPronunciationSelection() });
+        };
+
+        window.EASBridge.on('encoder:requestNwrSources', async () => {
+            const sources = await getPronunciationRepository().listSources().catch(() => ({ offices: [], transmitters: [], voices: ['paul'] }));
+            window.EASBridge.send('encoder:nwrSources', {
+                voices: sources.voices,
+                offices: sources.offices.map((o) => ({ source: o.source, id: o.id, label: o.label, entries: o.set ? o.set.entries : 0 })),
+                transmitters: sources.transmitters.map((t) => ({ source: t.source, id: t.id, wfo: t.wfo, site: t.site, state: t.state, freq: t.freq, status: t.status, local: !!t.set })),
+            });
+        });
+
+        window.EASBridge.on('encoder:adoptNwrOffice', (params) => {
+            nwrPronControls?.adoptOffice(params?.office);
+        });
+
+        window.EASBridge.on('encoder:setNwrPronunciation', (params) => {
+            writePronunciationSelection({ enabled: params?.enabled, source: params?.source });
+        });
+
+        onPronunciationSelectionChange(() => sendNwrPronunciationData());
+
         window.EASBridge.on('encoder:requestCustomEvents', () => {
             window.EASBridge.send('encoder:customEventsData', { events: readCustomEvents() });
         });
@@ -4152,6 +4192,7 @@ async function fetchAndStore() {
                 if (params.clip != null && el('clip')) el('clip').checked = params.clip;
                 if (params.endecResample != null && el('endecResample')) el('endecResample').checked = params.endecResample;
                 if (params.announcementType && el('announcementType')) { el('announcementType').value = params.announcementType; el('announcementType').dispatchEvent(new Event('change')); }
+                if (params.nwrPronunciation && typeof params.nwrPronunciation === 'object') writePronunciationSelection({ enabled: params.nwrPronunciation.enabled, source: params.nwrPronunciation.source });
                 if (params.ttsText != null) { window.ttsText = params.ttsText; if (el('ttsText')) el('ttsText').value = params.ttsText; }
                 if (params.ttsVoice) {
                     if (el('ttsVoice')) {

@@ -1,0 +1,87 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/LOX",
+    "scope": {
+        "type": "wfo",
+        "id": "LOX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 113,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "mugu",
+            "match": "Mugu",
+            "replace": {
+                "kind": "respell",
+                "text": "Muh-goo"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ],
+            "notes": "Spelled \"Mugo\" in the guide (Point Mugu)."
+        },
+        {
+            "id": "ojai",
+            "match": "Ojai",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW HH AY2"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        },
+        {
+            "id": "oxnard",
+            "match": "Oxnard",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA0 K S N AA1 R D"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "recap": "Yes"
+    }
+}

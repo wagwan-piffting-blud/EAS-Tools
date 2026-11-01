@@ -1158,5 +1158,6 @@
     }
 
     window.normalizeNwsBulletin = normalizeNwsBulletin;
+    window.nwsIssuingOffice = (raw) => issuingOffice(String(raw || ""));
     window.runNwsNormalizer = run;
 })();

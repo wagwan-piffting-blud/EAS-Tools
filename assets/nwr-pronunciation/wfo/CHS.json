@@ -1,0 +1,47 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/CHS",
+    "scope": {
+        "type": "wfo",
+        "id": "CHS"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 116,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [],
+    "style": {
+        "currentTimePhrase": "The Local Time is;",
+        "marineThunderstormPhrase": "Mariners are reminded that winds and waves can be higher in, and near <vtml_phoneme alphabet=\"x-cmu\" ph=\"TH AH1 N D ER0 S T OW0 R M Z\"></vtml_phoneme>.",
+        "severeWeatherMode": true,
+        "regionOfState": "Yes",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "reportScript": "Report damage directly to the Charleston National Weather Service at 1, 8 8 8, 3 8 3, 2 0 2 4 when it is safe to do so.",
+        "recap": "No"
+    }
+}

@@ -1,0 +1,229 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/FFC",
+    "scope": {
+        "type": "wfo",
+        "id": "FFC"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 103,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "buchanan",
+            "match": "Buchanan",
+            "replace": {
+                "kind": "respell",
+                "text": "Buck-cannon"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "calm",
+            "match": "Calm",
+            "replace": {
+                "kind": "respell",
+                "text": "Callm"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "cedartown",
+            "match": "Cedartown",
+            "replace": {
+                "kind": "respell",
+                "text": "Seedertown"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "coweta",
+            "match": "Coweta",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K OW1 IY1 T AH"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "dont",
+            "match": "Don't",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D UW1 # N AA1 T"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "eatonton",
+            "match": "Eatonton",
+            "replace": {
+                "kind": "respell",
+                "text": "Eatenten"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "hazardous",
+            "match": "Hazardous",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AE1 Z R D AH0 S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "houston",
+            "match": "Houston",
+            "replace": {
+                "kind": "respell",
+                "text": "Howston"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ],
+            "notes": "Houston County, Georgia."
+        },
+        {
+            "id": "muscogee",
+            "match": "Muscogee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH0 S K OW1 G IY1"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "objects",
+            "match": "Objects",
+            "replace": {
+                "kind": "respell",
+                "text": "ob-jects"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "oconee",
+            "match": "Oconee",
+            "replace": {
+                "kind": "respell",
+                "text": "Oconey"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "taliaferro",
+            "match": "Taliaferro",
+            "replace": {
+                "kind": "respell",
+                "text": "Tallifer"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "winds",
+            "match": "Winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH2 N D S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "severeWeatherMode": true,
+        "regionOfState": "Yes",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "reportScript": "If you see wind damage, hail or flooding, wait until the storm has passed, and then call the National Weather Service toll free at 1 8 6 6 7 6 3 4 4 6 6 or tweet us your report at NWSATLANTA.",
+        "recap": "No"
+    }
+}

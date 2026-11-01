@@ -1,0 +1,58 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/BOX",
+    "scope": {
+        "type": "wfo",
+        "id": "BOX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 114,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes (\"In Rhode Island\" for any RI counties)",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazards Include (no source, no impacts preamble)",
+        "recap": "No"
+    }
+}

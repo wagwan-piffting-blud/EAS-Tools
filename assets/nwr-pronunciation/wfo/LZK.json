@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/LZK",
+    "scope": {
+        "type": "wfo",
+        "id": "LZK"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 105,
+            "verified": false,
+            "notes": "Needs a speed test"
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "arkansas",
+            "match": "Arkansas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA1 R K AH0 N S AO"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        }
+    ]
+}

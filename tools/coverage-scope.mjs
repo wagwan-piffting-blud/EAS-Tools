@@ -4,6 +4,8 @@
  */
 export const measuredFiles = [
     'assets/js/custom-events.js',
+    'assets/js/nwr-pronunciation.js',
+    'assets/js/nwr-pronunciation-store.js',
     'assets/js/splicer/layout.js',
     'assets/js/splicer/limiter.js',
     'assets/js/splicer/encode.js',

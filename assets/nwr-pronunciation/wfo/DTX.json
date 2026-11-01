@@ -1,0 +1,72 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/DTX",
+    "scope": {
+        "type": "wfo",
+        "id": "DTX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 120,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "lenawee",
+            "match": "Lenawee",
+            "replace": {
+                "kind": "respell",
+                "text": "Lenaway"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "macomb",
+            "match": "Macomb",
+            "replace": {
+                "kind": "respell",
+                "text": "Muh-Comb"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "recap": "Yes"
+    }
+}

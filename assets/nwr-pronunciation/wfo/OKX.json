@@ -1,0 +1,92 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/OKX",
+    "scope": {
+        "type": "wfo",
+        "id": "OKX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 115,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "brookhaven",
+            "match": "Brookhaven",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B R UH1 K EY1 V AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "hunterdon",
+            "match": "Hunterdon",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AH1 N T ER0 D IH0 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "kwo35",
+            "match": "KWO35",
+            "replace": {
+                "kind": "respell",
+                "text": "Kwoha 35"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        }
+    ],
+    "style": {
+        "marineThunderstormPhrase": "Winds and seas/waves may be higher in, and, near <vtml_phoneme alphabet=\"x-cmu\" ph=\"TH AH1 N D ER0 S T OW0 R M Z\"></vtml_phoneme>.",
+        "saysOfficeState": {
+            "value": true,
+            "note": "Not in flood alerts (FLW, FFW)"
+        },
+        "regionOfState": "Central (no for CT)",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "reportScript": null,
+        "recap": "No"
+    }
+}

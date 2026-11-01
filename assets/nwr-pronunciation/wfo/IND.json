@@ -1,0 +1,226 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/IND",
+    "scope": {
+        "type": "wfo",
+        "id": "IND"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 111,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "areas",
+            "match": "Areas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH1 R IH0 R Z"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "carmel",
+            "match": "Carmel",
+            "replace": {
+                "kind": "respell",
+                "text": "Car-mole"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "chesterfield",
+            "match": "Chesterfield",
+            "replace": {
+                "kind": "respell",
+                "text": "Chester-feild"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ],
+            "notes": "Spelled \"Chesterfeild\" in the guide."
+        },
+        {
+            "id": "edinburgh",
+            "match": "Edinburgh",
+            "replace": {
+                "kind": "respell",
+                "text": "Edinburg"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "five",
+            "match": "Five",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AY1 V"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "illinois",
+            "match": "Illinois",
+            "replace": {
+                "kind": "respell",
+                "text": "Illynois"
+            },
+            "variants": [
+                {
+                    "id": "phoneme",
+                    "label": "Phoneme form (various WFOs, page 12)",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "IH1 L IH N OY1"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "kosciusko",
+            "match": "Kosciusko",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA1 Z IY1 AA1 S K OW1"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "louisville",
+            "match": "Louisville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L UW2 AH0 V OW1 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "terre-haute",
+            "match": "Terre Haute",
+            "replace": {
+                "kind": "vtml",
+                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"T EH R AH1\"></vtml_phoneme> <vtml_phoneme alphabet=\"x-cmu\" ph=\"HH OW0 T\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "tippecanoe",
+            "match": "Tippecanoe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T IH1 P AH K AH N UW1"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "vincennes",
+            "match": "Vincennes",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V IH1 N S EH1 N Z"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "No (does for counties outside the region)",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Expected Hazards Include",
+        "svrPathcast": true,
+        "reportScript": null,
+        "recap": "Yes (including counties not served by the station)"
+    }
+}

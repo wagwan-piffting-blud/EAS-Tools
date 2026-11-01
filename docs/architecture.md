@@ -39,6 +39,27 @@ Generators live in `tools/` and WarnGen-specific utilities live in
 sources listed in `docs/html-sources.json`. Run `make docs` to regenerate it and
 `make docs-check` to detect drift or unmapped documentation.
 
+## VT Paul pronunciations (GH #158)
+
+When the remote voice is VT Paul (`paul`), `fetchRemoteTtsAudio` in
+`assets/js/common-functions.js` runs `planTtsPronunciation` first. It merges the
+national, office (`wfo/XXX`) and transmitter (`tx/CALL`) sets plus the user's
+own entries, rewrites matching words as VTML, and adds the office speed and
+pauses as the `vtSpeed` / `vtCommaPauseMs` / `vtPeriodPauseMs` form fields when
+the voice list advertises them. Every Encoder and Splicer request, the iOS
+Splicer webview, and the native encoders (through the engine) share that one
+chokepoint.
+
+- `assets/js/nwr-pronunciation.js`: pure engine and validation (no DOM).
+- `assets/js/nwr-pronunciation-store.js`: selection, personal entries,
+  submission history, and the repository that picks the newer of the bundled
+  snapshot and the backend copy of each set.
+- `assets/js/nwr-pronunciation-ui.js` / `nwr-pronunciation-editor.js`: the
+  picker under the voice controls and the "My pronunciations" dialog.
+- `assets/nwr-pronunciation/`: the bundled snapshot. After launch the TTS
+  backend's moderation queue is the source of truth; see
+  [development.md](development.md#nwr-pronunciation-data).
+
 For impact analysis, repository agents should use the routing in
 [`AGENTS.md`](../AGENTS.md) and the repository-local skills under
 `.agents/skills/`.

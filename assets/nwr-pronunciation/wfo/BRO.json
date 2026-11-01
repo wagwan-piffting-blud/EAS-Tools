@@ -1,0 +1,142 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/BRO",
+    "scope": {
+        "type": "wfo",
+        "id": "BRO"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true,
+            "notes": "Present",
+            "variants": [
+                {
+                    "value": 90,
+                    "label": "Early 2016 BMH"
+                }
+            ]
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "harlingen",
+            "match": "Harlingen",
+            "replace": {
+                "kind": "respell",
+                "text": "Har-len-jin"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "mcallen",
+            "match": "McAllen",
+            "replace": {
+                "kind": "vtml",
+                "markup": "Mac-<vtml_phoneme alphabet=\"x-cmu\" ph=\"AE1 L IH1 N\"></vtml_phoneme>"
+            },
+            "variants": [
+                {
+                    "id": "mac-allen",
+                    "label": "Variant 2",
+                    "replace": {
+                        "kind": "respell",
+                        "text": "Mac Allen"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "san",
+            "match": "San",
+            "replace": {
+                "kind": "respell",
+                "text": "Sun"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "watch",
+            "match": "Watch",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AH0 CH"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "weslaco",
+            "match": "Weslaco",
+            "replace": {
+                "kind": "respell",
+                "text": "Wes-lay-coe"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "zapata",
+            "match": "Zapata",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "Z AA0 P AA0 T AA0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        }
+    ],
+    "style": {
+        "onePmReading": "1 0 0 PM"
+    }
+}

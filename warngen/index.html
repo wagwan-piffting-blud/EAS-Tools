@@ -5964,7 +5964,7 @@
                     label: "Send to…",
                     title: "Open this product in another tool",
                     items: [
-                        { tool: "encoder", label: "SAME Encoder (product as header)", what: "Product", unavailable: noProduct, payload: function () { return { header: lastFormattedOutput }; } },
+                        { tool: "encoder", label: "SAME Encoder (product as header)", what: "Product", unavailable: noProduct, payload: function () { var office = typeof window.nwsIssuingOffice === "function" ? window.nwsIssuingOffice(lastFormattedOutput) : null; return office ? { header: lastFormattedOutput, office: office } : { header: lastFormattedOutput }; } },
                         { tool: "normalizer", label: "Product Normalizer", what: "Product", unavailable: noProduct, payload: function () { return { text: lastFormattedOutput }; } },
                         { tool: "crawl", label: "Text Crawl Generator (normalized text)", what: "Product", unavailable: noProduct, payload: function () { return { text: normalized() }; } },
                     ],

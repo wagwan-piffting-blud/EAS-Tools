@@ -1,0 +1,73 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/RLX",
+    "scope": {
+        "type": "wfo",
+        "id": "RLX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 116,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "kanawha",
+            "match": "Kanawha",
+            "replace": {
+                "kind": "respell",
+                "text": "Con Ah"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "middlebourne",
+            "match": "Middlebourne",
+            "replace": {
+                "kind": "vtml",
+                "markup": "Middle <vtml_phoneme alphabet=\"x-cmu\" ph=\"B OW0 ER0 N\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        }
+    ],
+    "style": {
+        "preamble": "Here is Flash Flood Bulletin, for the following counties, in (state), (county) and (county). (FFW only)",
+        "saysOfficeState": {
+            "value": true,
+            "note": "Not in flood alerts (FLW, FFW)"
+        }
+    }
+}

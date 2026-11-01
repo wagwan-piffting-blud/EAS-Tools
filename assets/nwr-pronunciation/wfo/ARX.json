@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/ARX",
+    "scope": {
+        "type": "wfo",
+        "id": "ARX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 119,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T OW R N AE1 D IH K"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ],
+            "notes": "Tornadic variant 4."
+        }
+    ]
+}

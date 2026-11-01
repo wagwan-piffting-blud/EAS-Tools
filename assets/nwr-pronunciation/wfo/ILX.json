@@ -1,0 +1,153 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/ILX",
+    "scope": {
+        "type": "wfo",
+        "id": "ILX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 116,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "champaign",
+            "match": "Champaign",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH AE1 M P EY N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        },
+        {
+            "id": "illinois",
+            "match": "Illinois",
+            "replace": {
+                "kind": "respell",
+                "text": "Illynois"
+            },
+            "variants": [
+                {
+                    "id": "phoneme",
+                    "label": "Phoneme form (various WFOs, page 12)",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "IH1 L IH N OY1"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "indianapolis",
+            "match": "Indianapolis",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IH2 N D IY AE2 N AE2 P AH L IH S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        },
+        {
+            "id": "precipitation",
+            "match": "Precipitation",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P R IY2 S IH1 P IH T EY1 SH AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "taylorville",
+            "match": "Taylorville",
+            "replace": {
+                "kind": "respell",
+                "text": "Taylervilll"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        },
+        {
+            "id": "tazewell",
+            "match": "Tazewell",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AE0 Z W EH0 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ],
+            "notes": "Listed as \"Tezwell or Tazewell\"."
+        },
+        {
+            "id": "terre-haute",
+            "match": "Terre Haute",
+            "replace": {
+                "kind": "vtml",
+                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"T EH R AH2\"></vtml_phoneme> <vtml_phoneme alphabet=\"x-cmu\" ph=\"HH OW2 T\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "No",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Expected Hazards Include",
+        "recap": "No (no CTA)"
+    }
+}

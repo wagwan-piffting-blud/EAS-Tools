@@ -30,6 +30,17 @@ introduced. Do not inflate coverage with generated bundles, vendored libraries,
 inert imports, ignored lines, or assertions that merely execute code without
 checking behavior.
 
+The VT Paul pronunciation work (GH #158) adds four Vitest files:
+
+- `test/nwr-pronunciation.test.js`: the engine.
+- `test/nwr-pronunciation-store.test.js`: storage, repository and submissions.
+- `test/nwr-pronunciation-data.test.js`: every shipped set, plus the sync tool.
+- `test/nwr-transmitters.test.js`: the generator.
+
+The two `assets/js/nwr-pronunciation*.js` modules are in the measured slice. The
+e2e suite `nwr_pronunciation` stubs the TTS server and checks the exact form
+body that would be posted.
+
 ## Browser end-to-end suite
 
 `make e2e` (or `pnpm run test:e2e`) runs the Rust + Chrome DevTools Protocol suite

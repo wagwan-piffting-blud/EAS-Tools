@@ -1,0 +1,101 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/LUB",
+    "scope": {
+        "type": "wfo",
+        "id": "LUB"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 105,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "a",
+            "match": "A",
+            "replace": {
+                "kind": "respell",
+                "text": "uh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ],
+            "notes": "Applies to the article \"a\"."
+        },
+        {
+            "id": "miles-per-hour",
+            "match": "miles per hour",
+            "replace": {
+                "kind": "vtml",
+                "markup": "miles <vtml_phoneme alphabet=\"x-cmu\" ph=\"P ER0\"></vtml_phoneme>hour"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "panhandle",
+            "match": "Panhandle",
+            "replace": {
+                "kind": "respell",
+                "text": "Pan handle"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "per",
+            "match": "Per",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P ER0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        }
+    ],
+    "style": {
+        "saysOfficeState": {
+            "value": true,
+            "note": "Not in flood alerts (FLW, FFW)"
+        }
+    }
+}

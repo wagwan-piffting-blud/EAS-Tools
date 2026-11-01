@@ -1,0 +1,201 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/CRP",
+    "scope": {
+        "type": "wfo",
+        "id": "CRP"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "bexar",
+            "match": "Bexar",
+            "replace": {
+                "kind": "respell",
+                "text": "Bear"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "cotulla",
+            "match": "Cotulla",
+            "replace": {
+                "kind": "respell",
+                "text": "Cuhtuelluh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "falfurrias",
+            "match": "Falfurrias",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AA L F IH1 R IY AH Z"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ],
+            "notes": "Spelled \"Falfarrias\" in the guide."
+        },
+        {
+            "id": "hebbronville",
+            "match": "Hebbronville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH EH1 B R IH0 N V IH0 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "kleberg",
+            "match": "Kleberg",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K L EY0 B ER1 G"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "medina",
+            "match": "Medina",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH0 D IY0 N AH0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "nueces",
+            "match": "Nueces",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N UW1 EY2 S IH1 S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "onesie",
+            "match": "Onesie",
+            "replace": {
+                "kind": "respell",
+                "text": "one zee"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "realitos",
+            "match": "Realitos",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R IY1 AH L IY T AH S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "refugio",
+            "match": "Refugio",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AH1 F IH1 R IY OW"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "currentTimePhrase": "The Current Time, is;",
+        "regionOfState": "Yes",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "recap": "No"
+    }
+}

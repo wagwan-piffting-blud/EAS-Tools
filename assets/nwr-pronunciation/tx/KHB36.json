@@ -1,0 +1,39 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/KHB36",
+    "scope": {
+        "type": "tx",
+        "id": "KHB36",
+        "wfo": "LWX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 115,
+            "verified": false,
+            "notes": "The guide lists KHB26, which does not exist; KHB36 (Manassas) is the only LWX KHB transmitter."
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": []
+}

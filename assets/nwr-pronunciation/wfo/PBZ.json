@@ -1,0 +1,60 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/PBZ",
+    "scope": {
+        "type": "wfo",
+        "id": "PBZ"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 115,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "columbiana",
+            "match": "Columbiana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH L AH1 M B IY AE1 N AH"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        }
+    ],
+    "style": {
+        "preamble": "Weather Bulletin. For the following counties, in (State), (County), (County), and (County) (and in (State), (County), (County), and (County)); for one county it is ((County), (State)). For FFWs the first words are \"Flash Flood Warning\" instead of \"Weather Bulletin\".",
+        "regionOfState": "Yes",
+        "saysTimeZone": "No (odd comma pause at \"At 4:20 PM,\")",
+        "hazardIndicator": "Hazard",
+        "reportScript": "Please Report Severe Weather by calling 4 1 2, 2 6 2, 1 9 8 8, posting to the National Weather Service Pittsburgh Facebook Page, or using twitter at N W S Pittsburgh.",
+        "recap": "No"
+    }
+}

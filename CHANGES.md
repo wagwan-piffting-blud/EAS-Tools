@@ -2,6 +2,8 @@
 
 2026-11-01:
 
+- Add automatic NWS pronunciations for the VT Paul voice (#158). Picking Paul in the SAME Encoder or Audio Splicer now applies the NWS national dictionary, and you can choose your forecast office or NOAA Weather Radio transmitter in a searchable list to get its pronunciations, speed, and comma/period pauses too. You can add your own pronunciations, preview exactly what will be sent, and suggest pronunciations for everyone; suggestions are anonymous and reviewed before they are published. The office and transmitter lists start from the VoiceText phoneme guide PDF. Thank you to GitHub user @InternOfCEOs for suggesting this change.
+
 - Add/update SAME Marine FIPS codes. This adds a number of new FIPS codes for marine areas, which should help users generate more accurate and relevant alerts for marine areas. Thank you to Discord user @anamateurnoob for suggesting this change and providing the necessary information to update the FIPS codes.
 
 - Accept invalid location codes in the encoder. This change allows users to generate alerts with invalid location codes, which can be useful for testing or for generating alerts for areas that do not have valid location codes. Thank you (again) to Discord user @anamateurnoob for reporting this issue with the above change and providing feedback on how to improve the encoder's handling of invalid location codes.

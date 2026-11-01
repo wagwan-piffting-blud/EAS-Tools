@@ -1,0 +1,108 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/MQT",
+    "scope": {
+        "type": "wfo",
+        "id": "MQT"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 106,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "baraga",
+            "match": "Baraga",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B EH1 R OW G AH"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "houghton",
+            "match": "Houghton",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH OW1 T AH N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "keweenaw",
+            "match": "Keweenaw",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K IY W AH1 N AO2"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "ontonagon",
+            "match": "Ontonagon",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH1 N T AH N AO G AH N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,106 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/MEG",
+    "scope": {
+        "type": "wfo",
+        "id": "MEG"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 115,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "crittenden",
+            "match": "Crittenden",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K R IH1 T AH0 N D AE0 N"
+            },
+            "variants": [
+                {
+                    "id": "warning",
+                    "label": "Warning listing (close enough)",
+                    "context": "County listing in warnings",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "K R IH1 T IH2 N D EH2 N"
+                    }
+                },
+                {
+                    "id": "watch",
+                    "label": "Watch county listing",
+                    "context": "County listing in watches",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "K R IH2 T N D EH2 N"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "hardeman",
+            "match": "Hardeman",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AA1 R D AH0 M EH0 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "poinsett",
+            "match": "Poinsett",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P OY N S EH1 T"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "recap": "Yes"
+    }
+}

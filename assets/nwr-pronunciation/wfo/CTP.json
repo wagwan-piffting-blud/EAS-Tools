@@ -1,0 +1,65 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/CTP",
+    "scope": {
+        "type": "wfo",
+        "id": "CTP"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 111,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "saysOfficeState": {
+            "value": true,
+            "note": "Not in flood alerts (FLW, FFW)"
+        },
+        "regionOfState": "Yes",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "svrPathcast": false,
+        "reportScript": null,
+        "recap": "Yes"
+    }
+}

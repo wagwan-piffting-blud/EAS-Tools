@@ -1,0 +1,72 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/BMX",
+    "scope": {
+        "type": "wfo",
+        "id": "BMX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "columbiana",
+            "match": "Columbiana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH1 L AH0 M B IY1 AE1 N AH"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "lowndes",
+            "match": "Lowndes",
+            "replace": {
+                "kind": "respell",
+                "text": "Loundes"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Central",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "recap": "No"
+    }
+}

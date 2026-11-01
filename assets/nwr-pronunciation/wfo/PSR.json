@@ -1,0 +1,72 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/PSR",
+    "scope": {
+        "type": "wfo",
+        "id": "PSR"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 103,
+            "verified": false,
+            "notes": "Needs a speed test"
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "gila",
+            "match": "Gila",
+            "replace": {
+                "kind": "respell",
+                "text": "He-Luh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        },
+        {
+            "id": "pinal",
+            "match": "Pinal",
+            "replace": {
+                "kind": "respell",
+                "text": "Pin all"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "hazardIndicator": "Hazard",
+        "recap": "Yes"
+    }
+}

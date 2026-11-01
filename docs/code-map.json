@@ -5,6 +5,7 @@
     { "path": "assets/js", "docs": ["docs/architecture.md", "docs/development.md"] },
     { "path": "assets/E2T", "docs": ["docs/architecture.md", "docs/generated/faq.md"] },
     { "path": "assets/wasm_tts_voices", "docs": ["docs/architecture.md", "docs/generated/tts.md"] },
+    { "path": "assets/nwr-pronunciation", "docs": ["docs/architecture.md", "docs/development.md"] },
     { "path": "assets/muxer", "docs": ["docs/architecture.md", "docs/usage.md"] },
     { "path": "warngen", "docs": ["docs/architecture.md", "docs/usage.md", "docs/development.md"] },
     { "path": "tools", "docs": ["docs/development.md", "docs/testing.md"] },

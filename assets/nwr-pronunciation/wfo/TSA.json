@@ -1,0 +1,52 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/TSA",
+    "scope": {
+        "type": "wfo",
+        "id": "TSA"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 107,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "siloam-springs",
+            "match": "Siloam Springs",
+            "replace": {
+                "kind": "respell",
+                "text": "Sighloam Springs"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        }
+    ]
+}

@@ -67,7 +67,7 @@ merged, published, released, or deployed.
 
 When working with the codebase, it is important to understand the following major development invariants of the project:
 
-- **All Local Functions**: Nearly everything is done locally in the browser, with no server-side processing. This means that all encoding, decoding, and analysis of EAS messages is performed on the user's device, ensuring privacy and security. The ONLY exception is Web TTS, which MUST use server side processing to generate speech synthesis.
+- **All Local Functions**: Nearly everything is done locally in the browser, with no server-side processing. This means that all encoding, decoding, and analysis of EAS messages is performed on the user's device, ensuring privacy and security. The ONLY exceptions are Web TTS, which MUST use server side processing to generate speech synthesis, and the VT Paul pronunciation service on the same TTS server (shared pronunciation sets and anonymous, moderated submissions; GH #158).
 
 - **Accuracy**: The project is designed to be as accurate as possible in its handling of EAS messages, adhering to the specifications outlined in the relevant standards and guidelines. This includes proper handling of message formats, encoding schemes, and Part 11 of the FCC guidelines.
 

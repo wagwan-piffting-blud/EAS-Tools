@@ -1,0 +1,88 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/JKL",
+    "scope": {
+        "type": "wfo",
+        "id": "JKL"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 113,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "louisville",
+            "match": "Louisville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L UW1 AH V UW0 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "national",
+            "match": "National",
+            "replace": {
+                "kind": "respell",
+                "text": "nash uhnal"
+            },
+            "variants": [
+                {
+                    "id": "phoneme",
+                    "label": "Phoneme lead-in",
+                    "replace": {
+                        "kind": "vtml",
+                        "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"N AE1 SH\"></vtml_phoneme>uhnal"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        }
+    ],
+    "style": {
+        "saysOfficeState": {
+            "value": true,
+            "note": "No documented flood alerts"
+        },
+        "regionOfState": "No",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "reportScript": null,
+        "recap": "Yes (no CTA, straight to the repeat)"
+    }
+}

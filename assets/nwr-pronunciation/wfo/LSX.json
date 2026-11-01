@@ -1,0 +1,83 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/LSX",
+    "scope": {
+        "type": "wfo",
+        "id": "LSX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 102,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "illinois",
+            "match": "Illinois",
+            "replace": {
+                "kind": "respell",
+                "text": "Illynois"
+            },
+            "variants": [
+                {
+                    "id": "phoneme",
+                    "label": "Phoneme form (various WFOs, page 12)",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "IH1 L IH N OY1"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Central Missouri no; all NE MO and IL counties yes",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Expected Hazards Include (100-speed stations say the source, 117-speed stations do not)",
+        "reportScript": null,
+        "recap": "No"
+    }
+}

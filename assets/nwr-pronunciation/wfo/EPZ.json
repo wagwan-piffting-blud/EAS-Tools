@@ -1,0 +1,80 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/EPZ",
+    "scope": {
+        "type": "wfo",
+        "id": "EPZ"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 105,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "canutillo",
+            "match": "Canutillo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE2 N EH1 T IY2 OW"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "dona",
+            "match": "Dona",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D OY N IY AH2"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "union",
+            "match": "Union",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "Y UW1 N IY1 OW2 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        }
+    ]
+}

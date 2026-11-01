@@ -1,0 +1,83 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/CAE",
+    "scope": {
+        "type": "wfo",
+        "id": "CAE"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 111,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "atlanta",
+            "match": "Atlanta",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH1 T L AE N T AH"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "reservoir",
+            "match": "Reservoir",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R EH1 Z ER V OW R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "taliaferro",
+            "match": "Taliaferro",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AO1 L IH0 F ER0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        }
+    ],
+    "style": {
+        "hazardIndicator": "The Following Hazards are expected"
+    }
+}

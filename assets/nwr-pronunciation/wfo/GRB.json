@@ -1,0 +1,97 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/GRB",
+    "scope": {
+        "type": "wfo",
+        "id": "GRB"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 112,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "fifties",
+            "match": "Fifties",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F IH0 F T IY S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "hazardous",
+            "match": "Hazardous",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AE1 Z R D AH0 S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "winnebago",
+            "match": "Winnebago",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N AH B EY # G OW1"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        }
+    ],
+    "style": {
+        "severeWeatherMode": true
+    }
+}

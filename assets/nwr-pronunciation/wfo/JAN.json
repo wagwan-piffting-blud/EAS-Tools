@@ -1,0 +1,57 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/JAN",
+    "scope": {
+        "type": "wfo",
+        "id": "JAN"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 114,
+            "verified": false,
+            "notes": "Needs a speed test"
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "fair",
+            "match": "Fair",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AE1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        }
+    ],
+    "style": {
+        "currentTimePhrase": "The Time is Now;",
+        "severeWeatherMode": true
+    }
+}

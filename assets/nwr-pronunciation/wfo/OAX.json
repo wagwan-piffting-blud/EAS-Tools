@@ -1,0 +1,74 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/OAX",
+    "scope": {
+        "type": "wfo",
+        "id": "OAX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": null,
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "miles-per-hour",
+            "match": "miles per hour",
+            "replace": {
+                "kind": "vtml",
+                "markup": "miles <vtml_phoneme alphabet=\"x-cmu\" ph=\"AH N AW1 ER\"></vtml_phoneme>"
+            },
+            "verified": false,
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ],
+            "notes": "The guide says \"Try\" this."
+        },
+        {
+            "id": "saline",
+            "match": "Saline",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH L IY N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Central",
+        "onePmReading": "1 0 0 PM",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Expected Hazards Include",
+        "svrPathcast": "unknown",
+        "reportScript": null,
+        "recap": "Yes"
+    }
+}

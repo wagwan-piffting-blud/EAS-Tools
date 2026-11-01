@@ -1,0 +1,127 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/TBW",
+    "scope": {
+        "type": "wfo",
+        "id": "TBW"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 113,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "hernando",
+            "match": "Hernando",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH EH R N AE1 N D OW0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "inland",
+            "match": "Inland",
+            "replace": {
+                "kind": "respell",
+                "text": "Inland"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ],
+            "notes": "Capitalised first letter."
+        },
+        {
+            "id": "kissimmee",
+            "match": "Kissimmee",
+            "replace": {
+                "kind": "respell",
+                "text": "Kisimee"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "noaa-fisheries",
+            "match": "NOAA Fisheries",
+            "replace": {
+                "kind": "respell",
+                "text": "NOWA fisheries"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "or",
+            "match": "Or",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "pasco",
+            "match": "Pasco",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AE1 S K OW0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        }
+    ],
+    "style": {
+        "marineThunderstormPhrase": null,
+        "saysTimeZone": "Yes"
+    }
+}

@@ -1,0 +1,44 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/ILM",
+    "scope": {
+        "type": "wfo",
+        "id": "ILM"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 111,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [],
+    "style": {
+        "marineThunderstormPhrase": "Winds and waves higher in and near <vtml_phoneme alphabet=\"x-cmu\" ph=\"TH AH1 N D ER0 S T OW0 R M Z\"></vtml_phoneme>.",
+        "regionOfState": "Yes",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "recap": "No"
+    }
+}

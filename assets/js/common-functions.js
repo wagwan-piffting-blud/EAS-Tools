@@ -1,3 +1,6 @@
+import { isEligibleVoice, planRemoteSpeech } from './nwr-pronunciation.js';
+import { createPronunciationRepository, readPersonal, readSelection } from './nwr-pronunciation-store.js';
+
 export async function saveFile(filename, content, mime, opts = {}) {
     const blob = (content instanceof Blob) ? content : new Blob([content], { type: mime });
 
@@ -1164,13 +1167,57 @@ async function ttsAudioFromHtmlResponse(response) {
     return decodeTtsArrayBuffer(await audioResponse.arrayBuffer());
 }
 
-export function fetchRemoteTtsAudio({ text, voice, overrideTZ = 'UTC', backend = '', prosody = null } = {}) {
-    const spoken = prosody ? applyTtsProsodyMarkup(text, backend, prosody) : text;
+let remoteTtsFeatures = null;
+let pronunciationRepository = null;
+
+export function getRemoteTtsFeatures() {
+    return remoteTtsFeatures;
+}
+
+export function setRemoteTtsFeatures(features) {
+    remoteTtsFeatures = isObject(features) ? features : null;
+    pronunciationRepository?.invalidate();
+}
+
+export function getPronunciationRepository() {
+    if (!pronunciationRepository) {
+        pronunciationRepository = createPronunciationRepository({
+            bundledBase: new URL('../nwr-pronunciation/', import.meta.url).href,
+            apiUrl: TTS_BACKEND_URL,
+            remoteEnabled: () => isObject(remoteTtsFeatures?.pronunciation),
+        });
+    }
+    return pronunciationRepository;
+}
+
+export async function planTtsPronunciation({ text, voice, backend = '', prosody = null, pronunciation } = {}) {
+    const unchanged = { text, prosody, fields: {}, summary: null, applied: false };
+    if (pronunciation === false || !('' + (backend || '')).toLowerCase().includes('vt')) return unchanged;
+    try {
+        const repository = getPronunciationRepository();
+        const index = await repository.loadIndex();
+        if (!isEligibleVoice(voice, backend, index.voices)) return unchanged;
+        const selection = isObject(pronunciation)
+            ? { enabled: pronunciation.enabled !== false, source: pronunciation.source || '' }
+            : readSelection();
+        const context = await repository.resolveContext(selection, readPersonal());
+        const plan = planRemoteSpeech({ text, voice, backend, prosody: prosody || {}, context, features: remoteTtsFeatures });
+        return plan.applied ? plan : unchanged;
+    } catch (error) {
+        console.warn('[TTS] Pronunciation overrides skipped:', error);
+        return unchanged;
+    }
+}
+
+export async function fetchRemoteTtsAudio({ text, voice, overrideTZ = 'UTC', backend = '', prosody = null, pronunciation } = {}) {
+    const plan = await planTtsPronunciation({ text, voice, backend, prosody, pronunciation });
+    const spoken = plan.prosody ? applyTtsProsodyMarkup(plan.text, backend, plan.prosody) : plan.text;
 
     const params = new URLSearchParams();
     params.append('text', spoken);
     params.append('voice', voice);
     params.append('useOverrideTZ', overrideTZ ?? 'UTC');
+    for (const [field, value] of Object.entries(plan.fields)) params.append(field, String(value));
 
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -1184,7 +1231,7 @@ export function fetchRemoteTtsAudio({ text, voice, overrideTZ = 'UTC', backend =
                 reject(new TtsRequestError('The response contained no audio', 'empty'));
                 return;
             }
-            resolve({ pcm: buffer.getChannelData(0), sampleRate: buffer.sampleRate });
+            resolve({ pcm: buffer.getChannelData(0), sampleRate: buffer.sampleRate, pronunciation: plan.summary });
         };
 
         const fail = (error) => {
@@ -1428,6 +1475,7 @@ export async function populateRemoteVoiceList(config = {}) {
     try {
         const response = await fetch(url);
         const data = await response.json();
+        if (isObject(data.features)) setRemoteTtsFeatures(data.features);
 
         for (const [voiceId, voiceName] of Object.entries(data.voices)) {
             if (voiceName.toLowerCase().includes("emnet")) {

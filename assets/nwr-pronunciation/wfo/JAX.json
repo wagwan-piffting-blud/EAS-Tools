@@ -1,0 +1,92 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/JAX",
+    "scope": {
+        "type": "wfo",
+        "id": "JAX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 118,
+            "verified": true
+        },
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true
+        },
+        "periodPauseMs": {
+            "value": 925,
+            "verified": true
+        }
+    },
+    "entries": [
+        {
+            "id": "a",
+            "match": "A",
+            "replace": {
+                "kind": "respell",
+                "text": "ayy"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ],
+            "notes": "Applies to the article \"a\"."
+        },
+        {
+            "id": "duval",
+            "match": "Duval",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D UW1 V AA0 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "mobile",
+            "match": "Mobile",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M OW0 B IY0 AH0 L"
+            },
+            "caseSensitive": true,
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ],
+            "notes": "Capitalised only, so \"mobile homes\" is left alone mid-sentence."
+        }
+    ],
+    "style": {
+        "marineThunderstormPhrase": null
+    }
+}

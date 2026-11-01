@@ -1,0 +1,83 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/RIW",
+    "scope": {
+        "type": "wfo",
+        "id": "RIW"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 111,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "hazards",
+            "match": "Hazards",
+            "replace": {
+                "kind": "respell",
+                "text": "hiz-irds"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "mccullough",
+            "match": "McCullough",
+            "replace": {
+                "kind": "respell",
+                "text": "McCowla"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        },
+        {
+            "id": "riverton",
+            "match": "Riverton",
+            "replace": {
+                "kind": "respell",
+                "text": "River Ten"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 12
+                }
+            ]
+        }
+    ],
+    "style": {
+        "precautionaryHeader": true
+    }
+}

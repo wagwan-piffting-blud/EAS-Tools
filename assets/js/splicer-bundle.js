@@ -10,6 +10,8 @@ import { createEditor } from './splicer/editor.js';
 import { buildPanel } from './splicer/layout.js';
 import { saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME, PIPER_DEFAULT_VOICE_ID as PIPER_VOICE, resamplePcm, resamplePcmSinc, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost } from './common-functions.js';
 import { createSendMenu, receive, audioFile } from './handoff.js';
+import { snapshotSelection } from './nwr-pronunciation-store.js';
+import { mountPronunciationControls } from './nwr-pronunciation-ui.js';
 
 buildPanel(document.getElementById('splicer-panel'));
 
@@ -46,6 +48,7 @@ buildPanel(document.getElementById('splicer-panel'));
     const ttsClearButton = panel.querySelector('[data-splice-tts-clear]');
     const ttsStatus = panel.querySelector('[data-splice-tts-status]') || panel.querySelector('#spliceTTSGenerator [data-splice-tts-status]');
     const voiceSelect = panel.querySelector('#ttsVoice2');
+    let nwrPronControls = null;
     const overrideTzSelect = panel.querySelector('#useSplicerOverrideTZ');
     const silenceInput = panel.querySelector('[data-splice-silence]');
     const silenceStatus = panel.querySelector('[data-splice-silence-status]');
@@ -2251,8 +2254,11 @@ buildPanel(document.getElementById('splicer-panel'));
         }
     };
 
-    const synthTts = async (text, voice) => {
+    const synthTts = async (text, voice, opts = {}) => {
         if (isIosNativeVoice(voice)) return synthIosNative(text, voice);
+        if (voice && resolveVoiceBackend(voiceBackendMap, voice) !== 'Unknown') {
+            return requestRemoteTtsAudio({ text, voiceId: voice, overrideTZ: (overrideTzSelect?.value || 'UTC').trim(), pronunciation: opts.pronunciation });
+        }
         const mode = (voice || 'wasm').toLowerCase();
         if (mode === 'nanotts') {
             return nanoTts.synth(text);
@@ -2475,13 +2481,14 @@ buildPanel(document.getElementById('splicer-panel'));
         }
     };
 
-    const requestRemoteTtsAudio = async ({ text, voiceId, overrideTZ }) => {
+    const requestRemoteTtsAudio = async ({ text, voiceId, overrideTZ, pronunciation }) => {
         const result = await fetchRemoteTtsAudio({
             text,
             voice: voiceId,
             overrideTZ,
             backend: resolveVoiceBackend(voiceBackendMap, voiceId),
             prosody: readTtsProsodyControls("2"),
+            pronunciation,
         });
 
         if (shouldBitcrushSpeechifyCheckbox?.checked === true && /Speechify/i.test(voiceId || "")) {
@@ -5074,9 +5081,17 @@ buildPanel(document.getElementById('splicer-panel'));
     bindSliderNumberPair({ sliderId: "ttsPitch2", numberId: "ttsPitch2Number", resetId: "ttsPitchReset2" });
     bindSliderNumberPair({ sliderId: "ttsVolume2", numberId: "ttsVolume2Number", resetId: "ttsVolume2Reset" });
 
+    nwrPronControls = mountPronunciationControls({
+        anchor: panel.querySelector('#ttsRatePitchControls2'),
+        suffix: '2',
+        getText: () => (window.splicerEditor ? window.splicerEditor.getValue() : ttsInput?.value) || '',
+        getProsody: () => readTtsProsodyControls('2'),
+    });
+
     voiceSelect.addEventListener('change', () => {
         const voiceBackend = resolveVoiceBackend(voiceBackendMap, voiceSelect.value);
         const ttsControls = document.getElementById('ttsRatePitchControls2');
+        nwrPronControls?.setVoice(voiceSelect.value, voiceBackend);
 
         if (/Speechify/i.test(voiceSelect.value) || parseSpfyVoiceId(voiceSelect.value) !== null) {
             shouldBitcrushSpeechifyDiv.hidden = false;
@@ -5273,7 +5288,7 @@ buildPanel(document.getElementById('splicer-panel'));
         if (role === 'header') return { kind: 'same-header', header: info.header, ...base };
         if (role === 'attn') return TONE_CODES[info.tone] ? { kind: 'attention', tone: TONE_CODES[info.tone], seconds: info.tlen, ...base } : null;
         if (role === 'eom') return { kind: 'eom', ...base };
-        if (role === 'voice' && info.announcementType === 'tts' && info.text) return { kind: 'tts', text: info.text, voice: info.voice };
+        if (role === 'voice' && info.announcementType === 'tts' && info.text) return { kind: 'tts', text: info.text, voice: info.voice, pron: snapshotSelection() };
         return null;
     };
 
@@ -5333,6 +5348,7 @@ buildPanel(document.getElementById('splicer-panel'));
     };
 
     const receiveHandoff = async (payload) => {
+        if (typeof payload.office === 'string') nwrPronControls?.adoptOffice(payload.office);
         if (payload.alert) {
             await importAlert(payload.alert).catch((err) => reportErrorStatus('Could not open the alert from the Encoder.', err));
         }
@@ -5349,7 +5365,7 @@ buildPanel(document.getElementById('splicer-panel'));
 
     const renderGen = async (gen) => {
         if (gen.kind === 'tts') {
-            const out = await synthTts(gen.text, gen.voice);
+            const out = await synthTts(gen.text, gen.voice, { pronunciation: gen.pron });
             if (!out || !out.pcm || !out.pcm.length) throw new Error('the voice returned no audio');
             return out.sampleRate === project.sampleRate ? out.pcm : resamplePcm(out.pcm, out.sampleRate, project.sampleRate);
         }
@@ -5389,7 +5405,7 @@ buildPanel(document.getElementById('splicer-panel'));
         const plan = [];
         if (v.tone !== 'pelmorex') plan.push(['header', 'Header', { kind: 'same-header', header: v.header, ...base }, 0]);
         if (v.tone !== 'none') plan.push(['attn', 'Attention', { kind: 'attention', tone: v.tone, seconds: v.seconds, ...base }, gaps.headersToAttention]);
-        if (v.text) plan.push(['voice', 'Message', { kind: 'tts', text: v.text, voice: (voiceSelect && voiceSelect.value) || 'wasm' }, gaps.attentionToMessage]);
+        if (v.text) plan.push(['voice', 'Message', { kind: 'tts', text: v.text, voice: (voiceSelect && voiceSelect.value) || 'wasm', pron: snapshotSelection() }, gaps.attentionToMessage]);
         if (v.eom) plan.push(['eom', 'EOM', { kind: 'eom', ...base }, gaps.messageToEom]);
         if (!plan.length) return;
         persistStatus('Generating the alert...');

@@ -1,0 +1,113 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/CLE",
+    "scope": {
+        "type": "wfo",
+        "id": "CLE"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 113,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "geauga",
+            "match": "Geauga",
+            "replace": {
+                "kind": "respell",
+                "text": "Gee-aw-guh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "huron",
+            "match": "Huron",
+            "replace": {
+                "kind": "respell",
+                "text": "huer-on"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "medina",
+            "match": "Medina",
+            "replace": {
+                "kind": "respell",
+                "text": "Ma Dy Nah"
+            },
+            "variants": [
+                {
+                    "id": "alternate",
+                    "label": "CLE alternate",
+                    "replace": {
+                        "kind": "respell",
+                        "text": "Ma-Die-uh"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "wyandot",
+            "match": "Wyandot",
+            "replace": {
+                "kind": "respell",
+                "text": "wy in dot"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        }
+    ],
+    "style": {
+        "marineThunderstormPhrase": "Winds and waves higher in and near <vtml_phoneme alphabet=\"x-cmu\" ph=\"TH AH1 N D ER0 S T OW0 R M Z\"></vtml_phoneme>.",
+        "preamble": "An Urgent Weather Message (SVR); An Urgent Weather Message. For the following counties, in (state), (county) and (county) (TOR, SVA, TOA); A Flash Flood Warning. For the following counties, in (state), (county) and (county) (FFW).",
+        "regionOfState": "No",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "reportScript": null,
+        "recap": "Yes"
+    }
+}

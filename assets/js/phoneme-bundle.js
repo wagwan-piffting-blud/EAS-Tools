@@ -1,5 +1,6 @@
 import { CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
 import { createSendMenu } from './handoff.js';
+import { lexiconFromSet } from './nwr-pronunciation.js';
 
 const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.PhonemeTools;
 
@@ -68,79 +69,6 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
     const out = document.getElementById("phonemeOutput");
 
     const overrides = {
-        //BEGIN PAUL NATIONAL DICTIONARY OVERRIDES
-        "10s": "T IY2 N Z",
-        "20s": "T W UH2 N T T IY0 Z",
-        "albemarle": "AE0 L B AH0 M AA0 R L",
-        "antilles": "AE0 N T IH1 L IY0 S",
-        "arpt": "EH1 R P OW0 R T",
-        "asos": "EY1 S AH0 AA0 S",
-        "atlantic": "AE0 T L AE0 N T IH2 K",
-        "atmospheric": "AE2 T M AH0 S F EH1 R IH0 K",
-        "au": "AO0",
-        "azores": "EY1 Z OW0 R Z",
-        "bimini": "B IH1 M IH0 N IY0",
-        "cabo san lucas": "K AA1 B OW0 S AA0 N L UW1 K AH0 Z",
-        "caribbean": "K AE2 R EH0 B IY1 AH0 N",
-        "ciego de avila": "S IY0 EY0 G OW0 D EY0",
-        "cloudiness": "K L AW1 D IY0 N EH2 S",
-        "croix": "K R AH0 OY0",
-        "dawn": "D AA1 AO1 N",
-        "delmarva": "D EH0 L M AA1 R V AH0",
-        "enrique": "AA0 N R IY1 K EY0",
-        "felicia": "F AH0 L IY1 SH AH0",
-        "fenwick": "F EH1 N W IH0 K K",
-        "frederica": "F R EH2 D EH0 R IY1 K AH0",
-        "friday": "F R AY1 D EY2",
-        "hail": "HH EY1 L",
-        "henlopen": "HH EH0 N L OW2 P EH0 N",
-        "henri": "AA0 N R IY1",
-        "hgts": "HH AY1 T S",
-        "highs": "HH AY1 Z",
-        "ignacio": "IY0 G N AA1 S IY0 OW0",
-        "illinois": "IH1 L IH0 N OY1",
-        "isidore": "IH1 Z AH0 D OW0 R",
-        "jimena": "HH AH0 M EY1 N AH0",
-        "johnsonville": "JH AA0 N S AH0 N V IH0 L",
-        "jr": "JH UW1 N Y ER0",
-        "kissimmee": "K IH1 Z EH0 M IY2",
-        "lead": "L IY1 D",
-        "mc": "M IH1 K",
-        "mineral": "M IH1 N ER0 AH0 L",
-        "moderate": "M AA1 D AH0 R IH0 T",
-        "movement toward": "M UW1 V M EH0 N",
-        "mt": "M AW1 N T",
-        "near zero": "N IY0 R Z IY0 R OW0",
-        "near-zero": "N IY0 R Z IY0 R OW0",
-        "newfoundland": "N UW0 F AH0 N D L AH2 N D",
-        "nexrad": "N EH1 K S R AE2 D",
-        "odette": "OW0 D EH1 T",
-        "okeechobee": "OW0 K IY0 CH OW1 B IY2",
-        "olaf": "OW1 L AA2 F",
-        "pahokee": "P AA0 HH OW1 K IY0",
-        "reservoir": "R EH1 Z ER0 V OW0 R",
-        "route": "R AW1 T",
-        "santa fe": "S AE1 N T AH0 F EY1",
-        "santa fe river": "S AE1 N T AH0 F EY1",
-        "spgs": "S P R IH1 NG Z",
-        "tehuantepec": "T AH0 W AA1 N AH0 P EH0 K",
-        "thundershower": "TH AH1 N D ER0 SH AW0 ER0",
-        "thundershowers": "TH AH1 N D ER0 SH AW0 ER0 Z",
-        "thunderstorm": "TH AH1 N D ER0 S T OW0 R M",
-        "thunderstorms": "TH AH1 N D ER0 S T OW0 R M Z",
-        "uno": "UW0 UW1 N OW0",
-        "wind": "W IH1 N D",
-        "wind down": "W AY2 N D",
-        "wind down to": "W IH1 N D",
-        "wind up": "W AY2 N D",
-        "wind up to": "W IH1 N D",
-        "winds": "W IH1 N D S",
-        "winds down": "W AY2 N D S",
-        "winds down to": "W IH1 N D S",
-        "winds up": "W AY2 N D S",
-        "winds up to": "W IH1 N D S",
-        "xrds": "K R AO1 S R OW0 D Z",
-        //END PAUL NATIONAL DICTIONARY OVERRIDES
         "tekamah": "T AH K EY0 M AH",
         "saunders": "S AA1 N D ER0 Z",
         "impact": "IH0 M P AE1 K T",
@@ -161,8 +89,19 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
         "saturday": "S AE1 T ER0 D EY2",
         "leisure": "L IY1 ZH ER0",
     };
+    const localOverrides = { ...overrides };
 
     let activeWordOverrides = overrides;
+
+    async function loadNationalLexicon() {
+        try {
+            const resp = await fetch(new URL("../nwr-pronunciation/national.json", import.meta.url).href);
+            if (!resp.ok && resp.status !== 0) throw new Error("HTTP " + resp.status);
+            Object.assign(overrides, lexiconFromSet(await resp.json()), localOverrides);
+        } catch (err) {
+            console.warn("[PhonemeTools] Paul national dictionary unavailable:", err);
+        }
+    }
 
     function parseCmudict(text) {
         const map = Object.create(null);
@@ -194,7 +133,7 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
         }
     }
 
-    loadCmudict();
+    const lexiconReady = loadNationalLexicon().then(loadCmudict);
 
     mode.addEventListener("change", () => {
         const isWordMode = mode.value == "word";
@@ -227,10 +166,11 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
         }
     }
 
-    document.getElementById("phonemeConvert").onclick = () => {
+    document.getElementById("phonemeConvert").onclick = async () => {
         const text = inp.value.trim();
         if (!text) return (out.textContent = "");
         const ob = outBackend.value;
+        await lexiconReady;
 
         try {
             out.textContent = switchcase(mode.value, text, ob);
@@ -270,12 +210,13 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
     document.getElementById("phonemeCopyToClipboard").insertAdjacentElement("afterend", phonemeSendMenu.element);
 
     if (window.EASBridge) {
-        window.EASBridge.on('phoneme:convert', (params) => {
+        window.EASBridge.on('phoneme:convert', async (params) => {
             const text = params?.text;
             if (!text) {
                 window.EASBridge.send('phoneme:result', { text: '' });
                 return;
             }
+            await lexiconReady;
             try {
                 let modeVal = params.mode || 'word';
                 let result;

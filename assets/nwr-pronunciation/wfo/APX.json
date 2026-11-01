@@ -1,0 +1,194 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/APX",
+    "scope": {
+        "type": "wfo",
+        "id": "APX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 116,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "alpena",
+            "match": "Alpena",
+            "replace": {
+                "kind": "respell",
+                "text": "Alpeena"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "charlevoix",
+            "match": "Charlevoix",
+            "replace": {
+                "kind": "respell",
+                "text": "Shar-lavoy"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "gaylord",
+            "match": "Gaylord",
+            "replace": {
+                "kind": "respell",
+                "text": "Gaylerd"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "houghton-lake",
+            "match": "Houghton Lake",
+            "replace": {
+                "kind": "respell",
+                "text": "Hohten lake"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "leelanau",
+            "match": "Leelanau",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IY L AH N AO"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "norwood",
+            "match": "Norwood",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N AO0 R W IH D"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "otsego",
+            "match": "Otsego",
+            "replace": {
+                "kind": "respell",
+                "text": "Otseego"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ]
+        },
+        {
+            "id": "pellston",
+            "match": "Pellston",
+            "replace": {
+                "kind": "respell",
+                "text": "Pellstin"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ],
+            "notes": "Spelled \"Pelleston\" in the guide."
+        },
+        {
+            "id": "petoskey",
+            "match": "Petoskey",
+            "replace": {
+                "kind": "vtml",
+                "markup": "pet<vtml_break level=\"0\"/>toskey"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 11
+                }
+            ],
+            "notes": "As in \"The forecast for Petoskey and vicinity\"."
+        },
+        {
+            "id": "winds",
+            "match": "Winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "marineThunderstormPhrase": "Winds and waves will be higher in the vicinity of <vtml_phoneme alphabet=\"x-cmu\" ph=\"TH AH1 N D ER0 S T OW0 R M Z\"></vtml_phoneme>.",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "svrPathcast": true,
+        "recap": "Yes (including counties outside the station coverage)",
+        "patterns": [
+            {
+                "description": "Decimal pressures are read with \"point\"",
+                "example": "30.17 -> 30 point 17"
+            }
+        ]
+    }
+}

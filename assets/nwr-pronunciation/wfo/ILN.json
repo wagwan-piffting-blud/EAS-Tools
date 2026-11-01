@@ -1,0 +1,74 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/ILN",
+    "scope": {
+        "type": "wfo",
+        "id": "ILN"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 115,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "lima",
+            "match": "Lima",
+            "replace": {
+                "kind": "vtml",
+                "markup": "Lie <vtml_phoneme alphabet=\"x-cmu\" ph=\"M AH\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "louisville",
+            "match": "Louisville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L UW1 AH V IH L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        }
+    ],
+    "style": {
+        "severeWeatherMode": true,
+        "regionOfState": "No (says the state when more than one county has the name, e.g. \"Fayette County Indiana\")",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "reportScript": "To report Severe Weather, go to our website at weather, dot g o v, slash, i l n, and submit your report via social media when you can do so safely (IND stations only for SVR; anyone for TOR/FFW)",
+        "recap": "No (no CTA)"
+    }
+}

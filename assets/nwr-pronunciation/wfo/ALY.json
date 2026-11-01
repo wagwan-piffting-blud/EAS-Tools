@@ -1,0 +1,44 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/ALY",
+    "scope": {
+        "type": "wfo",
+        "id": "ALY"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [],
+    "style": {
+        "regionOfState": "Yes",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "reportScript": "Please report hail size, damaging winds and reports of trees down to the National Weather Service by email at a l b dot Storm report at noaa dot gov, on Facebook at www.facebook.com/nwsalbany or twitter at nws Albany.",
+        "recap": "Yes"
+    }
+}

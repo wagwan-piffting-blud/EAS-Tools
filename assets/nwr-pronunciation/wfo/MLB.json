@@ -1,0 +1,143 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/MLB",
+    "scope": {
+        "type": "wfo",
+        "id": "MLB"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 107,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "beach",
+            "match": "Beach",
+            "replace": {
+                "kind": "vtml",
+                "markup": "{{match}}<vtml_pause time=\"0\"/>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "brevard",
+            "match": "Brevard",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B R EH V AA R D"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "daytona",
+            "match": "Daytona",
+            "replace": {
+                "kind": "respell",
+                "text": "Day tona"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "inlet",
+            "match": "Inlet",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IH0 N L EH2 T"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "melbourne",
+            "match": "Melbourne",
+            "replace": {
+                "kind": "respell",
+                "text": "Melburne"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "volusia",
+            "match": "Volusia",
+            "replace": {
+                "kind": "respell",
+                "text": "Voloosha"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "winds",
+            "match": "Winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "marineThunderstormPhrase": null,
+        "regionOfState": "Yes",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "recap": "No"
+    }
+}

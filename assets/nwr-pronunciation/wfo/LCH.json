@@ -1,0 +1,105 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/LCH",
+    "scope": {
+        "type": "wfo",
+        "id": "LCH"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "avoyelles",
+            "match": "Avoyelles",
+            "replace": {
+                "kind": "respell",
+                "text": "uhvoy-ulls"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "calcasieu",
+            "match": "Calcasieu",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE1 L K AH2 SH UW"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "lafayette",
+            "match": "Lafayette",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AE0 F EH0 Y EH1 T"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "winds",
+            "match": "Winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D S"
+            },
+            "variants": [
+                {
+                    "id": "plain",
+                    "label": "Plain reading (page 5)",
+                    "replace": {
+                        "kind": "respell",
+                        "text": "winds"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ],
+            "notes": "The guide also lists LCH Winds as plain \"winds\" (page 5)."
+        }
+    ]
+}

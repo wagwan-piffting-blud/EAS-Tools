@@ -1,0 +1,128 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/FWD",
+    "scope": {
+        "type": "wfo",
+        "id": "FWD"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 109,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "bosque",
+            "match": "Bosque",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B AO1 S K EY"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "coryell",
+            "match": "Coryell",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AO1 R IY1 EH1 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "milam",
+            "match": "Milam",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AY L AH M"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "seagoville",
+            "match": "Seagoville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S IH1 G OW V IH L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "tarrant",
+            "match": "Tarrant",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T EH1 R AH0 N T"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "recap": "No"
+    }
+}

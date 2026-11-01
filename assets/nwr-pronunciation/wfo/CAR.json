@@ -1,0 +1,99 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/CAR",
+    "scope": {
+        "type": "wfo",
+        "id": "CAR"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 121,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "aroostook",
+            "match": "Aroostook",
+            "replace": {
+                "kind": "respell",
+                "text": "Aroostick"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "caribou",
+            "match": "Caribou",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K EH1 R AH1 B UW1"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "piscataquis",
+            "match": "Piscataquis",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P IH S K AE1 T AH K W AH S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "r",
+            "match": "R",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE1 R"
+            },
+            "caseSensitive": true,
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ],
+            "notes": "The letter R on its own."
+        }
+    ],
+    "style": {
+        "onePmReading": "1 0 0 PM"
+    }
+}

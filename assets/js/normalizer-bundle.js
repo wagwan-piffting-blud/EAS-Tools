@@ -69,12 +69,18 @@ import { createSendMenu, receive } from './handoff.js';
         return output ? (output.value || output.textContent || "").trim() : "";
     };
     const noOutput = () => normalizedText() ? "" : "normalize a product first";
+    const sourceOffice = () => {
+        const input = document.getElementById("productToNormalize");
+        const raw = window.normalizerEditor ? window.normalizerEditor.getValue() : (input ? input.value : "");
+        const office = typeof window.nwsIssuingOffice === "function" ? window.nwsIssuingOffice(raw) : null;
+        return office ? { office } : {};
+    };
     const normalizerSendMenu = createSendMenu({
         label: "Send to…",
         title: "Open the normalized product in another tool",
         items: [
-            { tool: "encoder", label: "SAME Encoder (as TTS text)", what: "Normalized product", unavailable: noOutput, payload: () => ({ text: normalizedText() }) },
-            { tool: "splicer", label: "Audio Splicer (as TTS text)", what: "Normalized product", unavailable: noOutput, payload: () => ({ text: normalizedText() }) },
+            { tool: "encoder", label: "SAME Encoder (as TTS text)", what: "Normalized product", unavailable: noOutput, payload: () => ({ text: normalizedText(), ...sourceOffice() }) },
+            { tool: "splicer", label: "Audio Splicer (as TTS text)", what: "Normalized product", unavailable: noOutput, payload: () => ({ text: normalizedText(), ...sourceOffice() }) },
             { tool: "crawl", label: "Text Crawl Generator (as crawl text)", what: "Normalized product", unavailable: noOutput, payload: () => ({ text: normalizedText() }) },
         ],
     });

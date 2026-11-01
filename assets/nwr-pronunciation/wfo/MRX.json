@@ -1,0 +1,134 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/MRX",
+    "scope": {
+        "type": "wfo",
+        "id": "MRX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 115,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "chattanooga",
+            "match": "Chattanooga",
+            "replace": {
+                "kind": "respell",
+                "text": "Chaddanooga"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "clear",
+            "match": "Clear",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K L IH0 R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "grainger",
+            "match": "Grainger",
+            "replace": {
+                "kind": "respell",
+                "text": "Granger"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "polk-sharps",
+            "match": "Polk Sharps",
+            "replace": {
+                "kind": "respell",
+                "text": "polkSharps"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "sevier",
+            "match": "Sevier",
+            "replace": {
+                "kind": "respell",
+                "text": "Severe"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "winds",
+            "match": "Winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "No",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "recap": "No",
+        "patterns": [
+            {
+                "description": "15 is followed by a zero pause; X:15 AM/PM reads \"X, 15 <vtml_pause time=\\\"0\\\"/> AM/PM\"",
+                "example": "15 <vtml_pause time=\"0\"/>"
+            }
+        ]
+    }
+}

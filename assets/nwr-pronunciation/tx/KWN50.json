@@ -1,0 +1,50 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/KWN50",
+    "scope": {
+        "type": "tx",
+        "id": "KWN50",
+        "wfo": "TAE"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": null,
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "operating-24-hours-a-day",
+            "match": "operating 24 hours a day",
+            "replace": {
+                "kind": "respell",
+                "text": "operating 24 aitch O U R S AY day"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ]
+}

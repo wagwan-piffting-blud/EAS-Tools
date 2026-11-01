@@ -1,0 +1,46 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/FGF",
+    "scope": {
+        "type": "wfo",
+        "id": "FGF"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [],
+    "style": {
+        "regionOfState": "Yes",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "svrPathcast": true,
+        "reportScript": null,
+        "recap": "No"
+    }
+}

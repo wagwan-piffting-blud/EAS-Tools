@@ -1,0 +1,109 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/OUN",
+    "scope": {
+        "type": "wfo",
+        "id": "OUN"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 109,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "crowell",
+            "match": "Crowell",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K R OW1 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "friday",
+            "match": "Friday",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F R AY1 D IY0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "kiowa",
+            "match": "Kiowa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA1 AH0 W AA0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "mostly-sunny",
+            "match": "Mostly Sunny",
+            "replace": {
+                "kind": "vtml",
+                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"M OW0 S T L IY0\"></vtml_phoneme> <vtml_phoneme alphabet=\"x-cmu\" ph=\"S UH0 N IY0\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "thunderstorms",
+            "match": "Thunderstorms",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T AO0 R M S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ],
+            "notes": "When no EAS alert is in effect."
+        }
+    ]
+}

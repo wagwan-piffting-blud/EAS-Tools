@@ -1,0 +1,103 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/SHV",
+    "scope": {
+        "type": "wfo",
+        "id": "SHV"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 103,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "arkansas",
+            "match": "Arkansas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA1 R K AH0 N S AO"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "bienville",
+            "match": "Bienville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B IY EH1 N V IH2 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "bossier",
+            "match": "Bossier",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B OW2 ZH R"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        },
+        {
+            "id": "nacogdoches",
+            "match": "Nacogdoches",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N AE1 K AH D OW1 CH IH Z"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 7
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "svrPathcast": false,
+        "reportScript": null,
+        "recap": "Yes"
+    }
+}

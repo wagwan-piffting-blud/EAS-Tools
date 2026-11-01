@@ -1,0 +1,158 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/PAH",
+    "scope": {
+        "type": "wfo",
+        "id": "PAH"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": {
+            "value": 910,
+            "verified": true
+        }
+    },
+    "entries": [
+        {
+            "id": "cape-girardeau",
+            "match": "Cape Girardeau",
+            "replace": {
+                "kind": "vtml",
+                "markup": "Cape <vtml_phoneme alphabet=\"x-cmu\" ph=\"JH ER R AA1 R D D OW2\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "dew-point",
+            "match": "Dew Point",
+            "replace": {
+                "kind": "respell",
+                "text": "dewpoint"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "illinois",
+            "match": "Illinois",
+            "replace": {
+                "kind": "respell",
+                "text": "Illynois"
+            },
+            "variants": [
+                {
+                    "id": "phoneme",
+                    "label": "Phoneme form (various WFOs, page 12)",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "IH1 L IH N OY1"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "louisville",
+            "match": "Louisville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L UW1 AH1 V IH1 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        },
+        {
+            "id": "maps",
+            "match": "Maps",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AE0 P S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "noaa",
+            "match": "NOAA",
+            "replace": {
+                "kind": "respell",
+                "text": "No Uh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "vincennes",
+            "match": "Vincennes",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V IH1 N S EH1 N Z"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes (no \"region of\", just the state)",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Expected Hazards Include",
+        "svrPathcast": true,
+        "reportScript": null,
+        "recap": "Yes"
+    }
+}

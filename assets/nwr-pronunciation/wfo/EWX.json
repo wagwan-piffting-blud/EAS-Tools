@@ -1,0 +1,296 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/EWX",
+    "scope": {
+        "type": "wfo",
+        "id": "EWX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "atascosa",
+            "match": "Atascosa",
+            "replace": {
+                "kind": "respell",
+                "text": "Atuh-scoza"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "bexar",
+            "match": "Bexar",
+            "replace": {
+                "kind": "respell",
+                "text": "Bhair"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "biry",
+            "match": "Biry",
+            "replace": {
+                "kind": "respell",
+                "text": "By-ree"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "carrizo-springs",
+            "match": "Carrizo Springs",
+            "replace": {
+                "kind": "respell",
+                "text": "cur reez o springs"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "cibolo",
+            "match": "Cibolo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S IH1 B AH0 L OW1"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "comal",
+            "match": "Comal",
+            "replace": {
+                "kind": "respell",
+                "text": "Coe-mal"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "cotulla",
+            "match": "Cotulla",
+            "replace": {
+                "kind": "respell",
+                "text": "Cuh-Tulla"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 5
+                }
+            ]
+        },
+        {
+            "id": "dhanis",
+            "match": "D'Hanis",
+            "replace": {
+                "kind": "vtml",
+                "markup": "D <vtml_phoneme alphabet=\"x-cmu\" ph=\"HH AE1 N IH Z\"></vtml_phoneme>"
+            },
+            "variants": [
+                {
+                    "id": "hainz",
+                    "label": "Variant 2",
+                    "replace": {
+                        "kind": "respell",
+                        "text": "D Hainz"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "dunley",
+            "match": "Dunley",
+            "replace": {
+                "kind": "respell",
+                "text": "Dunlee"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "elgin",
+            "match": "Elgin",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH1 L G IH N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "guadalupe",
+            "match": "Guadalupe",
+            "replace": {
+                "kind": "respell",
+                "text": "Gwada-loopeh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "medina",
+            "match": "Medina",
+            "replace": {
+                "kind": "respell",
+                "text": "Meh-deen-a"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "natalia",
+            "match": "Natalia",
+            "replace": {
+                "kind": "vtml",
+                "markup": "Nuh-<vtml_phoneme alphabet=\"x-cmu\" ph=\"T AE L IY AH\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "new-braunfels",
+            "match": "New Braunfels",
+            "replace": {
+                "kind": "respell",
+                "text": "New Brawn-fulls"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "poteet",
+            "match": "Poteet",
+            "replace": {
+                "kind": "respell",
+                "text": "Po-teet"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        },
+        {
+            "id": "quihi",
+            "match": "Quihi",
+            "replace": {
+                "kind": "respell",
+                "text": "Qih-hee"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ],
+            "notes": "Spelled \"Qihi\" in the guide."
+        },
+        {
+            "id": "seguin",
+            "match": "Seguin",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S IH0 G IY2 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 6
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "No",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "svrPathcast": false,
+        "reportScript": null,
+        "recap": "No"
+    }
+}

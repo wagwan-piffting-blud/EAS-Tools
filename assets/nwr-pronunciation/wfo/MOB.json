@@ -1,0 +1,111 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/MOB",
+    "scope": {
+        "type": "wfo",
+        "id": "MOB"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 107,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "conecuh",
+            "match": "Conecuh",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH N EH1 K AH1"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "lucedale",
+            "match": "Lucedale",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L UW S D EY L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "mobile",
+            "match": "Mobile",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M OW1 B IY0 AH0 L"
+            },
+            "caseSensitive": true,
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ],
+            "notes": "Capitalised only, so \"mobile homes\" is left alone mid-sentence."
+        },
+        {
+            "id": "okaloosa",
+            "match": "Okaloosa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 K AH L UW S AH"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ],
+            "notes": "Spelled \"Oklaloosa\" in the guide."
+        },
+        {
+            "id": "pascagoula",
+            "match": "Pascagoula",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AE S K AH1 G UW L AH1"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        }
+    ]
+}

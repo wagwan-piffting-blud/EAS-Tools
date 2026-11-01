@@ -28,6 +28,7 @@ mod marine_custom_fips;
 mod multiview;
 mod native_bridge_parity;
 mod number_inputs;
+mod nwr_pronunciation;
 mod silence_timing;
 mod site_tools;
 mod splicer_chain_level;
@@ -73,6 +74,7 @@ fn main() -> std::process::ExitCode {
         ("multiview", multiview::cases()),
         ("native_bridge_parity", native_bridge_parity::cases()),
         ("number_inputs", number_inputs::cases()),
+        ("nwr_pronunciation", nwr_pronunciation::cases()),
         ("silence_timing", silence_timing::cases()),
         ("site_tools", site_tools::cases()),
         ("splicer_chain_level", splicer_chain_level::cases()),

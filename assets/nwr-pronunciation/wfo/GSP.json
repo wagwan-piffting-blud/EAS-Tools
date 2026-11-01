@@ -1,0 +1,233 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/GSP",
+    "scope": {
+        "type": "wfo",
+        "id": "GSP"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 115,
+            "verified": true
+        },
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true
+        },
+        "periodPauseMs": {
+            "value": 900,
+            "verified": true
+        }
+    },
+    "entries": [
+        {
+            "id": "abbeville",
+            "match": "Abbeville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE1 B IY0 V IH0 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "buncombe",
+            "match": "Buncombe",
+            "replace": {
+                "kind": "respell",
+                "text": "Buncum"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "dahlonega",
+            "match": "Dahlonega",
+            "replace": {
+                "kind": "respell",
+                "text": "duh-lah-nuh-guh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "forties",
+            "match": "Forties",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F OW ER T IY Z"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "gastonia",
+            "match": "Gastonia",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "G AE1 S T OW1 N IY0 AH0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "iredell",
+            "match": "Iredell",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AY R D EH0 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "lincolnton",
+            "match": "Lincolnton",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IY0 N K AH0 N T IH0 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "linville",
+            "match": "Linville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IH0 N V IH0 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "longitude",
+            "match": "Longitude",
+            "replace": {
+                "kind": "respell",
+                "text": "lawnjitude"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        },
+        {
+            "id": "oconee",
+            "match": "Oconee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 K OW1 N IY0"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "polk",
+            "match": "Polk",
+            "replace": {
+                "kind": "respell",
+                "text": "Polke"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "rowan",
+            "match": "Rowan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R OW AE2 N"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 8
+                }
+            ]
+        },
+        {
+            "id": "winds",
+            "match": "Winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D S"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 3
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "saysTimeZone": "Yes",
+        "hazardIndicator": "Hazard",
+        "reportScript": "Please report damaging Winds, hail, or flooding to the National Weather Service Greenville Spartanburg by calling toll free at 1, 800, 2 6 7, 8 1 0 1, by posting on our Facebook page, or via Twitter using hashtag n w s g s p. Your message should describe the event and the specific location where it occurred.",
+        "recap": "Yes"
+    }
+}

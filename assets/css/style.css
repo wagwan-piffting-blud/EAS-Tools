@@ -3349,3 +3349,97 @@ html.eas-pane #announcement-toast {
         background: #d8d8d8;
     }
 }
+
+/* VT Paul NWR pronunciation picker (encoder and splicer), built by assets/js/nwr-pronunciation-ui.js */
+.nwr-pron {
+    margin: 12px 0;
+    padding: 8px 12px 10px;
+    border: 1px solid var(--color-border-light);
+    max-width: 46rem;
+}
+
+.nwr-pron legend {
+    padding: 0 4px;
+}
+
+.nwr-pron__row {
+    margin: 6px 0;
+}
+
+.nwr-pron .ss-combo {
+    max-width: 100%;
+}
+
+.nwr-pron__preview {
+    max-height: 14rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding: 6px 8px;
+    border: 1px solid var(--color-border);
+}
+
+.nwr-pron-editor {
+    width: min(860px, calc(100vw - 32px));
+    overflow: auto;
+}
+
+.nwr-pron-editor section {
+    margin: 14px 0;
+}
+
+.nwr-pron-editor h4 {
+    margin: 0 0 6px;
+}
+
+.nwr-pron-editor__table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+
+.nwr-pron-editor__table caption {
+    text-align: left;
+    font-weight: bold;
+    padding-bottom: 4px;
+}
+
+.nwr-pron-editor__table th,
+.nwr-pron-editor__table td {
+    border: 1px solid var(--color-border);
+    padding: 4px 6px;
+    text-align: left;
+    vertical-align: top;
+    word-break: break-word;
+}
+
+.nwr-pron-editor__table td button {
+    margin: 2px 0;
+}
+
+.nwr-pron-editor__left {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.nwr-pron-editor__choices {
+    max-height: 12rem;
+    overflow: auto;
+}
+
+@media (max-width: 600px) {
+    .nwr-pron-editor__table thead {
+        display: none;
+    }
+
+    .nwr-pron-editor__table tr,
+    .nwr-pron-editor__table th,
+    .nwr-pron-editor__table td {
+        display: block;
+        width: auto;
+    }
+
+    .nwr-pron-editor__table tr {
+        margin-bottom: 8px;
+    }
+}

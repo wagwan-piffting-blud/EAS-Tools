@@ -1,0 +1,122 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/RNK",
+    "scope": {
+        "type": "wfo",
+        "id": "RNK"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 112,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "alvan",
+            "match": "Alvan",
+            "replace": {
+                "kind": "respell",
+                "text": "Al van"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "appomattox",
+            "match": "Appomattox",
+            "replace": {
+                "kind": "respell",
+                "text": "App a matticks"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "botetourt",
+            "match": "Botetourt",
+            "replace": {
+                "kind": "respell",
+                "text": "bot-a-tot"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "raleigh",
+            "match": "Raleigh",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AA1 L IY1 HH"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 9
+                }
+            ]
+        },
+        {
+            "id": "variable",
+            "match": "Variable",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V AE1 R R IY0 AH0 B AH0 L"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        },
+        {
+            "id": "winds",
+            "match": "Winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W EH1 N D Z"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 4
+                }
+            ]
+        }
+    ]
+}

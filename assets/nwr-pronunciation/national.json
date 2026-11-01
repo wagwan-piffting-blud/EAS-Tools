@@ -1,0 +1,1280 @@
+{
+    "schemaVersion": 1,
+    "id": "national",
+    "scope": {
+        "type": "national"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "eastools-converter",
+            "title": "EAS Tools phoneme converter: Paul national dictionary overrides (assets/js/phoneme-bundle.js before #158)"
+        },
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": null,
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true,
+            "notes": "Paul default"
+        },
+        "periodPauseMs": {
+            "value": 900,
+            "verified": true,
+            "notes": "Paul default"
+        }
+    },
+    "entries": [
+        {
+            "id": "10s",
+            "match": "10s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T IY2 N Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "20s",
+            "match": "20s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T W UH2 N T T IY0 Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "albemarle",
+            "match": "albemarle",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE0 L B AH0 M AA0 R L"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "antilles",
+            "match": "antilles",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE0 N T IH1 L IY0 S"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "arpt",
+            "match": "arpt",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH1 R P OW0 R T"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "asos",
+            "match": "asos",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EY1 S AH0 AA0 S"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "atlantic",
+            "match": "atlantic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE0 T L AE0 N T IH2 K"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ],
+            "variants": [
+                {
+                    "id": "tmyk",
+                    "label": "TMYK guide, listed beside Puerto Rico",
+                    "context": "Listed without an office, next to the SJU entries",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "AE T L AE N T IH2 K"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "atmospheric",
+            "match": "atmospheric",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE2 T M AH0 S F EH1 R IH0 K"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "au",
+            "match": "au",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AO0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "azores",
+            "match": "azores",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EY1 Z OW0 R Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "bay-and-inland-waters-a-light-chop",
+            "match": "bay and inland waters a light chop",
+            "replace": {
+                "kind": "vtml",
+                "markup": "bay <vtml_break level=\"1\"/> and inland waters a light chop"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ]
+        },
+        {
+            "id": "bimini",
+            "match": "bimini",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B IH1 M IH0 N IY0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "cabo-san-lucas",
+            "match": "cabo san lucas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA1 B OW0 S AA0 N L UW1 K AH0 Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "caribbean",
+            "match": "caribbean",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE2 R EH0 B IY1 AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ],
+            "variants": [
+                {
+                    "id": "tmyk",
+                    "label": "TMYK guide, listed beside Puerto Rico",
+                    "context": "Listed without an office, next to the SJU entries",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "K EH0 R IH1 B IY2 AH0 N"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "ciego-de-avila",
+            "match": "ciego de avila",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S IY0 EY0 G OW0 D EY0",
+                "on": "ciego de"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "cloudiness",
+            "match": "cloudiness",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K L AW1 D IY0 N EH2 S"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "content",
+            "match": "content",
+            "replace": {
+                "kind": "respell",
+                "text": "CONTENT"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ]
+        },
+        {
+            "id": "croix",
+            "match": "croix",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K R AH0 OY0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "dawn",
+            "match": "dawn",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D AA1 AO1 N"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "de",
+            "match": "De",
+            "replace": {
+                "kind": "respell",
+                "text": "Duh"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ]
+        },
+        {
+            "id": "delmarva",
+            "match": "delmarva",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D EH0 L M AA1 R V AH0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "dense-fog-advisory-now-in-effect",
+            "match": "dense fog advisory now in effect",
+            "replace": {
+                "kind": "vtml",
+                "markup": "dense fog, <vtml_pause time=\"0\"/> advisory now in effect"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ]
+        },
+        {
+            "id": "enrique",
+            "match": "enrique",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA0 N R IY1 K EY0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "felicia",
+            "match": "felicia",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AH0 L IY1 SH AH0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "fenwick",
+            "match": "fenwick",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F EH1 N W IH0 K K"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "frederica",
+            "match": "frederica",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F R EH2 D EH0 R IY1 K AH0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "frequent",
+            "match": "Frequent",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F R IY2 K W EH1 N T"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ]
+        },
+        {
+            "id": "friday",
+            "match": "friday",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F R AY1 D EY2"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "hail",
+            "match": "hail",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH EY1 L"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "henlopen",
+            "match": "henlopen",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH EH0 N L OW2 P EH0 N"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "henri",
+            "match": "henri",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA0 N R IY1"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "hgts",
+            "match": "hgts",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AY1 T S"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "highs",
+            "match": "highs",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AY1 Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "ignacio",
+            "match": "ignacio",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IY0 G N AA1 S IY0 OW0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "illinois",
+            "match": "illinois",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IH1 L IH0 N OY1"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "impact",
+            "match": "Impact",
+            "replace": {
+                "kind": "respell",
+                "text": "impakt"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 1
+                }
+            ]
+        },
+        {
+            "id": "impacts",
+            "match": "Impacts",
+            "replace": {
+                "kind": "respell",
+                "text": "impakts"
+            },
+            "variants": [
+                {
+                    "id": "phoneme",
+                    "label": "Phoneme form",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "IH0 M P AE1 K T Z"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 1
+                }
+            ]
+        },
+        {
+            "id": "isidore",
+            "match": "isidore",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IH1 Z AH0 D OW0 R"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "jimena",
+            "match": "jimena",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AH0 M EY1 N AH0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "johnsonville",
+            "match": "johnsonville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "JH AA0 N S AH0 N V IH0 L"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "jr",
+            "match": "jr",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "JH UW1 N Y ER0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "kissimmee",
+            "match": "kissimmee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K IH1 Z EH0 M IY2"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "lead",
+            "match": "lead",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IY1 D"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "live",
+            "match": "Live",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AY1 V"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ],
+            "notes": "Applies to every \"live\", including the verb."
+        },
+        {
+            "id": "m",
+            "match": "M",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH0 M"
+            },
+            "caseSensitive": true,
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ],
+            "notes": "The letter M on its own."
+        },
+        {
+            "id": "mc",
+            "match": "mc",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M IH1 K"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "mineral",
+            "match": "mineral",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M IH1 N ER0 AH0 L"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "moderate",
+            "match": "moderate",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AA1 D AH0 R IH0 T"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "movement-toward",
+            "match": "movement toward",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M UW1 V M EH0 N",
+                "on": "movement"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "mt",
+            "match": "mt",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AW1 N T"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "near-zero",
+            "match": "near zero",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N IY0 R Z IY0 R OW0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "near-zero-hyphen",
+            "match": "near-zero",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N IY0 R Z IY0 R OW0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "newfoundland",
+            "match": "newfoundland",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N UW0 F AH0 N D L AH2 N D"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "nexrad",
+            "match": "nexrad",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N EH1 K S R AE2 D"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "odette",
+            "match": "odette",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW0 D EH1 T"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "okeechobee",
+            "match": "okeechobee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW0 K IY0 CH OW1 B IY2"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "olaf",
+            "match": "olaf",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 L AA2 F"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "onesie",
+            "match": "Onesie",
+            "replace": {
+                "kind": "respell",
+                "text": "Oh-nessy"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ]
+        },
+        {
+            "id": "pahokee",
+            "match": "pahokee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AA0 HH OW1 K IY0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "record",
+            "match": "Record",
+            "replace": {
+                "kind": "vtml",
+                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"R EH1 K HH\"></vtml_phoneme> <vtml_break level=\"1\"/> <vtml_phoneme alphabet=\"x-cmu\" ph=\"ER2 D\"></vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ]
+        },
+        {
+            "id": "reservoir",
+            "match": "reservoir",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R EH1 Z ER0 V OW0 R"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "route",
+            "match": "route",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AW1 T"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "santa-fe",
+            "match": "santa fe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AE1 N T AH0 F EY1"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "santa-fe-river",
+            "match": "santa fe river",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AE1 N T AH0 F EY1",
+                "on": "santa fe"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "spgs",
+            "match": "spgs",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S P R IH1 NG Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "tehuantepec",
+            "match": "tehuantepec",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AH0 W AA1 N AH0 P EH0 K"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "thundershower",
+            "match": "thundershower",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 SH AW0 ER0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "thundershowers",
+            "match": "thundershowers",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 SH AW0 ER0 Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorms",
+            "match": "thunderstorms",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AO R N AE1 D IH K"
+            },
+            "variants": [
+                {
+                    "id": "short-a",
+                    "label": "Variant 2 (short a)",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "T OW1 ER N AE1 D IH K"
+                    }
+                }
+            ],
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 1
+                }
+            ],
+            "notes": "Variant 1 (long a)"
+        },
+        {
+            "id": "uno",
+            "match": "uno",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "UW0 UW1 N OW0"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "weakened",
+            "match": "Weakened",
+            "replace": {
+                "kind": "respell",
+                "text": "weak-end"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 2
+                }
+            ]
+        },
+        {
+            "id": "wind",
+            "match": "wind",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ],
+            "variants": [
+                {
+                    "id": "ih2",
+                    "label": "Most offices (per the TMYK guide)",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "W IH2 N D"
+                    }
+                },
+                {
+                    "id": "ih",
+                    "label": "Unstressed",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "W IH N D"
+                    }
+                }
+            ],
+            "notes": "The TMYK guide says most offices use W IH2 N D; kept the converter value pending review."
+        },
+        {
+            "id": "wind-down",
+            "match": "wind down",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AY2 N D",
+                "on": "wind"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "wind-down-to",
+            "match": "wind down to",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D",
+                "on": "wind"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "wind-up",
+            "match": "wind up",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AY2 N D",
+                "on": "wind"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "wind-up-to",
+            "match": "wind up to",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D",
+                "on": "wind"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "winds",
+            "match": "winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D S"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ],
+            "variants": [
+                {
+                    "id": "ih2",
+                    "label": "Variant 1 (TMYK guide)",
+                    "replace": {
+                        "kind": "phoneme",
+                        "ph": "W IH2 N D S"
+                    }
+                },
+                {
+                    "id": "windss",
+                    "label": "Variant 2, most offices (TMYK guide)",
+                    "replace": {
+                        "kind": "respell",
+                        "text": "Windss"
+                    }
+                }
+            ],
+            "notes": "The TMYK guide says most offices use the respelling Windss; kept the converter value pending review."
+        },
+        {
+            "id": "winds-down",
+            "match": "winds down",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AY2 N D S",
+                "on": "winds"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "winds-down-to",
+            "match": "winds down to",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D S",
+                "on": "winds"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "winds-up",
+            "match": "winds up",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AY2 N D S",
+                "on": "winds"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "winds-up-to",
+            "match": "winds up to",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH1 N D S",
+                "on": "winds"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        },
+        {
+            "id": "xrds",
+            "match": "xrds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K R AO1 S R OW0 D Z"
+            },
+            "sources": [
+                {
+                    "source": "eastools-converter"
+                }
+            ]
+        }
+    ],
+    "style": {
+        "productPauseMs": 1300,
+        "currentTime": {
+            "phrase": "The Current Time is;",
+            "variants": [
+                "The Current Time is. <vtml_pause time=\"50\"/> (hour) <vtml_pause time=\"100\"/> (minute) <vtml_pause time=\"50\"/> (AM/PM) <vtml_pause time=\"100\"/> (Timestamp). <vtml_pause time=\"500\"/>",
+                "The Current Time is. <vtml_pause time=\"50\"/> (hour) <vtml_pause time=\"50\"/> (minute) <vtml_pause time=\"50\"/> (AM/PM) <vtml_pause time=\"100\"/> (Timestamp). <vtml_pause time=\"500\"/>"
+            ]
+        },
+        "briefPauseTimes": {
+            "note": "A brief pause is used when reading these times",
+            "times": [
+                "4:20 AM",
+                "4:29 AM",
+                "4:20 PM",
+                "4:21 PM",
+                "4:22 PM",
+                "4:24 PM",
+                "4:25 PM",
+                "4:28 PM",
+                "4:54 PM",
+                "9:10 PM"
+            ]
+        },
+        "workflow": [
+            "Copy NWS text into vt-editor",
+            "Replace * with nothing",
+            "Replace ... with ,",
+            "Replace , with , <vtml_pause time=\"200\"/>",
+            "Replace words per the national list (e.g. thunderstorm)",
+            "Spell out time zones (CDT -> Central Daylight Time)",
+            "Correct times (526 PM -> 5:26 PM, 700 PM -> 7 PM)"
+        ]
+    }
+}

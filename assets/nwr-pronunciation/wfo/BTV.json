@@ -1,0 +1,60 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/BTV",
+    "scope": {
+        "type": "wfo",
+        "id": "BTV"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 117,
+            "verified": true
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "lamoille",
+            "match": "Lamoille",
+            "replace": {
+                "kind": "respell",
+                "text": "La Moil"
+            },
+            "sources": [
+                {
+                    "source": "tmyk",
+                    "page": 10
+                }
+            ]
+        }
+    ],
+    "style": {
+        "regionOfState": "Yes",
+        "onePmReading": "1 PM (1:15 PM is read \"1, 15 PM\")",
+        "saysTimeZone": "No",
+        "hazardIndicator": "Hazard",
+        "reportScript": null,
+        "recap": "No"
+    }
+}

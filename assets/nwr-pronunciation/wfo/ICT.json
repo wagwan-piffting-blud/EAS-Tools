@@ -1,0 +1,47 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/ICT",
+    "scope": {
+        "type": "wfo",
+        "id": "ICT"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "tmyk",
+            "title": "VoiceText Phoneme List, compiled by themisaiahyouknow (NWR Reference community)",
+            "ref": "assets/tmyk_phoneme_guide.pdf",
+            "contributors": [
+                "themisaiahyouknow",
+                "GeuaxPJ",
+                "SouthTexasElevatorsEAS",
+                "easalert88",
+                "ThunderBuddy01",
+                "SPCSafetyHarbor"
+            ]
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 106,
+            "verified": false,
+            "notes": "Needs a speed test"
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [],
+    "style": {
+        "regionOfState": "No (\"The National Weather Service has issued a Severe Thunderstorm Warning for Reno County, Sedgwick County...\")",
+        "onePmReading": "1 PM",
+        "saysTimeZone": "No (\"Severe Thunderstorms Extended from (location)\" for lines)",
+        "hazardIndicator": "You can expect (The Warning was based on radar indications) (The following impacts are expected); extra comma in \"expect wind damage, to roofs, sidings, and trees\"",
+        "svrPathcast": false,
+        "reportScript": null,
+        "recap": "No (no CTA)"
+    }
+}
