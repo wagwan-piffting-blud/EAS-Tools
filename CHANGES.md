@@ -10,6 +10,8 @@
 
 - Allow creation and storage of custom SAME event codes. This allows users to create their own custom SAME event codes, which can be useful for generating alerts for events that do not have predefined event codes in the SAME specification. The custom event codes can be stored and reused in future alerts, providing users with more flexibility and control over the alert generation process. Thank you to GitHub user @InternOfCEOs for suggesting this change.
 
+- CI updates.
+
 ---
 
 2026-10-30:

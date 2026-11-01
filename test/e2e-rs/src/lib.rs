@@ -67,6 +67,7 @@ pub fn run(groups: Vec<(&'static str, Vec<Case>)>) -> std::process::ExitCode {
             std::env::var("EAS_TOOLS_TABS").ok().and_then(|v| v.parse().ok()).unwrap_or(browser::DEFAULT_TABS),
         );
     }
+    let slow_after = slow_threshold();
     let trials = groups
         .into_iter()
         .flat_map(|(module, cases)| {
@@ -77,7 +78,7 @@ pub fn run(groups: Vec<(&'static str, Vec<Case>)>) -> std::process::ExitCode {
                     let started = std::time::Instant::now();
                     let outcome = run_case(&body).map_err(|e| format!("{e:#}").into());
                     let elapsed = started.elapsed();
-                    if elapsed > Duration::from_secs(2) {
+                    if slow_after.is_some_and(|limit| elapsed > limit) {
                         eprintln!("[slow] {name} {:.1}s", elapsed.as_secs_f64());
                     }
                     outcome
@@ -88,4 +89,15 @@ pub fn run(groups: Vec<(&'static str, Vec<Case>)>) -> std::process::ExitCode {
     let conclusion = libtest_mimic::run(&args, trials);
     browser::runtime().block_on(browser::shutdown());
     conclusion.exit_code()
+}
+
+/// `[slow]` reporting: EAS_TOOLS_SLOW_SECS sets the threshold and 0 turns it off. Unset, it is 2 s
+/// locally and off under CI, where shared runners make every test slow and the notes are noise.
+fn slow_threshold() -> Option<Duration> {
+    match std::env::var("EAS_TOOLS_SLOW_SECS").ok().and_then(|v| v.trim().parse::<f64>().ok()) {
+        Some(secs) if secs > 0.0 => Some(Duration::from_secs_f64(secs)),
+        Some(_) => None,
+        None if std::env::var_os("CI").is_some() => None,
+        None => Some(Duration::from_secs(2)),
+    }
 }

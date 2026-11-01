@@ -1,6 +1,6 @@
 # eas-tools e2e suite (Rust + CDP)
 
-Run with `make e2e` from the repo root, or `cargo test --test e2e` from `test/e2e-rs`. `make quality` and CI include it. It runs 8 slots by default (`EAS_TOOLS_TABS`). Each slot is its own headless Chrome with one browser context that its tests take turns in. An in-process static server serves the repo at `/eas-tools` unless `EAS_TOOLS_BASE_URL` is set. Tests slower than 2 s print `[slow]` to stderr. libtest-mimic takes ONE name filter (substring), plus `--skip`.
+Run with `make e2e` from the repo root, or `cargo test --test e2e` from `test/e2e-rs`. `make quality` and CI include it. It runs 8 slots by default (`EAS_TOOLS_TABS`). Each slot is its own headless Chrome with one browser context that its tests take turns in. An in-process static server serves the repo at `/eas-tools` unless `EAS_TOOLS_BASE_URL` is set. Tests slower than 2 s print `[slow]` to stderr; `EAS_TOOLS_SLOW_SECS` changes the threshold (`0` turns it off), and it is off by default when `CI` is set. libtest-mimic takes ONE name filter (substring), plus `--skip`.
 
 Chrome comes from `EAS_TOOLS_CHROME` if set, else `C:\Program Files\Google\Chrome\Application\chrome.exe` if present, else chromiumoxide's own lookup (`google-chrome`, `chromium`, ... on `PATH`).
 

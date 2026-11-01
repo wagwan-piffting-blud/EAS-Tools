@@ -88,9 +88,18 @@ impl Tab {
     }
 
     /// Wipes the origin's storage and hands the context back for reuse; a context whose wipe
-    /// fails is disposed instead, so nothing a test stored can reach the next one.
+    /// fails is disposed instead, so nothing a test stored can reach the next one. The page leaves
+    /// the site first: async work still in flight (the crawl's settings apply awaits asset loads,
+    /// then saves) would otherwise write to storage after the wipe and leak into the next test.
     pub(crate) async fn close(&self) {
-        let wiped = self
+        let left = tokio::time::timeout(
+            Duration::from_secs(5),
+            self.0.page.goto(NavigateParams::new("about:blank".to_string())),
+        )
+        .await
+        .map_or(false, |r| r.is_ok());
+        let wiped = left
+            && self
             .0
             .page
             .execute(ClearDataForOriginParams::new(self.origin(), STORAGE_TYPES))
