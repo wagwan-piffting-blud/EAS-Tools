@@ -17,9 +17,16 @@ const registry = [
         classification: 'generated output',
     },
     {
+        name: 'Marine SAME codes',
+        outputs: ['assets/E2T/include/same-marine.json', 'assets/E2T/include/same-us.json'],
+        inputs: ['external NWS mareas/marnwr/marst files from https://www.weather.gov/gis/EasNWR'],
+        generator: 'tools/build-same-marine.mjs',
+        classification: 'derived checked-in data',
+    },
+    {
         name: 'Marine SAME prefix mapping',
         outputs: ['assets/E2T/include/marine-same.json'],
-        inputs: ['assets/E2T/include/same-us.json'],
+        inputs: ['assets/E2T/include/same-marine.json', 'assets/E2T/include/same-us.json'],
         generator: 'tools/build-marine-same.mjs',
         classification: 'derived checked-in data',
     },

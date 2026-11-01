@@ -5936,14 +5936,24 @@
             });
 
             (function attachSendMenu(attempt) {
-                if (window.parent === window) return;
                 var handoff = null;
-                try { handoff = window.parent.EASHandoff || null; } catch (e) { return; }
-                // The parent page exposes EASHandoff once handoff.js finishes importing, which can land after this script runs.
+                if (window.parent !== window) {
+                    try { handoff = window.parent.EASHandoff || null; } catch (e) { return; }
+                } else if (typeof window.EASNativeHandoff === "function") {
+                    // In the mobile apps WarnGen is the whole page; their injected hook carries sends to the native tools.
+                    import("../assets/js/handoff.js").then(buildSendMenu, function (e) { console.error("[warngen] handoff unavailable", e); });
+                    return;
+                }
+                // The parent page exposes EASHandoff once handoff.js finishes importing, and the apps inject their hook after
+                // load, so either can land after this script runs.
                 if (!handoff) {
                     if (attempt < 200) setTimeout(function () { attachSendMenu(attempt + 1); }, 100);
                     return;
                 }
+                buildSendMenu(handoff);
+            })(0);
+
+            function buildSendMenu(handoff) {
                 var noProduct = function () { return lastFormattedOutput.trim() ? "" : "draw a polygon to build a product first"; };
                 var normalized = function () {
                     if (typeof window.normalizeNwsBulletin !== "function") return lastFormattedOutput;
@@ -5961,7 +5971,7 @@
                 });
                 menu.button.className += " secondary-btn";
                 document.getElementById("copy-btn").insertAdjacentElement("afterend", menu.element);
-            })(0);
+            }
 
             document.getElementById("download-btn").addEventListener("click", function () {
                 var text = document.getElementById("output").textContent || "";

@@ -7,9 +7,9 @@
  *
  * NWS assigns marine SAME codes by convention rather than publishing a lookup: the code is
  * 0 + a two-digit field standing in for the marine prefix + the UGC zone number. ANZ350
- * is 073350, GMZ531 is 077531, and so on. NWS's own SameCode.txt covers counties only, so
- * the mapping is recovered here from the marine entries already in same-us.json, whose
- * names carry their UGC prefix as a trailing ", AN" / ", GM" suffix.
+ * is 073350, GMZ531 is 077531, and so on. The mapping is recovered from the names in
+ * same-marine.json (plus same-us.json, whose Palau entries supply PW), which carry their
+ * UGC prefix as a trailing ", AN" / ", GM" suffix.
  *
  * Deriving it rather than hand-typing it means the file can be regenerated and checked, and
  * the script fails loudly if a prefix ever maps to more than one field.
@@ -24,6 +24,8 @@ const ROOT = path.resolve(__dirname, '..');
 const INCLUDE = path.join(ROOT, 'assets', 'E2T', 'include');
 
 const same = JSON.parse(fs.readFileSync(path.join(INCLUDE, 'same-us.json'), 'utf8'));
+const marine = JSON.parse(fs.readFileSync(path.join(INCLUDE, 'same-marine.json'), 'utf8'));
+same.SAME = { ...same.SAME, ...marine.SAME };
 
 const tally = {};
 for (const [code, name] of Object.entries(same.SAME || {})) {
@@ -74,8 +76,8 @@ fs.writeFileSync(dest, JSON.stringify({
     _comment: [
         'UGC marine prefix -> SAME state field. A marine SAME code is 0 + this field + the',
         'UGC zone number, so ANZ350 becomes 073350.',
-        'Derived from the marine entries in same-us.json by tools/build-marine-same.mjs;',
-        'NWS SameCode.txt covers counties only and has no marine listing to fetch.'
+        'Derived from the marine entries in same-marine.json and same-us.json by',
+        'tools/build-marine-same.mjs; same-marine.json comes from tools/build-same-marine.mjs.'
     ],
     prefixes: prefixes
 }, null, 4) + '\n');
@@ -84,5 +86,5 @@ const sorted = Object.keys(prefixes).sort();
 console.log('marine prefixes : ' + sorted.length + ' of ' + MARINE_PREFIXES.length);
 if (absent.length) console.log('no SAME codes   : ' + absent.join(' '));
 sorted.forEach(p => console.log('  ' + p + ' -> ' + prefixes[p]
-    + '   (' + tally[p][prefixes[p]] + ' codes in same-us.json)'));
+    + '   (' + tally[p][prefixes[p]] + ' SAME codes)'));
 console.log('output          : ' + dest);

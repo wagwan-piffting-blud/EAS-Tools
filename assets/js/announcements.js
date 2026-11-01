@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    if (document.documentElement.classList.contains('eas-pane')) return;
     fetch('https://wagspuzzle.space/tools/eas-tools/barker.php')
         .then(response => response.json())
         .then(data => {

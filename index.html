@@ -24,6 +24,9 @@
         <meta name="twitter:description" content="A web tool to decode and encode EAS SAME headers locally in your browser.">
         <meta name="twitter:image" content="https://eas.tools/assets/eas-logo-banner.png">
         <meta name="twitter:image:alt" content="Emergency Alert System Logo">
+        <script>
+            if (window.parent !== window && new URLSearchParams(location.search).has('pane')) document.documentElement.classList.add('eas-pane');
+        </script>
         <link rel="stylesheet" href="assets/css/hack.css">
         <link rel="stylesheet" href="assets/css/codemirror.css">
         <link rel="stylesheet" href="assets/css/dracula.css">
@@ -503,6 +506,10 @@
             <section id="crawl-panel" class="tool-panel" aria-labelledby="tab-crawl">
                 <h2 class="section-heading">Text Crawl Generator</h2>
                 <hr>
+                <div id="crawlPreviewDiv">
+                    <label for="crawlPreview">Live Preview (updates after any settings change):</label>
+                    <canvas id="crawlPreview" width="1200" height="150" style="border: 1px solid #ff0000;" role="img" aria-label="Live visual preview of the text crawl being generated. The crawl text is announced in the status region below."></canvas>
+                </div>
                 <label for="crawlUserPreset">Save/Load User Preset...</label>
                 <select id="crawlUserPreset">
                     <option value="1">Preset #1</option>
@@ -736,11 +743,6 @@
                         <option value="miter">Miter</option>
                     </select>
                 </div>
-                <div id="crawlPreviewDiv">
-                    <label for="crawlPreview">Live Preview (updates after any settings change):</label>
-                    <br>
-                    <canvas id="crawlPreview" width="1200" height="150" style="border: 1px solid #ff0000;" role="img" aria-label="Live visual preview of the text crawl being generated. The crawl text is announced in the status region below."></canvas>
-                </div>
                 <hr>
                 <div class="control-panel" style="position: sticky; top: 0; padding-top: 10px; padding-bottom: 10px; z-index: 10;">
                     <button type="button" id="pauseCrawl" disabled>Unpause Crawl</button>
@@ -878,6 +880,9 @@
                     <!-- Muxer iframe will be injected here when activated -->
                 </div>
             </section>
+            <section id="multiview-panel" class="tool-panel" aria-labelledby="tab-multiview">
+                <div id="multiview-root"></div>
+            </section>
         </main>
         <footer></footer>
         <script src="assets/js/footer.js"></script>
@@ -1001,7 +1006,20 @@
                             minHeight: '1080px',
                         },
                     },
+                    multiview: {
+                        element: document.getElementById('multiview-panel'),
+                        name: "Multi-View",
+                    },
                 };
+
+                const inNativeApp = () => !!(window.Capacitor?.isNativePlatform?.() || window.EASBridge || window.__EAS_REMOTE_SHIM__ || location.hostname === 'appassets.androidplatform.net');
+                const paneMode = document.documentElement.classList.contains('eas-pane');
+                // A pane is one tool inside Multi-View, and the apps have their own navigation.
+                if (paneMode || inNativeApp()) {
+                    panels.multiview.element?.remove();
+                    delete panels.multiview;
+                }
+                const wideEnoughForMultiView = window.matchMedia('(min-width: 1024px)');
 
                 const navButtons = document.getElementById('nav-buttons');
                 if (navButtons) {
@@ -1098,13 +1116,15 @@
                         scripts: [...CODEMIRROR_SCRIPTS],
                         module: 'assets/js/normalizer-bundle.js',
                     },
+                    multiview: {
+                        module: 'assets/js/multiview.js',
+                    },
                 };
 
                 const UPDATE_CHECK_MIN_MS = 5 * 60 * 1000;
                 const assetTags = new Map();
                 let lastUpdateCheck = 0;
                 let updateBarShown = false;
-                const inNativeApp = () => !!(window.Capacitor?.isNativePlatform?.() || window.EASBridge || window.__EAS_REMOTE_SHIM__ || location.hostname === 'appassets.androidplatform.net');
                 const fetchAssetTag = async (href) => {
                     try {
                         const r = await fetch(href, { method: 'HEAD', cache: 'no-store' });
@@ -1115,7 +1135,7 @@
                     }
                 };
                 const trackAsset = (url) => {
-                    if (inNativeApp()) return;
+                    if (paneMode || inNativeApp()) return;
                     let href;
                     try { href = new URL(url, document.baseURI); } catch { return; }
                     if (href.origin !== location.origin) return;
@@ -1146,7 +1166,7 @@
                     document.body.appendChild(bar);
                 };
                 const checkForUpdate = async () => {
-                    if (updateBarShown || !navigator.onLine || inNativeApp()) return;
+                    if (updateBarShown || !navigator.onLine || paneMode || inNativeApp()) return;
                     const now = Date.now();
                     if (now - lastUpdateCheck < UPDATE_CHECK_MIN_MS) return;
                     lastUpdateCheck = now;
@@ -1189,6 +1209,26 @@
                     modulePromises.set(url, promise);
                     return promise;
                 };
+
+                // Inside Multi-View a send goes to the parent, which routes it to the pane holding
+                // that tool (opening one if needed) instead of switching this pane's tab.
+                if (paneMode) {
+                    window.EASNativeHandoff = (tool, payload, what) => {
+                        try {
+                            window.parent.postMessage({ type: 'eas-multiview:handoff', tool, payload, what }, location.origin);
+                            return true;
+                        } catch (error) {
+                            console.error('[multiview] could not send to ' + tool, error);
+                            return false;
+                        }
+                    };
+                    window.addEventListener('message', (event) => {
+                        if (event.origin !== location.origin || event.source !== window.parent) return;
+                        const data = event.data;
+                        if (!data || data.type !== 'eas-multiview:deliver') return;
+                        loadModule('assets/js/handoff.js').then((handoff) => handoff.handIn(data.tool, data.payload, { what: data.what }));
+                    });
+                }
 
                 const toolLoadPromises = {};
                 const loadTool = (tool) => {
@@ -1303,6 +1343,17 @@
                         panelList.appendChild(option);
                     }
                 });
+
+                // Phones get no Multi-View: there is no room for two tools side by side.
+                const multiViewOption = document.querySelector('#nav-select option[value="multiview"]');
+                const syncMultiViewOption = () => {
+                    if (!multiViewOption) return;
+                    const list = document.getElementById('nav-select');
+                    if (wideEnoughForMultiView.matches) list.appendChild(multiViewOption);
+                    else multiViewOption.remove();
+                };
+                syncMultiViewOption();
+                wideEnoughForMultiView.addEventListener('change', syncMultiViewOption);
 
                 const tabList = Array.from(buttons);
                 navButtons?.addEventListener('keydown', (event) => {

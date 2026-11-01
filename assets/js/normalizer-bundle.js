@@ -49,7 +49,11 @@ import { createSendMenu, receive } from './handoff.js';
         window.EASBridge.on("normalizer:run", (params) => {
             try {
                 const text = (params && params.text) || "";
-                const result = normalizeNwsBulletin(text, { repeat: !!(params && params.repeat), labels: params && params.labels });
+                const result = normalizeNwsBulletin(text, {
+                    repeat: !!(params && params.repeat),
+                    labels: params && params.labels,
+                    ...(params && params.timeZone ? { timeZone: true } : {}),
+                });
                 window.EASBridge.send("normalizer:result", { result: result || "" });
             } catch (err) {
                 window.EASBridge.send("normalizer:result", { result: "[ERROR] " + ((err && err.message) || String(err)) });

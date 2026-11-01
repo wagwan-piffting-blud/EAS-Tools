@@ -14,6 +14,7 @@ import { E2T } from '../E2T/EAS2Text-NG.js';
 import { loadSeattyWasm, createSeattySameDemod } from './seatty-same-wasm.js';
 import { SEATTY_EVENT_TONE, decodeBatches, readWavLayout, wavChannelChunks } from './seatty-worker.js';
 import { createSendMenu, receive, audioFile } from './handoff.js';
+import { readCustomEvents, onCustomEventsChange, stripArticle, unrecognizedEventName } from './custom-events.js';
 
 loadSeattyWasm();
 
@@ -177,7 +178,46 @@ async function fetchAndStore() {
     const response2 = await fetch('assets/E2T/include/same-ca.json');
     const dataUS = await response.json();
     const dataCA = await response2.json();
+    try {
+        const marine = await (await fetch('assets/E2T/include/same-marine.json')).json();
+        dataUS.SAME = { ...dataUS.SAME, ...marine.SAME };
+    } catch (e) {
+        console.error('Error loading marine SAME codes:', e);
+    }
     processSameCodes(dataUS, dataCA);
+    Object.keys(window.events).forEach((code) => officialEvents.add(code));
+    applyCustomEvents(readCustomEvents());
+    onCustomEventsChange(applyCustomEvents);
+}
+
+const officialEvents = new Set();
+let appliedCustomEvents = [];
+
+function applyCustomEvents(custom) {
+    const events = window.events || {};
+    const select = document.getElementById("easyplusEventCode");
+    for (const code of appliedCustomEvents) {
+        delete events[code];
+        select?.querySelector('option[data-custom-event="' + code + '"]')?.remove();
+    }
+    appliedCustomEvents = [];
+    for (const [code, name] of Object.entries(custom || {})) {
+        if (officialEvents.has(code)) continue;
+        events[code] = name;
+        appliedCustomEvents.push(code);
+        if (select) {
+            const option = document.createElement("option");
+            option.value = code;
+            option.textContent = name;
+            option.dataset.customEvent = code;
+            select.appendChild(option);
+        }
+    }
+}
+
+function eventLabel(code) {
+    if (!code) return '';
+    return (window.events && window.events[code]) || stripArticle(unrecognizedEventName(code));
 }
 
 (async function () {
@@ -434,7 +474,10 @@ async function fetchAndStore() {
         }
     }
 
-    function startIOSLoopback() {
+    function startIOSLoopback(rate = IOS_STREAM_DECODE_SR) {
+        if (iosLoopbackCtx && iosLoopbackCtx.state !== "closed" && iosLoopbackCtx.sampleRate !== rate) {
+            stopIOSLoopback();
+        }
         if (iosLoopbackCtx && iosLoopbackCtx.state !== "closed") {
             if (iosLoopbackCtx.state === "suspended") {
                 iosLoopbackCtx.resume().catch(() => {});
@@ -444,8 +487,8 @@ async function fetchAndStore() {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
 
-        iosLoopbackCtx = new Ctx({ sampleRate: IOS_STREAM_DECODE_SR });
-        iosLoopbackRing = new LoopbackRing(IOS_STREAM_DECODE_SR * 2);
+        iosLoopbackCtx = new Ctx({ sampleRate: rate });
+        iosLoopbackRing = new LoopbackRing(rate * 2);
 
         iosLoopbackNode = iosLoopbackCtx.createScriptProcessor(4096, 0, 1);
         iosLoopbackNode.onaudioprocess = (e) => {
@@ -3589,6 +3632,10 @@ async function fetchAndStore() {
             product.alerts[i].endecModeReady = true;
         }
         sameProductResults.set(product.id, { mode, ready: true, analysis });
+        if (window.EASBridge) {
+            const raws = new Set(product.alerts.map((alert) => alert.rawHeader).filter(Boolean));
+            raws.forEach((raw) => window.EASBridge.send('decoder:headerEndec', { raw, endecMode: mode }));
+        }
         if (sameProductResults.size > 256) {
             const first = sameProductResults.keys().next().value;
             sameProductResults.delete(first);
@@ -4752,7 +4799,7 @@ async function fetchAndStore() {
                                     const easText = needsSeverity ? alertTextForSeverity(parsedHeader) : '';
                                     const severity = alertSeverity(easText);
                                     if (window.EASBridge) {
-                                        const alertName = events[parsedHeader.event] || parsedHeader.event || '';
+                                        const alertName = eventLabel(parsedHeader.event);
                                         const issueTime = parsedHeader.issueTime;
                                         const expirationTime = typeof getExpirationTime === 'function' ? getExpirationTime(issueTime, parsedHeader.alertTime) : null;
                                         window.EASBridge.send('decoder:header', {
@@ -4766,6 +4813,8 @@ async function fetchAndStore() {
                                             expireTime: expirationTime && typeof dateToReadable === 'function' ? dateToReadable(expirationTime, false) : '',
                                             sender: parsedHeader.sender || '',
                                             originator: entryNames[parsedHeader.originator] || parsedHeader.originator || '',
+                                            expiresAt: expirationTime ? expirationTime.getTime() : null,
+                                            endecMode: parsedHeader.endecModeReady ? (parsedHeader.endecMode || '') : '',
                                         });
                                     }
                                     const view = document.createElement("button");
@@ -4902,7 +4951,7 @@ async function fetchAndStore() {
                                         const easText = needsSeverity ? alertTextForSeverity(parsedHeader) : '';
                                         const severity = alertSeverity(easText);
                                         if (window.EASBridge) {
-                                            const alertName = events[parsedHeader.event] || parsedHeader.event || '';
+                                            const alertName = eventLabel(parsedHeader.event);
                                             const issueTime = parsedHeader.issueTime;
                                             const expirationTime = typeof getExpirationTime === 'function' ? getExpirationTime(issueTime, parsedHeader.alertTime) : null;
                                             window.EASBridge.send('decoder:header', {
@@ -4916,6 +4965,8 @@ async function fetchAndStore() {
                                                 expireTime: expirationTime && typeof dateToReadable === 'function' ? dateToReadable(expirationTime, false) : '',
                                                 sender: parsedHeader.sender || '',
                                                 originator: entryNames[parsedHeader.originator] || parsedHeader.originator || '',
+                                                expiresAt: expirationTime ? expirationTime.getTime() : null,
+                                                endecMode: parsedHeader.endecModeReady ? (parsedHeader.endecMode || '') : '',
                                             });
                                         }
                                         const view = document.createElement("button");
@@ -5400,7 +5451,7 @@ async function fetchAndStore() {
         }
 
         if (window.EASBridge) {
-            const alertName = events[parsedHeader.event] || parsedHeader.event || '';
+            const alertName = eventLabel(parsedHeader.event);
             const easText = alertTextForSeverity(parsedHeader);
             const severity = alertSeverity(easText);
             const issueTime = parsedHeader.issueTime;
@@ -5416,6 +5467,8 @@ async function fetchAndStore() {
                 expireTime: expirationTime && typeof dateToReadable === 'function' ? dateToReadable(expirationTime, false) : '',
                 sender: parsedHeader.sender || '',
                 originator: entryNames[parsedHeader.originator] || parsedHeader.originator || '',
+                expiresAt: expirationTime ? expirationTime.getTime() : null,
+                endecMode: parsedHeader.endecModeReady ? (parsedHeader.endecMode || '') : '',
             });
         }
 
@@ -5501,7 +5554,7 @@ async function fetchAndStore() {
 
         infoContainer.innerHTML = "";
 
-        const alertName = events[header.event];
+        const alertName = eventLabel(header.event);
         const issueTime = header.issueTime;
         const expirationTime = getExpirationTime(issueTime, header.alertTime);
         const regex = window.EASREGEX;
@@ -5667,7 +5720,7 @@ async function fetchAndStore() {
         openModalA11y();
         const announcer = document.getElementById("alert-announcer");
         if (announcer) {
-            const eventName = (events && events[parsedHeader.event]) || parsedHeader.event || "alert";
+            const eventName = eventLabel(parsedHeader.event) || "alert";
             announcer.textContent = "";
             requestAnimationFrame(() => {
                 announcer.textContent = "Alert decoded: " + eventName + ".";
@@ -6148,7 +6201,10 @@ async function fetchAndStore() {
     const decoderLoopback = document.getElementById('decoder-loopback');
     if (decoderLoopback) {
         decoderLoopback.addEventListener('change', function () {
-            if (isCapacitorIOS() && iosStreamAbort) {
+            if (nativeStreamActive) {
+                if (this.checked) startIOSLoopback(sampleRate);
+                else stopIOSLoopback();
+            } else if (isCapacitorIOS() && iosStreamAbort) {
                 if (this.checked) {
                     startIOSLoopback();
                 } else {
@@ -6370,7 +6426,10 @@ async function fetchAndStore() {
             const loopbackToggle = document.getElementById("decoder-loopback");
             if (loopbackToggle) {
                 loopbackToggle.checked = !!params?.enabled;
-                if (isCapacitorIOS() && iosStreamAbort) {
+                if (nativeStreamActive) {
+                    if (params?.enabled) startIOSLoopback(sampleRate);
+                    else stopIOSLoopback();
+                } else if (isCapacitorIOS() && iosStreamAbort) {
                     if (params?.enabled) {
                         startIOSLoopback();
                     } else {
@@ -6520,6 +6579,10 @@ async function fetchAndStore() {
                 recordingChunks.push(pcm.slice());
                 recordingLength += pcm.length;
             }
+            if (nativeStreamActive && isLoopbackEnabled()) {
+                startIOSLoopback(sampleRate);
+                queueIOSLoopbackPCM(pcm);
+            }
             // const bp = ensureIOSBandpass();
             // feedDecoderFrames(bp.process(pcm));
             feedDecoderFrames(pcm);
@@ -6536,6 +6599,7 @@ async function fetchAndStore() {
             finalizeActiveSameProduct();
             if (window.isRecording) stopRecording(true);
             nativeStreamActive = false;
+            if (!iosStreamAbort) stopIOSLoopback();
         });
 
         window.EASBridge.on('decoder:clearOutput', () => {

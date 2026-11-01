@@ -1,9 +1,12 @@
 // This file is part of E2T-NG, a tool to convert EAS messages to text. See the full repository here for more information: https://github.com/wagwan-piffting-blud/E2T-NG
 
-const EAS_REGEX = /^ZCZC-([A-Z]{3})-([A-Z\?]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{1,8}?)-$/m;
+import { eventDisplayName } from '../js/custom-events.js';
+
+const EAS_REGEX =/^ZCZC-([A-Z]{3})-([A-Z\?]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{1,8}?)-$/m;
 const RESOURCE_PATHS = {
     sameUS: 'assets/E2T/include/same-us.json',
     sameCA: 'assets/E2T/include/same-ca.json',
+    sameMarine: 'assets/E2T/include/same-marine.json',
     endecModes: 'assets/E2T/include/endec-modes.json'
 };
 const USER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -124,6 +127,9 @@ async function loadResources() {
             console.error(`Error loading resource ${key}:`, error);
         }
     }
+    const marine = window.RESOURCE_MAP.sameMarine?.SAME;
+    const us = window.RESOURCE_MAP.sameUS;
+    if (marine && us) us.SAME = { ...us.SAME, ...marine };
 }
 
 export const resourcesReady = loadResources();
@@ -604,7 +610,7 @@ function humanizeEAS(eas, endec_emulation_mode=null, canadian_mode=false, timezo
     const startTime = reparseStartTimeInTimezone(parsedStartTime, timezone_override);
 
     let normalOriginator = lookupSame('ORGS', originator) || originator;
-    const normalEventCode = lookupSame('EVENTS', eventCode) || eventCode;
+    const normalEventCode = eventDisplayName(eventCode, lookupSame('EVENTS', eventCode));
     const fipsContext = buildFIPSContext(locations, canadian_mode);
 
     let locationStr = locations
@@ -870,7 +876,7 @@ export function parseHeaderDetailed(header, timezone_override=null, canadian_mod
         originator: parsed.originator,
         originatorName: lookupSame('ORGS', parsed.originator, canadian_mode) || parsed.originator,
         eventCode: parsed.eventCode,
-        eventName: lookupSame('EVENTS', parsed.eventCode, canadian_mode) || parsed.eventCode,
+        eventName: eventDisplayName(parsed.eventCode, lookupSame('EVENTS', parsed.eventCode, canadian_mode)),
         locations: [...parsed.locations],
         locationNames: parsed.locations.map((code) => ({
             code,

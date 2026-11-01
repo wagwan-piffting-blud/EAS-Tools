@@ -11,6 +11,7 @@ mod crawl_sender_override;
 mod crawl_top_left_manual;
 mod crawl_video_background;
 mod crawl_video_export_stall;
+mod custom_event_codes;
 mod decoder_alarm;
 mod decoder_custom_alarms;
 mod decoder_same;
@@ -19,9 +20,13 @@ mod demo_wav_headers;
 mod demos_page;
 mod encoder_events;
 mod encoder_location_search;
+mod encoder_native_bridge;
 mod encoder_pre_post_audio;
 mod endec_rate;
 mod espeak_voice;
+mod marine_custom_fips;
+mod multiview;
+mod native_bridge_parity;
 mod number_inputs;
 mod silence_timing;
 mod site_tools;
@@ -51,6 +56,7 @@ fn main() -> std::process::ExitCode {
         ("crawl_top_left_manual", crawl_top_left_manual::cases()),
         ("crawl_video_background", crawl_video_background::cases()),
         ("crawl_video_export_stall", crawl_video_export_stall::cases()),
+        ("custom_event_codes", custom_event_codes::cases()),
         ("decoder_alarm", decoder_alarm::cases()),
         ("decoder_custom_alarms", decoder_custom_alarms::cases()),
         ("decoder_same", decoder_same::cases()),
@@ -59,9 +65,13 @@ fn main() -> std::process::ExitCode {
         ("demos_page", demos_page::cases()),
         ("encoder_events", encoder_events::cases()),
         ("encoder_location_search", encoder_location_search::cases()),
+        ("encoder_native_bridge", encoder_native_bridge::cases()),
         ("encoder_pre_post_audio", encoder_pre_post_audio::cases()),
         ("endec_rate", endec_rate::cases()),
         ("espeak_voice", espeak_voice::cases()),
+        ("marine_custom_fips", marine_custom_fips::cases()),
+        ("multiview", multiview::cases()),
+        ("native_bridge_parity", native_bridge_parity::cases()),
         ("number_inputs", number_inputs::cases()),
         ("silence_timing", silence_timing::cases()),
         ("site_tools", site_tools::cases()),

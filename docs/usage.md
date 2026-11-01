@@ -2,7 +2,7 @@
 
 Serve the repository over HTTP and open `index.html`, or use
 [eas.tools](https://eas.tools/). The application tabs can also be opened with
-`?tool=decoder`, `encoder`, `crawl`, `splicer`, `phoneme`, `warngen`, or `muxer`.
+`?tool=decoder`, `encoder`, `crawl`, `splicer`, `phoneme`, `warngen`, `muxer`, or `multiview`.
 
 ## Decoder
 
@@ -23,6 +23,19 @@ an ENDEC profile is a best match, not proof of the originating hardware.
 
 WebAssembly voices run locally. Other Web TTS voices are sent to the configured
 TTS service; see the [TTS documentation](./generated/tts.md) before using them.
+
+Locations come from the county, Canadian, and NWS marine tables
+(`assets/E2T/include/same-marine.json`, built from
+[weather.gov/gis/EasNWR](https://www.weather.gov/gis/EasNWR) by
+`tools/build-same-marine.mjs`). A well-formed six-digit code typed into the
+manual FIPS field is accepted even when no table lists it; the status log marks
+it as custom and decoders show it as a bare FIPS code.
+
+**Custom event codes**, under the event picker, saves three-letter codes and
+their names in this browser. The encoder lists them under *Custom Codes*, and
+the decoder, EAS2Text, and text crawl use their names. Codes nobody has named
+read as "an Unrecognized Warning/Watch/Statement/Emergency" by their last
+letter, or "an Unrecognized Message".
 
 ## Text crawl generator
 
@@ -58,6 +71,16 @@ requirements before real-world use.
 
 Load FFmpeg.wasm, select the video and audio inputs, append the audio, and download
 the result. Loading FFmpeg is required once per browser session.
+
+## Multi-View
+
+**Multi-View** (`?tool=multiview`) shows two to four tools side by side, each a
+full copy of that tool. Drag a tool from the strip onto a pane to put it there,
+or drag a pane by its handle to swap places; each pane also has a tool picker,
+move buttons, and a close button for keyboard use. **Send to…** delivers into
+the pane holding the target tool, opening one if there is room. The layout is
+remembered per browser. It needs a window at least 1024 pixels wide, so phones
+never offer it, and the mobile apps do not include it.
 
 ## Accessibility
 

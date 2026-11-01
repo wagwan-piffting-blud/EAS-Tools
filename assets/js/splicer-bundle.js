@@ -2185,7 +2185,74 @@ buildPanel(document.getElementById('splicer-panel'));
             : `Downloading ${progress.label}...`);
     };
 
+    const IOS_NATIVE_PREFIX = 'ios-native:';
+    const isIosNativeVoice = (voice) => String(voice || '').startsWith(IOS_NATIVE_PREFIX);
+
+    const sliderNumber = (id) => {
+        const n = Number(document.getElementById(id)?.value);
+        return Number.isFinite(n) ? n : 0;
+    };
+
+    const base64ToBytes = (base64) => {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+    };
+
+    const synthIosNative = async (text, voice) => {
+        const voiceId = String(voice).slice(IOS_NATIVE_PREFIX.length);
+        const rate = Math.min(1, Math.max(0, 0.5 + sliderNumber('ttsRate2') * 0.05));
+        const pitch = Math.min(2, Math.max(0.5, 2 ** (sliderNumber('ttsPitch2') / 10)));
+        if (window.EASNativeSpeech) {
+            const result = await window.EASNativeSpeech.synth({ text, voiceId, rate, pitch });
+            if (!result || result.error || !result.pcm) throw new Error(result?.error || 'No audio returned from native TTS');
+            const bytes = base64ToBytes(result.pcm);
+            return { pcm: new Float32Array(bytes.buffer, 0, bytes.length >> 2), sampleRate: Number(result.sampleRate) || 22050 };
+        }
+        if (!window.EASBridge) throw new Error('iOS voices are only available in the iOS app');
+        const result = await new Promise((resolve) => {
+            window.EASBridge.on('encoder:nativeTTSResult', (r) => resolve(r));
+            window.EASBridge.send('encoder:nativeTTS', { text, voiceId, rate, pitch });
+        });
+        if (result?.error) throw new Error(result.error);
+        if (!result?.base64) throw new Error('No audio returned from native TTS');
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const buffer = await audioCtx.decodeAudioData(base64ToBytes(result.base64).buffer);
+        return { pcm: buffer.getChannelData(0), sampleRate: buffer.sampleRate };
+    };
+
+    let iosVoicesAdded = false;
+    const addIosNativeVoices = async () => {
+        if (iosVoicesAdded || !voiceSelect) return;
+        const append = (voices) => {
+            if (iosVoicesAdded || !Array.isArray(voices) || !voices.length) return;
+            iosVoicesAdded = true;
+            for (const v of voices) {
+                if (!v || !isIosNativeVoice(v.id)) continue;
+                const option = document.createElement('option');
+                option.value = v.id;
+                option.textContent = v.label || v.id;
+                voiceSelect.appendChild(option);
+            }
+        };
+        if (window.EASNativeSpeech) {
+            try {
+                append(await window.EASNativeSpeech.voices());
+            } catch (err) {
+                console.error(err);
+                if (ttsStatus) ttsStatus.textContent = 'Could not list the iOS voices.';
+            }
+            return;
+        }
+        if (window.EASBridge) {
+            window.EASBridge.on('splicer:nativeVoicesData', (data) => append(data?.voices));
+            window.EASBridge.send('splicer:requestNativeVoices', {});
+        }
+    };
+
     const synthTts = async (text, voice) => {
+        if (isIosNativeVoice(voice)) return synthIosNative(text, voice);
         const mode = (voice || 'wasm').toLowerCase();
         if (mode === 'nanotts') {
             return nanoTts.synth(text);
@@ -2230,23 +2297,10 @@ buildPanel(document.getElementById('splicer-panel'));
                 if (ttsStatus) ttsStatus.textContent = "Failed to load external voices; WASM only.";
             },
         });
+        await addIosNativeVoices();
         if (!ok) return;
 
         voiceListLoaded = true;
-
-        if (window.EASBridge) {
-            window.EASBridge.on('splicer:nativeVoicesData', (data) => {
-                const voices = data?.voices;
-                if (!Array.isArray(voices) || !voiceSelect) return;
-                for (const v of voices) {
-                    const option = document.createElement("option");
-                    option.value = v.id;
-                    option.textContent = v.label;
-                    voiceSelect.appendChild(option);
-                }
-            });
-            window.EASBridge.send('splicer:requestNativeVoices', {});
-        }
     };
 
     const checkZCZCIsValid = (header) => {
@@ -2542,35 +2596,14 @@ buildPanel(document.getElementById('splicer-panel'));
                     if (ttsStatus) ttsStatus.textContent = `Added ${(pcm.length / (sampleRate || state.sampleRate)).toFixed(2)}s of audio.`;
                     setButtonDisabledState(false);
                     drawWaveform();
-                } else if (normalizedVoice.startsWith('ios-native:') && window.EASBridge) {
+                } else if (isIosNativeVoice(selectedVoiceValue)) {
                     if (ttsStatus) ttsStatus.textContent = 'Generating iOS native TTS...';
-                    const voiceId = selectedVoiceValue.slice('ios-native:'.length);
-                    const result = await new Promise((resolve) => {
-                        window.EASBridge.on('encoder:nativeTTSResult', (r) => resolve(r));
-                        window.EASBridge.send('encoder:nativeTTS', {
-                            text: text,
-                            voiceId: voiceId,
-                            rate: 0.5,
-                            pitch: 1.0,
-                        });
-                    });
-                    if (result.error) {
-                        throw new Error(result.error);
-                    }
-                    if (result.base64) {
-                        const binary = atob(result.base64);
-                        const bytes = new Uint8Array(binary.length);
-                        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                        const buffer = await audioCtx.decodeAudioData(bytes.buffer);
-                        const pcm = buffer.getChannelData(0);
-                        addSegment(pcm, buffer.sampleRate, 'TTS', text);
-                        if (ttsStatus) ttsStatus.textContent = `Added ${(pcm.length / buffer.sampleRate).toFixed(2)}s of iOS TTS audio.`;
-                        setButtonDisabledState(false);
-                        drawWaveform();
-                    } else {
-                        throw new Error('No audio returned from native TTS');
-                    }
+                    const { pcm, sampleRate } = await synthTts(text, selectedVoiceValue);
+                    if (!pcm || !pcm.length) throw new Error('No audio returned from native TTS');
+                    addSegment(pcm, sampleRate, 'TTS', text);
+                    if (ttsStatus) ttsStatus.textContent = `Added ${(pcm.length / sampleRate).toFixed(2)}s of iOS TTS audio.`;
+                    setButtonDisabledState(false);
+                    drawWaveform();
                 } else {
                     const valid = await validateMarkupAndText(voiceBackendMap, selectedVoiceValue, text);
                     if (!valid) {
@@ -5053,7 +5086,7 @@ buildPanel(document.getElementById('splicer-panel'));
 
         const supportsProsody = backendSupportsProsody(voiceBackend);
 
-        if (supportsProsody || parseEspeakVoiceId(voiceSelect.value) !== null) {
+        if (supportsProsody || parseEspeakVoiceId(voiceSelect.value) !== null || voiceSelect.value.startsWith('ios-native:')) {
             ttsControls.hidden = false;
         } else {
             ttsControls.hidden = true;

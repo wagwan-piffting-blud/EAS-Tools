@@ -243,6 +243,30 @@ impl Tab {
         Ok(())
     }
 
+    /// A real left-button drag from one element's center to another's, in steps so pointermove fires.
+    pub async fn drag(&self, from: &str, to: &str) -> Result<()> {
+        let (x0, y0) = self.center_of(from).await?;
+        let (x1, y1) = self.center_of(to).await?;
+        let page = &self.0.page;
+        page.execute(mouse(DispatchMouseEventType::MouseMoved, x0, y0, None)?).await?;
+        page.execute(mouse(DispatchMouseEventType::MousePressed, x0, y0, Some(1))?).await?;
+        const STEPS: u32 = 8;
+        for step in 1..=STEPS {
+            let t = f64::from(step) / f64::from(STEPS);
+            let held = DispatchMouseEventParams::builder()
+                .r#type(DispatchMouseEventType::MouseMoved)
+                .x(x0 + (x1 - x0) * t)
+                .y(y0 + (y1 - y0) * t)
+                .button(MouseButton::Left)
+                .buttons(1)
+                .build()
+                .map_err(|e| anyhow!(e))?;
+            page.execute(held).await?;
+        }
+        page.execute(mouse(DispatchMouseEventType::MouseReleased, x1, y1, Some(1))?).await?;
+        Ok(())
+    }
+
     /// A real wheel tick over the element's center (JS WheelEvents skip the browser's own handling).
     pub async fn wheel(&self, selector: &str, delta_y: f64) -> Result<()> {
         let (x, y): (f64, f64) = self

@@ -12,7 +12,7 @@ export function toolName(tool) {
 }
 
 export function canSendTo(tool) {
-    return !!tabButton(tool);
+    return !!tabButton(tool) || (typeof window !== 'undefined' && typeof window.EASNativeHandoff === 'function');
 }
 
 export function announce(message) {

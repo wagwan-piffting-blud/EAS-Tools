@@ -1,5 +1,17 @@
 # EAS Tools Changelog
 
+2026-11-01:
+
+- Add/update SAME Marine FIPS codes. This adds a number of new FIPS codes for marine areas, which should help users generate more accurate and relevant alerts for marine areas. Thank you to Discord user @anamateurnoob for suggesting this change and providing the necessary information to update the FIPS codes.
+
+- Accept invalid location codes in the encoder. This change allows users to generate alerts with invalid location codes, which can be useful for testing or for generating alerts for areas that do not have valid location codes. Thank you (again) to Discord user @anamateurnoob for reporting this issue with the above change and providing feedback on how to improve the encoder's handling of invalid location codes.
+
+- Add a multi-view option to EAS Tools. This allows you (on web only at the moment) to open multiple tools in a single view, allowing you to work with multiple tools at once without having to switch between tabs or windows. This change improves the workflow and efficiency of using EAS Tools, especially for users who need to work with multiple tools simultaneously. Thank you to GitHub user @GreatLordBug for suggesting this change.
+
+- Allow creation and storage of custom SAME event codes. This allows users to create their own custom SAME event codes, which can be useful for generating alerts for events that do not have predefined event codes in the SAME specification. The custom event codes can be stored and reused in future alerts, providing users with more flexibility and control over the alert generation process. Thank you to GitHub user @InternOfCEOs for suggesting this change.
+
+---
+
 2026-10-30:
 
 - Merge PR #154. This adds more agentic guidance for the EAS Tools repository, which should help autonomous coding agents like Claude Code to better understand the purpose and structure of the repository, and to make more informed decisions when working with the code. Thank you to GitHub user @seasonal-currency for suggesting this change and working on the PR for it.

@@ -1,5 +1,6 @@
 import { ENDEC_MODE_OPTIONS, responseOk, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain } from './common-functions.js';
 import { createSendMenu, receive, handIn, audioFile } from './handoff.js';
+import { addCustomEvent, removeCustomEvent, readCustomEvents, customEventTable, onCustomEventsChange } from './custom-events.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -138,6 +139,12 @@ async function fetchAndStore() {
 
     const response = await fetch('assets/E2T/include/same-us.json');
     const data = await response.json();
+    try {
+        const marine = await (await fetch('assets/E2T/include/same-marine.json')).json();
+        data.SAME = { ...data.SAME, ...marine.SAME };
+    } catch (e) {
+        console.error('Error loading marine SAME codes:', e);
+    }
     processSameCodes(data);
 
     window.zoneCounty = {};
@@ -1930,7 +1937,8 @@ async function fetchAndStore() {
         return hours.toString().padStart(2, "0") + minutes.toString().padStart(2, "0");
     }
 
-    const EVENT_GROUP_KEYS = ["weather", "non_weather", "administrative", "national", "unimplemented", "nws_misc", "emnet"];
+    const EVENT_GROUP_KEYS = ["weather", "non_weather", "administrative", "national", "unimplemented", "nws_misc", "emnet", "custom"];
+    let customEventCodes = new Set();
 
     const EMNET_EVENT_CODES = ["ADM", "HUS", "NHW", "NPW", "SVW", "SWS", "TOM", "VAW"];
 
@@ -2032,6 +2040,9 @@ async function fetchAndStore() {
     }
 
     function getEventGroupKey(code, labelUpper) {
+        if (customEventCodes.has(code)) {
+            return "custom";
+        }
         if (EMNET_EVENT_CODES.includes(code)) {
             return "emnet";
         }
@@ -2059,6 +2070,14 @@ async function fetchAndStore() {
     function populateEventOptions(selectElement, sameEvents) {
         if (!selectElement || !sameEvents || typeof sameEvents !== 'object') {
             return;
+        }
+
+        let customGroup = selectElement.querySelector('optgroup[data-event-group="custom"]');
+        if (!customGroup) {
+            customGroup = document.createElement('optgroup');
+            customGroup.label = 'Custom Codes';
+            customGroup.setAttribute('data-event-group', 'custom');
+            selectElement.appendChild(customGroup);
         }
 
         const groupElements = {};
@@ -2102,6 +2121,7 @@ async function fetchAndStore() {
                 groupElements[key].appendChild(fragments[key]);
             }
         }
+        customGroup.hidden = !customGroup.querySelector('option');
 
         const preferredDefault = selectElement.querySelector('option[value="TOR"]');
         if (preferredDefault) {
@@ -2115,7 +2135,113 @@ async function fetchAndStore() {
         }
     }
 
-    populateEventOptions(events, window.sameEvents);
+    function encoderEventTable() {
+        const official = window.sameEvents || {};
+        const custom = customEventTable();
+        customEventCodes = new Set(Object.keys(custom).filter((code) => !(code in official)));
+        const table = { ...official };
+        customEventCodes.forEach((code) => { table[code] = custom[code]; });
+        return table;
+    }
+
+    function refreshEventOptions() {
+        const previous = events ? events.value : "";
+        populateEventOptions(events, encoderEventTable());
+        if (previous && events.querySelector('option[value="' + previous + '"]')) {
+            events.value = previous;
+        }
+    }
+
+    function mountCustomEventEditor() {
+        if (!events || document.getElementById("customEventsEditor")) return;
+        const details = document.createElement("details");
+        details.id = "customEventsEditor";
+        details.className = "custom-events";
+        details.innerHTML =
+            '<summary>Custom event codes</summary>' +
+            '<p class="custom-events__hint">Codes saved here stay in this browser. The Encoder can put them in a header, and the Decoder and Text Crawl show their names instead of "Unrecognized".</p>' +
+            '<div class="custom-events__form">' +
+            '<label for="customEventCode">Code</label> ' +
+            '<input id="customEventCode" maxlength="3" size="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="WCN"> ' +
+            '<label for="customEventName">Name</label> ' +
+            '<input id="customEventName" maxlength="60" autocomplete="off" placeholder="e.g. Biological Microbe Warning"> ' +
+            '<button type="button" id="customEventSave">Save code</button>' +
+            '</div>' +
+            '<p id="customEventMessage" class="custom-events__message" role="status" aria-live="polite"></p>' +
+            '<ul id="customEventList" class="custom-events__list" aria-label="Saved custom event codes"></ul>';
+        events.after(details);
+
+        const codeInput = details.querySelector("#customEventCode");
+        const nameInput = details.querySelector("#customEventName");
+        const message = details.querySelector("#customEventMessage");
+        const list = details.querySelector("#customEventList");
+
+        const render = () => {
+            const custom = readCustomEvents();
+            list.innerHTML = "";
+            const codes = Object.keys(custom);
+            if (!codes.length) {
+                const empty = document.createElement("li");
+                empty.className = "custom-events__empty";
+                empty.textContent = "No custom codes yet.";
+                list.appendChild(empty);
+                return;
+            }
+            codes.forEach((code) => {
+                const item = document.createElement("li");
+                const codeEl = document.createElement("code");
+                codeEl.textContent = code;
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "custom-events__remove";
+                remove.textContent = "Remove";
+                remove.setAttribute("aria-label", "Remove custom code " + code + ", " + custom[code]);
+                remove.addEventListener("click", () => {
+                    removeCustomEvent(code);
+                    message.textContent = "Removed " + code + ".";
+                    (list.querySelector(".custom-events__remove") || codeInput).focus();
+                });
+                item.append(codeEl, " " + custom[code] + " ", remove);
+                list.appendChild(item);
+            });
+        };
+
+        const save = () => {
+            const reserved = new Set(Object.keys(window.sameEvents || {}));
+            const result = addCustomEvent(codeInput.value, nameInput.value, { reserved });
+            if (!result.ok) {
+                message.textContent = result.error;
+                return;
+            }
+            message.textContent = (result.replaced ? "Updated " : "Saved ") + result.code + " (" + result.name + "). It is selected under Custom Codes.";
+            codeInput.value = "";
+            nameInput.value = "";
+            events.value = result.code;
+            events.dispatchEvent(new Event("change", { bubbles: true }));
+            codeInput.focus();
+        };
+
+        details.querySelector("#customEventSave").addEventListener("click", save);
+        [codeInput, nameInput].forEach((input) => input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                save();
+            }
+        }));
+        codeInput.addEventListener("input", () => {
+            const upper = codeInput.value.toUpperCase().replace(/[^A-Z]/g, "");
+            if (upper !== codeInput.value) codeInput.value = upper;
+        });
+
+        render();
+        onCustomEventsChange(() => {
+            refreshEventOptions();
+            render();
+        });
+    }
+
+    refreshEventOptions();
+    mountCustomEventEditor();
     var NWR = 1;
     var hr = 0;
     window.locations = ["036071"];
@@ -2484,7 +2610,7 @@ async function fetchAndStore() {
             } else {
                 return "";
             }
-            if (rgn[subdiv] === undefined || !canadaCounty[caCode]) return "";
+            if (!/^\d$/.test(subdiv || "")) return "";
             return subdiv + caCode;
         }
 
@@ -2504,12 +2630,15 @@ async function fetchAndStore() {
             return "";
         }
 
-        const countyForState = county[st];
-        if (rgn[subdiv] === undefined || !countyForState || countyForState[co] === undefined) {
-            return "";
-        }
-
+        if (!/^\d$/.test(subdiv || "")) return "";
         return subdiv + st + co;
+    }
+
+    function isKnownFips(code) {
+        if (rgn[code.charAt(0)] === undefined) return false;
+        if (fipsModeSelect && fipsModeSelect.value === "ca") return !!canadaCounty[code.slice(1)];
+        const countyForState = county[code.slice(1, 3)];
+        return !!countyForState && countyForState[code.slice(3, 6)] !== undefined;
     }
 
     function currentFallbackSubdiv() {
@@ -2521,6 +2650,7 @@ async function fetchAndStore() {
         const invalid = [];
         const added = [];
         const duplicates = [];
+        const custom = [];
 
         for (let i = 0; i < rawCodes.length; i++) {
             const normalized = normalizeFipsCode(rawCodes[i], fallbackSubdiv);
@@ -2535,12 +2665,13 @@ async function fetchAndStore() {
             existing.add(normalized);
             locations.push(normalized);
             added.push(normalized);
+            if (!isKnownFips(normalized)) custom.push(normalized);
         }
 
         if (added.length > 0) {
             updateTable();
         }
-        return { added, duplicates, invalid };
+        return { added, duplicates, invalid, custom };
     }
 
     function addLoc() {
@@ -2567,7 +2698,11 @@ async function fetchAndStore() {
         }
 
         if (invalid.length) {
-            addStatus("Skipped invalid FIPS code(s): " + invalid.join(", "), "ERROR");
+            addStatus("Skipped malformed FIPS code(s), which need 6 digits (or 5 plus the Region above): " + invalid.join(", "), "ERROR");
+        }
+
+        if (result.custom.length) {
+            addStatus("Added custom FIPS code(s) that are not in the location tables: " + result.custom.join(", ") + ". They go into the header as-is; decoders will not have a name for them.", "WARN");
         }
 
         if (duplicateCount > 0 && addedCount > 0) {
@@ -2581,11 +2716,11 @@ async function fetchAndStore() {
         const region = rgn[re] || re;
         if (isCA) {
             const caCode = code.slice(1);
-            return { name: canadaCounty[caCode] || code, area: caProvinces[caCode.charAt(0)] || "Unknown", region };
+            return { name: canadaCounty[caCode] || "Custom code", area: caProvinces[caCode.charAt(0)] || "Unknown", region };
         }
         const st = code.slice(1, 3);
         const co = code.slice(3, 6);
-        let name = (county[st] && county[st][co]) || code;
+        let name = (county[st] && county[st][co]) || "Custom code";
         if (co == "000" && st !== "00") { name = "Entire State"; }
         return { name, area: state[st] || st, region };
     }
@@ -2798,9 +2933,9 @@ async function fetchAndStore() {
     const LOCATION_SEARCH_MAX_RESULTS = 100;
     var locationSearch = null;
 
-    function buildLocationSearchIndex() {
+    function buildLocationSearchIndex(mode = (fipsModeSelect && fipsModeSelect.value) || "us") {
         const entries = [];
-        if (fipsModeSelect && fipsModeSelect.value === "ca") {
+        if (mode === "ca") {
             Object.keys(canadaCounty).forEach((code) => {
                 const name = canadaCounty[code];
                 const province = caProvinces[code.charAt(0)] || "";
@@ -3849,18 +3984,27 @@ async function fetchAndStore() {
 
 
     if (window.EASBridge) {
-        function sendEncoderData() {
+        function sendEventsData() {
             const eventsArr = [];
+            const eventGroupsArr = [];
             const eventsEl = document.getElementById('events');
             if (eventsEl) {
                 for (const og of eventsEl.querySelectorAll('optgroup')) {
                     const group = og.getAttribute('data-event-group') || og.label || '';
-                    for (const opt of og.querySelectorAll('option')) {
+                    const options = og.querySelectorAll('option');
+                    if (options.length || og.getAttribute('data-event-group') !== 'custom') eventGroupsArr.push({ key: og.getAttribute('data-event-group') || '', label: og.label || '' });
+                    for (const opt of options) {
                         eventsArr.push({ code: opt.value, label: opt.textContent, group: group });
                     }
                 }
             }
             window.EASBridge.send('encoder:eventsData', { events: eventsArr });
+            window.EASBridge.send('encoder:eventGroupsData', { groups: eventGroupsArr });
+            window.EASBridge.send('encoder:customEventsData', { events: readCustomEvents() });
+        }
+
+        function sendEncoderData() {
+            sendEventsData();
 
             const statesArr = [];
             if (window.state) {
@@ -3938,13 +4082,10 @@ async function fetchAndStore() {
             }
             window.EASBridge.send('encoder:regionsData', { options: regionsArr });
 
-            const eventGroupsArr = [];
-            if (eventsEl) {
-                for (const og of eventsEl.querySelectorAll('optgroup')) {
-                    eventGroupsArr.push({ key: og.getAttribute('data-event-group') || '', label: og.label || '' });
-                }
-            }
-            window.EASBridge.send('encoder:eventGroupsData', { groups: eventGroupsArr });
+            const overrideTzEl = document.getElementById('useOverrideTZ');
+            window.EASBridge.send('encoder:overrideTimezonesData', {
+                options: overrideTzEl ? Array.from(overrideTzEl.options, (opt) => ({ value: opt.value, label: opt.textContent })) : [],
+            });
 
             loadPrePostManifest().then((presets) => {
                 window.EASBridge.send('encoder:prePostAudioData', {
@@ -3956,6 +4097,31 @@ async function fetchAndStore() {
         window.EASBridge.on('encoder:requestData', () => {
             sendEncoderData();
         });
+
+        window.EASBridge.on('encoder:requestLocationIndex', (params) => {
+            const mode = params?.mode === 'ca' ? 'ca' : 'us';
+            const entries = buildLocationSearchIndex(mode).map((entry) => ({ code: entry.code, label: entry.label, hay: entry.hay }));
+            window.EASBridge.send('encoder:locationIndex', { mode, entries });
+        });
+
+        window.EASBridge.on('encoder:requestCustomEvents', () => {
+            window.EASBridge.send('encoder:customEventsData', { events: readCustomEvents() });
+        });
+
+        window.EASBridge.on('encoder:saveCustomEvent', (params) => {
+            const reserved = new Set(Object.keys(window.sameEvents || {}));
+            const result = addCustomEvent(params?.code, params?.name, { reserved });
+            window.EASBridge.send('encoder:customEventResult', result.ok
+                ? { ok: true, action: result.replaced ? 'updated' : 'saved', code: result.code, name: result.name }
+                : { ok: false, error: result.error });
+        });
+
+        window.EASBridge.on('encoder:removeCustomEvent', (params) => {
+            const result = removeCustomEvent(params?.code);
+            window.EASBridge.send('encoder:customEventResult', { ok: result.ok, action: 'removed', code: result.code || String(params?.code || '') });
+        });
+
+        onCustomEventsChange(() => sendEventsData());
 
         window.EASBridge.on('encoder:requestCounties', (params) => {
             const stateCode = params?.state;
@@ -4002,6 +4168,7 @@ async function fetchAndStore() {
                 if (params.ttsPitch != null && el('ttsPitch')) { el('ttsPitch').value = params.ttsPitch.toString(); el('ttsPitch').dispatchEvent(new Event('input')); }
                 if (params.ttsVolume != null && el('ttsVolume')) { el('ttsVolume').value = params.ttsVolume.toString(); el('ttsVolume').dispatchEvent(new Event('input')); }
                 if (params.bitcrushSpeechify != null && el('shouldBitcrushSpeechify')) el('shouldBitcrushSpeechify').checked = params.bitcrushSpeechify;
+                if (params.overrideTZ && el('useOverrideTZ') && selectHasValue(el('useOverrideTZ'), String(params.overrideTZ))) el('useOverrideTZ').value = String(params.overrideTZ);
                 if (params.vmifyCustom != null && el('enable-vmify-custom')) { el('enable-vmify-custom').checked = params.vmifyCustom; el('enable-vmify-custom').dispatchEvent(new Event('change')); }
                 if (params.vmifyCustomIntensity != null && el('vmify-custom-intensity')) el('vmify-custom-intensity').value = params.vmifyCustomIntensity.toString();
                 if (params.announcementAutoLevel != null && el('announcementAutoLevel')) el('announcementAutoLevel').checked = params.announcementAutoLevel;
@@ -4272,7 +4439,7 @@ async function fetchAndStore() {
                 }
                 const caCode = fips.slice(1);
                 const caName = window.canadaCounty?.[caCode] || '';
-                return { code: fips, county: caName, state: caName ? 'CA' : '' };
+                return { code: fips, county: caName || 'Custom code', state: caName ? 'CA' : '' };
             });
             window.EASBridge.send('encoder:fipsResolved', { results: results });
         });

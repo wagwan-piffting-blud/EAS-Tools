@@ -1261,7 +1261,25 @@ export function createTtsTextEditor(config = {}) {
         if (onChange) onChange(editor);
     });
 
+    if (editor.getOption('inputStyle') === 'contenteditable') passTextTouchesToBrowser(editor);
+
     return editor;
+}
+
+function passTextTouchesToBrowser(editor) {
+    let lastTouch = 0;
+    const inText = (e) => !!(e.target && e.target.closest && e.target.closest('.CodeMirror-code'));
+    editor.on('touchstart', (_cm, e) => {
+        if (!inText(e)) return;
+        lastTouch = Date.now();
+        e.codemirrorIgnore = true;
+    });
+    editor.on('mousedown', (_cm, e) => {
+        if (inText(e) && Date.now() - lastTouch < 1000) e.codemirrorIgnore = true;
+    });
+    editor.on('dblclick', (_cm, e) => {
+        if (inText(e)) e.codemirrorIgnore = true;
+    });
 }
 
 let __piperLoading = null;

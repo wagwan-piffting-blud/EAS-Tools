@@ -1,5 +1,6 @@
 import { saveFile, responseOk, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
 import { createSendMenu, receive } from './handoff.js';
+import { stripArticle as stripEventArticle, unrecognizedEventName } from './custom-events.js';
 import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady } from '../E2T/EAS2Text-NG.js';
 import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec, Input, BlobSource, CanvasSink, ALL_FORMATS } from './mediabunny/mediabunny.min.js';
 import { SCREEN_TYPE, SCREEN_TOKENS, MAX_SCREEN_PAGES, EVERY_PAGE, openScreenBuilder, listScreens, getScreen, adoptScreen, saveScreen, deleteScreen, parseScreenJson, normalizeScreen, createScreenTemplate, renderScreenCanvas, screenElementBounds, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices } from './crawl-screen-builder.js';
@@ -3664,7 +3665,8 @@ async function initCrawlEditor() {
 
     function mapEasyplusEventCodeToFullName(eventCode) {
         const eventCodeMap = window.events || {};
-        const source = (eventCode && eventCodeMap[eventCode]) ? eventCodeMap[eventCode] : eventCode;
+        const source = (eventCode && eventCodeMap[eventCode]) ? eventCodeMap[eventCode]
+            : (eventCode ? stripEventArticle(unrecognizedEventName(eventCode)) : eventCode);
         if (typeof source !== 'string') {
             return '';
         }
@@ -6535,7 +6537,21 @@ async function initCrawlEditor() {
         function setOverrideSender(params) {
             const input = document.getElementById('crawlOverrideSender');
             if (input && typeof params?.overrideSender === 'string') input.value = params.overrideSender;
+            const localTz = document.getElementById('crawlUseLocalTZ');
+            const overrideTz = document.getElementById('crawlUseOverrideTZ');
+            if (overrideTz && typeof params?.overrideTZ === 'string') {
+                overrideTz.value = Array.from(overrideTz.options).some((opt) => opt.value === params.overrideTZ) ? params.overrideTZ : '';
+            }
+            if (localTz && typeof params?.useLocalTZ === 'boolean') localTz.checked = params.useLocalTZ && !(overrideTz && overrideTz.value);
         }
+
+        function sendTimezonesToNative() {
+            const select = document.getElementById('crawlUseOverrideTZ');
+            window.EASBridge.send('crawl:timezonesData', {
+                options: select ? Array.from(select.options, (opt) => ({ value: opt.value, label: opt.textContent })) : [],
+            });
+        }
+        sendTimezonesToNative();
         resourcesReady.then(sendEndecModesToNative).catch(() => sendEndecModesToNative());
         sendCrawlFontsToNative();
         sendPremadeListToNative();
@@ -6659,7 +6675,9 @@ async function initCrawlEditor() {
             try {
                 setOverrideSender(params);
                 const endecMode = params?.endecMode || null;
-                const text = await header_to_readable(rawHeader, false, '', endecMode, crawlSenderOverride());
+                const useLocalTZ = document.getElementById('crawlUseLocalTZ')?.checked === true;
+                const overrideTZ = document.getElementById('crawlUseOverrideTZ')?.value || '';
+                const text = await header_to_readable(rawHeader, useLocalTZ, overrideTZ, endecMode, crawlSenderOverride());
                 window.EASBridge.send('crawl:headerConverted', { text: text || '' });
 
                 try {
@@ -6752,6 +6770,12 @@ async function initCrawlEditor() {
                 setVal('crawlTextColor', params.textColor);
                 setVal('crawlBgColor', params.bgColor);
                 setVal('crawlFontFamily', params.fontFamily);
+                if (params.customFontData) {
+                    const bytes = Uint8Array.from(atob(params.customFontData), (c) => c.charCodeAt(0));
+                    window.__nativeCrawlFiles = window.__nativeCrawlFiles || {};
+                    window.__nativeCrawlFiles.crawlCustomFontFile = new File([bytes], params.customFontName || 'custom-font.ttf', { type: 'font/ttf', lastModified: 0 });
+                    setVal('crawlFontFamily', 'User-Upload');
+                }
                 setVal('crawlFontStyle', params.fontStyle);
                 setVal('crawlWidth', params.width);
                 setVal('crawlHeight', params.height);
@@ -6863,6 +6887,7 @@ async function initCrawlEditor() {
 
         window.EASBridge.on('crawl:requestData', () => {
             resourcesReady.then(sendEndecModesToNative).catch(() => sendEndecModesToNative());
+            sendTimezonesToNative();
             sendCrawlFontsToNative();
             sendPremadeListToNative();
             sendStylePresetsToNative();

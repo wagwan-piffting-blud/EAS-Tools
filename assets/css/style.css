@@ -795,6 +795,47 @@ textarea:disabled {
     font-size: 0.8rem;
 }
 
+.custom-events {
+    margin: 10px 0 4px;
+    max-width: 640px;
+}
+
+.custom-events summary {
+    cursor: pointer;
+    color: var(--color-orange-text);
+}
+
+.custom-events__hint,
+.custom-events__message {
+    font-size: 0.85rem;
+    margin: 6px 0;
+}
+
+.custom-events__message:empty {
+    display: none;
+}
+
+.custom-events__form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+}
+
+.custom-events__list {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+.custom-events__list li {
+    margin: 4px 0;
+}
+
+.custom-events__remove {
+    padding: 2px 8px;
+    font-size: 0.8rem;
+}
+
 .splice-chain-backdrop {
     position: fixed;
     inset: 0;
@@ -1067,21 +1108,36 @@ textarea:disabled {
     color: var(--color-text);
 }
 
+/* In the flow at the top of the panel by default, so it can never cover a control; wide
+   windows float it into the empty right-hand column and keep it in view while scrolling. */
 #crawlPreviewDiv {
-    position: absolute;
-    top: 50vh;
-    left: calc(35% + (100% - 35%) / 2);
-    transform: translate(-50%, -50%);
-    width: calc(60vw - 2em);
+    width: 100%;
     max-width: 900px;
+    margin: 0 0 14px;
     text-align: center;
-    pointer-events: none;
+}
+
+#crawlPreviewDiv label {
+    display: block;
+    margin-bottom: 4px;
 }
 
 #crawlPreview {
+    display: block;
     width: 100%;
     height: auto;
-    pointer-events: auto;
+}
+
+@media (min-width: 1200px) {
+    #crawlPreviewDiv {
+        float: right;
+        position: sticky;
+        top: 12px;
+        z-index: 5;
+        width: calc(100% - 700px);
+        margin: 0 0 14px 24px;
+        background: var(--color-bg);
+    }
 }
 
 /* Class-level CSS */
@@ -1696,6 +1752,199 @@ textarea:disabled {
 
 .update-bar button {
     min-height: 36px;
+}
+
+/* A Multi-View pane is a whole index.html showing one tool; the parent page owns the chrome. */
+html.eas-pane header,
+html.eas-pane footer,
+html.eas-pane .update-bar,
+html.eas-pane #announcement-toast {
+    display: none !important;
+}
+
+@media (max-width: 1023px) {
+    #tab-multiview {
+        display: none;
+    }
+}
+
+#multiview-panel {
+    padding: 8px clamp(8px, 1vw, 16px);
+    overflow: hidden;
+}
+
+#multiview-root {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+}
+
+.mv-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+}
+
+.mv-title {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.mv-hint {
+    margin: 0;
+    font-size: 0.8rem;
+}
+
+.mv-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.mv-chip,
+.mv-pane__grip {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border-light);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+}
+
+.mv-chip {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+}
+
+.mv-chip[aria-pressed="true"] {
+    background: var(--color-orange);
+    border-color: var(--color-orange);
+    color: #050505;
+}
+
+.mv-addzone {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    border: 2px dashed var(--color-orange);
+    border-radius: 4px;
+}
+
+.mv-addzone.is-drop-target {
+    background: var(--color-orange);
+    color: #050505;
+}
+
+.mv-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+}
+
+.mv-grid[hidden] {
+    display: none;
+}
+
+.mv-grid[data-count="3"],
+.mv-grid[data-count="4"] {
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.mv-grid[data-count="3"] .mv-pane[data-slot="2"] {
+    grid-column: span 2;
+}
+
+.mv-pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid var(--color-border-light);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-bg);
+}
+
+.mv-pane.is-drop-target {
+    outline: 3px solid var(--color-orange);
+    outline-offset: -3px;
+}
+
+.mv-pane.is-flash {
+    animation: mv-flash 1.2s ease-out;
+}
+
+@keyframes mv-flash {
+    from { box-shadow: inset 0 0 0 3px var(--color-orange); }
+    to { box-shadow: inset 0 0 0 3px transparent; }
+}
+
+.mv-pane__bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.mv-pane__bar button {
+    padding: 2px 8px;
+    font-size: 0.8rem;
+}
+
+.mv-pane__bar button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.mv-pane__select {
+    flex: 0 1 260px;
+    min-width: 0;
+}
+
+.mv-pane__close {
+    margin-left: auto;
+}
+
+.mv-pane__frame {
+    display: block;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    border: 0;
+    background: var(--color-bg);
+}
+
+#multiview-root.is-dragging iframe {
+    pointer-events: none;
+}
+
+#multiview-root.is-dragging,
+#multiview-root.is-dragging * {
+    cursor: grabbing;
+}
+
+.mv-ghost {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 10002;
+    pointer-events: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: var(--color-orange);
+    color: #050505;
+}
+
+.mv-narrow {
+    margin: 16px 0;
 }
 
 /* Light mode */

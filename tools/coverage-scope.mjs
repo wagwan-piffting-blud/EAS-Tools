@@ -3,6 +3,7 @@
  * Every other JavaScript file is still accounted for by classifyCoverageFile().
  */
 export const measuredFiles = [
+    'assets/js/custom-events.js',
     'assets/js/splicer/layout.js',
     'assets/js/splicer/limiter.js',
     'assets/js/splicer/encode.js',
