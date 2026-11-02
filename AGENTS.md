@@ -122,6 +122,9 @@ permission for additional actions.
   offline behavior, or responsive layout.
 - Use `eas-quality-workflow` when adding tests, changing coverage scope, updating
   generated documentation, or preparing the repository-wide quality handoff.
+- Use `eas-e2e-harness` when adding or debugging Rust browser suites, changing
+  the CDP harness or its isolation model, or working on the native/container E2E
+  runners.
 - Use `upstream-fork-sync` when synchronizing a fork or soft-fork with an
   upstream Git repository, especially when the worktree is dirty or the merge
   must remain uncommitted for human inspection.

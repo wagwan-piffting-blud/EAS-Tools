@@ -28,13 +28,30 @@ async fn visible_options(tab: &Tab, id: &str) -> Result<Vec<String>> {
 }
 
 async fn label(tab: &Tab, id: &str) -> Result<String> {
-    tab.js("return document.querySelector(arguments[0]).textContent;", json!([format!("#{id} + .ss-combo .ss-combo__label")])).await
+    tab.js(
+        "return document.querySelector(arguments[0]).textContent;",
+        json!([format!("#{id} + .ss-combo .ss-combo__label")]),
+    )
+    .await
 }
 
 async fn wait_for_label(tab: &Tab, id: &str, text: &str) -> Result<()> {
     let selector = json!(format!("#{id} + .ss-combo .ss-combo__label"));
-    if tab.wait_until(&format!("document.querySelector({selector}).textContent === {}", json!(text)), Duration::from_secs(10)).await.is_err() {
-        bail!("{id} label never became {text:?}; it is {:?}", label(tab, id).await?);
+    if tab
+        .wait_until(
+            &format!(
+                "document.querySelector({selector}).textContent === {}",
+                json!(text)
+            ),
+            Duration::from_secs(10),
+        )
+        .await
+        .is_err()
+    {
+        bail!(
+            "{id} label never became {text:?}; it is {:?}",
+            label(tab, id).await?
+        );
     }
     Ok(())
 }
@@ -51,19 +68,32 @@ async fn count_changes(tab: &Tab, id: &str) -> Result<()> {
 }
 
 async fn changes(tab: &Tab, id: &str) -> Result<i64> {
-    tab.js("return window.__changes[arguments[0]];", json!([id])).await
+    tab.js("return window.__changes[arguments[0]];", json!([id]))
+        .await
 }
 
 async fn value(tab: &Tab, id: &str) -> Result<String> {
-    tab.js("return document.getElementById(arguments[0]).value;", json!([id])).await
+    tab.js(
+        "return document.getElementById(arguments[0]).value;",
+        json!([id]),
+    )
+    .await
 }
 
 async fn is_active(tab: &Tab, selector: &str) -> Result<bool> {
-    tab.js("return document.activeElement === document.querySelector(arguments[0]);", json!([selector])).await
+    tab.js(
+        "return document.activeElement === document.querySelector(arguments[0]);",
+        json!([selector]),
+    )
+    .await
 }
 
 async fn expanded(tab: &Tab, id: &str) -> Result<Option<String>> {
-    tab.js("return document.querySelector(arguments[0]).getAttribute('aria-expanded');", json!([button(id)])).await
+    tab.js(
+        "return document.querySelector(arguments[0]).getAttribute('aria-expanded');",
+        json!([button(id)]),
+    )
+    .await
 }
 
 async fn open_and_type(tab: &Tab, id: &str, text: &str) -> Result<()> {
@@ -72,9 +102,11 @@ async fn open_and_type(tab: &Tab, id: &str, text: &str) -> Result<()> {
 }
 
 pub fn cases() -> Vec<Case> {
-    let mut cases = vec![case("native_selects_stay_in_the_dom_and_get_an_accessible_button", |tab| async move {
-        open(&tab).await?;
-        let info: Vec<Value> = tab
+    let mut cases = vec![case(
+        "native_selects_stay_in_the_dom_and_get_an_accessible_button",
+        |tab| async move {
+            open(&tab).await?;
+            let info: Vec<Value> = tab
             .eval(
                 "['office-select', 'template-select'].map((id) => {
                     const sel = document.getElementById(id);
@@ -86,24 +118,46 @@ pub fn cases() -> Vec<Case> {
                 })",
             )
             .await?;
-        let (office, template) = (&info[0], &info[1]);
-        ensure!(office["hidden"] == true && template["hidden"] == true, "{info:?}");
-        ensure!(office["ariaHidden"] == "true" && template["ariaHidden"] == "true", "{info:?}");
-        ensure!(office["popup"] == "listbox", "{office}");
-        ensure!(office["name"] == "Office KOAX Omaha/Valley NE", "{office}");
-        ensure!(template["name"].as_str().unwrap_or("").starts_with("Template: "), "{template}");
-        Ok(())
-    })];
-    for query in ["omaha", "KOAX", "oax"] {
-        cases.push(case(format!("office_search_finds_omaha[{query}]"), move |tab| async move {
-            open(&tab).await?;
-            tab.click(&button("office-select")).await?;
-            ensure!(is_active(&tab, &search("office-select")).await?, "the search box did not take focus");
-            tab.type_text(query).await?;
-            let options = visible_options(&tab, "office-select").await?;
-            ensure!(options.iter().any(|o| o == "KOAX Omaha/Valley NE") && options.len() <= 3, "{options:?}");
+            let (office, template) = (&info[0], &info[1]);
+            ensure!(
+                office["hidden"] == true && template["hidden"] == true,
+                "{info:?}"
+            );
+            ensure!(
+                office["ariaHidden"] == "true" && template["ariaHidden"] == "true",
+                "{info:?}"
+            );
+            ensure!(office["popup"] == "listbox", "{office}");
+            ensure!(office["name"] == "Office KOAX Omaha/Valley NE", "{office}");
+            ensure!(
+                template["name"]
+                    .as_str()
+                    .unwrap_or("")
+                    .starts_with("Template: "),
+                "{template}"
+            );
             Ok(())
-        }));
+        },
+    )];
+    for query in ["omaha", "KOAX", "oax"] {
+        cases.push(case(
+            format!("office_search_finds_omaha[{query}]"),
+            move |tab| async move {
+                open(&tab).await?;
+                tab.click(&button("office-select")).await?;
+                ensure!(
+                    is_active(&tab, &search("office-select")).await?,
+                    "the search box did not take focus"
+                );
+                tab.type_text(query).await?;
+                let options = visible_options(&tab, "office-select").await?;
+                ensure!(
+                    options.iter().any(|o| o == "KOAX Omaha/Valley NE") && options.len() <= 3,
+                    "{options:?}"
+                );
+                Ok(())
+            },
+        ));
     }
     cases.push(case("office_search_matches_city_and_state_terms", |tab| async move {
         open(&tab).await?;
@@ -132,17 +186,25 @@ pub fn cases() -> Vec<Case> {
         )
         .await
     }));
-    cases.push(case("clicking_an_office_option_picks_it", |tab| async move {
-        open(&tab).await?;
-        count_changes(&tab, "office-select").await?;
-        open_and_type(&tab, "office-select", "Des Moines").await?;
-        let text: String = tab.eval("document.querySelector('#office-select + .ss-combo .ss-combo__opt').innerText").await?;
-        ensure!(text == "KDMX Des Moines IA", "{text}");
-        tab.click("#office-select + .ss-combo .ss-combo__opt").await?;
-        ensure!(value(&tab, "office-select").await? == "DMX");
-        ensure!(changes(&tab, "office-select").await? == 1);
-        Ok(())
-    }));
+    cases.push(case(
+        "clicking_an_office_option_picks_it",
+        |tab| async move {
+            open(&tab).await?;
+            count_changes(&tab, "office-select").await?;
+            open_and_type(&tab, "office-select", "Des Moines").await?;
+            let text: String = tab
+                .eval(
+                    "document.querySelector('#office-select + .ss-combo .ss-combo__opt').innerText",
+                )
+                .await?;
+            ensure!(text == "KDMX Des Moines IA", "{text}");
+            tab.click("#office-select + .ss-combo .ss-combo__opt")
+                .await?;
+            ensure!(value(&tab, "office-select").await? == "DMX");
+            ensure!(changes(&tab, "office-select").await? == 1);
+            Ok(())
+        },
+    ));
     cases.push(case("escape_closes_without_changing", |tab| async move {
         open(&tab).await?;
         count_changes(&tab, "office-select").await?;
@@ -167,24 +229,33 @@ pub fn cases() -> Vec<Case> {
         ensure!(groups == ["Watches (SPC)"], "{groups:?}");
         Ok(())
     }));
-    cases.push(case("picking_an_spc_watch_switches_the_office_label", |tab| async move {
-        open(&tab).await?;
-        count_changes(&tab, "template-select").await?;
-        open_and_type(&tab, "template-select", "tornado watch").await?;
-        tab.press("Enter", &[]).await?;
-        ensure!(value(&tab, "template-select").await? == "watch:SPC-TO");
-        ensure!(changes(&tab, "template-select").await? == 1);
-        ensure!(label(&tab, "template-select").await? == "Tornado Watch (SEL/WOU/WWP)");
-        ensure!(value(&tab, "office-select").await? == "SPC");
-        wait_for_label(&tab, "office-select", "KWNS Storm Prediction Center (SPC watches)").await?;
+    cases.push(case(
+        "picking_an_spc_watch_switches_the_office_label",
+        |tab| async move {
+            open(&tab).await?;
+            count_changes(&tab, "template-select").await?;
+            open_and_type(&tab, "template-select", "tornado watch").await?;
+            tab.press("Enter", &[]).await?;
+            ensure!(value(&tab, "template-select").await? == "watch:SPC-TO");
+            ensure!(changes(&tab, "template-select").await? == 1);
+            ensure!(label(&tab, "template-select").await? == "Tornado Watch (SEL/WOU/WWP)");
+            ensure!(value(&tab, "office-select").await? == "SPC");
+            wait_for_label(
+                &tab,
+                "office-select",
+                "KWNS Storm Prediction Center (SPC watches)",
+            )
+            .await?;
 
-        open_and_type(&tab, "template-select", "severeThunderstormWarning").await?;
-        ensure!(visible_options(&tab, "template-select").await?.is_empty());
-        tab.replace_text(&search("template-select"), "severe thunderstorm warning").await?;
-        tab.press("Enter", &[]).await?;
-        ensure!(value(&tab, "office-select").await? == "OAX");
-        wait_for_label(&tab, "office-select", "KOAX Omaha/Valley NE").await
-    }));
+            open_and_type(&tab, "template-select", "severeThunderstormWarning").await?;
+            ensure!(visible_options(&tab, "template-select").await?.is_empty());
+            tab.replace_text(&search("template-select"), "severe thunderstorm warning")
+                .await?;
+            tab.press("Enter", &[]).await?;
+            ensure!(value(&tab, "office-select").await? == "OAX");
+            wait_for_label(&tab, "office-select", "KOAX Omaha/Valley NE").await
+        },
+    ));
     cases.push(case("programmatic_value_and_era_rebuild_update_the_labels", |tab| async move {
         open(&tab).await?;
         tab.exec("document.getElementById('office-select').value = 'DMX';", json!([])).await?;
@@ -212,12 +283,19 @@ pub fn cases() -> Vec<Case> {
         wait_for_label(&tab, "office-select", "KGID Hastings NE").await?;
         wait_for_label(&tab, "template-select", "Flash Flood Warning (legacy)").await
     }));
-    cases.push(case("label_click_focuses_the_combo_button", |tab| async move {
-        open(&tab).await?;
-        tab.click("label[for='office-select']").await?;
-        ensure!(is_active(&tab, &button("office-select")).await?, "focus is on {:?}", tab.active_id().await?);
-        Ok(())
-    }));
+    cases.push(case(
+        "label_click_focuses_the_combo_button",
+        |tab| async move {
+            open(&tab).await?;
+            tab.click("label[for='office-select']").await?;
+            ensure!(
+                is_active(&tab, &button("office-select")).await?,
+                "focus is on {:?}",
+                tab.active_id().await?
+            );
+            Ok(())
+        },
+    ));
     for width in [390i64, 1280] {
         cases.push(case(format!("meta_bar_stays_inside_the_viewport[{width}]"), move |tab| async move {
             open(&tab).await?;

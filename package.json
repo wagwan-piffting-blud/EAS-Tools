@@ -10,7 +10,10 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "node test/e2e-rs/gen_main.mjs --check && cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e",
+    "test:e2e": "make e2e-check && cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e",
+    "test:e2e:container": "make e2e-check && cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e -- --runner container",
+    "test:e2e:container-headless-shell": "make e2e-check && cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e -- --runner container",
+    "test:e2e:container-full-chromium": "make e2e-check && EAS_TOOLS_E2E_IMAGE=eas-tools-e2e:full-chromium EAS_TOOLS_E2E_BUILD_ARGS='--build-arg CHROMIUM_PACKAGE=chromium --build-arg CHROMIUM_BINARY=/usr/lib/chromium/chromium' cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e -- --runner container",
     "coverage": "vitest run --coverage",
     "coverage:scope": "node tools/check-coverage-scope.mjs",
     "lint": "eslint .",

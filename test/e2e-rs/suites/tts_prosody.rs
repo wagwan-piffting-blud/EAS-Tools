@@ -13,21 +13,105 @@ const MARKUP_CASES: [(&str, i64, i64, i64, &str); 19] = [
     ("BAL", -3, 0, 0, r#"<rate absspeed="-3">TEXT</rate>"#),
     ("BAL", 0, 5, 0, r#"<pitch absmiddle="5">TEXT</pitch>"#),
     ("BAL", 0, 0, -5, r#"<volume level="51">TEXT</volume>"#),
-    ("BAL", -3, 5, 0, r#"<pitch absmiddle="5"><rate absspeed="-3">TEXT</rate></pitch>"#),
-    ("BAL", -3, 0, -5, r#"<volume level="51"><rate absspeed="-3">TEXT</rate></volume>"#),
-    ("BAL", 0, 5, -5, r#"<volume level="51"><pitch absmiddle="5">TEXT</pitch></volume>"#),
-    ("BAL", -3, 5, -5, r#"<volume level="51"><pitch absmiddle="5"><rate absspeed="-3">TEXT</rate></pitch></volume>"#),
-    ("BAL", 10, -10, -10, r#"<volume level="1"><pitch absmiddle="-10"><rate absspeed="10">TEXT</rate></pitch></volume>"#),
+    (
+        "BAL",
+        -3,
+        5,
+        0,
+        r#"<pitch absmiddle="5"><rate absspeed="-3">TEXT</rate></pitch>"#,
+    ),
+    (
+        "BAL",
+        -3,
+        0,
+        -5,
+        r#"<volume level="51"><rate absspeed="-3">TEXT</rate></volume>"#,
+    ),
+    (
+        "BAL",
+        0,
+        5,
+        -5,
+        r#"<volume level="51"><pitch absmiddle="5">TEXT</pitch></volume>"#,
+    ),
+    (
+        "BAL",
+        -3,
+        5,
+        -5,
+        r#"<volume level="51"><pitch absmiddle="5"><rate absspeed="-3">TEXT</rate></pitch></volume>"#,
+    ),
+    (
+        "BAL",
+        10,
+        -10,
+        -10,
+        r#"<volume level="1"><pitch absmiddle="-10"><rate absspeed="10">TEXT</rate></pitch></volume>"#,
+    ),
     ("VT", 0, 0, 0, "TEXT"),
-    ("VT", -3, 0, 0, r#"<vtml_speed value="70">TEXT</vtml_speed>"#),
-    ("VT", 0, 5, 0, r#"<vtml_pitch value="150">TEXT</vtml_pitch>"#),
-    ("VT", 0, 0, -5, r#"<vtml_volume value="51">TEXT</vtml_volume>"#),
-    ("VT", 0, 0, 10, r#"<vtml_volume value="500">TEXT</vtml_volume>"#),
-    ("VT", -3, 5, 0, r#"<vtml_pitch value="150"><vtml_speed value="70">TEXT</vtml_speed></vtml_pitch>"#),
-    ("VT", -3, 0, 4, r#"<vtml_volume value="260"><vtml_speed value="70">TEXT</vtml_speed></vtml_volume>"#),
-    ("VT", 0, 5, 4, r#"<vtml_volume value="260"><vtml_pitch value="150">TEXT</vtml_pitch></vtml_volume>"#),
-    ("VT", -3, 5, 4, r#"<vtml_volume value="260"><vtml_pitch value="150"><vtml_speed value="70">TEXT</vtml_speed></vtml_pitch></vtml_volume>"#),
-    ("VT", 10, -10, -10, r#"<vtml_volume value="1"><vtml_pitch value="0"><vtml_speed value="200">TEXT</vtml_speed></vtml_pitch></vtml_volume>"#),
+    (
+        "VT",
+        -3,
+        0,
+        0,
+        r#"<vtml_speed value="70">TEXT</vtml_speed>"#,
+    ),
+    (
+        "VT",
+        0,
+        5,
+        0,
+        r#"<vtml_pitch value="150">TEXT</vtml_pitch>"#,
+    ),
+    (
+        "VT",
+        0,
+        0,
+        -5,
+        r#"<vtml_volume value="51">TEXT</vtml_volume>"#,
+    ),
+    (
+        "VT",
+        0,
+        0,
+        10,
+        r#"<vtml_volume value="500">TEXT</vtml_volume>"#,
+    ),
+    (
+        "VT",
+        -3,
+        5,
+        0,
+        r#"<vtml_pitch value="150"><vtml_speed value="70">TEXT</vtml_speed></vtml_pitch>"#,
+    ),
+    (
+        "VT",
+        -3,
+        0,
+        4,
+        r#"<vtml_volume value="260"><vtml_speed value="70">TEXT</vtml_speed></vtml_volume>"#,
+    ),
+    (
+        "VT",
+        0,
+        5,
+        4,
+        r#"<vtml_volume value="260"><vtml_pitch value="150">TEXT</vtml_pitch></vtml_volume>"#,
+    ),
+    (
+        "VT",
+        -3,
+        5,
+        4,
+        r#"<vtml_volume value="260"><vtml_pitch value="150"><vtml_speed value="70">TEXT</vtml_speed></vtml_pitch></vtml_volume>"#,
+    ),
+    (
+        "VT",
+        10,
+        -10,
+        -10,
+        r#"<vtml_volume value="1"><vtml_pitch value="0"><vtml_speed value="200">TEXT</vtml_speed></vtml_pitch></vtml_volume>"#,
+    ),
 ];
 
 const PASSTHROUGH_BACKENDS: [&str; 6] = ["DT", "CEP6", "FEST", "EMNet", "Unknown", ""];
@@ -75,8 +159,20 @@ const VOLUME_GAINS: [(&str, i64, f64); 16] = [
 
 // tool, slider, number, reset, row
 const VOLUME_CONTROLS: [(&str, &str, &str, &str, &str); 2] = [
-    ("encoder", "ttsVolume", "ttsVolumeNumber", "ttsVolumeReset", "ttsVolumeRow"),
-    ("splicer", "ttsVolume2", "ttsVolume2Number", "ttsVolume2Reset", "ttsVolume2Row"),
+    (
+        "encoder",
+        "ttsVolume",
+        "ttsVolumeNumber",
+        "ttsVolumeReset",
+        "ttsVolumeRow",
+    ),
+    (
+        "splicer",
+        "ttsVolume2",
+        "ttsVolume2Number",
+        "ttsVolume2Reset",
+        "ttsVolume2Row",
+    ),
 ];
 
 /// common-functions.js has no imports and these tests only call its pure helpers, so a light
@@ -92,7 +188,10 @@ async fn tts_module(tab: &Tab) -> Result<()> {
             json!([]),
         )
         .await?;
-    ensure!(error.is_none(), "could not import common-functions.js: {error:?}");
+    ensure!(
+        error.is_none(),
+        "could not import common-functions.js: {error:?}"
+    );
     Ok(())
 }
 
@@ -105,7 +204,11 @@ async fn markup(tab: &Tab, backend: &str, rate: i64, pitch: i64, volume: i64) ->
 }
 
 async fn gain(tab: &Tab, backend: &str, slider: i64) -> Result<f64> {
-    tab.js("return window.__tts.ttsVolumeGain(arguments[0], arguments[1]);", json!([backend, slider])).await
+    tab.js(
+        "return window.__tts.ttsVolumeGain(arguments[0], arguments[1]);",
+        json!([backend, slider]),
+    )
+    .await
 }
 
 async fn open_with_espeak(tab: &Tab, tool: &str) -> Result<()> {
@@ -118,7 +221,11 @@ async fn open_with_espeak(tab: &Tab, tool: &str) -> Result<()> {
         )
         .await?;
     }
-    let select = if tool == "encoder" { "ttsVoice" } else { "ttsVoice2" };
+    let select = if tool == "encoder" {
+        "ttsVoice"
+    } else {
+        "ttsVoice2"
+    };
     tab.exec(
         "const s = document.getElementById(arguments[0]); s.value = 'espeak:en-us'; s.dispatchEvent(new Event('change', { bubbles: true }));",
         json!([select]),
@@ -128,14 +235,17 @@ async fn open_with_espeak(tab: &Tab, tool: &str) -> Result<()> {
 
 pub fn cases() -> Vec<Case> {
     let mut cases = vec![
-        case("balabolka_cannot_be_boosted_above_normal", |tab| async move {
-            tts_module(&tab).await?;
-            for slider in [1, 5, 10] {
-                let actual = markup(&tab, "BAL", 0, 0, slider).await?;
-                ensure!(actual == "TEXT", "slider {slider} emitted markup: {actual}");
-            }
-            Ok(())
-        }),
+        case(
+            "balabolka_cannot_be_boosted_above_normal",
+            |tab| async move {
+                tts_module(&tab).await?;
+                for slider in [1, 5, 10] {
+                    let actual = markup(&tab, "BAL", 0, 0, slider).await?;
+                    ensure!(actual == "TEXT", "slider {slider} emitted markup: {actual}");
+                }
+                Ok(())
+            },
+        ),
         case("resolve_voice_backend", |tab| async move {
             tts_module(&tab).await?;
             let actual: Vec<String> = tab
@@ -144,45 +254,72 @@ pub fn cases() -> Vec<Case> {
                        return [r(map, 'tom'), r(map, 'paul'), r(map, 'nope'), r(map, ''), r(null, 'tom')]; })()",
                 )
                 .await?;
-            ensure!(actual == ["BAL", "VT", "Unknown", "Unknown", "Unknown"], "{actual:?}");
+            ensure!(
+                actual == ["BAL", "VT", "Unknown", "Unknown", "Unknown"],
+                "{actual:?}"
+            );
             Ok(())
         }),
-        case("neutral_volume_leaves_normalisation_untouched", |tab| async move {
-            tts_module(&tab).await?;
-            for backend in ["BAL", "VT", "BAL/SPFY", "DT", "Unknown"] {
-                let g = gain(&tab, backend, 0).await?;
-                ensure!(g == 1.0, "{backend} at volume 0 changed the normalisation target ({g})");
-            }
-            Ok(())
-        }),
-        case("normalisation_target_tracks_the_requested_volume", |tab| async move {
-            tts_module(&tab).await?;
-            let target_db = 3.0;
-            for (backend, slider, expected) in [("VT", -5, 0.51), ("VT", 10, 5.0), ("BAL", -10, 0.01)] {
-                let g = gain(&tab, backend, slider).await?;
-                ensure!((g - expected).abs() <= 0.005, "{backend} {slider}: {g}");
-                let adjusted = target_db + 20.0 * g.log10();
-                ensure!(if expected < 1.0 { adjusted < target_db } else { adjusted > target_db }, "{backend} {slider}: {adjusted} dB");
-            }
-            Ok(())
-        }),
+        case(
+            "neutral_volume_leaves_normalisation_untouched",
+            |tab| async move {
+                tts_module(&tab).await?;
+                for backend in ["BAL", "VT", "BAL/SPFY", "DT", "Unknown"] {
+                    let g = gain(&tab, backend, 0).await?;
+                    ensure!(
+                        g == 1.0,
+                        "{backend} at volume 0 changed the normalisation target ({g})"
+                    );
+                }
+                Ok(())
+            },
+        ),
+        case(
+            "normalisation_target_tracks_the_requested_volume",
+            |tab| async move {
+                tts_module(&tab).await?;
+                let target_db = 3.0;
+                for (backend, slider, expected) in
+                    [("VT", -5, 0.51), ("VT", 10, 5.0), ("BAL", -10, 0.01)]
+                {
+                    let g = gain(&tab, backend, slider).await?;
+                    ensure!((g - expected).abs() <= 0.005, "{backend} {slider}: {g}");
+                    let adjusted = target_db + 20.0 * g.log10();
+                    ensure!(
+                        if expected < 1.0 {
+                            adjusted < target_db
+                        } else {
+                            adjusted > target_db
+                        },
+                        "{backend} {slider}: {adjusted} dB"
+                    );
+                }
+                Ok(())
+            },
+        ),
     ];
     for (backend, rate, pitch, volume, expected) in MARKUP_CASES {
-        cases.push(case(format!("prosody_markup[{backend}-r{rate}-p{pitch}-v{volume}]"), move |tab| async move {
-            tts_module(&tab).await?;
-            let actual = markup(&tab, backend, rate, pitch, volume).await?;
-            ensure!(actual == expected, "{actual}");
-            Ok(())
-        }));
+        cases.push(case(
+            format!("prosody_markup[{backend}-r{rate}-p{pitch}-v{volume}]"),
+            move |tab| async move {
+                tts_module(&tab).await?;
+                let actual = markup(&tab, backend, rate, pitch, volume).await?;
+                ensure!(actual == expected, "{actual}");
+                Ok(())
+            },
+        ));
     }
     for backend in PASSTHROUGH_BACKENDS {
         let id = if backend.is_empty() { "empty" } else { backend };
-        cases.push(case(format!("backends_without_prosody_markup_are_untouched[{id}]"), move |tab| async move {
-            tts_module(&tab).await?;
-            let actual = markup(&tab, backend, -7, 7, -7).await?;
-            ensure!(actual == "TEXT", "{actual}");
-            Ok(())
-        }));
+        cases.push(case(
+            format!("backends_without_prosody_markup_are_untouched[{id}]"),
+            move |tab| async move {
+                tts_module(&tab).await?;
+                let actual = markup(&tab, backend, -7, 7, -7).await?;
+                ensure!(actual == "TEXT", "{actual}");
+                Ok(())
+            },
+        ));
     }
     for (slider, vt_vol, bal_vol, vt_speed, sapi) in SLIDER_TO_SCALE {
         cases.push(case(format!("scale_endpoints[{slider}]"), move |tab| async move {
@@ -212,19 +349,24 @@ pub fn cases() -> Vec<Case> {
         }));
     }
     for (backend, slider, expected) in VOLUME_GAINS {
-        cases.push(case(format!("volume_gain_ratio[{backend}-{slider}]"), move |tab| async move {
-            tts_module(&tab).await?;
-            let g = gain(&tab, backend, slider).await?;
-            ensure!((g - expected).abs() <= 0.005, "{g}");
-            Ok(())
-        }));
+        cases.push(case(
+            format!("volume_gain_ratio[{backend}-{slider}]"),
+            move |tab| async move {
+                tts_module(&tab).await?;
+                let g = gain(&tab, backend, slider).await?;
+                ensure!((g - expected).abs() <= 0.005, "{g}");
+                Ok(())
+            },
+        ));
     }
     for (tool, slider, number, reset, row) in VOLUME_CONTROLS {
-        cases.push(case(format!("volume_control_exists_with_the_same_shape_as_rate_and_pitch[{tool}]"), move |tab| async move {
-            open_with_espeak(&tab, tool).await?;
-            let info: Value = tab
-                .js(
-                    "const slider = document.getElementById(arguments[0]);
+        cases.push(case(
+            format!("volume_control_exists_with_the_same_shape_as_rate_and_pitch[{tool}]"),
+            move |tab| async move {
+                open_with_espeak(&tab, tool).await?;
+                let info: Value = tab
+                    .js(
+                        "const slider = document.getElementById(arguments[0]);
                      const number = document.getElementById(arguments[1]);
                      const reset = document.getElementById(arguments[2]);
                      if (!slider || !number || !reset) return null;
@@ -236,14 +378,24 @@ pub fn cases() -> Vec<Case> {
                          labelHidden: label ? label.classList.contains('visually-hidden') : null,
                          resetText: reset.textContent.trim(),
                      };",
-                    json!([slider, number, reset]),
-                )
-                .await?;
-            ensure!(!info.is_null(), "{tool} is missing the volume control");
-            ensure!(info["sliderRange"] == json!(["-10", "10", "1", "0"]) && info["numberRange"] == json!(["-10", "10", "1", "0"]), "{info}");
-            ensure!(info["numberIsNumber"] == true && info["labelHidden"] == true && info["resetText"] == "Reset", "{info}");
-            Ok(())
-        }));
+                        json!([slider, number, reset]),
+                    )
+                    .await?;
+                ensure!(!info.is_null(), "{tool} is missing the volume control");
+                ensure!(
+                    info["sliderRange"] == json!(["-10", "10", "1", "0"])
+                        && info["numberRange"] == json!(["-10", "10", "1", "0"]),
+                    "{info}"
+                );
+                ensure!(
+                    info["numberIsNumber"] == true
+                        && info["labelHidden"] == true
+                        && info["resetText"] == "Reset",
+                    "{info}"
+                );
+                Ok(())
+            },
+        ));
         cases.push(case(format!("volume_row_is_hidden_for_voices_that_cannot_use_it[{tool}]"), move |tab| async move {
             open_with_espeak(&tab, tool).await?;
             let container = if tool == "encoder" { "ttsRatePitchControls" } else { "ttsRatePitchControls2" };

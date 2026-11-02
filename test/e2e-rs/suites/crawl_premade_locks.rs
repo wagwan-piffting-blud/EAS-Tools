@@ -8,8 +8,19 @@ use eas_tools_e2e::*;
 
 use crate::common::open_tool;
 
-const LOCKABLE: [&str; 5] = ["crawlWidth", "crawlHeight", "crawlInset", "crawlTopLeftPixelX", "crawlTopLeftPixelY"];
-const SIZE_AND_ORIGIN: &[&str] = &["crawlWidth", "crawlHeight", "crawlTopLeftPixelX", "crawlTopLeftPixelY"];
+const LOCKABLE: [&str; 5] = [
+    "crawlWidth",
+    "crawlHeight",
+    "crawlInset",
+    "crawlTopLeftPixelX",
+    "crawlTopLeftPixelY",
+];
+const SIZE_AND_ORIGIN: &[&str] = &[
+    "crawlWidth",
+    "crawlHeight",
+    "crawlTopLeftPixelX",
+    "crawlTopLeftPixelY",
+];
 const ORIGIN: &[&str] = &["crawlTopLeftPixelX", "crawlTopLeftPixelY"];
 
 const EXPECTED_LOCKS: [(&str, &[&str]); 9] = [
@@ -60,7 +71,12 @@ async fn state(tab: &Tab) -> Result<Value> {
 }
 
 fn locked(state: &Value) -> BTreeSet<String> {
-    state["locked"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(str::to_string)).collect()
+    state["locked"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|v| v.as_str().map(str::to_string))
+        .collect()
 }
 
 fn set_of(ids: &[&str]) -> BTreeSet<String> {
@@ -73,7 +89,11 @@ async fn wait_for_locks(tab: &Tab, accept: impl Fn(&BTreeSet<String>) -> bool) -
         if accept(&locked(&state(tab).await?)) {
             return Ok(());
         }
-        ensure!(std::time::Instant::now() < deadline, "locks never settled: {:?}", locked(&state(tab).await?));
+        ensure!(
+            std::time::Instant::now() < deadline,
+            "locks never settled: {:?}",
+            locked(&state(tab).await?)
+        );
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
 }
@@ -83,21 +103,31 @@ pub fn cases() -> Vec<Case> {
         case("geometry_fields_start_editable", |tab| async move {
             open_tool(&tab, "crawl").await?;
             let s = state(&tab).await?;
-            ensure!(locked(&s) == set_of(ORIGIN), "only the manual-positioning pair should be greyed out: {s}");
+            ensure!(
+                locked(&s) == set_of(ORIGIN),
+                "only the manual-positioning pair should be greyed out: {s}"
+            );
             ensure!(s["noteVisible"] == false);
             ensure!(tab.js::<bool>(ENABLE_MANUAL_TOP_LEFT, json!([])).await?);
             ensure!(locked(&state(&tab).await?).is_empty());
             Ok(())
         }),
-        case("premade_options_are_the_ones_under_test", |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            let options: BTreeSet<String> = tab
+        case(
+            "premade_options_are_the_ones_under_test",
+            |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                let options: BTreeSet<String> = tab
                 .eval("Array.from(document.querySelectorAll('#crawlBackgroundPremadeSelect option')).map(o => o.value)")
                 .await?;
-            let expected: BTreeSet<String> = EXPECTED_LOCKS.iter().map(|(v, _)| v.to_string()).collect();
-            ensure!(options == expected, "the pre-made list changed; update EXPECTED_LOCKS: {options:?}");
-            Ok(())
-        }),
+                let expected: BTreeSet<String> =
+                    EXPECTED_LOCKS.iter().map(|(v, _)| v.to_string()).collect();
+                ensure!(
+                    options == expected,
+                    "the pre-made list changed; update EXPECTED_LOCKS: {options:?}"
+                );
+                Ok(())
+            },
+        ),
         case("locked_fields_reject_typing", |tab| async move {
             open_tool(&tab, "crawl").await?;
             tab.exec(SET_BACKGROUND_MODE, json!(["premade"])).await?;
@@ -106,39 +136,60 @@ pub fn cases() -> Vec<Case> {
             let before = state(&tab).await?["values"]["crawlWidth"].clone();
             tab.click("#crawlWidth").await?;
             tab.type_text("999").await?;
-            ensure!(state(&tab).await?["values"]["crawlWidth"] == before, "a locked field took typing");
-            let title: String = tab.eval("document.getElementById('crawlWidth').getAttribute('title') || ''").await?;
-            ensure!(!title.is_empty(), "a locked field should explain itself on hover");
+            ensure!(
+                state(&tab).await?["values"]["crawlWidth"] == before,
+                "a locked field took typing"
+            );
+            let title: String = tab
+                .eval("document.getElementById('crawlWidth').getAttribute('title') || ''")
+                .await?;
+            ensure!(
+                !title.is_empty(),
+                "a locked field should explain itself on hover"
+            );
             Ok(())
         }),
     ];
     for (premade, expected) in EXPECTED_LOCKS {
         let id = premade.rsplit(':').next().unwrap();
-        cases.push(case(format!("premade_locks_only_the_fields_it_sets[{id}]"), move |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            tab.exec(SET_BACKGROUND_MODE, json!(["premade"])).await?;
-            tab.exec(SELECT_PREMADE, json!([premade])).await?;
-            let want = set_of(expected);
-            wait_for_locks(&tab, |l| *l == want).await?;
-            ensure!(state(&tab).await?["noteVisible"] == true, "the explanation for the greyed-out fields is hidden");
-            Ok(())
-        }));
+        cases.push(case(
+            format!("premade_locks_only_the_fields_it_sets[{id}]"),
+            move |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                tab.exec(SET_BACKGROUND_MODE, json!(["premade"])).await?;
+                tab.exec(SELECT_PREMADE, json!([premade])).await?;
+                let want = set_of(expected);
+                wait_for_locks(&tab, |l| *l == want).await?;
+                ensure!(
+                    state(&tab).await?["noteVisible"] == true,
+                    "the explanation for the greyed-out fields is hidden"
+                );
+                Ok(())
+            },
+        ));
     }
     for mode in ["solid", "transparent", "image"] {
-        cases.push(case(format!("leaving_premade_mode_releases_every_lock[{mode}]"), move |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            tab.exec(SET_BACKGROUND_MODE, json!(["premade"])).await?;
-            wait_for_locks(&tab, |l| !l.is_empty()).await?;
-            tab.exec(SET_BACKGROUND_MODE, json!([mode])).await?;
-            ensure!(
-                tab.js::<bool>(ENABLE_MANUAL_TOP_LEFT, json!([])).await?,
-                "leaving pre-made mode must hand the manual-positioning checkbox back"
-            );
-            let s = state(&tab).await?;
-            ensure!(locked(&s).is_empty(), "{mode} mode still has locked fields: {:?}", locked(&s));
-            ensure!(s["noteVisible"] == false);
-            Ok(())
-        }));
+        cases.push(case(
+            format!("leaving_premade_mode_releases_every_lock[{mode}]"),
+            move |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                tab.exec(SET_BACKGROUND_MODE, json!(["premade"])).await?;
+                wait_for_locks(&tab, |l| !l.is_empty()).await?;
+                tab.exec(SET_BACKGROUND_MODE, json!([mode])).await?;
+                ensure!(
+                    tab.js::<bool>(ENABLE_MANUAL_TOP_LEFT, json!([])).await?,
+                    "leaving pre-made mode must hand the manual-positioning checkbox back"
+                );
+                let s = state(&tab).await?;
+                ensure!(
+                    locked(&s).is_empty(),
+                    "{mode} mode still has locked fields: {:?}",
+                    locked(&s)
+                );
+                ensure!(s["noteVisible"] == false);
+                Ok(())
+            },
+        ));
     }
     cases
 }

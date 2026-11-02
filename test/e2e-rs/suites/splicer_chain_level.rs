@@ -8,7 +8,8 @@ use crate::common::{temp_file, wait_for_tool};
 const CHAIN_STORAGE_KEY: &str = "splicer.macroChain";
 
 fn item(cmd: &str, params: &str, mix: Option<i64>, gain_db: Option<i64>) -> Value {
-    let mut item = json!({ "id": format!("CMD:{cmd}"), "label": cmd, "steps": 1, "params": params });
+    let mut item =
+        json!({ "id": format!("CMD:{cmd}"), "label": cmd, "steps": 1, "params": params });
     if let Some(mix) = mix {
         item["mix"] = json!(mix);
     }
@@ -24,14 +25,18 @@ fn db(gain: f64) -> f64 {
 
 /// Seeds the chain from a light same-origin page so the Splicer boots once, straight onto it.
 async fn open_with_chain(tab: &Tab, chain: Value) -> Result<()> {
+    let has_chain = chain.as_array().is_some_and(|items| !items.is_empty());
     tab.goto("demos.html").await?;
-    tab.local_storage_set(CHAIN_STORAGE_KEY, &chain.to_string()).await?;
+    tab.local_storage_set(CHAIN_STORAGE_KEY, &chain.to_string())
+        .await?;
     tab.goto("index.html?tool=splicer").await?;
-    tab.wait_until(
-        "!!(window.EASSplicerFX && window.EASSplicerFX.renderMacroToWavFromPcm && window.AudacityMacroEngine)",
-        Duration::from_secs(40),
-    )
-    .await?;
+    let ready = if has_chain {
+        "!!(window.EASSplicerFX && window.EASSplicerFX.renderMacroToWavFromPcm && window.AudacityMacroEngine)
+            && !!document.querySelector('[data-splice-macro-select] option[data-chain]')"
+    } else {
+        "!!(window.EASSplicerFX && window.EASSplicerFX.renderMacroToWavFromPcm && window.AudacityMacroEngine)"
+    };
+    tab.wait_until(ready, Duration::from_secs(40)).await?;
     // The saved chain is restored only after the macro defs load, so earlier the editor opens empty.
     wait_for_tool(tab, "splicer").await?;
     tab.exec(
@@ -100,18 +105,26 @@ struct Fit {
 }
 
 async fn render_fit(tab: &Tab, macro_id: &str, reference_id: Option<&str>) -> Result<Fit> {
-    let value: Value = tab.js_async(RENDER_AND_FIT_JS, json!([macro_id, reference_id])).await?;
+    let value: Value = tab
+        .js_async(RENDER_AND_FIT_JS, json!([macro_id, reference_id]))
+        .await?;
     ensure!(value["ok"] == true, "{value}");
     Ok(serde_json::from_value(value)?)
 }
 
 async fn register_invert_macro(tab: &Tab) -> Result<String> {
-    let id: String = tab.eval("window.AudacityMacroEngine.registerCustomMacro('Level Test Invert', 'Invert:\\n')").await?;
+    let id: String = tab
+        .eval("window.AudacityMacroEngine.registerCustomMacro('Level Test Invert', 'Invert:\\n')")
+        .await?;
     Ok(format!("AUD:{id}"))
 }
 
 async fn wait_for_am_radio(tab: &Tab) -> Result<()> {
-    tab.wait_until("!!document.querySelector('#spliceMacros option[value=\"AM_RADIO\"]')", Duration::from_secs(20)).await
+    tab.wait_until(
+        "!!document.querySelector('#spliceMacros option[value=\"AM_RADIO\"]')",
+        Duration::from_secs(20),
+    )
+    .await
 }
 
 const EXPORT_CAPTURE_JS: &str = r#"
@@ -147,7 +160,11 @@ fn fit(out: &[f64], reference: &[f64]) -> (f64, f64) {
     let dot: f64 = (0..n).map(|i| out[i] * reference[i]).sum();
     let energy: f64 = (0..n).map(|i| reference[i] * reference[i]).sum();
     let k = dot / energy;
-    let residual = ((0..n).map(|i| (out[i] - k * reference[i]).powi(2)).sum::<f64>() / n as f64).sqrt();
+    let residual = ((0..n)
+        .map(|i| (out[i] - k * reference[i]).powi(2))
+        .sum::<f64>()
+        / n as f64)
+        .sqrt();
     (k, residual)
 }
 
@@ -178,13 +195,19 @@ observer.observe(select, { attributes: true, attributeFilter: ['disabled'] });
 
 async fn wait_for_macro_waveform(tab: &Tab) -> Result<()> {
     let value: Value = tab.js_async(WAIT_FOR_MACRO_WAVEFORM_JS, json!([])).await?;
-    ensure!(value != "timeout", "the macro waveform render never finished");
+    ensure!(
+        value != "timeout",
+        "the macro waveform render never finished"
+    );
     Ok(())
 }
 
 fn tone_wav() -> (Vec<u8>, Vec<f64>) {
     let samples: Vec<i16> = (0..22050)
-        .map(|i| (0.25 * 32767.0 * (2.0 * std::f64::consts::PI * 440.0 * i as f64 / 44100.0).sin()).round() as i16)
+        .map(|i| {
+            (0.25 * 32767.0 * (2.0 * std::f64::consts::PI * 440.0 * i as f64 / 44100.0).sin())
+                .round() as i16
+        })
         .collect();
     let data_len = (samples.len() * 2) as u32;
     let mut wav = Vec::with_capacity(44 + data_len as usize);
@@ -210,27 +233,52 @@ pub fn cases() -> Vec<Case> {
     let mut cases = Vec::new();
     let chains: Vec<(&str, Value, f64)> = vec![
         ("full invert", json!([item("Invert", "", None, None)]), -1.0),
-        ("half-strength invert cancels", json!([item("Invert", "", Some(50), None)]), 0.0),
-        ("zero strength is dry", json!([item("Invert", "", Some(0), None)]), 1.0),
-        ("volume -6 dB", json!([item("Amplify", "Ratio=\"1\"", None, Some(-6))]), db(-6.0)),
+        (
+            "half-strength invert cancels",
+            json!([item("Invert", "", Some(50), None)]),
+            0.0,
+        ),
+        (
+            "zero strength is dry",
+            json!([item("Invert", "", Some(0), None)]),
+            1.0,
+        ),
+        (
+            "volume -6 dB",
+            json!([item("Amplify", "Ratio=\"1\"", None, Some(-6))]),
+            db(-6.0),
+        ),
         (
             "strength then volume across stages",
-            json!([item("Amplify", "Ratio=\"2\"", Some(50), None), item("Invert", "", None, Some(-6))]),
+            json!([
+                item("Amplify", "Ratio=\"2\"", Some(50), None),
+                item("Invert", "", None, Some(-6))
+            ]),
             -1.5 * db(-6.0),
         ),
     ];
     for (label, chain, expected) in chains {
-        cases.push(case(format!("chain_strength_and_volume_shape_the_render[{label}]"), move |tab| {
-            let chain = chain.clone();
-            async move {
-                open_with_chain(&tab, chain).await?;
-                let result = render_fit(&tab, "CHAIN", None).await?;
-                ensure!(result.frames == 44100, "{label}: {result:?}");
-                ensure!((result.k - expected).abs() < 0.002, "{label}: k={:.4}, expected {expected:.4}", result.k);
-                ensure!(result.residual < 0.001, "{label}: output is not a scaled copy of the input ({result:?})");
-                Ok(())
-            }
-        }));
+        cases.push(case(
+            format!("chain_strength_and_volume_shape_the_render[{label}]"),
+            move |tab| {
+                let chain = chain.clone();
+                async move {
+                    open_with_chain(&tab, chain).await?;
+                    let result = render_fit(&tab, "CHAIN", None).await?;
+                    ensure!(result.frames == 44100, "{label}: {result:?}");
+                    ensure!(
+                        (result.k - expected).abs() < 0.002,
+                        "{label}: k={:.4}, expected {expected:.4}",
+                        result.k
+                    );
+                    ensure!(
+                        result.residual < 0.001,
+                        "{label}: output is not a scaled copy of the input ({result:?})"
+                    );
+                    Ok(())
+                }
+            },
+        ));
     }
     for (strength, volume, expected) in [
         ("100", "0", -1.0),
@@ -239,41 +287,62 @@ pub fn cases() -> Vec<Case> {
         ("100", "-6", -db(-6.0)),
         ("75", "6", -0.5 * db(6.0)),
     ] {
-        cases.push(case(format!("single_audacity_macro_level[{strength}-{volume}]"), move |tab| async move {
+        cases.push(case(
+            format!("single_audacity_macro_level[{strength}-{volume}]"),
+            move |tab| async move {
+                open_with_chain(&tab, json!([])).await?;
+                let macro_id = register_invert_macro(&tab).await?;
+                set_macro_level(&tab, strength, volume).await?;
+                let result = render_fit(&tab, &macro_id, None).await?;
+                ensure!(
+                    (result.k - expected).abs() < 0.002,
+                    "{strength}% / {volume} dB: {result:?}"
+                );
+                ensure!(result.residual < 0.001, "{result:?}");
+                Ok(())
+            },
+        ));
+    }
+    cases.push(case(
+        "single_sox_macro_strength_zero_is_dry",
+        |tab| async move {
             open_with_chain(&tab, json!([])).await?;
-            let macro_id = register_invert_macro(&tab).await?;
-            set_macro_level(&tab, strength, volume).await?;
-            let result = render_fit(&tab, &macro_id, None).await?;
-            ensure!((result.k - expected).abs() < 0.002, "{strength}% / {volume} dB: {result:?}");
+            set_macro_level(&tab, "0", "0").await?;
+            let result = render_fit(&tab, "AM_RADIO", None).await?;
+            ensure!(
+                (result.k - 1.0).abs() < 0.002 && result.residual < 0.001,
+                "{result:?}"
+            );
+            Ok(())
+        },
+    ));
+    cases.push(case(
+        "single_sox_macro_volume_scales_its_output",
+        |tab| async move {
+            open_with_chain(&tab, json!([])).await?;
+            set_macro_level(&tab, "100", "-6").await?;
+            let result = render_fit(&tab, "AM_RADIO", Some("AM_RADIO")).await?;
+            ensure!((result.k - db(-6.0)).abs() < 0.003, "{result:?}");
             ensure!(result.residual < 0.001, "{result:?}");
             Ok(())
-        }));
-    }
-    cases.push(case("single_sox_macro_strength_zero_is_dry", |tab| async move {
-        open_with_chain(&tab, json!([])).await?;
-        set_macro_level(&tab, "0", "0").await?;
-        let result = render_fit(&tab, "AM_RADIO", None).await?;
-        ensure!((result.k - 1.0).abs() < 0.002 && result.residual < 0.001, "{result:?}");
-        Ok(())
-    }));
-    cases.push(case("single_sox_macro_volume_scales_its_output", |tab| async move {
-        open_with_chain(&tab, json!([])).await?;
-        set_macro_level(&tab, "100", "-6").await?;
-        let result = render_fit(&tab, "AM_RADIO", Some("AM_RADIO")).await?;
-        ensure!((result.k - db(-6.0)).abs() < 0.003, "{result:?}");
-        ensure!(result.residual < 0.001, "{result:?}");
-        Ok(())
-    }));
-    cases.push(case("macro_level_applies_on_top_of_a_chain", |tab| async move {
-        open_with_chain(&tab, json!([item("Invert", "", None, Some(-6))])).await?;
-        set_macro_level(&tab, "100", "6").await?;
-        let result = render_fit(&tab, "CHAIN", None).await?;
-        ensure!((result.k + db(-6.0) * db(6.0)).abs() < 0.002, "{result:?}");
-        set_macro_level(&tab, "50", "0").await?;
-        let result = render_fit(&tab, "CHAIN", None).await?;
-        ensure!((result.k - 0.5 * (1.0 - db(-6.0))).abs() < 0.002, "{result:?}");
-        Ok(())
-    }));
+        },
+    ));
+    cases.push(case(
+        "macro_level_applies_on_top_of_a_chain",
+        |tab| async move {
+            open_with_chain(&tab, json!([item("Invert", "", None, Some(-6))])).await?;
+            set_macro_level(&tab, "100", "6").await?;
+            let result = render_fit(&tab, "CHAIN", None).await?;
+            ensure!((result.k + db(-6.0) * db(6.0)).abs() < 0.002, "{result:?}");
+            set_macro_level(&tab, "50", "0").await?;
+            let result = render_fit(&tab, "CHAIN", None).await?;
+            ensure!(
+                (result.k - 0.5 * (1.0 - db(-6.0))).abs() < 0.002,
+                "{result:?}"
+            );
+            Ok(())
+        },
+    ));
     cases.push(case("macro_level_controls_hide_for_no_macro", |tab| async move {
         open_with_chain(&tab, json!([])).await?;
         wait_for_am_radio(&tab).await?;
@@ -453,16 +522,28 @@ pub fn cases() -> Vec<Case> {
         }
         Ok(())
     }));
-    cases.push(case("old_saved_chains_default_to_full_strength", |tab| async move {
-        open_with_chain(&tab, json!([{ "id": "CMD:Invert", "label": "Invert", "steps": 1, "params": "" }])).await?;
-        let result = render_fit(&tab, "CHAIN", None).await?;
-        ensure!((result.k + 1.0).abs() < 0.002, "{result:?}");
-        Ok(())
-    }));
+    cases.push(case(
+        "old_saved_chains_default_to_full_strength",
+        |tab| async move {
+            open_with_chain(
+                &tab,
+                json!([{ "id": "CMD:Invert", "label": "Invert", "steps": 1, "params": "" }]),
+            )
+            .await?;
+            let result = render_fit(&tab, "CHAIN", None).await?;
+            ensure!((result.k + 1.0).abs() < 0.002, "{result:?}");
+            Ok(())
+        },
+    ));
     cases.push(case("chain_editor_level_inputs_are_labelled_and_persist", |tab| async move {
         open_with_chain(&tab, json!([item("Invert", "", None, None)])).await?;
         tab.click("[data-splice-chain-editor-btn]").await?;
         tab.wait_until("!document.querySelector('.splice-chain-backdrop').hidden", Duration::from_secs(10)).await?;
+        tab.wait_until(
+            "document.querySelectorAll('.splice-chain-list [data-chain-level]').length === 2",
+            Duration::from_secs(10),
+        )
+        .await?;
         let labels: Value = tab
             .eval(
                 "Array.from(document.querySelectorAll('.splice-chain-list [data-chain-level]'),

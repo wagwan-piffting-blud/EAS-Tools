@@ -15,19 +15,30 @@ const modules = fs.readdirSync(suites)
     .filter((name) => !skip.has(name))
     .sort();
 
+function caseLines(name) {
+    const singleLine = `        ("${name}", ${name}::cases()),`;
+    // rustfmt's default small-heuristics budget expands longer tuple entries.
+    if (singleLine.length <= 70) return [singleLine];
+    return [
+        '        (',
+        `            "${name}",`,
+        `            ${name}::cases(),`,
+        '        ),',
+    ];
+}
+
 const lines = [
-    'mod common;',
-    ...modules.map((name) => `mod ${name};`),
+    ...['common', ...modules].sort().map((name) => `mod ${name};`),
     '',
     'fn main() -> std::process::ExitCode {',
     '    eas_tools_e2e::run(vec![',
-    ...modules.map((name) => `        ("${name}", ${name}::cases()),`),
+    ...modules.flatMap(caseLines),
     '    ])',
     '}',
     '',
 ];
-const generated = lines.join('\n');
 const target = path.join(suites, 'main.rs');
+const generated = lines.join('\n');
 
 if (check) {
     const current = fs.existsSync(target) ? fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n') : '';

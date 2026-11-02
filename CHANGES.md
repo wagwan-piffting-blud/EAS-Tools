@@ -12,11 +12,32 @@
 
 - Allow creation and storage of custom SAME event codes. This allows users to create their own custom SAME event codes, which can be useful for generating alerts for events that do not have predefined event codes in the SAME specification. The custom event codes can be stored and reused in future alerts, providing users with more flexibility and control over the alert generation process. Thank you to GitHub user @InternOfCEOs for suggesting this change.
 
+- Add a selectable native or distroless-container runner for the Rust E2E suite.
+  CI now exercises the non-root Chromium image instead of depending on a
+  separately installed browser.
+
+- Add a separate `chromium-headless-shell` image and a
+  `make e2e-container-headless-shell` compatibility alias.
+
+- Promote `chromium-headless-shell` to the primary container image and retain an
+  explicit `eas-tools-e2e:full-chromium` compatibility image target.
+
+- Make E2E runner selection automatic for normal development commands: use a
+  usable native Chromium when present, otherwise select the Docker-compatible
+  container runner, reusing an existing local image when possible. Explicit
+  `native` and `container` overrides remain available.
+
 - CI updates.
 
 - Updates to the tag handling for VTML/Balabolka. Any unquoted options are now auto-quoted for you, so the voices do not read the tag aloud. Thank you to Discord user @pringlezgameing for reporting this issue.
 
 - Fix a bug regarding cache invalidation on the VT Paul pronunciation dictionary. This change ensures that the pronunciation dictionary is properly updated and invalidated when changes are made, preventing issues with outdated or incorrect pronunciations/speeds/etc. being used in the encoder or splicer tools.
+
+- Add `rustfmt`, `cargo check`, and warning-denied Clippy gates to the Rust E2E
+  suite, and run them before its browser tests locally and in CI.
+
+- Enforce 90% line coverage for the deterministic Rust E2E support modules with
+  `cargo llvm-cov`, backed by focused image, server, runner, and orchestration tests.
 
 ---
 

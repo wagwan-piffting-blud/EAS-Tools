@@ -19,20 +19,36 @@ const EVENT_LABELS: [(&str, &str); 5] = [
 ];
 const SINGLE_LINE: &str = "720";
 const TWO_LINE: &str = "820";
-const WRAPPING: [(&str, &str); 4] = [("EAN", TWO_LINE), ("EAT", TWO_LINE), ("TOR", SINGLE_LINE), ("NPT", SINGLE_LINE)];
+const WRAPPING: [(&str, &str); 4] = [
+    ("EAN", TWO_LINE),
+    ("EAT", TWO_LINE),
+    ("TOR", SINGLE_LINE),
+    ("NPT", SINGLE_LINE),
+];
 
 async fn open(tab: &Tab) -> Result<()> {
     open_tool(tab, "crawl").await?;
-    tab.wait_for_selector("#easyplusEventCode option[value=\"EAN\"]", Duration::from_secs(30)).await
+    tab.wait_for_selector(
+        "#easyplusEventCode option[value=\"EAN\"]",
+        Duration::from_secs(30),
+    )
+    .await
 }
 
 pub fn cases() -> Vec<Case> {
-    let mut cases = vec![case("ean_is_not_shortened_to_emergency_message", |tab| async move {
-        open(&tab).await?;
-        let label: Option<String> = tab.eval("window.events ? window.events.EAN : null").await?;
-        ensure!(label.as_deref() == Some("National Emergency Message"), "the EASyPLUS event name is shortened: {label:?}");
-        Ok(())
-    })];
+    let mut cases = vec![case(
+        "ean_is_not_shortened_to_emergency_message",
+        |tab| async move {
+            open(&tab).await?;
+            let label: Option<String> =
+                tab.eval("window.events ? window.events.EAN : null").await?;
+            ensure!(
+                label.as_deref() == Some("National Emergency Message"),
+                "the EASyPLUS event name is shortened: {label:?}"
+            );
+            Ok(())
+        },
+    )];
     for (code, expected) in EVENT_LABELS {
         cases.push(case(format!("event_table_label[{code}]"), move |tab| async move {
             open(&tab).await?;

@@ -145,8 +145,10 @@ async fn setup(tab: &Tab, width: u32, height: u32) -> Result<()> {
 async fn setup_with_bar(tab: &Tab, width: u32, height: u32, bar_opacity: &str) -> Result<()> {
     open_tool_tracking_errors(tab, "crawl").await?;
     set_field(tab, "#crawlMode", "custom").await?;
-    tab.wait_until("!!window.crawlEditor", Duration::from_secs(20)).await?;
-    tab.exec("window.crawlEditor.setValue('TEST');", json!([])).await?;
+    tab.wait_until("!!window.crawlEditor", Duration::from_secs(20))
+        .await?;
+    tab.exec("window.crawlEditor.setValue('TEST');", json!([]))
+        .await?;
     set_field(tab, "#crawlSpeed", "2").await?;
     set_field(tab, "#crawlRestartDelay", "500").await?;
     set_field(tab, "#crawlExportVideoFps", "30").await?;
@@ -154,9 +156,12 @@ async fn setup_with_bar(tab: &Tab, width: u32, height: u32, bar_opacity: &str) -
     set_field(tab, "#crawlVideoBarOpacity", bar_opacity).await?;
     let loaded: Value = tab.js_async(LOAD_VIDEO_JS, json!([])).await?;
     ensure!(loaded["ok"] == true, "{loaded}");
-    tab.wait_until("window.crawlGenerator.canvas.width === 320 && window.crawlGenerator.canvas.height === 180", Duration::from_secs(10))
-        .await
-        .context("choosing the video did not size the crawl to it")?;
+    tab.wait_until(
+        "window.crawlGenerator.canvas.width === 320 && window.crawlGenerator.canvas.height === 180",
+        Duration::from_secs(10),
+    )
+    .await
+    .context("choosing the video did not size the crawl to it")?;
     if (width, height) != (320, 180) {
         set_field(tab, "#crawlWidth", &width.to_string()).await?;
         set_field(tab, "#crawlHeight", &height.to_string()).await?;
@@ -194,7 +199,10 @@ const done = arguments[arguments.length - 1];
 async fn text_rows(tab: &Tab) -> Result<(i64, i64)> {
     let result: Value = tab.js_async(TEXT_ROWS_JS, json!([])).await?;
     ensure!(result["ok"] == true, "{result}");
-    Ok((result["top"].as_i64().unwrap_or(-1), result["bottom"].as_i64().unwrap_or(-1)))
+    Ok((
+        result["top"].as_i64().unwrap_or(-1),
+        result["bottom"].as_i64().unwrap_or(-1),
+    ))
 }
 
 async fn pixel(tab: &Tab, x: u32, y: u32) -> Result<Rgb> {
@@ -209,27 +217,44 @@ async fn wait_pixel(tab: &Tab, x: u32, y: u32, target: Rgb) -> Result<()> {
         if img::near(seen, target, 40) {
             return Ok(());
         }
-        ensure!(std::time::Instant::now() < deadline, "pixel ({x}, {y}) is {seen:?}, expected {target:?}");
+        ensure!(
+            std::time::Instant::now() < deadline,
+            "pixel ({x}, {y}) is {seen:?}, expected {target:?}"
+        );
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
 }
 
 fn rgb_of(value: &Value) -> Option<Rgb> {
     let parts = value.as_array()?;
-    Some((parts[0].as_u64()? as u8, parts[1].as_u64()? as u8, parts[2].as_u64()? as u8))
+    Some((
+        parts[0].as_u64()? as u8,
+        parts[1].as_u64()? as u8,
+        parts[2].as_u64()? as u8,
+    ))
 }
 
 async fn check_video_export(tab: &Tab, hide_decoder: bool) -> Result<()> {
     setup(tab, 320, 180).await?;
-    let result: Value = tab.js_async(EXPORT_VIDEO_JS, json!([[0.3, 1.3, 2.3], hide_decoder])).await?;
+    let result: Value = tab
+        .js_async(EXPORT_VIDEO_JS, json!([[0.3, 1.3, 2.3], hide_decoder]))
+        .await?;
     ensure!(result["ok"] == true, "{result}");
     let duration = result["duration"].as_f64().unwrap_or_default();
     ensure!(duration > 2.4, "the export is only {duration} s long");
-    let pixels: Vec<Option<Rgb>> = result["pixels"].as_array().context("pixels")?.iter().map(rgb_of).collect();
+    let pixels: Vec<Option<Rgb>> = result["pixels"]
+        .as_array()
+        .context("pixels")?
+        .iter()
+        .map(rgb_of)
+        .collect();
     let expected = [RED, GREEN, RED];
     for (index, (seen, target)) in pixels.iter().zip(expected).enumerate() {
         let seen = seen.with_context(|| format!("no frame {index}"))?;
-        ensure!(img::near(seen, target, 60), "frame {index} is {seen:?}, expected {target:?}: {pixels:?}");
+        ensure!(
+            img::near(seen, target, 60),
+            "frame {index} is {seen:?}, expected {target:?}: {pixels:?}"
+        );
     }
     let errors: Vec<String> = tab.eval("window.__testErrors || []").await?;
     ensure!(errors.is_empty(), "console errors {errors:?}");
@@ -238,49 +263,92 @@ async fn check_video_export(tab: &Tab, hide_decoder: bool) -> Result<()> {
 
 pub fn cases() -> Vec<Case> {
     vec![
-        case("preview_draws_the_video_and_follows_play_and_pause", |tab| async move {
-            setup(&tab, 320, 180).await?;
-            wait_pixel(&tab, 4, 4, RED).await?;
-            let mounted: Value = tab
+        case(
+            "preview_draws_the_video_and_follows_play_and_pause",
+            |tab| async move {
+                setup(&tab, 320, 180).await?;
+                wait_pixel(&tab, 4, 4, RED).await?;
+                let mounted: Value = tab
                 .eval(
                     "(() => { const v = window.crawlGenerator.bgVideo; const r = v.getBoundingClientRect();
                      return { inPanel: !!v.closest('#crawl-panel'), loose: document.querySelectorAll('body > video').length, w: r.width, h: r.height,
                               hidden: v.parentElement.getAttribute('aria-hidden'), pip: v.disablePictureInPicture }; })()",
                 )
                 .await?;
-            ensure!(mounted["inPanel"] == true && mounted["loose"] == 0, "the video is not held in the crawl panel: {mounted}");
-            ensure!(mounted["w"].as_f64() <= Some(1.0) && mounted["hidden"] == "true" && mounted["pip"] == true, "{mounted}");
-            tab.exec("document.getElementById('pauseCrawl').click();", json!([])).await?;
-            tab.wait_until("!window.crawlGenerator.bgVideo.paused", Duration::from_secs(5)).await?;
-            tab.wait_until("window.crawlGenerator.bgVideo.currentTime > 1.1", Duration::from_secs(10)).await?;
-            wait_pixel(&tab, 4, 4, GREEN).await?;
-            tab.exec("document.getElementById('pauseCrawl').click();", json!([])).await?;
-            tab.wait_until("window.crawlGenerator.bgVideo.paused", Duration::from_secs(5)).await?;
-            Ok(())
-        }),
-        case("fit_inside_letterboxes_with_the_background_color", |tab| async move {
-            setup(&tab, 320, 320).await?;
-            set_field(&tab, "#crawlBgColor", "#0000ff").await?;
-            set_field(&tab, "#crawlBackgroundVideoFit", "contain").await?;
-            wait_pixel(&tab, 4, 4, BLUE).await?;
-            wait_pixel(&tab, 4, 160, RED).await?;
-            set_field(&tab, "#crawlBackgroundVideoFit", "cover").await?;
-            wait_pixel(&tab, 4, 4, RED).await?;
-            Ok(())
-        }),
-        case("video_export_decodes_the_background_frame_by_frame", |tab| async move { check_video_export(&tab, false).await }),
-        case("video_export_falls_back_to_seeking_without_webcodecs_decode", |tab| async move { check_video_export(&tab, true).await }),
+                ensure!(
+                    mounted["inPanel"] == true && mounted["loose"] == 0,
+                    "the video is not held in the crawl panel: {mounted}"
+                );
+                ensure!(
+                    mounted["w"].as_f64() <= Some(1.0)
+                        && mounted["hidden"] == "true"
+                        && mounted["pip"] == true,
+                    "{mounted}"
+                );
+                tab.exec("document.getElementById('pauseCrawl').click();", json!([]))
+                    .await?;
+                tab.wait_until(
+                    "!window.crawlGenerator.bgVideo.paused",
+                    Duration::from_secs(5),
+                )
+                .await?;
+                tab.wait_until(
+                    "window.crawlGenerator.bgVideo.currentTime > 1.1",
+                    Duration::from_secs(10),
+                )
+                .await?;
+                wait_pixel(&tab, 4, 4, GREEN).await?;
+                tab.exec("document.getElementById('pauseCrawl').click();", json!([]))
+                    .await?;
+                tab.wait_until(
+                    "window.crawlGenerator.bgVideo.paused",
+                    Duration::from_secs(5),
+                )
+                .await?;
+                Ok(())
+            },
+        ),
+        case(
+            "fit_inside_letterboxes_with_the_background_color",
+            |tab| async move {
+                setup(&tab, 320, 320).await?;
+                set_field(&tab, "#crawlBgColor", "#0000ff").await?;
+                set_field(&tab, "#crawlBackgroundVideoFit", "contain").await?;
+                wait_pixel(&tab, 4, 4, BLUE).await?;
+                wait_pixel(&tab, 4, 160, RED).await?;
+                set_field(&tab, "#crawlBackgroundVideoFit", "cover").await?;
+                wait_pixel(&tab, 4, 4, RED).await?;
+                Ok(())
+            },
+        ),
+        case(
+            "video_export_decodes_the_background_frame_by_frame",
+            |tab| async move { check_video_export(&tab, false).await },
+        ),
+        case(
+            "video_export_falls_back_to_seeking_without_webcodecs_decode",
+            |tab| async move { check_video_export(&tab, true).await },
+        ),
         case("gif_export_carries_the_video", |tab| async move {
             setup(&tab, 160, 90).await?;
             set_field(&tab, "#crawlExportGifFps", "20").await?;
             let result: Value = tab.js_async(EXPORT_GIF_JS, json!([])).await?;
             ensure!(result["ok"] == true, "{result}");
             use base64::Engine;
-            let bytes = base64::engine::general_purpose::STANDARD.decode(result["gif"].as_str().unwrap_or_default())?;
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(result["gif"].as_str().unwrap_or_default())?;
             let frames = img::gif_frames(&bytes)?;
             ensure!(frames.len() > 30, "only {} GIF frames", frames.len());
-            ensure!(img::near(img::px(&frames[6], 2, 2), RED, 60), "frame 6 is {:?}", img::px(&frames[6], 2, 2));
-            ensure!(img::near(img::px(&frames[26], 2, 2), GREEN, 60), "frame 26 is {:?}", img::px(&frames[26], 2, 2));
+            ensure!(
+                img::near(img::px(&frames[6], 2, 2), RED, 60),
+                "frame 6 is {:?}",
+                img::px(&frames[6], 2, 2)
+            );
+            ensure!(
+                img::near(img::px(&frames[26], 2, 2), GREEN, 60),
+                "frame 26 is {:?}",
+                img::px(&frames[26], 2, 2)
+            );
             Ok(())
         }),
         case("the_crawl_runs_in_a_bar_over_the_video", |tab| async move {
@@ -289,15 +357,24 @@ pub fn cases() -> Vec<Case> {
             set_field(&tab, "#crawlVideoBarHeight", "40").await?;
             wait_pixel(&tab, 4, 4, BLUE).await?;
             wait_pixel(&tab, 4, 120, RED).await?;
-            tab.exec("document.getElementById('pauseCrawl').click();", json!([])).await?;
+            tab.exec("document.getElementById('pauseCrawl').click();", json!([]))
+                .await?;
             let (top, bottom) = text_rows(&tab).await?;
-            ensure!(top >= 0 && bottom < 40, "the text left the top bar: rows {top}..{bottom}");
+            ensure!(
+                top >= 0 && bottom < 40,
+                "the text left the top bar: rows {top}..{bottom}"
+            );
             set_field(&tab, "#crawlVideoBarPosition", "bottom").await?;
             wait_pixel(&tab, 4, 4, RED).await?;
             wait_pixel(&tab, 4, 176, BLUE).await?;
             let (top, bottom) = text_rows(&tab).await?;
-            ensure!(top >= 140 && bottom < 180, "the text left the bottom bar: rows {top}..{bottom}");
-            let disabled: bool = tab.eval("document.getElementById('crawlVideoBarY').disabled").await?;
+            ensure!(
+                top >= 140 && bottom < 180,
+                "the text left the bottom bar: rows {top}..{bottom}"
+            );
+            let disabled: bool = tab
+                .eval("document.getElementById('crawlVideoBarY').disabled")
+                .await?;
             ensure!(disabled, "the custom distance is editable outside Custom");
             set_field(&tab, "#crawlVideoBarPosition", "custom").await?;
             set_field(&tab, "#crawlVideoBarY", "70").await?;
@@ -312,85 +389,166 @@ pub fn cases() -> Vec<Case> {
             set_field(&tab, "#crawlVideoBarPosition", "bottom").await?;
             let result: Value = tab
                 .js_async(
-                    &EXPORT_VIDEO_JS.replace("getImageData(4, 4, 1, 1)", "getImageData(4, 176, 1, 1)"),
+                    &EXPORT_VIDEO_JS
+                        .replace("getImageData(4, 4, 1, 1)", "getImageData(4, 176, 1, 1)"),
                     json!([[0.3, 1.3], false]),
                 )
                 .await?;
             ensure!(result["ok"] == true, "{result}");
             for value in result["pixels"].as_array().context("pixels")? {
                 let seen = rgb_of(value).context("missing frame")?;
-                ensure!(img::near(seen, BLUE, 60), "the exported bar is {seen:?}: {result}");
+                ensure!(
+                    img::near(seen, BLUE, 60),
+                    "the exported bar is {seen:?}: {result}"
+                );
             }
-            let top: Value = tab.js_async(EXPORT_VIDEO_JS, json!([[0.3, 1.3], false])).await?;
-            let colors: Vec<Option<Rgb>> = top["pixels"].as_array().context("pixels")?.iter().map(rgb_of).collect();
+            let top: Value = tab
+                .js_async(EXPORT_VIDEO_JS, json!([[0.3, 1.3], false]))
+                .await?;
+            let colors: Vec<Option<Rgb>> = top["pixels"]
+                .as_array()
+                .context("pixels")?
+                .iter()
+                .map(rgb_of)
+                .collect();
             ensure!(colors.len() == 2, "{top}");
-            ensure!(img::near(colors[0].context("frame 0")?, RED, 60) && img::near(colors[1].context("frame 1")?, GREEN, 60), "{colors:?}");
+            ensure!(
+                img::near(colors[0].context("frame 0")?, RED, 60)
+                    && img::near(colors[1].context("frame 1")?, GREEN, 60),
+                "{colors:?}"
+            );
             Ok(())
         }),
-        case("a_large_crawl_is_scaled_to_fit_the_page_on_desktop", |tab| async move {
-            tab.set_viewport(1600, 900).await?;
-            setup(&tab, 3840, 2160).await?;
-            let size: Value = tab
+        case(
+            "a_large_crawl_is_scaled_to_fit_the_page_on_desktop",
+            |tab| async move {
+                tab.set_viewport(1600, 900).await?;
+                setup(&tab, 3840, 2160).await?;
+                let size: Value = tab
                 .eval(
                     "(() => { const c = window.crawlGenerator.canvas; const r = c.getBoundingClientRect();
                      return { w: r.width, h: r.height, box: c.parentElement.clientWidth, vh: window.innerHeight, pw: c.width, ph: c.height }; })()",
                 )
                 .await?;
-            let (w, h) = (size["w"].as_f64().unwrap_or(0.0), size["h"].as_f64().unwrap_or(0.0));
-            ensure!(size["pw"] == 3840 && size["ph"] == 2160, "the canvas resolution changed: {size}");
-            ensure!(w > 0.0 && w <= size["box"].as_f64().unwrap_or(0.0) + 0.5, "wider than its container: {size}");
-            ensure!(h <= size["vh"].as_f64().unwrap_or(0.0) * 0.7 + 0.5, "taller than 70% of the viewport: {size}");
-            ensure!(((w / h) - 16.0 / 9.0).abs() < 0.02, "the aspect ratio changed: {size}");
-            set_field(&tab, "#crawlWidth", "320").await?;
-            set_field(&tab, "#crawlHeight", "180").await?;
-            tab.wait_until("window.crawlGenerator.canvas.getBoundingClientRect().width === 320", Duration::from_secs(10)).await?;
-            Ok(())
-        }),
-        case("a_video_range_limits_the_preview_and_loops_in_the_export", |tab| async move {
-            setup(&tab, 320, 180).await?;
-            set_field(&tab, "#crawlVideoStart", "1").await?;
-            wait_pixel(&tab, 4, 4, GREEN).await?;
-            tab.exec("document.getElementById('pauseCrawl').click();", json!([])).await?;
-            tab.wait_until("!window.crawlGenerator.bgVideo.paused", Duration::from_secs(5)).await?;
-            for _ in 0..12 {
-                tokio::time::sleep(Duration::from_millis(250)).await;
-                let time: f64 = tab.eval("window.crawlGenerator.bgVideo.currentTime").await?;
-                ensure!(time >= 0.9, "the preview played {time} s, before the 1 s start");
-                let seen = pixel(&tab, 4, 4).await?;
-                ensure!(img::near(seen, GREEN, 60), "the preview drew {seen:?} at {time} s");
-            }
-            tab.exec("document.getElementById('pauseCrawl').click();", json!([])).await?;
-            let result: Value = tab.js_async(EXPORT_VIDEO_JS, json!([[0.3, 1.3, 2.3], false])).await?;
-            ensure!(result["ok"] == true, "{result}");
-            let duration = result["duration"].as_f64().unwrap_or_default();
-            ensure!(duration > 2.4, "without Stop at end the crawl sets the length, got {duration} s");
-            for value in result["pixels"].as_array().context("pixels")? {
-                let seen = rgb_of(value).context("missing frame")?;
-                ensure!(img::near(seen, GREEN, 60), "the export left the 1-2 s range: {result}");
-            }
-            Ok(())
-        }),
-        case("stop_at_end_cuts_the_export_to_the_clip", |tab| async move {
-            setup(&tab, 320, 180).await?;
-            set_field(&tab, "#crawlVideoEnd", "1").await?;
-            set_checkbox(&tab, "crawlVideoStopAtEnd", true).await?;
-            tab.wait_until("window.crawlGenerator.bgVideoRange && window.crawlGenerator.bgVideoRange.stopAtEnd", Duration::from_secs(10))
+                let (w, h) = (
+                    size["w"].as_f64().unwrap_or(0.0),
+                    size["h"].as_f64().unwrap_or(0.0),
+                );
+                ensure!(
+                    size["pw"] == 3840 && size["ph"] == 2160,
+                    "the canvas resolution changed: {size}"
+                );
+                ensure!(
+                    w > 0.0 && w <= size["box"].as_f64().unwrap_or(0.0) + 0.5,
+                    "wider than its container: {size}"
+                );
+                ensure!(
+                    h <= size["vh"].as_f64().unwrap_or(0.0) * 0.7 + 0.5,
+                    "taller than 70% of the viewport: {size}"
+                );
+                ensure!(
+                    ((w / h) - 16.0 / 9.0).abs() < 0.02,
+                    "the aspect ratio changed: {size}"
+                );
+                set_field(&tab, "#crawlWidth", "320").await?;
+                set_field(&tab, "#crawlHeight", "180").await?;
+                tab.wait_until(
+                    "window.crawlGenerator.canvas.getBoundingClientRect().width === 320",
+                    Duration::from_secs(10),
+                )
                 .await?;
-            let result: Value = tab.js_async(EXPORT_VIDEO_JS, json!([[0.2, 0.8], true])).await?;
-            ensure!(result["ok"] == true, "{result}");
-            let duration = result["duration"].as_f64().unwrap_or_default();
-            ensure!((0.9..1.1).contains(&duration), "the export is {duration} s, expected the 1 s clip");
-            for value in result["pixels"].as_array().context("pixels")? {
-                let seen = rgb_of(value).context("missing frame")?;
-                ensure!(img::near(seen, RED, 60), "the export left the 0-1 s range: {result}");
-            }
-            Ok(())
-        }),
+                Ok(())
+            },
+        ),
+        case(
+            "a_video_range_limits_the_preview_and_loops_in_the_export",
+            |tab| async move {
+                setup(&tab, 320, 180).await?;
+                set_field(&tab, "#crawlVideoStart", "1").await?;
+                wait_pixel(&tab, 4, 4, GREEN).await?;
+                tab.exec("document.getElementById('pauseCrawl').click();", json!([]))
+                    .await?;
+                tab.wait_until(
+                    "!window.crawlGenerator.bgVideo.paused",
+                    Duration::from_secs(5),
+                )
+                .await?;
+                for _ in 0..12 {
+                    tokio::time::sleep(Duration::from_millis(250)).await;
+                    let time: f64 = tab
+                        .eval("window.crawlGenerator.bgVideo.currentTime")
+                        .await?;
+                    ensure!(
+                        time >= 0.9,
+                        "the preview played {time} s, before the 1 s start"
+                    );
+                    let seen = pixel(&tab, 4, 4).await?;
+                    ensure!(
+                        img::near(seen, GREEN, 60),
+                        "the preview drew {seen:?} at {time} s"
+                    );
+                }
+                tab.exec("document.getElementById('pauseCrawl').click();", json!([]))
+                    .await?;
+                let result: Value = tab
+                    .js_async(EXPORT_VIDEO_JS, json!([[0.3, 1.3, 2.3], false]))
+                    .await?;
+                ensure!(result["ok"] == true, "{result}");
+                let duration = result["duration"].as_f64().unwrap_or_default();
+                ensure!(
+                    duration > 2.4,
+                    "without Stop at end the crawl sets the length, got {duration} s"
+                );
+                for value in result["pixels"].as_array().context("pixels")? {
+                    let seen = rgb_of(value).context("missing frame")?;
+                    ensure!(
+                        img::near(seen, GREEN, 60),
+                        "the export left the 1-2 s range: {result}"
+                    );
+                }
+                Ok(())
+            },
+        ),
+        case(
+            "stop_at_end_cuts_the_export_to_the_clip",
+            |tab| async move {
+                setup(&tab, 320, 180).await?;
+                set_field(&tab, "#crawlVideoEnd", "1").await?;
+                set_checkbox(&tab, "crawlVideoStopAtEnd", true).await?;
+                tab.wait_until("window.crawlGenerator.bgVideoRange && window.crawlGenerator.bgVideoRange.stopAtEnd", Duration::from_secs(10))
+                .await?;
+                let result: Value = tab
+                    .js_async(EXPORT_VIDEO_JS, json!([[0.2, 0.8], true]))
+                    .await?;
+                ensure!(result["ok"] == true, "{result}");
+                let duration = result["duration"].as_f64().unwrap_or_default();
+                ensure!(
+                    (0.9..1.1).contains(&duration),
+                    "the export is {duration} s, expected the 1 s clip"
+                );
+                for value in result["pixels"].as_array().context("pixels")? {
+                    let seen = rgb_of(value).context("missing frame")?;
+                    ensure!(
+                        img::near(seen, RED, 60),
+                        "the export left the 0-1 s range: {result}"
+                    );
+                }
+                Ok(())
+            },
+        ),
         case("leaving_video_mode_releases_the_video", |tab| async move {
             setup(&tab, 320, 180).await?;
-            tab.exec("window.__bgVideo = window.crawlGenerator.bgVideo;", json!([])).await?;
+            tab.exec(
+                "window.__bgVideo = window.crawlGenerator.bgVideo;",
+                json!([]),
+            )
+            .await?;
             set_field(&tab, "#crawlBackgroundMode", "solid").await?;
-            tab.wait_until("window.crawlGenerator.bgVideo === null && !window.__bgVideo.getAttribute('src')", Duration::from_secs(10)).await?;
+            tab.wait_until(
+                "window.crawlGenerator.bgVideo === null && !window.__bgVideo.getAttribute('src')",
+                Duration::from_secs(10),
+            )
+            .await?;
             Ok(())
         }),
     ]

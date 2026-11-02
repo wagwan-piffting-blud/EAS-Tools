@@ -6,6 +6,17 @@
 - pnpm 12.16.1 (the version is pinned in `package.json`)
 - GNU Make
 - Python 3 for serving the static application and selected repository tools
+- A stable Rust toolchain and either Chrome/Chromium or Docker for browser E2E
+
+The repository's development commands assume and expect a Unix-like shell and
+utilities. Linux is the CI reference environment. Native Windows E2E remains
+supported as a compatibility path through the Rust/Cargo harness, but it does
+not make the rest of the repository's GNU Make, Python, and POSIX-shell workflow
+native to Windows. Use WSL, Git Bash, MSYS2, or an equivalent Unix-like environment
+for the broader development workflow.
+
+For machines without native Chromium that have Docker; rebuild the image whenever it
+becomes necessary to test new E2E code or E2E testing suites.
 
 Install development dependencies with:
 
@@ -124,8 +135,12 @@ The voice list advertises support as `features.pronunciation` and
 | `make protocol-test` | Run recorder-boundary and SAME A/B harnesses |
 | `make warngen-test` | Render modern and legacy WarnGen corpora |
 | `make skills-check` | Validate every repository-local skill package |
-| `make e2e` | Run the Rust + Chrome browser suite in `test/e2e-rs/` |
+| `make e2e-coverage` | Enforce 90% Rust E2E support-surface line coverage |
+| `make e2e-check` | Check E2E discovery, Rust formatting/compilation/Clippy, and 90% coverage |
+| `make e2e` | Run the Rust browser suite with automatic native/container selection |
 | `make checks` | Run every gate except the browser suite (CI runs it and `make e2e` as parallel jobs) |
 | `make quality` | Run all repository quality gates (`checks` + `e2e`) |
+| `make e2e-container` | Build and run the primary distroless `chromium-headless-shell` image |
+| `make e2e-container-full-chromium` | Build and run the secondary full Chromium compatibility image |
 
 Human review remains required. Automated checks provide evidence, not acceptance.

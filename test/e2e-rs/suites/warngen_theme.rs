@@ -40,40 +40,135 @@ const PALETTE_PAIRS: [(&str, &str, &str, f64); 37] = [
     ("--wg-text", "--wg-bg", "body text", 4.5),
     ("--wg-text", "--wg-surface-sunken", "input text", 4.5),
     ("--wg-text", "--wg-control-bg", "control text", 4.5),
-    ("--wg-text-output", "--wg-surface-sunken", "bulletin text", 4.5),
+    (
+        "--wg-text-output",
+        "--wg-surface-sunken",
+        "bulletin text",
+        4.5,
+    ),
     ("--wg-text-bar", "--wg-surface-bar", "bar text", 4.5),
-    ("--wg-text-bar", "--wg-surface-raised", "raised bar text", 4.5),
-    ("--wg-text-option", "--wg-surface-panel", "bullet option", 4.5),
+    (
+        "--wg-text-bar",
+        "--wg-surface-raised",
+        "raised bar text",
+        4.5,
+    ),
+    (
+        "--wg-text-option",
+        "--wg-surface-panel",
+        "bullet option",
+        4.5,
+    ),
     ("--wg-text-checkbox", "--wg-bg", "checkbox label", 4.5),
     ("--wg-text-label", "--wg-surface-raised", "field label", 4.5),
-    ("--wg-text-dim", "--wg-surface-panel", "empty-state text", 4.5),
+    (
+        "--wg-text-dim",
+        "--wg-surface-panel",
+        "empty-state text",
+        4.5,
+    ),
     ("--wg-text-dim", "--wg-bg", "phase label", 4.5),
     ("--wg-accent", "--wg-surface-bar", "panel heading", 4.5),
     ("--wg-accent", "--wg-surface-raised", "impacted label", 4.5),
-    ("--wg-accent", "--wg-surface-panel", "bullet section heading", 4.5),
+    (
+        "--wg-accent",
+        "--wg-surface-panel",
+        "bullet section heading",
+        4.5,
+    ),
     ("--wg-accent", "--wg-control-bg", "map tooltip", 4.5),
     ("--wg-primary-text", "--wg-button-bg", "button label", 4.5),
-    ("--wg-primary-text", "--wg-button-hover-bg", "button hover label", 4.5),
+    (
+        "--wg-primary-text",
+        "--wg-button-hover-bg",
+        "button hover label",
+        4.5,
+    ),
     ("--wg-accent-alt", "--wg-accent-bg", "watch button", 4.5),
-    ("--wg-accent-alt", "--wg-accent-bg-hover", "watch button hover", 4.5),
-    ("--wg-accent-alt", "--wg-accent-surface", "fill-in label", 4.5),
-    ("--wg-accent-alt", "--wg-control-bg", "storm motion badge", 4.5),
-    ("--wg-accent-dim", "--wg-accent-surface", "watch empty text", 4.5),
+    (
+        "--wg-accent-alt",
+        "--wg-accent-bg-hover",
+        "watch button hover",
+        4.5,
+    ),
+    (
+        "--wg-accent-alt",
+        "--wg-accent-surface",
+        "fill-in label",
+        4.5,
+    ),
+    (
+        "--wg-accent-alt",
+        "--wg-control-bg",
+        "storm motion badge",
+        4.5,
+    ),
+    (
+        "--wg-accent-dim",
+        "--wg-accent-surface",
+        "watch empty text",
+        4.5,
+    ),
     ("--wg-accent-dim", "--wg-accent-bg", "panel hint", 4.5),
     ("--wg-info", "--wg-surface-raised", "storm bar heading", 4.5),
     ("--wg-danger", "--wg-danger-bg", "clear button", 4.5),
-    ("--wg-info", "--wg-surface-raised", "product bar heading", 4.5),
+    (
+        "--wg-info",
+        "--wg-surface-raised",
+        "product bar heading",
+        4.5,
+    ),
     ("--wg-danger-text", "--wg-danger", "danger button", 4.5),
-    ("--wg-danger-text", "--wg-danger-hover", "danger button hover", 4.5),
+    (
+        "--wg-danger-text",
+        "--wg-danger-hover",
+        "danger button hover",
+        4.5,
+    ),
     ("--wg-success", "--wg-surface-bar", "success text", 4.5),
-    ("--wg-primary-text", "--wg-primary-bg", "primary button", 4.5),
-    ("--wg-primary-text", "--wg-primary-bg-hover", "primary button hover", 4.5),
+    (
+        "--wg-primary-text",
+        "--wg-primary-bg",
+        "primary button",
+        4.5,
+    ),
+    (
+        "--wg-primary-text",
+        "--wg-primary-bg-hover",
+        "primary button hover",
+        4.5,
+    ),
     ("--wg-text", "--wg-surface-sunken", "modal text", 4.5),
-    ("--wg-map-county-stroke", "--wg-map-canvas", "county boundary", 3.0),
-    ("--wg-map-draw-stroke", "--wg-map-canvas", "drawn polygon edge", 3.0),
-    ("--wg-map-hit-stroke", "--wg-map-canvas", "impacted county edge", 3.0),
-    ("--wg-map-marine-stroke", "--wg-map-canvas", "marine zone edge", 3.0),
-    ("--wg-map-zone-stroke", "--wg-map-canvas", "forecast zone edge", 3.0),
+    (
+        "--wg-map-county-stroke",
+        "--wg-map-canvas",
+        "county boundary",
+        3.0,
+    ),
+    (
+        "--wg-map-draw-stroke",
+        "--wg-map-canvas",
+        "drawn polygon edge",
+        3.0,
+    ),
+    (
+        "--wg-map-hit-stroke",
+        "--wg-map-canvas",
+        "impacted county edge",
+        3.0,
+    ),
+    (
+        "--wg-map-marine-stroke",
+        "--wg-map-canvas",
+        "marine zone edge",
+        3.0,
+    ),
+    (
+        "--wg-map-zone-stroke",
+        "--wg-map-canvas",
+        "forecast zone edge",
+        3.0,
+    ),
 ];
 
 /// Each element's colour plus the first opaque background painted behind it.
@@ -123,19 +218,34 @@ return found;
 fn parse_color(value: &str) -> Result<(f64, f64, f64)> {
     let value = value.trim();
     if let Some(hex) = value.strip_prefix('#') {
-        let digits: String = if hex.len() == 3 { hex.chars().flat_map(|c| [c, c]).collect() } else { hex.to_string() };
+        let digits: String = if hex.len() == 3 {
+            hex.chars().flat_map(|c| [c, c]).collect()
+        } else {
+            hex.to_string()
+        };
         let channel = |i: usize| u8::from_str_radix(&digits[i..i + 2], 16).map(f64::from);
         return Ok((channel(0)?, channel(2)?, channel(4)?));
     }
-    let inner = value.split_once('(').and_then(|(_, r)| r.rsplit_once(')')).map(|(i, _)| i).context(format!("bad colour {value}"))?;
-    let parts: Vec<f64> = inner.split(',').map(|p| p.trim().parse()).collect::<Result<_, _>>()?;
+    let inner = value
+        .split_once('(')
+        .and_then(|(_, r)| r.rsplit_once(')'))
+        .map(|(i, _)| i)
+        .context(format!("bad colour {value}"))?;
+    let parts: Vec<f64> = inner
+        .split(',')
+        .map(|p| p.trim().parse())
+        .collect::<Result<_, _>>()?;
     Ok((parts[0], parts[1], parts[2]))
 }
 
 fn luminance((r, g, b): (f64, f64, f64)) -> f64 {
     let channel = |c: f64| {
         let c = c / 255.0;
-        if c <= 0.03928 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+        if c <= 0.03928 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
     };
     0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
 }
@@ -146,9 +256,14 @@ fn contrast(fg: &str, bg: &str) -> Result<f64> {
 }
 
 async fn open(tab: &Tab, scheme: &str) -> Result<()> {
-    tab.emulate_media(&[("prefers-color-scheme", scheme)]).await?;
+    tab.emulate_media(&[("prefers-color-scheme", scheme)])
+        .await?;
     tab.goto("warngen/").await?;
-    tab.wait_until("!!document.querySelector('.bullet-option')", Duration::from_secs(40)).await
+    tab.wait_until(
+        "!!document.querySelector('.bullet-option')",
+        Duration::from_secs(40),
+    )
+    .await
 }
 
 const MAP_COLORS_JS: &str = "[mapColor('--wg-map-county-stroke'), mapColor('--wg-map-county-fill'), mapColor('--wg-map-draw-stroke'), countyStyle().fillColor]";
@@ -156,28 +271,43 @@ const MAP_COLORS_JS: &str = "[mapColor('--wg-map-county-stroke'), mapColor('--wg
 pub fn cases() -> Vec<Case> {
     let mut cases = Vec::new();
     for scheme in ["light", "dark"] {
-        cases.push(case(format!("warngen_text_meets_wcag_aa[{scheme}]"), move |tab| async move {
-            open(&tab, scheme).await?;
-            let selectors: Vec<&str> = PROBES.iter().map(|p| p.0).collect();
-            let resolved: Value = tab.js(RESOLVE_JS, json!([selectors])).await?;
-            let mut missing = Vec::new();
-            let mut failures = Vec::new();
-            for (selector, name, floor) in PROBES {
-                let info = &resolved[selector];
-                if info.is_null() {
-                    missing.push(format!("{name} ({selector})"));
-                    continue;
+        cases.push(case(
+            format!("warngen_text_meets_wcag_aa[{scheme}]"),
+            move |tab| async move {
+                open(&tab, scheme).await?;
+                let selectors: Vec<&str> = PROBES.iter().map(|p| p.0).collect();
+                let resolved: Value = tab.js(RESOLVE_JS, json!([selectors])).await?;
+                let mut missing = Vec::new();
+                let mut failures = Vec::new();
+                for (selector, name, floor) in PROBES {
+                    let info = &resolved[selector];
+                    if info.is_null() {
+                        missing.push(format!("{name} ({selector})"));
+                        continue;
+                    }
+                    let (fg, bg) = (
+                        info["color"].as_str().unwrap_or(""),
+                        info["background"].as_str().unwrap_or(""),
+                    );
+                    let ratio = contrast(fg, bg)?;
+                    if ratio < floor {
+                        failures.push(format!(
+                            "{name} ({selector}): {ratio:.2}:1, need {floor}:1 [{fg} on {bg}]"
+                        ));
+                    }
                 }
-                let (fg, bg) = (info["color"].as_str().unwrap_or(""), info["background"].as_str().unwrap_or(""));
-                let ratio = contrast(fg, bg)?;
-                if ratio < floor {
-                    failures.push(format!("{name} ({selector}): {ratio:.2}:1, need {floor}:1 [{fg} on {bg}]"));
-                }
-            }
-            ensure!(missing.is_empty(), "{scheme}: selectors not present: {missing:?}");
-            ensure!(failures.is_empty(), "{scheme} mode contrast failures:\n  {}", failures.join("\n  "));
-            Ok(())
-        }));
+                ensure!(
+                    missing.is_empty(),
+                    "{scheme}: selectors not present: {missing:?}"
+                );
+                ensure!(
+                    failures.is_empty(),
+                    "{scheme} mode contrast failures:\n  {}",
+                    failures.join("\n  ")
+                );
+                Ok(())
+            },
+        ));
         cases.push(case(format!("warngen_palette_pairings_meet_wcag_aa[{scheme}]"), move |tab| async move {
             open(&tab, scheme).await?;
             let mut names: Vec<&str> = PALETTE_PAIRS.iter().flat_map(|p| [p.0, p.1]).collect();
@@ -191,7 +321,7 @@ pub fn cases() -> Vec<Case> {
                     json!([names]),
                 )
                 .await?;
-            let unresolved: Vec<&&str> = names.iter().filter(|n| values.get(**n).map_or(true, |v| v.is_empty())).collect();
+            let unresolved: Vec<&&str> = names.iter().filter(|n| values.get(**n).is_none_or(|v| v.is_empty())).collect();
             ensure!(unresolved.is_empty(), "{scheme}: variables not declared: {unresolved:?}");
             let mut failures = Vec::new();
             for (fg, bg, name, floor) in PALETTE_PAIRS {
@@ -204,12 +334,19 @@ pub fn cases() -> Vec<Case> {
             Ok(())
         }));
         // Both palettes live in warngen.css; a colour painted from a literal would ignore the theme.
-        cases.push(case(format!("every_warngen_colour_comes_from_a_variable[{scheme}]"), move |tab| async move {
-            open(&tab, scheme).await?;
-            let literals: Vec<String> = tab.js(LITERAL_SCAN_JS, json!([])).await?;
-            ensure!(literals.is_empty(), "hardcoded colours in warngen.css:\n  {}", literals.join("\n  "));
-            Ok(())
-        }));
+        cases.push(case(
+            format!("every_warngen_colour_comes_from_a_variable[{scheme}]"),
+            move |tab| async move {
+                open(&tab, scheme).await?;
+                let literals: Vec<String> = tab.js(LITERAL_SCAN_JS, json!([])).await?;
+                ensure!(
+                    literals.is_empty(),
+                    "hardcoded colours in warngen.css:\n  {}",
+                    literals.join("\n  ")
+                );
+                Ok(())
+            },
+        ));
     }
     // The mobile apps OTA warngen.css but keep their bundled warngen/index.html, which may not link
     // the site's style.css, so every var(--color-*) the palette borrows needs its own fallback.
@@ -228,7 +365,7 @@ pub fn cases() -> Vec<Case> {
                 json!([]),
             )
             .await?;
-        let transparent = |v: &Value| v.as_str().map_or(true, |s| s.is_empty() || s == "rgba(0, 0, 0, 0)" || s == "transparent");
+        let transparent = |v: &Value| v.as_str().is_none_or(|s| s.is_empty() || s == "rgba(0, 0, 0, 0)" || s == "transparent");
         ensure!(!transparent(&result["bg"]) && !transparent(&result["text"]), "palette unresolved without style.css: {result}");
         ensure!(!transparent(&result["bodyBg"]) && !transparent(&result["buttonBg"]), "surfaces went transparent without style.css: {result}");
         let ratio = contrast(result["buttonColor"].as_str().unwrap_or(""), result["buttonBg"].as_str().unwrap_or(""))?;
@@ -236,16 +373,31 @@ pub fn cases() -> Vec<Case> {
         Ok(())
     }));
     // Leaflet layer styling lives in JS, so it reads the CSS variables.
-    cases.push(case("map_layer_colours_track_the_theme", |tab| async move {
-        open(&tab, "light").await?;
-        let light: Vec<String> = tab.eval(MAP_COLORS_JS).await?;
-        open(&tab, "dark").await?;
-        let dark: Vec<String> = tab.eval(MAP_COLORS_JS).await?;
-        ensure!(light.iter().all(|v| !v.is_empty()), "light map colours unresolved: {light:?}");
-        ensure!(dark.iter().all(|v| !v.is_empty()), "dark map colours unresolved: {dark:?}");
-        ensure!(light != dark, "map layer colours are identical in both schemes");
-        ensure!(light[3] == light[1] && dark[3] == dark[1], "countyStyle ignores its variable: {light:?} {dark:?}");
-        Ok(())
-    }));
+    cases.push(case(
+        "map_layer_colours_track_the_theme",
+        |tab| async move {
+            open(&tab, "light").await?;
+            let light: Vec<String> = tab.eval(MAP_COLORS_JS).await?;
+            open(&tab, "dark").await?;
+            let dark: Vec<String> = tab.eval(MAP_COLORS_JS).await?;
+            ensure!(
+                light.iter().all(|v| !v.is_empty()),
+                "light map colours unresolved: {light:?}"
+            );
+            ensure!(
+                dark.iter().all(|v| !v.is_empty()),
+                "dark map colours unresolved: {dark:?}"
+            );
+            ensure!(
+                light != dark,
+                "map layer colours are identical in both schemes"
+            );
+            ensure!(
+                light[3] == light[1] && dark[3] == dark[1],
+                "countyStyle ignores its variable: {light:?} {dark:?}"
+            );
+            Ok(())
+        },
+    ));
     cases
 }

@@ -61,20 +61,29 @@ fn square_wav(seconds: f64, frequency: f64) -> Vec<u8> {
     out.extend_from_slice(b"data");
     out.extend_from_slice(&data_len.to_le_bytes());
     for i in 0..total {
-        let value: i16 = if (i / half) % 2 == 0 { 12000 } else { -12000 };
+        let value: i16 = if (i / half).is_multiple_of(2) {
+            12000
+        } else {
+            -12000
+        };
         out.extend_from_slice(&value.to_le_bytes());
     }
     out
 }
 
 async fn status(tab: &Tab) -> Result<String> {
-    let text: String = tab.eval("document.getElementById('decoder-custom-beep-status').textContent").await?;
+    let text: String = tab
+        .eval("document.getElementById('decoder-custom-beep-status').textContent")
+        .await?;
     Ok(text.trim().to_string())
 }
 
 async fn wait_for_status(tab: &Tab, needle: &str) -> Result<String> {
     tab.wait_until(
-        &format!("document.getElementById('decoder-custom-beep-status').textContent.includes({})", json!(needle)),
+        &format!(
+            "document.getElementById('decoder-custom-beep-status').textContent.includes({})",
+            json!(needle)
+        ),
         Duration::from_secs(20),
     )
     .await
@@ -94,7 +103,11 @@ async fn idb_records(tab: &Tab) -> Result<BTreeMap<String, Value>> {
 }
 
 async fn files_shown(tab: &Tab) -> Result<bool> {
-    tab.js("return document.getElementById(arguments[0]).offsetParent !== null;", json!([FILES_DIV])).await
+    tab.js(
+        "return document.getElementById(arguments[0]).offsetParent !== null;",
+        json!([FILES_DIV]),
+    )
+    .await
 }
 
 async fn open_with_custom(tab: &Tab) -> Result<()> {
@@ -104,48 +117,84 @@ async fn open_with_custom(tab: &Tab) -> Result<()> {
 
 pub fn cases() -> Vec<Case> {
     vec![
-        case("picker_is_hidden_until_the_option_is_ticked", |tab| async move {
-            open_tool(&tab, "decoder").await?;
-            ensure!(!files_shown(&tab).await?, "the picker shows before the option is ticked");
-            set_checkbox(&tab, CUSTOM_TOGGLE, true).await?;
-            ensure!(files_shown(&tab).await?, "ticking the option did not show the picker");
-            set_checkbox(&tab, CUSTOM_TOGGLE, false).await?;
-            ensure!(!files_shown(&tab).await?, "unticking the option did not hide the picker");
-            Ok(())
-        }),
-        case("the_option_persists_with_the_other_decoder_toggles", |tab| async move {
-            open_with_custom(&tab).await?;
-            let saved: Value =
+        case(
+            "picker_is_hidden_until_the_option_is_ticked",
+            |tab| async move {
+                open_tool(&tab, "decoder").await?;
+                ensure!(
+                    !files_shown(&tab).await?,
+                    "the picker shows before the option is ticked"
+                );
+                set_checkbox(&tab, CUSTOM_TOGGLE, true).await?;
+                ensure!(
+                    files_shown(&tab).await?,
+                    "ticking the option did not show the picker"
+                );
+                set_checkbox(&tab, CUSTOM_TOGGLE, false).await?;
+                ensure!(
+                    !files_shown(&tab).await?,
+                    "unticking the option did not hide the picker"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "the_option_persists_with_the_other_decoder_toggles",
+            |tab| async move {
+                open_with_custom(&tab).await?;
+                let saved: Value =
                 tab.js("const raw = localStorage.getItem(arguments[0]); return raw ? JSON.parse(raw) : null;", json!([SETTINGS_KEY])).await?;
-            ensure!(saved[CUSTOM_TOGGLE] == true, "{saved}");
-            open_tool(&tab, "decoder").await?;
-            ensure!(checkbox_state(&tab, CUSTOM_TOGGLE).await?);
-            ensure!(files_shown(&tab).await?);
-            Ok(())
-        }),
-        case("saved_sounds_survive_a_reload_and_are_decodable_again", |tab| async move {
-            let warning = named_temp_file("my_warning.wav", &square_wav(0.4, 880.0))?;
-            let watch = named_temp_file("my_watch.wav", &square_wav(0.25, 440.0))?;
-            open_with_custom(&tab).await?;
-            tab.set_files(WARNING_INPUT, &[warning.clone()]).await?;
-            tab.set_files(WATCH_INPUT, &[watch.clone()]).await?;
-            tab.click("#decoder-custom-beep-save").await?;
-            wait_for_status(&tab, "Saved.").await?;
+                ensure!(saved[CUSTOM_TOGGLE] == true, "{saved}");
+                open_tool(&tab, "decoder").await?;
+                ensure!(checkbox_state(&tab, CUSTOM_TOGGLE).await?);
+                ensure!(files_shown(&tab).await?);
+                Ok(())
+            },
+        ),
+        case(
+            "saved_sounds_survive_a_reload_and_are_decodable_again",
+            |tab| async move {
+                let warning = named_temp_file("my_warning.wav", &square_wav(0.4, 880.0))?;
+                let watch = named_temp_file("my_watch.wav", &square_wav(0.25, 440.0))?;
+                open_with_custom(&tab).await?;
+                tab.set_files(WARNING_INPUT, std::slice::from_ref(&warning))
+                    .await?;
+                tab.set_files(WATCH_INPUT, std::slice::from_ref(&watch))
+                    .await?;
+                tab.click("#decoder-custom-beep-save").await?;
+                wait_for_status(&tab, "Saved.").await?;
 
-            let stored = idb_records(&tab).await?;
-            ensure!(stored.keys().map(String::as_str).collect::<Vec<_>>() == ["warning", "watch"], "{stored:?}");
-            ensure!(stored["warning"]["name"] == "my_warning.wav" && stored["watch"]["name"] == "my_watch.wav", "{stored:?}");
-            ensure!(stored["warning"]["bytes"] == std::fs::metadata(&warning)?.len(), "{stored:?}");
-            ensure!(stored["watch"]["bytes"] == std::fs::metadata(&watch)?.len(), "{stored:?}");
+                let stored = idb_records(&tab).await?;
+                ensure!(
+                    stored.keys().map(String::as_str).collect::<Vec<_>>() == ["warning", "watch"],
+                    "{stored:?}"
+                );
+                ensure!(
+                    stored["warning"]["name"] == "my_warning.wav"
+                        && stored["watch"]["name"] == "my_watch.wav",
+                    "{stored:?}"
+                );
+                ensure!(
+                    stored["warning"]["bytes"] == std::fs::metadata(&warning)?.len(),
+                    "{stored:?}"
+                );
+                ensure!(
+                    stored["watch"]["bytes"] == std::fs::metadata(&watch)?.len(),
+                    "{stored:?}"
+                );
 
-            open_tool(&tab, "decoder").await?;
-            let restored = wait_for_status(&tab, "In use").await?;
-            ensure!(restored.contains("warnings: my_warning.wav"), "{restored}");
-            ensure!(restored.contains("watches: my_watch.wav"), "{restored}");
-            ensure!(restored.contains("advisories/tests: built-in"), "{restored}");
-            ensure!(idb_records(&tab).await?.len() == 2);
-            Ok(())
-        }),
+                open_tool(&tab, "decoder").await?;
+                let restored = wait_for_status(&tab, "In use").await?;
+                ensure!(restored.contains("warnings: my_warning.wav"), "{restored}");
+                ensure!(restored.contains("watches: my_watch.wav"), "{restored}");
+                ensure!(
+                    restored.contains("advisories/tests: built-in"),
+                    "{restored}"
+                );
+                ensure!(idb_records(&tab).await?.len() == 2);
+                Ok(())
+            },
+        ),
         case("clear_empties_the_store_and_the_inputs", |tab| async move {
             let advisory = named_temp_file("my_advisory.wav", &square_wav(0.2, 660.0))?;
             open_with_custom(&tab).await?;
@@ -157,21 +206,32 @@ pub fn cases() -> Vec<Case> {
             tab.click("#decoder-custom-beep-clear").await?;
             wait_for_status(&tab, "Cleared.").await?;
             ensure!(idb_records(&tab).await?.is_empty());
-            let value: String = tab.js("return document.querySelector(arguments[0]).value;", json!([ADVISORY_INPUT])).await?;
+            let value: String = tab
+                .js(
+                    "return document.querySelector(arguments[0]).value;",
+                    json!([ADVISORY_INPUT]),
+                )
+                .await?;
             ensure!(value.is_empty(), "{value}");
             open_tool(&tab, "decoder").await?;
             wait_for_status(&tab, "No custom sounds saved").await?;
             Ok(())
         }),
-        case("a_file_that_is_not_audio_is_reported_and_not_stored", |tab| async move {
-            let junk = named_temp_file("not_audio.wav", &b"this is definitely not a wav file".repeat(8))?;
-            open_with_custom(&tab).await?;
-            tab.set_files(WARNING_INPUT, &[junk]).await?;
-            tab.click("#decoder-custom-beep-save").await?;
-            let status = wait_for_status(&tab, "skipped").await?;
-            ensure!(status.contains("warnings"), "{status}");
-            ensure!(idb_records(&tab).await?.is_empty());
-            Ok(())
-        }),
+        case(
+            "a_file_that_is_not_audio_is_reported_and_not_stored",
+            |tab| async move {
+                let junk = named_temp_file(
+                    "not_audio.wav",
+                    &b"this is definitely not a wav file".repeat(8),
+                )?;
+                open_with_custom(&tab).await?;
+                tab.set_files(WARNING_INPUT, &[junk]).await?;
+                tab.click("#decoder-custom-beep-save").await?;
+                let status = wait_for_status(&tab, "skipped").await?;
+                ensure!(status.contains("warnings"), "{status}");
+                ensure!(idb_records(&tab).await?.is_empty());
+                Ok(())
+            },
+        ),
     ]
 }

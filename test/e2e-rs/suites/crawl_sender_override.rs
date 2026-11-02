@@ -56,28 +56,54 @@ const sender = arguments[1];
 
 async fn screen_lines(tab: &Tab, header: &str, sender: &str) -> Result<Vec<String>> {
     open_tool(tab, "crawl").await?;
-    let result: Value = tab.js_async(BUILD_AND_COPY_JS, json!([header, sender])).await?;
+    let result: Value = tab
+        .js_async(BUILD_AND_COPY_JS, json!([header, sender]))
+        .await?;
     ensure!(result["ok"] == true, "{result}");
-    Ok(result["text"].as_str().unwrap_or_default().split('\n').filter(|l| !l.trim().is_empty()).map(str::to_string).collect())
+    Ok(result["text"]
+        .as_str()
+        .unwrap_or_default()
+        .split('\n')
+        .filter(|l| !l.trim().is_empty())
+        .map(str::to_string)
+        .collect())
 }
 
 pub fn cases() -> Vec<Case> {
     vec![
-        case("an_illegal_sender_renders_once_overridden", |tab| async move {
-            let lines = screen_lines(&tab, ILLEGAL_SENDER, "Channel 4 EASNet").await?;
-            ensure!(lines.join(" ").contains("SEVERE THUNDERSTORM WATCH"), "{lines:?}");
-            ensure!(lines.last().map(String::as_str) == Some("CHANNEL 4 EASNET"), "{lines:?}");
-            Ok(())
-        }),
+        case(
+            "an_illegal_sender_renders_once_overridden",
+            |tab| async move {
+                let lines = screen_lines(&tab, ILLEGAL_SENDER, "Channel 4 EASNet").await?;
+                ensure!(
+                    lines.join(" ").contains("SEVERE THUNDERSTORM WATCH"),
+                    "{lines:?}"
+                );
+                ensure!(
+                    lines.last().map(String::as_str) == Some("CHANNEL 4 EASNET"),
+                    "{lines:?}"
+                );
+                Ok(())
+            },
+        ),
         case("the_override_replaces_a_legal_sender", |tab| async move {
             let lines = screen_lines(&tab, LEGAL, "WAGS TV").await?;
-            ensure!(lines.last().map(String::as_str) == Some("WAGS TV"), "{lines:?}");
+            ensure!(
+                lines.last().map(String::as_str) == Some("WAGS TV"),
+                "{lines:?}"
+            );
             Ok(())
         }),
-        case("a_blank_override_keeps_the_header_sender", |tab| async move {
-            let lines = screen_lines(&tab, LEGAL, "").await?;
-            ensure!(lines.last().map(String::as_str) == Some("KEPZ/NWS"), "{lines:?}");
-            Ok(())
-        }),
+        case(
+            "a_blank_override_keeps_the_header_sender",
+            |tab| async move {
+                let lines = screen_lines(&tab, LEGAL, "").await?;
+                ensure!(
+                    lines.last().map(String::as_str) == Some("KEPZ/NWS"),
+                    "{lines:?}"
+                );
+                Ok(())
+            },
+        ),
     ]
 }

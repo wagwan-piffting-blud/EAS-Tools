@@ -22,6 +22,9 @@ Use GNU Make as the stable entry point and pnpm as the JavaScript tool runner.
   export, WarnGen rendering, handoffs, and accessibility. Narrow it while
   iterating with `cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e -- <name>`.
   After adding a suite file, run `node test/e2e-rs/gen_main.mjs`.
+- `make e2e-check` also enforces 90% Rust line coverage for the deterministic E2E
+  support surface with `cargo llvm-cov`; keep the live-CDP adapter boundary
+  explicit rather than claiming unit coverage over browser-only code.
 - Run `make skills-check` after changing repository-local skills.
 - Run `make lint` and `make anti-suppressions` after changing JavaScript,
   TypeScript, quality configuration, or lint-sensitive tooling. Do not add inline

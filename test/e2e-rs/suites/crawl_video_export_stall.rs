@@ -80,17 +80,26 @@ const done = arguments[arguments.length - 1];
 async fn setup(tab: &Tab, no_software: bool) -> Result<()> {
     open_tool_tracking_errors(tab, "crawl").await?;
     set_field(tab, "#crawlMode", "custom").await?;
-    tab.wait_until("!!window.crawlEditor", Duration::from_secs(20)).await?;
-    tab.exec("window.crawlEditor.setValue('STALL TEST');", json!([])).await?;
+    tab.wait_until("!!window.crawlEditor", Duration::from_secs(20))
+        .await?;
+    tab.exec("window.crawlEditor.setValue('STALL TEST');", json!([]))
+        .await?;
     set_field(tab, "#crawlWidth", "320").await?;
     set_field(tab, "#crawlHeight", "64").await?;
     set_field(tab, "#crawlSpeed", "8").await?;
     set_field(tab, "#crawlRestartDelay", "0").await?;
     set_field(tab, "#crawlExportVideoFps", "30").await?;
     set_field(tab, "#crawlExportVideoFormat", "webm").await?;
-    tab.wait_until("window.crawlGenerator && window.crawlGenerator.canvas.width === 320", Duration::from_secs(10)).await?;
+    tab.wait_until(
+        "window.crawlGenerator && window.crawlGenerator.canvas.width === 320",
+        Duration::from_secs(10),
+    )
+    .await?;
     let has_encoder: bool = tab.eval("typeof VideoEncoder === 'function'").await?;
-    ensure!(has_encoder, "this Chrome has no WebCodecs VideoEncoder to stall");
+    ensure!(
+        has_encoder,
+        "this Chrome has no WebCodecs VideoEncoder to stall"
+    );
     tab.exec(STALL_ENCODER_JS, json!([no_software])).await
 }
 
@@ -104,23 +113,44 @@ async fn export(tab: &Tab) -> Result<Value> {
 
 pub fn cases() -> Vec<Case> {
     vec![
-        case("stalled_hardware_encoder_retries_on_the_software_encoder", |tab| async move {
-            setup(&tab, false).await?;
-            let result = export(&tab).await?;
-            let status = result["status"].as_str().unwrap_or_default();
-            ensure!(status.contains("restarting the export with its software encoder"), "no retry notice: {result}");
-            let modes: Vec<String> = serde_json::from_value(result["modes"].clone())?;
-            ensure!(modes.iter().any(|mode| mode == "prefer-software"), "never asked for a software encoder: {modes:?}");
-            ensure!(result["ebml"] == true && result["size"].as_u64().unwrap_or(0) > 1000, "not a WebM: {result}");
-            Ok(())
-        }),
-        case("stalled_encoder_without_software_webcodecs_uses_wasm_h264", |tab| async move {
-            setup(&tab, true).await?;
-            let result = export(&tab).await?;
-            let status = result["status"].as_str().unwrap_or_default();
-            ensure!(status.contains("built-in H.264 encoder"), "no wasm fallback notice: {result}");
-            ensure!(result["ftyp"] == "ftyp" && result["type"] == "video/mp4", "not an MP4: {result}");
-            Ok(())
-        }),
+        case(
+            "stalled_hardware_encoder_retries_on_the_software_encoder",
+            |tab| async move {
+                setup(&tab, false).await?;
+                let result = export(&tab).await?;
+                let status = result["status"].as_str().unwrap_or_default();
+                ensure!(
+                    status.contains("restarting the export with its software encoder"),
+                    "no retry notice: {result}"
+                );
+                let modes: Vec<String> = serde_json::from_value(result["modes"].clone())?;
+                ensure!(
+                    modes.iter().any(|mode| mode == "prefer-software"),
+                    "never asked for a software encoder: {modes:?}"
+                );
+                ensure!(
+                    result["ebml"] == true && result["size"].as_u64().unwrap_or(0) > 1000,
+                    "not a WebM: {result}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "stalled_encoder_without_software_webcodecs_uses_wasm_h264",
+            |tab| async move {
+                setup(&tab, true).await?;
+                let result = export(&tab).await?;
+                let status = result["status"].as_str().unwrap_or_default();
+                ensure!(
+                    status.contains("built-in H.264 encoder"),
+                    "no wasm fallback notice: {result}"
+                );
+                ensure!(
+                    result["ftyp"] == "ftyp" && result["type"] == "video/mp4",
+                    "not an MP4: {result}"
+                );
+                Ok(())
+            },
+        ),
     ]
 }

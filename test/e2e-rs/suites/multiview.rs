@@ -10,10 +10,15 @@ const HEADER: &str = "ZCZC-WXR-TOR-048453+0030-2701505-KEWX/NWS-";
 async fn open(tab: &Tab, layout: Option<&[&str]>) -> Result<()> {
     if let Some(layout) = layout {
         tab.goto("demos.html").await?;
-        tab.local_storage_set(LAYOUT_KEY, &json!(layout).to_string()).await?;
+        tab.local_storage_set(LAYOUT_KEY, &json!(layout).to_string())
+            .await?;
     }
     tab.goto("index.html?tool=multiview").await?;
-    tab.wait_until("document.getElementById('multiview-panel')?.dataset.ready === 'true'", Duration::from_secs(25)).await
+    tab.wait_until(
+        "document.getElementById('multiview-panel')?.dataset.ready === 'true'",
+        Duration::from_secs(25),
+    )
+    .await
 }
 
 async fn pane_tools(tab: &Tab) -> Result<Vec<String>> {
@@ -35,23 +40,37 @@ async fn wait_pane_ready(tab: &Tab, tool: &str) -> Result<()> {
 }
 
 async fn status(tab: &Tab) -> Result<String> {
-    tab.wait_until("document.getElementById('mv-status').textContent.length > 0", Duration::from_secs(5)).await?;
-    tab.eval("document.getElementById('mv-status').textContent").await
+    tab.wait_until(
+        "document.getElementById('mv-status').textContent.length > 0",
+        Duration::from_secs(5),
+    )
+    .await?;
+    tab.eval("document.getElementById('mv-status').textContent")
+        .await
 }
 
 pub fn cases() -> Vec<Case> {
     let mut cases: Vec<Case> = ["dark", "light"]
         .into_iter()
         .map(|scheme| {
-            case(format!("multiview_controls_have_no_serious_axe_violations[{scheme}]"), move |tab| async move {
-                tab.emulate_media(&[("prefers-color-scheme", scheme)]).await?;
-                open(&tab, Some(&["encoder", "crawl", "normalizer"])).await?;
-                // Each tool's own markup is audited by a11y.rs; this covers the Multi-View chrome.
-                let options = json!({ "resultTypes": ["violations"], "iframes": false });
-                let violations = axe::failing_with(&tab, json!("#multiview-root"), options, &[]).await?;
-                ensure!(violations.is_empty(), "{}", axe::describe(&violations, &format!("multiview ({scheme})")));
-                Ok(())
-            })
+            case(
+                format!("multiview_controls_have_no_serious_axe_violations[{scheme}]"),
+                move |tab| async move {
+                    tab.emulate_media(&[("prefers-color-scheme", scheme)])
+                        .await?;
+                    open(&tab, Some(&["encoder", "crawl", "normalizer"])).await?;
+                    // Each tool's own markup is audited by a11y.rs; this covers the Multi-View chrome.
+                    let options = json!({ "resultTypes": ["violations"], "iframes": false });
+                    let violations =
+                        axe::failing_with(&tab, json!("#multiview-root"), options, &[]).await?;
+                    ensure!(
+                        violations.is_empty(),
+                        "{}",
+                        axe::describe(&violations, &format!("multiview ({scheme})"))
+                    );
+                    Ok(())
+                },
+            )
         })
         .collect();
     cases.extend(vec![

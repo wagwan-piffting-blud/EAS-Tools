@@ -1,0 +1,30 @@
+.git
+.github
+.agents
+.vscode
+coverage
+docs
+node_modules
+test/e2e-rs/target
+test/*.js
+tools
+
+# E2E exercises the bundled eSpeak engine, not the other multi-hundred-MB voice runtimes.
+assets/piper-tts
+assets/wasm_tts_voices/**
+!assets/wasm_tts_voices/espeak/
+!assets/wasm_tts_voices/espeak/**
+
+# Keep only the recorder fixture used by decoder_same.
+assets/audacity_noises/**
+!assets/audacity_noises/ADR_TONES_LONG_NWR_MACRO.wav
+
+# The suite tests the JS macro engine and muxer shell, not Windows VST DLLs or FFmpeg.wasm.
+assets/audacity_plugins/**
+!assets/audacity_plugins/manifest.json
+assets/muxer/ffmpeg-wasm
+
+# Documentation-only media is outside the browser suite.
+assets/demo_screenshots
+assets/scroll_tutorials.pdf
+assets/tmyk_phoneme_guide.pdf

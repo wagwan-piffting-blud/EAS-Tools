@@ -7,7 +7,10 @@
 use eas_tools_e2e::browser::repo_root;
 use eas_tools_e2e::*;
 
-use crate::common::{generate, open_tool_tracking_errors, sample_count, set_checkbox, set_field, status_text, temp_file};
+use crate::common::{
+    generate, open_tool_tracking_errors, sample_count, set_checkbox, set_field, status_text,
+    temp_file,
+};
 
 const VALID_HEADER: &str = "ZCZC-WXR-SVR-010001+0030-0010600-KNHC/NWS-";
 const RATE: f64 = 44100.0;
@@ -43,7 +46,11 @@ fn square_wav(amplitude: f64, seconds: f64, channels: u16) -> Vec<u8> {
     out.extend_from_slice(b"data");
     out.extend_from_slice(&data_len.to_le_bytes());
     for i in 0..count {
-        let value = if (i / half_period) % 2 == 0 { level } else { -level };
+        let value = if (i / half_period).is_multiple_of(2) {
+            level
+        } else {
+            -level
+        };
         for _ in 0..channels {
             out.extend_from_slice(&value.to_le_bytes());
         }
@@ -138,7 +145,11 @@ fn spans(runs: &[Run]) -> Vec<(i64, i64)> {
 
 async fn configure_base(tab: &Tab) -> Result<()> {
     set_field(tab, "#encoderMode", "header").await?;
-    tab.wait_until("getComputedStyle(document.getElementById('stringEncoder')).display !== 'none'", Duration::from_secs(30)).await?;
+    tab.wait_until(
+        "getComputedStyle(document.getElementById('stringEncoder')).display !== 'none'",
+        Duration::from_secs(30),
+    )
+    .await?;
     set_field(tab, "#cheader", VALID_HEADER).await?;
     set_field(tab, "#overallEndecMode", "DEFAULT").await?;
     set_field(tab, "#att", "4").await?;
@@ -167,12 +178,20 @@ async fn wait_for_manifest(tab: &Tab) -> Result<()> {
 }
 
 async fn value_of(tab: &Tab, id: &str) -> Result<String> {
-    tab.js("return document.getElementById(arguments[0]).value;", json!([id])).await
+    tab.js(
+        "return document.getElementById(arguments[0]).value;",
+        json!([id]),
+    )
+    .await
 }
 
 async fn load_custom(tab: &Tab, slot: &str, wav: &[u8]) -> Result<()> {
     set_field(tab, &format!("#{slot}"), "custom").await?;
-    tab.set_files(&format!("#{slot}File"), &[temp_file(&format!("{slot}.wav"), wav)?]).await
+    tab.set_files(
+        &format!("#{slot}File"),
+        &[temp_file(&format!("{slot}.wav"), wav)?],
+    )
+    .await
 }
 
 const HIDE_PRESET_RECORDINGS_JS: &str = r#"
@@ -246,18 +265,30 @@ async fn check_missing_presets(tab: &Tab) -> Result<()> {
             })()",
         )
         .await?;
-    ensure!(state.0 && state.1.contains("(recording not installed)"), "{state:?}");
-    ensure!(state.2 && state.3.contains("(recording not installed)"), "{state:?}");
+    ensure!(
+        state.0 && state.1.contains("(recording not installed)"),
+        "{state:?}"
+    );
+    ensure!(
+        state.2 && state.3.contains("(recording not installed)"),
+        "{state:?}"
+    );
     ensure!(state.1.contains("DASDEC RWT intro"), "{state:?}");
 
     generate(tab, "baseline").await?;
     let baseline = sample_count(tab).await?;
     set_field(tab, "#preHeaderAudio", "dasdec-rwt-intro").await?;
-    ensure!(value_of(tab, "postEomAudio").await? == "none", "a partner that is not installed must not be auto-selected");
+    ensure!(
+        value_of(tab, "postEomAudio").await? == "none",
+        "a partner that is not installed must not be auto-selected"
+    );
     set_field(tab, "#postEomAudio", "dasdec-rwt-outro").await?;
     generate(tab, "missing presets").await?;
     let status = status_text(tab).await?;
-    ensure!(status.contains("Pre-alert audio") && status.contains("not installed"), "{status}");
+    ensure!(
+        status.contains("Pre-alert audio") && status.contains("not installed"),
+        "{status}"
+    );
     ensure!(status.contains("Post-alert audio"), "{status}");
     ensure!(sample_count(tab).await? == baseline);
     Ok(())
@@ -265,121 +296,210 @@ async fn check_missing_presets(tab: &Tab) -> Result<()> {
 
 pub fn cases() -> Vec<Case> {
     let mut cases = vec![
-        case("custom_pre_and_post_audio_land_at_the_configured_gaps", |tab| async move {
-            open_tool_tracking_errors(&tab, "encoder").await?;
-            configure_base(&tab).await?;
-            set_field(&tab, "#preHeaderAudio", "custom").await?;
-            let shown: bool = tab.eval("document.getElementById('preHeaderAudioFile').offsetParent !== null").await?;
-            ensure!(shown, "the pre-alert file picker is hidden");
-            load_custom(&tab, "preHeaderAudio", &square_wav(PRE_AMPLITUDE, PRE_SECONDS, 1)).await?;
-            set_field(&tab, "#silencePreHeaderToHeaders", "300").await?;
-            load_custom(&tab, "postEomAudio", &square_wav(POST_AMPLITUDE, POST_SECONDS, 2)).await?;
-            set_field(&tab, "#silenceEomToPostEom", "400").await?;
-            generate(&tab, "custom").await?;
+        case(
+            "custom_pre_and_post_audio_land_at_the_configured_gaps",
+            |tab| async move {
+                open_tool_tracking_errors(&tab, "encoder").await?;
+                configure_base(&tab).await?;
+                set_field(&tab, "#preHeaderAudio", "custom").await?;
+                let shown: bool = tab
+                    .eval("document.getElementById('preHeaderAudioFile').offsetParent !== null")
+                    .await?;
+                ensure!(shown, "the pre-alert file picker is hidden");
+                load_custom(
+                    &tab,
+                    "preHeaderAudio",
+                    &square_wav(PRE_AMPLITUDE, PRE_SECONDS, 1),
+                )
+                .await?;
+                set_field(&tab, "#silencePreHeaderToHeaders", "300").await?;
+                load_custom(
+                    &tab,
+                    "postEomAudio",
+                    &square_wav(POST_AMPLITUDE, POST_SECONDS, 2),
+                )
+                .await?;
+                set_field(&tab, "#silenceEomToPostEom", "400").await?;
+                generate(&tab, "custom").await?;
 
-            let result = output_runs(&tab).await?;
-            let runs = &result.runs;
-            ensure!(runs.len() == 8, "pre audio, three header bursts, three EOM bursts, post audio: {:?}", spans(runs));
-            let (pre, first_header) = (runs[0], runs[1]);
-            let (last_eom, post) = (runs[6], runs[7]);
-            ensure!(pre.start == ms(500.0), "{pre:?}");
-            ensure!(pre.end - pre.start == frames(PRE_SECONDS), "{pre:?}");
-            ensure!((pre.peak - PRE_AMPLITUDE / 2.0).abs() < 0.002, "{pre:?}");
-            ensure!(((first_header.start - pre.end) - ms(300.0)).abs() <= 1, "{first_header:?}");
-            ensure!(post.start - last_eom.end == ms(400.0), "{post:?}");
-            ensure!(post.end - post.start == frames(POST_SECONDS), "{post:?}");
-            ensure!((post.peak - POST_AMPLITUDE / 2.0).abs() < 0.002, "{post:?}");
-            ensure!(result.total - post.end == ms(700.0), "eomToEnd stays the final segment");
-            Ok(())
-        }),
-        case("pre_post_audio_adds_exactly_its_own_length", |tab| async move {
-            open_tool_tracking_errors(&tab, "encoder").await?;
-            configure_base(&tab).await?;
-            set_field(&tab, "#att", "0").await?;
-            generate(&tab, "baseline").await?;
-            let baseline = sample_count(&tab).await?;
+                let result = output_runs(&tab).await?;
+                let runs = &result.runs;
+                ensure!(
+                    runs.len() == 8,
+                    "pre audio, three header bursts, three EOM bursts, post audio: {:?}",
+                    spans(runs)
+                );
+                let (pre, first_header) = (runs[0], runs[1]);
+                let (last_eom, post) = (runs[6], runs[7]);
+                ensure!(pre.start == ms(500.0), "{pre:?}");
+                ensure!(pre.end - pre.start == frames(PRE_SECONDS), "{pre:?}");
+                ensure!((pre.peak - PRE_AMPLITUDE / 2.0).abs() < 0.002, "{pre:?}");
+                ensure!(
+                    ((first_header.start - pre.end) - ms(300.0)).abs() <= 1,
+                    "{first_header:?}"
+                );
+                ensure!(post.start - last_eom.end == ms(400.0), "{post:?}");
+                ensure!(post.end - post.start == frames(POST_SECONDS), "{post:?}");
+                ensure!((post.peak - POST_AMPLITUDE / 2.0).abs() < 0.002, "{post:?}");
+                ensure!(
+                    result.total - post.end == ms(700.0),
+                    "eomToEnd stays the final segment"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "pre_post_audio_adds_exactly_its_own_length",
+            |tab| async move {
+                open_tool_tracking_errors(&tab, "encoder").await?;
+                configure_base(&tab).await?;
+                set_field(&tab, "#att", "0").await?;
+                generate(&tab, "baseline").await?;
+                let baseline = sample_count(&tab).await?;
 
-            load_custom(&tab, "preHeaderAudio", &square_wav(PRE_AMPLITUDE, PRE_SECONDS, 1)).await?;
-            set_field(&tab, "#silencePreHeaderToHeaders", "1000").await?;
-            load_custom(&tab, "postEomAudio", &square_wav(POST_AMPLITUDE, POST_SECONDS, 1)).await?;
-            set_field(&tab, "#silenceEomToPostEom", "250").await?;
-            generate(&tab, "with audio").await?;
-            let with_audio = sample_count(&tab).await?;
-            let expected = frames(PRE_SECONDS) + ms(1000.0) + frames(POST_SECONDS) + ms(250.0);
-            ensure!(with_audio - baseline == expected, "{} extra samples, expected {expected}", with_audio - baseline);
-            Ok(())
-        }),
-        case("pre_header_audio_precedes_the_pelmorex_tone", |tab| async move {
-            open_tool_tracking_errors(&tab, "encoder").await?;
-            configure_base(&tab).await?;
-            set_field(&tab, "#att", "2").await?;
-            load_custom(&tab, "preHeaderAudio", &square_wav(PRE_AMPLITUDE, PRE_SECONDS, 1)).await?;
-            set_field(&tab, "#silencePreHeaderToHeaders", "600").await?;
-            generate(&tab, "pelmorex").await?;
-            let runs = output_runs(&tab).await?.runs;
-            ensure!(runs[0].start == ms(500.0), "{:?}", spans(&runs));
-            ensure!(runs[0].end - runs[0].start == frames(PRE_SECONDS), "{:?}", spans(&runs));
-            ensure!(runs[1].start - runs[0].end >= ms(600.0), "{:?}", spans(&runs));
-            Ok(())
-        }),
-        case("builtin_presets_decode_downmix_and_resample", |tab| async move {
-            tab.add_init_script(STUB_PRESET_RECORDINGS_JS).await?;
-            open_tool_tracking_errors(&tab, "encoder").await?;
-            configure_base(&tab).await?;
-            tab.wait_until(
+                load_custom(
+                    &tab,
+                    "preHeaderAudio",
+                    &square_wav(PRE_AMPLITUDE, PRE_SECONDS, 1),
+                )
+                .await?;
+                set_field(&tab, "#silencePreHeaderToHeaders", "1000").await?;
+                load_custom(
+                    &tab,
+                    "postEomAudio",
+                    &square_wav(POST_AMPLITUDE, POST_SECONDS, 1),
+                )
+                .await?;
+                set_field(&tab, "#silenceEomToPostEom", "250").await?;
+                generate(&tab, "with audio").await?;
+                let with_audio = sample_count(&tab).await?;
+                let expected = frames(PRE_SECONDS) + ms(1000.0) + frames(POST_SECONDS) + ms(250.0);
+                ensure!(
+                    with_audio - baseline == expected,
+                    "{} extra samples, expected {expected}",
+                    with_audio - baseline
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "pre_header_audio_precedes_the_pelmorex_tone",
+            |tab| async move {
+                open_tool_tracking_errors(&tab, "encoder").await?;
+                configure_base(&tab).await?;
+                set_field(&tab, "#att", "2").await?;
+                load_custom(
+                    &tab,
+                    "preHeaderAudio",
+                    &square_wav(PRE_AMPLITUDE, PRE_SECONDS, 1),
+                )
+                .await?;
+                set_field(&tab, "#silencePreHeaderToHeaders", "600").await?;
+                generate(&tab, "pelmorex").await?;
+                let runs = output_runs(&tab).await?.runs;
+                ensure!(runs[0].start == ms(500.0), "{:?}", spans(&runs));
+                ensure!(
+                    runs[0].end - runs[0].start == frames(PRE_SECONDS),
+                    "{:?}",
+                    spans(&runs)
+                );
+                ensure!(
+                    runs[1].start - runs[0].end >= ms(600.0),
+                    "{:?}",
+                    spans(&runs)
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "builtin_presets_decode_downmix_and_resample",
+            |tab| async move {
+                tab.add_init_script(STUB_PRESET_RECORDINGS_JS).await?;
+                open_tool_tracking_errors(&tab, "encoder").await?;
+                configure_base(&tab).await?;
+                tab.wait_until(
                 "(() => { const o = document.querySelector('#preHeaderAudio option[value=\"dasdec-rwt-intro\"]'); return !!o && !o.disabled; })()",
                 Duration::from_secs(25),
             )
             .await?;
-            set_field(&tab, "#postEomAudio", "none").await?;
-            set_field(&tab, "#preHeaderAudio", "dasdec-rwt-intro").await?;
-            ensure!(value_of(&tab, "postEomAudio").await? == "dasdec-rwt-outro");
-            set_field(&tab, "#silencePreHeaderToHeaders", "750").await?;
-            set_field(&tab, "#silenceEomToPostEom", "500").await?;
-            generate(&tab, "presets").await?;
+                set_field(&tab, "#postEomAudio", "none").await?;
+                set_field(&tab, "#preHeaderAudio", "dasdec-rwt-intro").await?;
+                ensure!(value_of(&tab, "postEomAudio").await? == "dasdec-rwt-outro");
+                set_field(&tab, "#silencePreHeaderToHeaders", "750").await?;
+                set_field(&tab, "#silenceEomToPostEom", "500").await?;
+                generate(&tab, "presets").await?;
 
-            let runs = output_runs(&tab).await?.runs;
-            ensure!(runs.len() == 8, "{:?}", spans(&runs));
-            let (intro, outro) = (runs[0], runs[7]);
-            ensure!((intro.start - ms(500.0)).abs() <= 2, "{intro:?}");
-            ensure!(((intro.end - intro.start) - frames(1.5)).abs() <= 4, "{intro:?}");
-            ensure!(((runs[1].start - intro.end) - ms(750.0)).abs() <= 4, "{:?}", spans(&runs));
-            ensure!(((outro.start - runs[6].end) - ms(500.0)).abs() <= 4, "{:?}", spans(&runs));
-            ensure!(((outro.end - outro.start) - frames(2.0)).abs() <= 4, "{outro:?}");
-            ensure!((outro.peak - 0.55 / 2.0).abs() < 0.02, "stereo is averaged, not summed: {outro:?}");
+                let runs = output_runs(&tab).await?.runs;
+                ensure!(runs.len() == 8, "{:?}", spans(&runs));
+                let (intro, outro) = (runs[0], runs[7]);
+                ensure!((intro.start - ms(500.0)).abs() <= 2, "{intro:?}");
+                ensure!(
+                    ((intro.end - intro.start) - frames(1.5)).abs() <= 4,
+                    "{intro:?}"
+                );
+                ensure!(
+                    ((runs[1].start - intro.end) - ms(750.0)).abs() <= 4,
+                    "{:?}",
+                    spans(&runs)
+                );
+                ensure!(
+                    ((outro.start - runs[6].end) - ms(500.0)).abs() <= 4,
+                    "{:?}",
+                    spans(&runs)
+                );
+                ensure!(
+                    ((outro.end - outro.start) - frames(2.0)).abs() <= 4,
+                    "{outro:?}"
+                );
+                ensure!(
+                    (outro.peak - 0.55 / 2.0).abs() < 0.02,
+                    "stereo is averaged, not summed: {outro:?}"
+                );
 
-            generate(&tab, "cached").await?;
-            let gets: i64 = tab.eval("window.__presetFetches.filter((f) => f[1] === 'GET').length").await?;
-            ensure!(gets == 2, "decoded built-ins are cached across generations; {gets} fetches");
-            Ok(())
-        }),
-        case("missing_builtin_recording_is_listed_disabled_and_skipped", |tab| async move {
-            tab.add_init_script(HIDE_PRESET_RECORDINGS_JS).await?;
-            open_tool_tracking_errors(&tab, "encoder").await?;
-            check_missing_presets(&tab).await
-        }),
-        case("paired_preset_fills_post_only_when_it_is_none", |tab| async move {
-            open_tool_tracking_errors(&tab, "encoder").await?;
-            wait_for_manifest(&tab).await?;
-            tab.exec(
+                generate(&tab, "cached").await?;
+                let gets: i64 = tab
+                    .eval("window.__presetFetches.filter((f) => f[1] === 'GET').length")
+                    .await?;
+                ensure!(
+                    gets == 2,
+                    "decoded built-ins are cached across generations; {gets} fetches"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "missing_builtin_recording_is_listed_disabled_and_skipped",
+            |tab| async move {
+                tab.add_init_script(HIDE_PRESET_RECORDINGS_JS).await?;
+                open_tool_tracking_errors(&tab, "encoder").await?;
+                check_missing_presets(&tab).await
+            },
+        ),
+        case(
+            "paired_preset_fills_post_only_when_it_is_none",
+            |tab| async move {
+                open_tool_tracking_errors(&tab, "encoder").await?;
+                wait_for_manifest(&tab).await?;
+                tab.exec(
                 "document.querySelectorAll('#preHeaderAudio option, #postEomAudio option').forEach((o) => { o.disabled = false; });",
                 json!([]),
             )
             .await?;
-            set_field(&tab, "#postEomAudio", "none").await?;
-            set_field(&tab, "#preHeaderAudio", "dasdec-rwt-intro").await?;
-            ensure!(value_of(&tab, "postEomAudio").await? == "dasdec-rwt-outro");
-            tab.wait_until(
+                set_field(&tab, "#postEomAudio", "none").await?;
+                set_field(&tab, "#preHeaderAudio", "dasdec-rwt-intro").await?;
+                ensure!(value_of(&tab, "postEomAudio").await? == "dasdec-rwt-outro");
+                tab.wait_until(
                 "document.getElementById('encoderAnnouncer').textContent.includes('Post-alert audio set to')",
                 Duration::from_secs(5),
             )
             .await?;
-            set_field(&tab, "#preHeaderAudio", "none").await?;
-            set_field(&tab, "#postEomAudio", "custom").await?;
-            set_field(&tab, "#preHeaderAudio", "dasdec-rwt-intro").await?;
-            ensure!(value_of(&tab, "postEomAudio").await? == "custom");
-            Ok(())
-        }),
+                set_field(&tab, "#preHeaderAudio", "none").await?;
+                set_field(&tab, "#postEomAudio", "custom").await?;
+                set_field(&tab, "#preHeaderAudio", "dasdec-rwt-intro").await?;
+                ensure!(value_of(&tab, "postEomAudio").await? == "custom");
+                Ok(())
+            },
+        ),
         case("pre_post_settings_persist", |tab| async move {
             open_tool_tracking_errors(&tab, "encoder").await?;
             configure_base(&tab).await?;
@@ -394,7 +514,9 @@ pub fn cases() -> Vec<Case> {
             let status = status_text(&tab).await?;
             ensure!(status.contains("no custom audio file"), "{status}");
 
-            let saved: Value = tab.eval("JSON.parse(localStorage.getItem('eas-tools-encoder-settings'))").await?;
+            let saved: Value = tab
+                .eval("JSON.parse(localStorage.getItem('eas-tools-encoder-settings'))")
+                .await?;
             ensure!(saved["preHeaderAudio"] == "custom", "{saved}");
             ensure!(saved["postEomAudio"] == "none", "{saved}");
             ensure!(saved["silencePreHeaderToHeaders"] == "1250", "{saved}");
@@ -412,7 +534,10 @@ pub fn cases() -> Vec<Case> {
                       document.getElementById('postEomAudioFileRow').hidden]",
                 )
                 .await?;
-            ensure!(state == json!(["custom", "1250", "800", false, true]), "{state}");
+            ensure!(
+                state == json!(["custom", "1250", "800", false, true]),
+                "{state}"
+            );
             Ok(())
         }),
         case("bridge_loads_pre_and_post_audio", |tab| async move {
@@ -422,11 +547,21 @@ pub fn cases() -> Vec<Case> {
             tab.wait_until("!!(window.__bridgeHandlers && window.__bridgeHandlers['encoder:loadPostEomAudio'])", Duration::from_secs(30))
                 .await?;
             for (event, wav) in [
-                ("encoder:loadPreHeaderAudio", square_wav(PRE_AMPLITUDE, PRE_SECONDS, 1)),
-                ("encoder:loadPostEomAudio", square_wav(POST_AMPLITUDE, POST_SECONDS, 1)),
+                (
+                    "encoder:loadPreHeaderAudio",
+                    square_wav(PRE_AMPLITUDE, PRE_SECONDS, 1),
+                ),
+                (
+                    "encoder:loadPostEomAudio",
+                    square_wav(POST_AMPLITUDE, POST_SECONDS, 1),
+                ),
             ] {
                 let payload = base64::engine::general_purpose::STANDARD.encode(wav);
-                tab.exec("return window.__bridgeHandlers[arguments[0]]({ base64: arguments[1] });", json!([event, payload])).await?;
+                tab.exec(
+                    "return window.__bridgeHandlers[arguments[0]]({ base64: arguments[1] });",
+                    json!([event, payload]),
+                )
+                .await?;
             }
             let outcome: Value = tab
                 .js_async(
@@ -444,15 +579,27 @@ pub fn cases() -> Vec<Case> {
                 )
                 .await?;
             ensure!(outcome == true, "{outcome}");
-            let sent: Vec<Value> = tab.eval("window.__bridgeSent.filter((m) => m[0] === 'encoder:generateState')").await?;
+            let sent: Vec<Value> = tab
+                .eval("window.__bridgeSent.filter((m) => m[0] === 'encoder:generateState')")
+                .await?;
             let last = sent.last().map(|m| &m[1]).context("no generateState")?;
-            ensure!(last["active"] == false && last["success"] == true, "{sent:?}");
-            ensure!(last["header"].as_str().is_some_and(|h| h.starts_with("ZCZC-WXR-SVR-010001+0030-")), "{sent:?}");
+            ensure!(
+                last["active"] == false && last["success"] == true,
+                "{sent:?}"
+            );
+            ensure!(
+                last["header"]
+                    .as_str()
+                    .is_some_and(|h| h.starts_with("ZCZC-WXR-SVR-010001+0030-")),
+                "{sent:?}"
+            );
 
             let presets: Value = tab
                 .eval("(() => { const m = window.__bridgeSent.filter((x) => x[0] === 'encoder:prePostAudioData'); return m.length ? m[m.length - 1][1] : null; })()")
                 .await?;
-            let installed = repo_root().join("assets/preheader/dasdec-rwt-intro.wav").is_file();
+            let installed = repo_root()
+                .join("assets/preheader/dasdec-rwt-intro.wav")
+                .is_file();
             let listed = presets["presets"]
                 .as_array()
                 .into_iter()
@@ -463,9 +610,21 @@ pub fn cases() -> Vec<Case> {
             let runs = output_runs(&tab).await?.runs;
             ensure!(runs.len() == 8, "{:?}", spans(&runs));
             ensure!(runs[0].start == ms(500.0), "{:?}", spans(&runs));
-            ensure!(runs[0].end - runs[0].start == frames(PRE_SECONDS), "{:?}", spans(&runs));
-            ensure!(runs[7].start - runs[6].end == ms(400.0), "{:?}", spans(&runs));
-            ensure!(runs[7].end - runs[7].start == frames(POST_SECONDS), "{:?}", spans(&runs));
+            ensure!(
+                runs[0].end - runs[0].start == frames(PRE_SECONDS),
+                "{:?}",
+                spans(&runs)
+            );
+            ensure!(
+                runs[7].start - runs[6].end == ms(400.0),
+                "{:?}",
+                spans(&runs)
+            );
+            ensure!(
+                runs[7].end - runs[7].start == frames(POST_SECONDS),
+                "{:?}",
+                spans(&runs)
+            );
             Ok(())
         }),
     ];

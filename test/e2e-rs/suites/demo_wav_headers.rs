@@ -40,10 +40,22 @@ fn u32_at(raw: &[u8], at: usize) -> u32 {
 /// or fact chunks before it.
 fn parse(raw: &[u8]) -> Result<Wav> {
     ensure!(raw.len() >= 44, "file is too short to hold a WAV header");
-    ensure!(&raw[0..4] == b"RIFF", "missing RIFF magic: {:?}", &raw[0..4]);
-    ensure!(&raw[8..12] == b"WAVE", "missing WAVE magic: {:?}", &raw[8..12]);
+    ensure!(
+        &raw[0..4] == b"RIFF",
+        "missing RIFF magic: {:?}",
+        &raw[0..4]
+    );
+    ensure!(
+        &raw[8..12] == b"WAVE",
+        "missing WAVE magic: {:?}",
+        &raw[8..12]
+    );
     let riff_size = u32_at(raw, 4) as usize;
-    ensure!(riff_size == raw.len() - 8, "RIFF size field is {riff_size}, file body is {}", raw.len() - 8);
+    ensure!(
+        riff_size == raw.len() - 8,
+        "RIFF size field is {riff_size}, file body is {}",
+        raw.len() - 8
+    );
 
     let mut offset = 12;
     let mut fmt = None;
@@ -66,9 +78,19 @@ fn parse(raw: &[u8]) -> Result<Wav> {
             fmt = Some((format, channels, sample_rate, block_align));
         } else if id == b"data" {
             ensure!(size > 0, "data chunk size field is zero");
-            ensure!(body + size <= raw.len(), "data chunk claims {size} bytes but only {} remain", raw.len() - body);
+            ensure!(
+                body + size <= raw.len(),
+                "data chunk claims {size} bytes but only {} remain",
+                raw.len() - body
+            );
             let (format, channels, sample_rate, block_align) = fmt.context("no fmt chunk")?;
-            return Ok(Wav { format, channels, sample_rate, block_align, data: body..body + size });
+            return Ok(Wav {
+                format,
+                channels,
+                sample_rate,
+                block_align,
+                data: body..body + size,
+            });
         }
         offset = body + size + (size % 2);
     }
@@ -88,22 +110,38 @@ pub fn cases() -> Vec<Case> {
     for path in files {
         let stem = path.file_stem().unwrap().to_string_lossy().into_owned();
         let header_path = path.clone();
-        cases.push(plain(format!("wav_header_sizes_match_the_file[{stem}]"), move || {
-            parse(&std::fs::read(&header_path)?)?;
-            Ok(())
-        }));
-        cases.push(plain(format!("wav_is_readable_and_not_silent[{stem}]"), move || {
-            let raw = std::fs::read(&path)?;
-            let wav = parse(&raw)?;
-            ensure!(wav.format == 1, "not linear PCM (format tag {})", wav.format);
-            ensure!(wav.channels >= 1 && wav.block_align > 0);
-            let frames = wav.data.len() / wav.block_align as usize;
-            ensure!(frames > 0, "no audio frames");
-            let duration = frames as f64 / wav.sample_rate as f64;
-            ensure!((0.5..=60.0).contains(&duration), "implausible demo duration: {duration:.2}s");
-            ensure!(raw[wav.data].iter().any(|b| *b != 0), "the audio payload is entirely zero bytes");
-            Ok(())
-        }));
+        cases.push(plain(
+            format!("wav_header_sizes_match_the_file[{stem}]"),
+            move || {
+                parse(&std::fs::read(&header_path)?)?;
+                Ok(())
+            },
+        ));
+        cases.push(plain(
+            format!("wav_is_readable_and_not_silent[{stem}]"),
+            move || {
+                let raw = std::fs::read(&path)?;
+                let wav = parse(&raw)?;
+                ensure!(
+                    wav.format == 1,
+                    "not linear PCM (format tag {})",
+                    wav.format
+                );
+                ensure!(wav.channels >= 1 && wav.block_align > 0);
+                let frames = wav.data.len() / wav.block_align as usize;
+                ensure!(frames > 0, "no audio frames");
+                let duration = frames as f64 / wav.sample_rate as f64;
+                ensure!(
+                    (0.5..=60.0).contains(&duration),
+                    "implausible demo duration: {duration:.2}s"
+                );
+                ensure!(
+                    raw[wav.data].iter().any(|b| *b != 0),
+                    "the audio payload is entirely zero bytes"
+                );
+                Ok(())
+            },
+        ));
     }
     cases
 }

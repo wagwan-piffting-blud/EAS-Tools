@@ -50,14 +50,17 @@ fn storm() -> Value {
 }
 
 async fn generate(tab: &Tab, overrides: Value) -> Result<()> {
-    tab.exec(GENERATE_JS, json!([koax(), storm(), overrides])).await
+    tab.exec(GENERATE_JS, json!([koax(), storm(), overrides]))
+        .await
 }
 
 /// Equality that treats 2 and 2.0 alike, since CDP may hand back either.
 fn same_json(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Number(x), Value::Number(y)) => x.as_f64() == y.as_f64(),
-        (Value::Array(x), Value::Array(y)) => x.len() == y.len() && x.iter().zip(y).all(|(p, q)| same_json(p, q)),
+        (Value::Array(x), Value::Array(y)) => {
+            x.len() == y.len() && x.iter().zip(y).all(|(p, q)| same_json(p, q))
+        }
         _ => a == b,
     }
 }
@@ -74,7 +77,11 @@ async fn offset(tab: &Tab, point: &Value, bearing: f64, km: f64) -> Result<Value
 }
 
 async fn shown(tab: &Tab, id: &str) -> Result<bool> {
-    tab.js("return document.getElementById(arguments[0]).checkVisibility();", json!([id])).await
+    tab.js(
+        "return document.getElementById(arguments[0]).checkVisibility();",
+        json!([id]),
+    )
+    .await
 }
 
 pub fn cases() -> Vec<Case> {
@@ -108,35 +115,45 @@ pub fn cases() -> Vec<Case> {
                 "enc": [[2, 129], [2, 129], [16, 128], [300, -60.5]], "sorted": true, "synthetic": "supercell",
             });
             for (key, want) in expected.as_object().unwrap() {
-                ensure!(same_json(&shape[key], want), "{key}: got {}, want {want}", shape[key]);
+                ensure!(
+                    same_json(&shape[key], want),
+                    "{key}: got {}, want {want}",
+                    shape[key]
+                );
             }
             Ok(())
         }),
-        case("same_seed_is_byte_identical_and_a_new_seed_is_not", |tab| async move {
-            open_warngen(&tab).await?;
-            generate(&tab, json!({ "seed": 99 })).await?;
-            let a: u64 = tab.eval(DIGEST_JS).await?;
-            generate(&tab, json!({ "seed": 99 })).await?;
-            let b: u64 = tab.eval(DIGEST_JS).await?;
-            generate(&tab, json!({ "seed": 100 })).await?;
-            let c: u64 = tab.eval(DIGEST_JS).await?;
-            ensure!(a == b, "same seed gave {a} and {b}");
-            ensure!(a != c, "a new seed gave the same volume");
-            Ok(())
-        }),
+        case(
+            "same_seed_is_byte_identical_and_a_new_seed_is_not",
+            |tab| async move {
+                open_warngen(&tab).await?;
+                generate(&tab, json!({ "seed": 99 })).await?;
+                let a: u64 = tab.eval(DIGEST_JS).await?;
+                generate(&tab, json!({ "seed": 99 })).await?;
+                let b: u64 = tab.eval(DIGEST_JS).await?;
+                generate(&tab, json!({ "seed": 100 })).await?;
+                let c: u64 = tab.eval(DIGEST_JS).await?;
+                ensure!(a == b, "same seed gave {a} and {b}");
+                ensure!(a != c, "a new seed gave the same volume");
+                Ok(())
+            },
+        ),
     ];
     for storm_type in ["supercell", "qlcs"] {
-        cases.push(case(format!("core_is_intense_and_clear_air_is_empty[{storm_type}]"), move |tab| async move {
-            open_warngen(&tab).await?;
-            generate(&tab, json!({ "type": storm_type })).await?;
-            let core: Value = tab.eval("window.__synth.synthetic.features.core").await?;
-            let at_core = sample(&tab, "REF", &core, 0).await?;
-            ensure!(at_core.is_some_and(|v| v >= 55.0), "core REF {at_core:?}");
-            let away = offset(&tab, &storm(), 135.0, 120.0).await?;
-            ensure!(sample(&tab, "REF", &away, 0).await?.is_none());
-            ensure!(sample(&tab, "VEL", &away, 0).await?.is_none());
-            Ok(())
-        }));
+        cases.push(case(
+            format!("core_is_intense_and_clear_air_is_empty[{storm_type}]"),
+            move |tab| async move {
+                open_warngen(&tab).await?;
+                generate(&tab, json!({ "type": storm_type })).await?;
+                let core: Value = tab.eval("window.__synth.synthetic.features.core").await?;
+                let at_core = sample(&tab, "REF", &core, 0).await?;
+                ensure!(at_core.is_some_and(|v| v >= 55.0), "core REF {at_core:?}");
+                let away = offset(&tab, &storm(), 135.0, 120.0).await?;
+                ensure!(sample(&tab, "REF", &away, 0).await?.is_none());
+                ensure!(sample(&tab, "VEL", &away, 0).await?.is_none());
+                Ok(())
+            },
+        ));
     }
     cases.push(case("tornadic_supercell_has_a_couplet_and_a_debris_ball", |tab| async move {
         open_warngen(&tab).await?;
@@ -156,18 +173,21 @@ pub fn cases() -> Vec<Case> {
         let refl = sample(&tab, "REF", &tornado, 0).await?;
         ensure!(refl.is_some_and(|v| v >= 50.0), "debris REF {refl:?}");
         let behind = sample(&tab, "RHO", &offset(&tab, &tornado, bearing + 180.0, 30.0).await?, 0).await?;
-        ensure!(behind.map_or(true, |v| (v - 0.98).abs() <= 0.06), "RHO behind the storm {behind:?}");
+        ensure!(behind.is_none_or(|v| (v - 0.98).abs() <= 0.06), "RHO behind the storm {behind:?}");
         Ok(())
     }));
-    cases.push(case("non_tornadic_supercell_has_no_debris_ball", |tab| async move {
-        open_warngen(&tab).await?;
-        generate(&tab, json!({ "tornadic": false })).await?;
-        let features: Value = tab.eval("window.__synth.synthetic.features").await?;
-        ensure!(features["tornado"].is_null(), "{features}");
-        let rho = sample(&tab, "RHO", &features["meso"], 0).await?;
-        ensure!(rho.map_or(true, |v| v > 0.9), "{rho:?}");
-        Ok(())
-    }));
+    cases.push(case(
+        "non_tornadic_supercell_has_no_debris_ball",
+        |tab| async move {
+            open_warngen(&tab).await?;
+            generate(&tab, json!({ "tornadic": false })).await?;
+            let features: Value = tab.eval("window.__synth.synthetic.features").await?;
+            ensure!(features["tornado"].is_null(), "{features}");
+            let rho = sample(&tab, "RHO", &features["meso"], 0).await?;
+            ensure!(rho.is_none_or(|v| v > 0.9), "{rho:?}");
+            Ok(())
+        },
+    ));
     cases.push(case("storm_out_of_range_is_refused", |tab| async move {
         open_warngen(&tab).await?;
         let message: String = tab
@@ -227,22 +247,32 @@ pub fn cases() -> Vec<Case> {
         ensure!(painted > 5000, "{painted} painted pixels");
         Ok(())
     }));
-    cases.push(case("dialog_reports_an_out_of_range_storm", |tab| async move {
-        open_warngen(&tab).await?;
-        tab.click("#radar-synth-btn").await?;
-        tab.exec(
-            "document.getElementById('synth-site-lat').value = '41.32';
+    cases.push(case(
+        "dialog_reports_an_out_of_range_storm",
+        |tab| async move {
+            open_warngen(&tab).await?;
+            tab.click("#radar-synth-btn").await?;
+            tab.exec(
+                "document.getElementById('synth-site-lat').value = '41.32';
              document.getElementById('synth-site-lon').value = '-96.37';
              document.getElementById('synth-storm-lat').value = '45.5';
              document.getElementById('synth-storm-lon').value = '-96.4';",
-            json!([]),
-        )
-        .await?;
-        tab.click("#synth-generate-btn").await?;
-        tab.wait_until("document.getElementById('synth-error').innerText.startsWith('The storm is')", Duration::from_secs(10)).await?;
-        ensure!(shown(&tab, "synth-overlay").await?);
-        ensure!(tab.eval::<bool>("document.getElementById('radar-tilt').disabled").await?);
-        Ok(())
-    }));
+                json!([]),
+            )
+            .await?;
+            tab.click("#synth-generate-btn").await?;
+            tab.wait_until(
+                "document.getElementById('synth-error').innerText.startsWith('The storm is')",
+                Duration::from_secs(10),
+            )
+            .await?;
+            ensure!(shown(&tab, "synth-overlay").await?);
+            ensure!(
+                tab.eval::<bool>("document.getElementById('radar-tilt').disabled")
+                    .await?
+            );
+            Ok(())
+        },
+    ));
     cases
 }

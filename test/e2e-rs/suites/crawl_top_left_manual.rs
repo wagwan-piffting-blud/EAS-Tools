@@ -88,11 +88,16 @@ settle().then(() => done(read()));
 "#;
 
 async fn set_and_read(tab: &Tab, mode: &str, manual: bool, y: &str) -> Result<Value> {
-    tab.js_async(&format!("{SETTLE_AND_READ}{SET_AND_READ_BODY}"), json!([mode, manual, y])).await
+    tab.js_async(
+        &format!("{SETTLE_AND_READ}{SET_AND_READ_BODY}"),
+        json!([mode, manual, y]),
+    )
+    .await
 }
 
 async fn read_state(tab: &Tab) -> Result<Value> {
-    tab.js_async(&format!("{SETTLE_AND_READ}{READ_STATE_BODY}"), json!([])).await
+    tab.js_async(&format!("{SETTLE_AND_READ}{READ_STATE_BODY}"), json!([]))
+        .await
 }
 
 async fn set_mode(tab: &Tab, mode: &str) -> Result<()> {
@@ -110,7 +115,8 @@ async fn set_mode(tab: &Tab, mode: &str) -> Result<()> {
 /// the crawl onto it.
 async fn load_legacy(tab: &Tab, settings: Value) -> Result<Value> {
     tab.goto("demos.html").await?;
-    tab.local_storage_set(SETTINGS_KEY, &settings.to_string()).await?;
+    tab.local_storage_set(SETTINGS_KEY, &settings.to_string())
+        .await?;
     open_tool(tab, "crawl").await?;
     let mode = settings["crawlBackgroundMode"].as_str().unwrap_or_default();
     let y = settings["crawlTopLeftPixelY"].as_str().unwrap_or_default();
@@ -145,119 +151,193 @@ async fn wait_for_dialog(tab: &Tab, count: usize) -> Result<()> {
 
 pub fn cases() -> Vec<Case> {
     let mut cases = vec![
-        case("the_toggle_starts_off_and_greys_out_the_coordinates", |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            let state: Value = tab
-                .eval(
-                    "({ checked: document.getElementById('crawlTopLeftManual').checked,
+        case(
+            "the_toggle_starts_off_and_greys_out_the_coordinates",
+            |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                let state: Value = tab
+                    .eval(
+                        "({ checked: document.getElementById('crawlTopLeftManual').checked,
                         x: document.getElementById('crawlTopLeftPixelX').disabled,
                         y: document.getElementById('crawlTopLeftPixelY').disabled })",
-                )
-                .await?;
-            ensure!(state == json!({ "checked": false, "x": true, "y": true }), "{state}");
-            Ok(())
-        }),
-        case("turning_the_toggle_back_off_re_centers_the_crawl", |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            ensure!(set_and_read(&tab, "solid", true, "300").await?["active"] == true);
-            let off = set_and_read(&tab, "solid", false, "300").await?;
-            ensure!(off["active"] == false, "unticking the box left the crawl pinned");
-            Ok(())
-        }),
-        case("a_premade_background_still_positions_the_crawl_itself", |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            set_mode(&tab, "premade").await?;
-            tab.exec(
-                "const select = document.getElementById('crawlBackgroundPremadeSelect');
+                    )
+                    .await?;
+                ensure!(
+                    state == json!({ "checked": false, "x": true, "y": true }),
+                    "{state}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "turning_the_toggle_back_off_re_centers_the_crawl",
+            |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                ensure!(set_and_read(&tab, "solid", true, "300").await?["active"] == true);
+                let off = set_and_read(&tab, "solid", false, "300").await?;
+                ensure!(
+                    off["active"] == false,
+                    "unticking the box left the crawl pinned"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "a_premade_background_still_positions_the_crawl_itself",
+            |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                set_mode(&tab, "premade").await?;
+                tab.exec(
+                    "const select = document.getElementById('crawlBackgroundPremadeSelect');
                  select.value = 'image:assets/screens/xfinity.png';
                  select.dispatchEvent(new Event('change', { bubbles: true }));",
-                json!([]),
-            )
-            .await?;
-            tab.wait_until("document.getElementById('crawlTopLeftPixelY').value === '475'", Duration::from_secs(30)).await?;
-            let state = read_state(&tab).await?;
-            ensure!(state["active"] == true && y_of(&state) == "475" && state["inputDisabled"] == true, "{state}");
-            ensure!(state["toggleDisabled"] == true, "the toggle must be out of play while a pre-made layout owns the origin");
-            Ok(())
-        }),
-        case("legacy_image_settings_keep_the_origin_they_already_had", |tab| async move {
-            let migrated = load_legacy(
+                    json!([]),
+                )
+                .await?;
+                tab.wait_until(
+                    "document.getElementById('crawlTopLeftPixelY').value === '475'",
+                    Duration::from_secs(30),
+                )
+                .await?;
+                let state = read_state(&tab).await?;
+                ensure!(
+                    state["active"] == true
+                        && y_of(&state) == "475"
+                        && state["inputDisabled"] == true,
+                    "{state}"
+                );
+                ensure!(
+                    state["toggleDisabled"] == true,
+                    "the toggle must be out of play while a pre-made layout owns the origin"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "legacy_image_settings_keep_the_origin_they_already_had",
+            |tab| async move {
+                let migrated = load_legacy(
                 &tab,
                 json!({ "crawlBackgroundMode": "image", "crawlTopLeftPixelX": "12", "crawlTopLeftPixelY": "340" }),
             )
             .await?;
-            ensure!(migrated["backgroundMode"] == "image" && migrated["toggleChecked"] == true, "{migrated}");
-            ensure!(migrated["inputY"] == "340" && y_of(&migrated) == "340", "{migrated}");
-            Ok(())
-        }),
-        case("legacy_settings_that_never_set_a_position_stay_centered", |tab| async move {
-            let untouched = load_legacy(
+                ensure!(
+                    migrated["backgroundMode"] == "image" && migrated["toggleChecked"] == true,
+                    "{migrated}"
+                );
+                ensure!(
+                    migrated["inputY"] == "340" && y_of(&migrated) == "340",
+                    "{migrated}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "legacy_settings_that_never_set_a_position_stay_centered",
+            |tab| async move {
+                let untouched = load_legacy(
                 &tab,
                 json!({ "crawlBackgroundMode": "solid", "crawlTopLeftPixelX": "0", "crawlTopLeftPixelY": "0" }),
             )
             .await?;
-            ensure!(untouched["toggleChecked"] == false && untouched["active"] == false, "{untouched}");
-            Ok(())
-        }),
-        case("a_legacy_premade_preset_does_not_inherit_the_layouts_coordinates", |tab| async move {
-            let migrated = load_legacy(
-                &tab,
-                json!({
-                    "crawlBackgroundMode": "premade",
-                    "crawlBackgroundPremadeSelect": "image:assets/screens/xfinity.png",
-                    "crawlTopLeftPixelX": "0",
-                    "crawlTopLeftPixelY": "475"
-                }),
-            )
-            .await?;
-            ensure!(migrated["toggleChecked"] == false, "{migrated}");
-            set_mode(&tab, "solid").await?;
-            let state = read_state(&tab).await?;
-            ensure!(state["toggleChecked"] == false, "{state}");
-            ensure!(state["active"] == false, "leaving pre-made mode kept the layout's origin");
-            Ok(())
-        }),
-        case("the_toggle_round_trips_through_a_saved_preset", |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            set_and_read(&tab, "solid", true, "150").await?;
-            tab.exec(
-                "document.getElementById('crawlUserPreset').value = '1';
+                ensure!(
+                    untouched["toggleChecked"] == false && untouched["active"] == false,
+                    "{untouched}"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "a_legacy_premade_preset_does_not_inherit_the_layouts_coordinates",
+            |tab| async move {
+                let migrated = load_legacy(
+                    &tab,
+                    json!({
+                        "crawlBackgroundMode": "premade",
+                        "crawlBackgroundPremadeSelect": "image:assets/screens/xfinity.png",
+                        "crawlTopLeftPixelX": "0",
+                        "crawlTopLeftPixelY": "475"
+                    }),
+                )
+                .await?;
+                ensure!(migrated["toggleChecked"] == false, "{migrated}");
+                set_mode(&tab, "solid").await?;
+                let state = read_state(&tab).await?;
+                ensure!(state["toggleChecked"] == false, "{state}");
+                ensure!(
+                    state["active"] == false,
+                    "leaving pre-made mode kept the layout's origin"
+                );
+                Ok(())
+            },
+        ),
+        case(
+            "the_toggle_round_trips_through_a_saved_preset",
+            |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                set_and_read(&tab, "solid", true, "150").await?;
+                tab.exec(
+                    "document.getElementById('crawlUserPreset').value = '1';
                  setTimeout(() => document.getElementById('saveUserPreset').click(), 0);",
-                json!([]),
-            )
-            .await?;
-            wait_for_dialog(&tab, 1).await?;
-            let saved: Value = serde_json::from_str(&tab.eval::<String>("localStorage.getItem('crawlPreset_1')").await?)?;
-            ensure!(saved["crawlTopLeftManual"] == true && saved["crawlTopLeftPixelY"] == "150", "{saved}");
+                    json!([]),
+                )
+                .await?;
+                wait_for_dialog(&tab, 1).await?;
+                let saved: Value = serde_json::from_str(
+                    &tab.eval::<String>("localStorage.getItem('crawlPreset_1')")
+                        .await?,
+                )?;
+                ensure!(
+                    saved["crawlTopLeftManual"] == true && saved["crawlTopLeftPixelY"] == "150",
+                    "{saved}"
+                );
 
-            open_tool(&tab, "crawl").await?;
-            let before = tab.dialogs().len();
-            tab.exec(
-                "document.getElementById('crawlUserPreset').value = '1';
+                open_tool(&tab, "crawl").await?;
+                let before = tab.dialogs().len();
+                tab.exec(
+                    "document.getElementById('crawlUserPreset').value = '1';
                  setTimeout(() => document.getElementById('loadUserPreset').click(), 0);",
-                json!([]),
-            )
-            .await?;
-            wait_for_dialog(&tab, before + 1).await?;
-            let restored = read_state(&tab).await?;
-            ensure!(restored["toggleChecked"] == true && restored["inputY"] == "150", "{restored}");
-            ensure!(y_of(&restored) == "150", "{restored}");
-            Ok(())
-        }),
+                    json!([]),
+                )
+                .await?;
+                wait_for_dialog(&tab, before + 1).await?;
+                let restored = read_state(&tab).await?;
+                ensure!(
+                    restored["toggleChecked"] == true && restored["inputY"] == "150",
+                    "{restored}"
+                );
+                ensure!(y_of(&restored) == "150", "{restored}");
+                Ok(())
+            },
+        ),
     ];
     for mode in ["solid", "image"] {
-        cases.push(case(format!("the_coordinates_move_the_crawl_once_the_toggle_is_on[{mode}]"), move |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            let result = set_and_read(&tab, mode, true, "200").await?;
-            ensure!(result["inputDisabled"] == false && result["active"] == true && y_of(&result) == "200", "{result}");
-            Ok(())
-        }));
-        cases.push(case(format!("the_crawl_stays_centered_while_the_toggle_is_off[{mode}]"), move |tab| async move {
-            open_tool(&tab, "crawl").await?;
-            let result = set_and_read(&tab, mode, false, "200").await?;
-            ensure!(result["inputDisabled"] == true && result["active"] == false, "{result}");
-            Ok(())
-        }));
+        cases.push(case(
+            format!("the_coordinates_move_the_crawl_once_the_toggle_is_on[{mode}]"),
+            move |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                let result = set_and_read(&tab, mode, true, "200").await?;
+                ensure!(
+                    result["inputDisabled"] == false
+                        && result["active"] == true
+                        && y_of(&result) == "200",
+                    "{result}"
+                );
+                Ok(())
+            },
+        ));
+        cases.push(case(
+            format!("the_crawl_stays_centered_while_the_toggle_is_off[{mode}]"),
+            move |tab| async move {
+                open_tool(&tab, "crawl").await?;
+                let result = set_and_read(&tab, mode, false, "200").await?;
+                ensure!(
+                    result["inputDisabled"] == true && result["active"] == false,
+                    "{result}"
+                );
+                Ok(())
+            },
+        ));
     }
     for (x, y) in [("0", "20"), ("35", "0"), ("35", "20")] {
         cases.push(case(format!("a_legacy_solid_preset_with_a_position_gets_the_toggle_turned_on[{x}-{y}]"), move |tab| async move {
