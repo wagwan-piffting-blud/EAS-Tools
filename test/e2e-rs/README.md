@@ -86,6 +86,9 @@ not the unit-only coverage boundary. The check fails when the registry is stale,
 since an unregistered suite is never compiled. `make e2e`, the pnpm E2E commands,
 and CI run this preflight before the browser suite.
 
+For Docker users; ensure that you rebuild the image when necessary to run new
+E2E code or run updated test suites.
+
 ## Status: this is the only browser suite
 It replaced the Selenium/pytest suite on 2026-10-15. Each Python file became a suite of the same name (minus `test_`). `encoder_events` holds both EMNet and the AWIPS location limit; `number_inputs` holds both slider and wheel tests. axe-core 4.11.4 (MPL-2.0) is vendored at `vendor/axe.min.js`.
 

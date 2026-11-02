@@ -15,6 +15,9 @@ not make the rest of the repository's GNU Make, Python, and POSIX-shell workflow
 native to Windows. Use WSL, Git Bash, MSYS2, or an equivalent Unix-like environment
 for the broader development workflow.
 
+For machines without native Chromium that have Docker; rebuild the image whenever it
+becomes necessary to test new E2E code or E2E testing suites.
+
 Install development dependencies with:
 
 ```bash

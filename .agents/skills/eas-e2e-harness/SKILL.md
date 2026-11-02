@@ -30,6 +30,9 @@ Container mode must remain an outer launcher: the binary inside the image runs
 native mode against its bundled Chromium. Preserve the read-only, non-root,
 capability-dropped runtime and keep build-only tools out of the final image.
 
+Request to rebuild the image when necessary if it is stale or contains out-of-date
+E2E or testing suite code.
+
 ## Preserve discovery and isolation
 
 After adding or removing `suites/*.rs`, run `node test/e2e-rs/gen_main.mjs` and
