@@ -71,6 +71,11 @@ the container runner. With `EAS_TOOLS_E2E_SKIP_BUILD=1`, the image must exist.
 Set `E2E_RUNNER=native|container|auto` for Make-based commands, or pass
 `--runner` directly to Cargo.
 
+Native Windows E2E is retained as a compatibility path, but the repository as a
+whole still assumes a Unix-like development environment. Its root commands use
+GNU Make, Python, and POSIX-shell conventions; Windows contributors should use
+WSL, Git Bash, MSYS2, or equivalent Unix-like utilities for the broader workflow.
+
 After adding a suite file, run `node gen_main.mjs`; it regenerates
 `suites/main.rs` from `suites/*.rs`. `make e2e-check` verifies that registry,
 `rustfmt` formatting, `cargo check --all-targets`, and Clippy with warnings denied.

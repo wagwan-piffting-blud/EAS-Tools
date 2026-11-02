@@ -8,6 +8,13 @@
 - Python 3 for serving the static application and selected repository tools
 - A stable Rust toolchain and either Chrome/Chromium or Docker for browser E2E
 
+The repository's development commands assume and expect a Unix-like shell and
+utilities. Linux is the CI reference environment. Native Windows E2E remains
+supported as a compatibility path through the Rust/Cargo harness, but it does
+not make the rest of the repository's GNU Make, Python, and POSIX-shell workflow
+native to Windows. Use WSL, Git Bash, MSYS2, or an equivalent Unix-like environment
+for the broader development workflow.
+
 Install development dependencies with:
 
 ```bash

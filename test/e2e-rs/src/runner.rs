@@ -272,15 +272,52 @@ mod tests {
         assert_eq!(parsed.args.len(), 5);
     }
 
+    fn process_fixture(name: &str, exit_code: i32) -> std::path::PathBuf {
+        let extension = if cfg!(windows) { "bat" } else { "sh" };
+        let path = std::env::temp_dir().join(format!(
+            "eas-tools-runner-test-{}-{name}.{extension}",
+            std::process::id()
+        ));
+        let contents = if cfg!(windows) {
+            format!("@exit /b {exit_code}\r\n")
+        } else {
+            format!("#!/bin/sh\nexit {exit_code}\n")
+        };
+        std::fs::write(&path, contents).expect("write process fixture");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&path)
+                .expect("process fixture metadata")
+                .permissions();
+            permissions.set_mode(0o755);
+            std::fs::set_permissions(&path, permissions).expect("make process fixture executable");
+        }
+        path
+    }
+
+    fn restore_env(name: &str, value: Option<OsString>) {
+        match value {
+            Some(value) => std::env::set_var(name, value),
+            None => std::env::remove_var(name),
+        }
+    }
+
     #[test]
     fn environment_flags_and_external_runner_paths_are_deterministic() {
         let original_docker = std::env::var_os("EAS_TOOLS_DOCKER");
         let original_chrome = std::env::var_os("EAS_TOOLS_CHROME");
         let original_skip = std::env::var_os("EAS_TOOLS_E2E_SKIP_BUILD");
         let original_args = std::env::var_os("EAS_TOOLS_E2E_BUILD_ARGS");
+        let passing_process = process_fixture("pass", 0);
+        let failing_process = process_fixture("fail", 1);
+        let missing_process = std::env::temp_dir().join(format!(
+            "eas-tools-runner-test-{}-missing",
+            std::process::id()
+        ));
 
-        std::env::set_var("EAS_TOOLS_DOCKER", "/bin/true");
-        std::env::set_var("EAS_TOOLS_CHROME", "/does/not/exist");
+        std::env::set_var("EAS_TOOLS_DOCKER", &passing_process);
+        std::env::set_var("EAS_TOOLS_CHROME", &missing_process);
         std::env::remove_var("EAS_TOOLS_E2E_SKIP_BUILD");
         std::env::remove_var("EAS_TOOLS_E2E_BUILD_ARGS");
         assert!(build_args().is_empty());
@@ -296,12 +333,11 @@ mod tests {
         assert!(!env_flag("EAS_TOOLS_E2E_SKIP_BUILD"));
         assert_eq!(container_available(), Some(false));
         assert_eq!(auto_runner().unwrap(), (Runner::Container, false));
-        std::env::set_var("EAS_TOOLS_DOCKER", "/bin/false");
+        std::env::set_var("EAS_TOOLS_DOCKER", &failing_process);
         assert!(container_available().is_none());
         assert!(auto_runner().is_err());
-        std::env::set_var("EAS_TOOLS_DOCKER", "/bin/true");
-
-        std::env::set_var("EAS_TOOLS_CHROME", "/bin/true");
+        std::env::set_var("EAS_TOOLS_DOCKER", &passing_process);
+        std::env::set_var("EAS_TOOLS_CHROME", &passing_process);
         assert_eq!(auto_runner().unwrap(), (Runner::Native, false));
         assert_eq!(
             run_container(&[OsString::from("e2e"), OsString::from("--list")], false).unwrap(),
@@ -311,24 +347,14 @@ mod tests {
             run_container(&[OsString::from("e2e")], true).unwrap(),
             ExitCode::SUCCESS
         );
-        std::env::set_var("EAS_TOOLS_DOCKER", "/does/not/exist");
+        std::env::set_var("EAS_TOOLS_DOCKER", &missing_process);
         assert!(run_container(&[OsString::from("e2e")], false).is_err());
 
-        match original_docker {
-            Some(value) => std::env::set_var("EAS_TOOLS_DOCKER", value),
-            None => std::env::remove_var("EAS_TOOLS_DOCKER"),
-        }
-        match original_chrome {
-            Some(value) => std::env::set_var("EAS_TOOLS_CHROME", value),
-            None => std::env::remove_var("EAS_TOOLS_CHROME"),
-        }
-        match original_skip {
-            Some(value) => std::env::set_var("EAS_TOOLS_E2E_SKIP_BUILD", value),
-            None => std::env::remove_var("EAS_TOOLS_E2E_SKIP_BUILD"),
-        }
-        match original_args {
-            Some(value) => std::env::set_var("EAS_TOOLS_E2E_BUILD_ARGS", value),
-            None => std::env::remove_var("EAS_TOOLS_E2E_BUILD_ARGS"),
-        }
+        restore_env("EAS_TOOLS_DOCKER", original_docker);
+        restore_env("EAS_TOOLS_CHROME", original_chrome);
+        restore_env("EAS_TOOLS_E2E_SKIP_BUILD", original_skip);
+        restore_env("EAS_TOOLS_E2E_BUILD_ARGS", original_args);
+        let _ = std::fs::remove_file(passing_process);
+        let _ = std::fs::remove_file(failing_process);
     }
 }
