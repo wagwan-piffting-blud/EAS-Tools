@@ -71,9 +71,9 @@ voice controls are linked from the [documentation index](./index.md).
 3. Review generated UGC, VTEC, headings, timing, bullets, and product text.
 4. Export the polygon or AWIPS text product.
 
-WarnGen is a reconstruction and editing aid. Product output should be compared
-with the applicable authoritative template, configuration, and operational
-requirements before real-world use.
+WarnGen is a reconstruction and editing aid. Product output should be compared with
+the applicable authoritative template and configuration. It doesn't replace the
+original WarnGen in CAVE for official use.
 
 ## Video/audio muxer
 
