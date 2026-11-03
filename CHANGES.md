@@ -8,7 +8,7 @@
 
 - Update built-in NWR pronunciations for the VT Paul voice.
 
-- E2E test suite updates.
+- Some minor E2E test suite updates.
 
 ---
 

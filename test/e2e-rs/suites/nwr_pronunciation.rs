@@ -105,6 +105,11 @@ fn shipped_set(id: &str) -> Result<Value> {
     shipped_json(&format!("assets/nwr-pronunciation/{id}.json"))
 }
 
+/// A form field of the stubbed synthesis POST read as an integer.
+fn posted_int(post: &Value, field: &str) -> Option<i64> {
+    post[field].as_str()?.parse().ok()
+}
+
 /// The prosody value the most specific set defines, as `resolveProsody` picks it.
 fn shipped_prosody(sets: &[&Value], field: &str) -> Option<i64> {
     sets.iter()
@@ -181,9 +186,9 @@ pub fn cases() -> Vec<Case> {
                     "speed went into markup although the server takes vtSpeed: {text}"
                 );
                 ensure!(
-                    post["vtSpeed"] == speed.to_string()
-                        && post["vtCommaPauseMs"] == comma.to_string()
-                        && post["vtPeriodPauseMs"] == period.to_string(),
+                    posted_int(&post, "vtSpeed") == Some(speed)
+                        && posted_int(&post, "vtCommaPauseMs") == Some(comma)
+                        && posted_int(&post, "vtPeriodPauseMs") == Some(period),
                     "expected speed {speed}, comma {comma}, period {period}: {post}"
                 );
                 let status: String = tab
@@ -517,7 +522,7 @@ pub fn cases() -> Vec<Case> {
                 "expected {waukesha} for Waukesha: {text}"
             );
             ensure!(
-                post["vtSpeed"] == speed.to_string(),
+                posted_int(&post, "vtSpeed") == Some(speed),
                 "expected speed {speed}: {post}"
             );
             Ok(())
