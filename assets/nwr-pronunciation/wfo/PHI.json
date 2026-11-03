@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "PHI"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -34,6 +42,20 @@
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "atlantic",
+            "match": "Atlantic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE T L AE N T IH2 K"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_628256f3f09dfe9b"
+                }
+            ]
+        },
         {
             "id": "hunterdon",
             "match": "Hunterdon",
@@ -49,16 +71,58 @@
             ]
         },
         {
+            "id": "lancaster",
+            "match": "Lancaster",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AE NG K AE1 S T ER"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158953402437484544"
+                }
+            ]
+        },
+        {
             "id": "lehigh",
             "match": "Lehigh",
             "replace": {
                 "kind": "phoneme",
-                "ph": "L IY HH AY"
+                "ph": "L IY1 HH AY2"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_0d16d80071890220"
+                }
+            ]
+        },
+        {
+            "id": "manasquan",
+            "match": "Manasquan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S K W AO1 N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_628256f3f09dfe9b"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "917087402294673539"
                 }
             ]
         }

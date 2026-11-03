@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "CYS"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,15 +23,192 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 114,
-            "verified": true
+            "value": 115,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01). Was 114 before."
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 926,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        }
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "la-grange",
+            "match": "La Grange",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AH0",
+                "on": "La"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1133930552244842537"
+                }
+            ]
+        },
+        {
+            "id": "melbeta",
+            "match": "Melbeta",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M EH0 L B IY1 T AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1133938495497441351"
+                }
+            ]
+        },
+        {
+            "id": "niobrara",
+            "match": "Niobrara",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N AY1 OW B R EH1 R AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_b45fd976417643f7"
+                }
+            ]
+        },
+        {
+            "id": "ogallala",
+            "match": "Ogallala",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 G AH1 L AA1 L AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1112565226794139778"
+                }
+            ]
+        },
+        {
+            "id": "ranchettes",
+            "match": "Ranchettes",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AE1 N CH EH0 T S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1408028436517228604"
+                }
+            ]
+        },
+        {
+            "id": "rawlins",
+            "match": "Rawlins",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AA1 W L IH0 N S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1177653512209961082"
+                }
+            ]
+        },
+        {
+            "id": "reservoir",
+            "match": "Reservoir",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R EH1 Z ER V OW R"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "995010275684126750"
+                }
+            ]
+        },
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "952215937329819651"
+                }
+            ]
+        },
+        {
+            "id": "sheridan",
+            "match": "Sheridan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH EH0 ER0 # IH0 # D IH2 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1177337131098705920"
+                }
+            ]
+        },
+        {
+            "id": "stegall",
+            "match": "Stegall",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S T IY1 G AH0 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1408027195645100082"
+                }
+            ]
+        },
+        {
+            "id": "sunol",
+            "match": "Sunol",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 N AA1 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1257820163005354054"
+                }
+            ]
+        }
+    ]
 }

@@ -6,6 +6,8 @@
 
 - Add an option to de-select radio buttons in WarnGen. This allows users to clear their selection of a radio button in the WarnGen tool, providing more flexibility and control over the alert generation process. Just click the selected radio button again to de-select it. This change improves the user experience and allows for more accurate and relevant alert generation.
 
+- Update built-in NWR pronunciations for the VT Paul voice.
+
 ---
 
 2026-11-01:

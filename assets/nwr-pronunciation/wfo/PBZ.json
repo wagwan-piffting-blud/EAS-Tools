@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "PBZ"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,17 +23,48 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 115,
-            "verified": true
+            "value": 114,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01). Was 115 before."
         },
-        "commaPauseMs": null,
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "charleroi",
+            "match": "Charleroi",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH UH0 L AH1 R OY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1246202401665454233"
+                }
+            ]
+        },
         {
             "id": "columbiana",
             "match": "Columbiana",
@@ -45,6 +76,104 @@
                 {
                     "source": "tmyk",
                     "page": 9
+                }
+            ]
+        },
+        {
+            "id": "coshocton",
+            "match": "Coshocton",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K OW SH AW2 K T AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "987571418919231518"
+                }
+            ]
+        },
+        {
+            "id": "lower",
+            "match": "Lower",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L OW ER"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_23aa24b70e0aeec3"
+                }
+            ]
+        },
+        {
+            "id": "monessen",
+            "match": "Monessen",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH2 N EH1 S EH0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1246198646995685511"
+                }
+            ]
+        },
+        {
+            "id": "muskingum",
+            "match": "Muskingum",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH2 S K IY2 N G AH2 M"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "939389714409062431"
+                }
+            ]
+        },
+        {
+            "id": "tuscarawas",
+            "match": "Tuscarawas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AH1 S K AH W AA1 R EH0 Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_ce05eadabb99b427"
+                }
+            ]
+        },
+        {
+            "id": "venango",
+            "match": "Venango",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V EH2 N AE1 N G OW"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "929858561289355315"
+                }
+            ]
+        },
+        {
+            "id": "versailles",
+            "match": "Versailles",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V ER1 S EY1 L S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1245097939697930375"
                 }
             ]
         }

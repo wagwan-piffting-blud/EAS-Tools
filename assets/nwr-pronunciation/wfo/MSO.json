@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "MSO"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -33,5 +41,34 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "kalispell",
+            "match": "Kalispell",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE1 L AH S P EH1 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1098403352775241819"
+                }
+            ]
+        },
+        {
+            "id": "spokane",
+            "match": "Spokane",
+            "replace": {
+                "kind": "vtml",
+                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"S P OW\">Spo</vtml_phoneme>can"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_b5b57f596c67503c"
+                }
+            ]
+        }
+    ]
 }

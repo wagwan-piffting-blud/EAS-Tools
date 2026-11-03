@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "GRB"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -34,6 +42,34 @@
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "40s",
+            "match": "40s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AO1 R R D IY0 Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_cbf4a72fd8bd1925"
+                }
+            ]
+        },
+        {
+            "id": "fifteen",
+            "match": "Fifteen",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F IH1 F T IY1 N N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_cbf4a72fd8bd1925"
+                }
+            ]
+        },
         {
             "id": "fifties",
             "match": "Fifties",
@@ -63,6 +99,48 @@
             ]
         },
         {
+            "id": "kewaunee",
+            "match": "Kewaunee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K IY W AO N IY"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1419885845434863706"
+                }
+            ]
+        },
+        {
+            "id": "oneida",
+            "match": "Oneida",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 # N AY1 D AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1378162459386581062"
+                }
+            ]
+        },
+        {
+            "id": "outagamie",
+            "match": "Outagamie",
+            "replace": {
+                "kind": "vtml",
+                "markup": "Otta<vtml_phoneme alphabet=\"x-cmu\" ph=\"G EY1 M IY\">gamie</vtml_phoneme>"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_4ff98d5ec7e44478"
+                }
+            ]
+        },
+        {
             "id": "severe",
             "match": "Severe",
             "replace": {
@@ -73,6 +151,20 @@
                 {
                     "source": "tmyk",
                     "page": 3
+                }
+            ]
+        },
+        {
+            "id": "vilas",
+            "match": "Vilas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V AY1 L AH0 Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1378162620380610633"
                 }
             ]
         },

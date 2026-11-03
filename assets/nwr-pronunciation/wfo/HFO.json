@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "HFO"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -34,7 +42,246 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "haleakala",
+            "match": "Haleakala",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AE0 L EH1 AW0 K # AH2 L AA1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1321436145644605481"
+                }
+            ]
+        },
+        {
+            "id": "hana",
+            "match": "Hana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AA2 N AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158925260989665392"
+                }
+            ]
+        },
+        {
+            "id": "hawaii",
+            "match": "Hawaii",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AH0 W AY0 IY0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1041422693913866290"
+                }
+            ]
+        },
+        {
+            "id": "honolulu",
+            "match": "Honolulu",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH OW L N AA2 L # L UW2 L UW"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_8f5b0cc69ef47cc2"
+                }
+            ]
+        },
+        {
+            "id": "huelo",
+            "match": "Huelo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH UW # EH1 L OW2"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158924990859726930"
+                }
+            ]
+        },
+        {
+            "id": "kahoolawe",
+            "match": "Kahoolawe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA1 HH OW2 # OW1 L AA1 V EH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_8f5b0cc69ef47cc2"
+                }
+            ]
+        },
+        {
+            "id": "kalaheo",
+            "match": "Kalaheo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA0 L AA0 HH EH1 W"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1199739237365465168"
+                }
+            ]
+        },
+        {
+            "id": "kauai",
+            "match": "Kauai",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH2 W AY IY"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_ce85098fa8f8de67"
+                }
+            ]
+        },
+        {
+            "id": "keanae",
+            "match": "Keanae",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K EY2 # AH1 N AY"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158924917836894239"
+                }
+            ]
+        },
+        {
+            "id": "kilauea",
+            "match": "Kilauea",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K IY L AA2 UW1 AE0 AA"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1320931410881675384"
+                }
+            ]
+        },
+        {
+            "id": "koloa",
+            "match": "Koloa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K OW1 OW L AA0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1199739873813332048"
+                }
+            ]
+        },
+        {
+            "id": "kula",
+            "match": "Kula",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K UW L AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158924691633881139"
+                }
+            ]
+        },
+        {
+            "id": "makawao",
+            "match": "Makawao",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AA K AH W AA1 OW"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158924746935767220"
+                }
+            ]
+        },
+        {
+            "id": "maui",
+            "match": "Maui",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AA1 # W UH1 IY0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1321436145644605481"
+                }
+            ]
+        },
+        {
+            "id": "niihau",
+            "match": "Niihau",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N IY1 # IY1 # HH AA2 UW"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_8f5b0cc69ef47cc2"
+                }
+            ]
+        },
+        {
+            "id": "oahu",
+            "match": "Oahu",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 # AA HH UW"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_8f5b0cc69ef47cc2"
+                }
+            ]
+        },
+        {
+            "id": "pukalani",
+            "match": "Pukalani",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P UW K AH L AA2 N IY"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158924803105886268"
+                }
+            ]
+        }
+    ],
     "style": {
         "regionOfState": "No",
         "saysTimeZone": "No",

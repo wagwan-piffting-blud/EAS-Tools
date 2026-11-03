@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "SJU"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -35,16 +39,17 @@
     },
     "entries": [
         {
-            "id": "puerto-rico",
+            "id": "puerto-rico-2",
             "match": "Puerto Rico",
             "replace": {
-                "kind": "vtml",
-                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"P UW0 EH0 R T OW0\"></vtml_phoneme> <vtml_phoneme alphabet=\"x-cmu\" ph=\"R IH0 K OW0\"></vtml_phoneme>"
+                "kind": "phoneme",
+                "ph": "R IH1 K OW",
+                "on": "Rico"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 13
+                    "source": "community",
+                    "submission": "sub_90631edb47529398"
                 }
             ]
         }

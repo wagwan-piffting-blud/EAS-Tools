@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "TFX"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,16 +23,39 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 113,
+            "value": 112,
             "verified": false,
-            "notes": "Needs a speed test"
+            "notes": "Needs a speed test. Office speed sheet (green, 2026-11-01). Was 113 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "teton",
+            "match": "Teton",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T IY1 T AA N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_3ade6387348a6cc0"
+                }
+            ]
+        }
+    ]
 }

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "TAE"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,21 +38,57 @@
             "value": 121,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 931,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        }
     },
     "entries": [
         {
             "id": "lowndes",
             "match": "Lowndes",
             "replace": {
-                "kind": "respell",
-                "text": "Loundes"
+                "kind": "phoneme",
+                "ph": "L AW2 N D S"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_2a2a1e365f64a459"
+                }
+            ]
+        },
+        {
+            "id": "ochlockonee",
+            "match": "Ochlockonee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA1 K L AA0 K N IY0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_84a698d8a74ae10f"
+                }
+            ]
+        },
+        {
+            "id": "smooth",
+            "match": "Smooth",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S M UW1 OW1 TH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_84a698d8a74ae10f"
                 }
             ]
         }

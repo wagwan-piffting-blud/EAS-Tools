@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "MAF"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -34,7 +42,36 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "hazardous",
+            "match": "Hazardous",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AE1 Z R D AH S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "975979532580438036"
+                }
+            ]
+        },
+        {
+            "id": "mesonet",
+            "match": "Mesonet",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M EH1 Z OW N EH1 T"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_699bd8de26263c7d"
+                }
+            ]
+        }
+    ],
     "style": {
         "regionOfState": "Yes",
         "onePmReading": "1 PM",

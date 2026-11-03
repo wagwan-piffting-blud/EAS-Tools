@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "CTP"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,17 +23,54 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 111,
-            "verified": true
+            "value": 114,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 111 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "lancaster",
+            "match": "Lancaster",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AE1 NG K AH S T ER"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158482657827635260"
+                }
+            ]
+        },
+        {
+            "id": "schuylkill",
+            "match": "Schuylkill",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S K UW1 K IH2 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1183111739399737464"
+                }
+            ]
+        },
         {
             "id": "severe",
             "match": "Severe",
@@ -45,6 +82,20 @@
                 {
                     "source": "tmyk",
                     "page": 3
+                }
+            ]
+        },
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AO2 R N AE1 D IH0 K K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1166567270689026088"
                 }
             ]
         }

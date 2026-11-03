@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "MKX"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 2,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -64,16 +68,31 @@
             ]
         },
         {
-            "id": "mequon",
-            "match": "Mequon",
+            "id": "la-grange",
+            "match": "La Grange",
             "replace": {
-                "kind": "respell",
-                "text": "May Quan"
+                "kind": "phoneme",
+                "ph": "L AH1",
+                "on": "La"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_ab28fb5717f4319f"
+                }
+            ]
+        },
+        {
+            "id": "mequon",
+            "match": "Mequon",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M EH1 K W AO2 N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_ab28fb5717f4319f"
                 }
             ]
         },
@@ -95,13 +114,13 @@
             "id": "ozaukee",
             "match": "Ozaukee",
             "replace": {
-                "kind": "respell",
-                "text": "O zaw key"
+                "kind": "phoneme",
+                "ph": "OW1 # Z AA1 K IY"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 11
+                    "source": "community",
+                    "submission": "sub_ab28fb5717f4319f"
                 }
             ]
         },
@@ -140,12 +159,12 @@
             "match": "Waukesha",
             "replace": {
                 "kind": "phoneme",
-                "ph": "W AO1 K AH SH AO2"
+                "ph": "W AO1 K AH SH AO0"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 11
+                    "source": "community",
+                    "submission": "sub_ab28fb5717f4319f"
                 }
             ]
         },

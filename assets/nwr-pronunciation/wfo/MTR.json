@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "MTR"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,15 +23,152 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 108,
-            "verified": true
+            "value": 103,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01). Was 108 before."
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 207,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 962,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        }
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "bodega",
+            "match": "Bodega",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B OW D EH2 G AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1340918937700798476"
+                }
+            ]
+        },
+        {
+            "id": "contra-costa",
+            "match": "Contra Costa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AO2 S T AA",
+                "on": "Costa"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1063215722257453156"
+                }
+            ]
+        },
+        {
+            "id": "el-cerrito",
+            "match": "El Cerrito",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S EH R IY1 D OW",
+                "on": "Cerrito"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_b13d72fd33cc67eb"
+                }
+            ]
+        },
+        {
+            "id": "greater-farallones",
+            "match": "Greater Farallones",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F EH R AA L AA N Z",
+                "on": "Farallones"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1062950443635978311"
+                }
+            ]
+        },
+        {
+            "id": "livermore",
+            "match": "Livermore",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IH1 V ER M OW R"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1062877457281208330"
+                }
+            ]
+        },
+        {
+            "id": "monterey",
+            "match": "Monterey",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AA1 N T ER # R EY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "969746479549919232"
+                }
+            ]
+        },
+        {
+            "id": "noaa",
+            "match": "NOAA",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N OW1 # AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_b13d72fd33cc67eb"
+                }
+            ]
+        },
+        {
+            "id": "san-rafael",
+            "match": "San Rafael",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AE N R AH F EH2 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1063684036582711417"
+                }
+            ]
+        }
+    ]
 }

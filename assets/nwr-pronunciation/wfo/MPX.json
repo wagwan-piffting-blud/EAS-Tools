@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "MPX"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -34,6 +38,20 @@
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "anoka",
+            "match": "Anoka",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA N OW K AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1317917829244391456"
+                }
+            ]
+        },
         {
             "id": "chanhassen",
             "match": "Chanhassen",
@@ -59,6 +77,34 @@
                 {
                     "source": "tmyk",
                     "page": 12
+                }
+            ]
+        },
+        {
+            "id": "edina",
+            "match": "Edina",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH D AY1 N AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1317923527998963713"
+                }
+            ]
+        },
+        {
+            "id": "hennepin",
+            "match": "Hennepin",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH EH N EH P IH N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1430455524629020682"
                 }
             ]
         }

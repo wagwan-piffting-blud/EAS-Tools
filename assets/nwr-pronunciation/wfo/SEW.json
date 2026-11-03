@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "SEW"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -35,16 +43,45 @@
     },
     "entries": [
         {
-            "id": "mostly-sunny",
-            "match": "Mostly Sunny",
+            "id": "astoria",
+            "match": "Astoria",
             "replace": {
-                "kind": "vtml",
-                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"M OW0 S T L IY0\"></vtml_phoneme> <vtml_phoneme alphabet=\"x-cmu\" ph=\"S UH0 N IY0\"></vtml_phoneme>"
+                "kind": "phoneme",
+                "ph": "AE S T OW2 R IY AH"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 5
+                    "source": "nwr-discord",
+                    "message": "984537807106228284"
+                }
+            ]
+        },
+        {
+            "id": "mostly-sunny",
+            "match": "Mostly Sunny",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M OW0 S T L IY0",
+                "on": "Mostly"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_7f0ca9588c892ad0"
+                }
+            ]
+        },
+        {
+            "id": "sunny",
+            "match": "Sunny",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH N IY"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1016889797035438100"
                 }
             ]
         }

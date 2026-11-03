@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "EPZ"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -39,12 +43,12 @@
             "match": "Canutillo",
             "replace": {
                 "kind": "phoneme",
-                "ph": "K AE2 N EH1 T IY2 OW"
+                "ph": "K AE2 N AH T IY1 OW"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 6
+                    "source": "community",
+                    "submission": "sub_3085d504d9f76dcc"
                 }
             ]
         },
@@ -63,16 +67,31 @@
             ]
         },
         {
+            "id": "dona-ana",
+            "match": "Dona Ana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D OW2 N IY AH",
+                "on": "Dona"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_586ec82203665068"
+                }
+            ]
+        },
+        {
             "id": "union",
             "match": "Union",
             "replace": {
                 "kind": "phoneme",
-                "ph": "Y UW1 N IY1 OW2 N"
+                "ph": "Y UW1 N IY1 OW1 N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 7
+                    "source": "community",
+                    "submission": "sub_3085d504d9f76dcc"
                 }
             ]
         }

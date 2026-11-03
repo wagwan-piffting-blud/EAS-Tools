@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "APX"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -52,13 +60,27 @@
             "id": "charlevoix",
             "match": "Charlevoix",
             "replace": {
-                "kind": "respell",
-                "text": "Shar-lavoy"
+                "kind": "phoneme",
+                "ph": "SH AA R L AH V OY1"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 11
+                    "source": "community",
+                    "submission": "sub_71a7321f820c4bf5"
+                }
+            ]
+        },
+        {
+            "id": "cloverline",
+            "match": "Cloverline",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K L OW V ER L AY N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "923028520685432914"
                 }
             ]
         },
@@ -77,6 +99,21 @@
             ]
         },
         {
+            "id": "grand-marais",
+            "match": "Grand Marais",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH R EY1",
+                "on": "Marais"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "911395307479244831"
+                }
+            ]
+        },
+        {
             "id": "houghton-lake",
             "match": "Houghton Lake",
             "replace": {
@@ -87,6 +124,34 @@
                 {
                     "source": "tmyk",
                     "page": 11
+                }
+            ]
+        },
+        {
+            "id": "kalkaska",
+            "match": "Kalkaska",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE L K AE2 S K AA"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "911068630182154281"
+                }
+            ]
+        },
+        {
+            "id": "kinross",
+            "match": "Kinross",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K IH N R AO1 S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "908523562674032640"
                 }
             ]
         },

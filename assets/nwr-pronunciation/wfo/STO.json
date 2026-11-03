@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "STO"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -34,6 +38,63 @@
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "carquinez",
+            "match": "Carquinez",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA R K IY1 N EH Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1085481517456830464"
+                }
+            ]
+        },
+        {
+            "id": "eureka",
+            "match": "Eureka",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "Y UW1 # R IY1 K AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1148883394227359785"
+                }
+            ]
+        },
+        {
+            "id": "fog",
+            "match": "Fog",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AO G"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1047969006923022367"
+                }
+            ]
+        },
+        {
+            "id": "san-joaquin",
+            "match": "San Joaquin",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AA1 # K IY1 N",
+                "on": "Joaquin"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1056080693978988575"
+                }
+            ]
+        },
         {
             "id": "tehama",
             "match": "Tehama",

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "DTX"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -35,16 +43,30 @@
     },
     "entries": [
         {
-            "id": "lenawee",
-            "match": "Lenawee",
+            "id": "clio",
+            "match": "Clio",
             "replace": {
-                "kind": "respell",
-                "text": "Lenaway"
+                "kind": "phoneme",
+                "ph": "K L AY1 OW"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 11
+                    "source": "nwr-discord",
+                    "message": "914289643820830761"
+                }
+            ]
+        },
+        {
+            "id": "lenawee",
+            "match": "Lenawee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L EH1 N AH1 W EY1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_d0c31f5d1d62a92f"
                 }
             ]
         },
@@ -59,6 +81,20 @@
                 {
                     "source": "tmyk",
                     "page": 11
+                }
+            ]
+        },
+        {
+            "id": "shiawassee",
+            "match": "Shiawassee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH AY1 AH W AA1 S IY"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_65caa9b94a7101ee"
                 }
             ]
         }

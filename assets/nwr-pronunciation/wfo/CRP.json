@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "CRP"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -34,6 +42,20 @@
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "atascosa",
+            "match": "Atascosa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE1 T AE S K OW1 S AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_4ee2afcad9fd17d1"
+                }
+            ]
+        },
         {
             "id": "bexar",
             "match": "Bexar",
@@ -49,16 +71,30 @@
             ]
         },
         {
-            "id": "cotulla",
-            "match": "Cotulla",
+            "id": "copano",
+            "match": "Copano",
             "replace": {
-                "kind": "respell",
-                "text": "Cuhtuelluh"
+                "kind": "phoneme",
+                "ph": "K OW P AH N OW"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 5
+                    "source": "nwr-discord",
+                    "message": "981284889003433994"
+                }
+            ]
+        },
+        {
+            "id": "cotulla",
+            "match": "Cotulla",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH T UW1 L AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_707b3471a68d63b6"
                 }
             ]
         },
@@ -67,27 +103,41 @@
             "match": "Falfurrias",
             "replace": {
                 "kind": "phoneme",
-                "ph": "F AA L F IH1 R IY AH Z"
+                "ph": "F AA L F UH1 R IY AH2 S"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 6
+                    "source": "community",
+                    "submission": "sub_707b3471a68d63b6"
                 }
-            ],
-            "notes": "Spelled \"Falfarrias\" in the guide."
+            ]
+        },
+        {
+            "id": "frequent-lightning",
+            "match": "Frequent lightning",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F R IY2 K W EH1 N T",
+                "on": "Frequent"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1221200487089705072"
+                }
+            ]
         },
         {
             "id": "hebbronville",
             "match": "Hebbronville",
             "replace": {
                 "kind": "phoneme",
-                "ph": "HH EH1 B R IH0 N V IH0 L"
+                "ph": "HH EH1 B R UH N V IH0 L"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 5
+                    "source": "community",
+                    "submission": "sub_707b3471a68d63b6"
                 }
             ]
         },
@@ -96,12 +146,12 @@
             "match": "Kleberg",
             "replace": {
                 "kind": "phoneme",
-                "ph": "K L EY0 B ER1 G"
+                "ph": "K L EY0 B ER0 R G"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 6
+                    "source": "community",
+                    "submission": "sub_707b3471a68d63b6"
                 }
             ]
         },
@@ -148,6 +198,20 @@
             ]
         },
         {
+            "id": "palacios",
+            "match": "Palacios",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P UH L AA SH AH S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_707b3471a68d63b6"
+                }
+            ]
+        },
+        {
             "id": "realitos",
             "match": "Realitos",
             "replace": {
@@ -186,6 +250,21 @@
                 {
                     "source": "tmyk",
                     "page": 3
+                }
+            ]
+        },
+        {
+            "id": "severe-thunderstorm",
+            "match": "Severe Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER S T OW0 R M",
+                "on": "Thunderstorm"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_707b3471a68d63b6"
                 }
             ]
         }

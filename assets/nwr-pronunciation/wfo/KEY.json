@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "KEY"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
@@ -31,10 +39,34 @@
             "verified": false,
             "notes": "Needs a speed test"
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 932,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "dry-tortugas",
+            "match": "Dry Tortugas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AO1 R T UW1 G AH S",
+                "on": "Tortugas"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1015746428104089630"
+                }
+            ]
+        }
+    ],
     "style": {
         "marineThunderstormPhrase": null
     }

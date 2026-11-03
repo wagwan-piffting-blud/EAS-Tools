@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "AMA"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 5,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,15 +23,110 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 100,
-            "verified": true
+            "value": 107,
+            "verified": false,
+            "notes": "Office speed sheet (red): little or no proof."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "boise-city",
+            "match": "Boise City",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B OY1 S",
+                "on": "Boise"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1100563217408868373"
+                }
+            ]
+        },
+        {
+            "id": "cimarron",
+            "match": "Cimarron",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S IH0 M M AH0 R # AA2 N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_05bfe3c8d16b9f15"
+                }
+            ]
+        },
+        {
+            "id": "clarendon",
+            "match": "Clarendon",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K L EH1 R AH0 N # D AH1 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1113598660505255936"
+                }
+            ]
+        },
+        {
+            "id": "dalhart",
+            "match": "Dalhart",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D AE2 L # L HH AA1 R T"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_03d69b8ddf5d0dbc"
+                }
+            ]
+        },
+        {
+            "id": "dumas",
+            "match": "Dumas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D UW1 M IH0 S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1100564730847965344"
+                }
+            ]
+        },
+        {
+            "id": "ochiltree",
+            "match": "Ochiltree",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH0 K UH0 L T R IY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1071977781505818624"
+                }
+            ]
+        }
+    ]
 }

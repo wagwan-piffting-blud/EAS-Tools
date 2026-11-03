@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "LIX"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -45,6 +53,35 @@
                 {
                     "source": "tmyk",
                     "page": 7
+                }
+            ]
+        },
+        {
+            "id": "plaquemines",
+            "match": "Plaquemines",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P L AE1 K AH M AH N S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_265765e260f7f746"
+                }
+            ]
+        },
+        {
+            "id": "pointe-coupee",
+            "match": "Pointe Coupee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH P IY1",
+                "on": "Coupee"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "903367788977061929"
                 }
             ]
         },

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "RNK"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,15 +23,36 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 112,
-            "verified": true
+            "value": 111,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 112 before."
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 950,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
         {
@@ -77,16 +98,73 @@
             ]
         },
         {
+            "id": "buena-vista",
+            "match": "Buena Vista",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B Y UW1 N AH",
+                "on": "Buena"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1042044722329432154"
+                }
+            ]
+        },
+        {
+            "id": "callands",
+            "match": "Callands",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AO1 L AE2 N S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1174233368460800000"
+                }
+            ]
+        },
+        {
+            "id": "mayodan",
+            "match": "Mayodan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M EY1 AH D EH1 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1401828266377085029"
+                }
+            ]
+        },
+        {
             "id": "raleigh",
             "match": "Raleigh",
             "replace": {
                 "kind": "phoneme",
-                "ph": "R AA1 L IY1 HH"
+                "ph": "R AA1 L IY"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_3a38af0ceba959e5"
+                }
+            ]
+        },
+        {
+            "id": "roanoke",
+            "match": "Roanoke",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R OW2 AH1 N OW2 K"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_9fb60ee1575964de"
                 }
             ]
         },

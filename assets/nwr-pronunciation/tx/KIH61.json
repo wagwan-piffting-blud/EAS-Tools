@@ -1,0 +1,117 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/KIH61",
+    "scope": {
+        "type": "tx",
+        "id": "KIH61",
+        "wfo": "OAX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-02",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
+        }
+    ],
+    "prosody": {
+        "speed": null,
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "beatrice",
+            "match": "Beatrice",
+            "caseSensitive": false,
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B IY0 AE1 T R IH0 S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_1db98e4549effda6"
+                }
+            ]
+        },
+        {
+            "id": "pickrell",
+            "match": "Pickrell",
+            "caseSensitive": false,
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P IH0 K ER0 L"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_1db98e4549effda6"
+                }
+            ]
+        },
+        {
+            "id": "pottawattamie",
+            "match": "Pottawattamie",
+            "caseSensitive": false,
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AA1 T AX W AA T UW M IY"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_1db98e4549effda6"
+                }
+            ]
+        },
+        {
+            "id": "saline",
+            "match": "Saline",
+            "caseSensitive": false,
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH L IY N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_1db98e4549effda6"
+                }
+            ]
+        },
+        {
+            "id": "saunders",
+            "match": "Saunders",
+            "caseSensitive": false,
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AA1 N D ER0 Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_1db98e4549effda6"
+                }
+            ]
+        },
+        {
+            "id": "tekamah",
+            "match": "Tekamah",
+            "caseSensitive": false,
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AH K EY0 M AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_1db98e4549effda6"
+                }
+            ]
+        }
+    ]
+}

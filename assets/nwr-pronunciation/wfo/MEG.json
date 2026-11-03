@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "MEG"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,8 +38,16 @@
             "value": 115,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (red): little or no proof."
+        },
+        "periodPauseMs": {
+            "value": 925,
+            "verified": false,
+            "notes": "Office speed sheet (red): little or no proof."
+        }
     },
     "entries": [
         {
@@ -39,32 +55,12 @@
             "match": "Crittenden",
             "replace": {
                 "kind": "phoneme",
-                "ph": "K R IH1 T AH0 N D AE0 N"
+                "ph": "K R IH1 T AH0 N D EH2 N"
             },
-            "variants": [
-                {
-                    "id": "warning",
-                    "label": "Warning listing (close enough)",
-                    "context": "County listing in warnings",
-                    "replace": {
-                        "kind": "phoneme",
-                        "ph": "K R IH1 T IH2 N D EH2 N"
-                    }
-                },
-                {
-                    "id": "watch",
-                    "label": "Watch county listing",
-                    "context": "County listing in watches",
-                    "replace": {
-                        "kind": "phoneme",
-                        "ph": "K R IH2 T N D EH2 N"
-                    }
-                }
-            ],
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 7
+                    "source": "community",
+                    "submission": "sub_e2240032d9399cdb"
                 }
             ]
         },
@@ -83,6 +79,62 @@
             ]
         },
         {
+            "id": "hayti",
+            "match": "Hayti",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH EY1 T AY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1133996506676989992"
+                }
+            ]
+        },
+        {
+            "id": "lafayette",
+            "match": "Lafayette",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AH F EY1 EH T"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1487565296394043453"
+                }
+            ]
+        },
+        {
+            "id": "obion",
+            "match": "Obion",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW0 B AY1 AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1133998635131080747"
+                }
+            ]
+        },
+        {
+            "id": "osceola",
+            "match": "Osceola",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW2 S IY1 OW1 L AA1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1180271612197601340"
+                }
+            ]
+        },
+        {
             "id": "poinsett",
             "match": "Poinsett",
             "replace": {
@@ -93,6 +145,20 @@
                 {
                     "source": "tmyk",
                     "page": 7
+                }
+            ]
+        },
+        {
+            "id": "yalobusha",
+            "match": "Yalobusha",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "Y AE1 L OW B UH1 SH AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1487565342120345611"
                 }
             ]
         }

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "LBF"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,16 +23,72 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 107,
+            "value": 100,
             "verified": false,
-            "notes": "Needs a speed test"
+            "notes": "Needs a speed test. Office speed sheet (green, 2026-11-01). Was 107 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "deuel",
+            "match": "Deuel",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D UW1 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1118979276071501855"
+                }
+            ]
+        },
+        {
+            "id": "lake-mcconaughy",
+            "match": "Lake McConaughy",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH0 K AA1 N AH0 # HH EY1",
+                "on": "McConaughy"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_3bf72313f3bfc8dd"
+                }
+            ]
+        },
+        {
+            "id": "reservoir",
+            "match": "Reservoir",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R EH1 Z ER V OW R"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "991751453821649046"
+                }
+            ]
+        }
+    ]
 }

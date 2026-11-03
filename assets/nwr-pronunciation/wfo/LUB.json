@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "LUB"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,36 +38,44 @@
             "value": 105,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 222,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 990,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
         {
             "id": "a",
-            "match": "A",
+            "match": "a",
             "replace": {
-                "kind": "respell",
-                "text": "uh"
+                "kind": "phoneme",
+                "ph": "AH1"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 5
+                    "source": "community",
+                    "submission": "sub_16ae3d341a0e9fbc"
                 }
-            ],
-            "notes": "Applies to the article \"a\"."
+            ]
         },
         {
             "id": "miles-per-hour",
             "match": "miles per hour",
             "replace": {
-                "kind": "vtml",
-                "markup": "miles <vtml_phoneme alphabet=\"x-cmu\" ph=\"P ER0\"></vtml_phoneme>hour"
+                "kind": "phoneme",
+                "ph": "P ER0",
+                "on": "per"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 5
+                    "source": "community",
+                    "submission": "sub_16ae3d341a0e9fbc"
                 }
             ]
         },
@@ -88,6 +104,20 @@
                 {
                     "source": "tmyk",
                     "page": 5
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_4fcaedb3eddd1a26"
                 }
             ]
         }

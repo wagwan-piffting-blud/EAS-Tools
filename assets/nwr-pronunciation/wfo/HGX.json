@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "HGX"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -33,7 +37,50 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "palacios",
+            "match": "Palacios",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AA1 L AE SH AH S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "919699219332362270"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1381677082408648839"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorms",
+            "match": "Thunderstorms",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1381677082408648839"
+                }
+            ]
+        }
+    ],
     "style": {
         "severeWeatherMode": true,
         "regionOfState": "Yes",

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "OKX"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,18 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,8 +42,16 @@
             "value": 115,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 933,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
         {
@@ -39,12 +59,26 @@
             "match": "Brookhaven",
             "replace": {
                 "kind": "phoneme",
-                "ph": "B R UH1 K EY1 V AH0 N"
+                "ph": "B R UH1 K EY1 V IH N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_74b96538fceb1249"
+                }
+            ]
+        },
+        {
+            "id": "connecticut",
+            "match": "Connecticut",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH N EH1 T AH K AH T"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "907826600018608160"
                 }
             ]
         },
@@ -53,12 +87,12 @@
             "match": "Hunterdon",
             "replace": {
                 "kind": "phoneme",
-                "ph": "HH AH1 N T ER0 D IH0 N"
+                "ph": "HH AH N T ER1 D AH0 N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_74b96538fceb1249"
                 }
             ]
         },
@@ -73,6 +107,34 @@
                 {
                     "source": "tmyk",
                     "page": 4
+                }
+            ]
+        },
+        {
+            "id": "lehigh",
+            "match": "Lehigh",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IY1 HH AY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1150791567427252244"
+                }
+            ]
+        },
+        {
+            "id": "noaas",
+            "match": "NOAA's",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N OW1 AH2 S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_c09fe0be0d12eba9"
                 }
             ]
         }

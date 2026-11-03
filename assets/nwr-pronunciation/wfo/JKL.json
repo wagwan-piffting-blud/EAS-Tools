@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "JKL"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 5,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -35,16 +43,59 @@
     },
     "entries": [
         {
+            "id": "buchanan",
+            "match": "Buchanan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B AH0 K AE1 N AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1443124755711393893"
+                }
+            ]
+        },
+        {
+            "id": "estill",
+            "match": "Estill",
+            "caseSensitive": true,
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH1 S T AH L"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_33cc1ba05b423ce1"
+                }
+            ]
+        },
+        {
             "id": "louisville",
             "match": "Louisville",
             "replace": {
                 "kind": "phoneme",
-                "ph": "L UW1 AH V UW0 L"
+                "ph": "L UW1 IH V AH L"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_0e62414a113bf5a2"
+                }
+            ]
+        },
+        {
+            "id": "metcalfe",
+            "match": "Metcalfe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M EH1 T K AE2 F"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1419801140966457494"
                 }
             ]
         },
@@ -52,23 +103,27 @@
             "id": "national",
             "match": "National",
             "replace": {
-                "kind": "respell",
-                "text": "nash uhnal"
+                "kind": "phoneme",
+                "ph": "N AE1 SH"
             },
-            "variants": [
-                {
-                    "id": "phoneme",
-                    "label": "Phoneme lead-in",
-                    "replace": {
-                        "kind": "vtml",
-                        "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"N AE1 SH\"></vtml_phoneme>uhnal"
-                    }
-                }
-            ],
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 4
+                    "source": "community",
+                    "submission": "sub_0e62414a113bf5a2"
+                }
+            ]
+        },
+        {
+            "id": "rowan",
+            "match": "Rowan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AW1 AH N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1419801746250666077"
                 }
             ]
         }

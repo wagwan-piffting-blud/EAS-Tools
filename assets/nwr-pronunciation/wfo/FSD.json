@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "FSD"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,18 +23,54 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 115,
+            "value": 110,
             "verified": false,
-            "notes": "Needs a speed test"
+            "notes": "Office speed sheet (red): little or no proof."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "20s",
+            "match": "20s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T W EH N T IY Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1065787800324149349"
+                }
+            ]
+        },
+        {
+            "id": "buena-vista",
+            "match": "Buena Vista",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B Y UW N AH V EH2 S T AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1201936505296408586"
+                }
+            ]
+        },
         {
             "id": "per-hour",
             "match": "per hour",

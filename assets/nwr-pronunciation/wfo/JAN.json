@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "JAN"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,13 +23,17 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 114,
-            "verified": false,
-            "notes": "Needs a speed test"
+            "value": 115,
+            "verified": true,
+            "notes": "Needs a speed test. Office speed sheet (blue, 2026-11-01). Was 114 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null

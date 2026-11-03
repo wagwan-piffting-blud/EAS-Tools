@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "GUM"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
@@ -30,8 +34,16 @@
             "value": 100,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 933,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": []
 }

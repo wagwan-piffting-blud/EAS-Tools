@@ -1,0 +1,42 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/KIH29",
+    "scope": {
+        "type": "tx",
+        "id": "KIH29",
+        "wfo": "DTX"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-02",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
+        }
+    ],
+    "prosody": {
+        "speed": null,
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "shiawassee",
+            "match": "Shiawassee",
+            "caseSensitive": false,
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH AY0 AH0 # W AA1 # S IY0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_8068f9ee8657e675"
+                }
+            ]
+        }
+    ]
+}

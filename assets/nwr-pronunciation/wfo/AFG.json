@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "AFG"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,15 +23,53 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 109,
-            "verified": true
+            "value": 107,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 109 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "nenana",
+            "match": "Nenana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N IY1 N AE1 N AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1106733440667234315"
+                }
+            ]
+        },
+        {
+            "id": "tanana",
+            "match": "Tanana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AE1 N AH N AO1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1106734360809443421"
+                }
+            ]
+        }
+    ]
 }

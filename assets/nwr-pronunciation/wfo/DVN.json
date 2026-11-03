@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "DVN"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 2,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -55,6 +59,20 @@
                 {
                     "source": "tmyk",
                     "page": 3
+                }
+            ]
+        },
+        {
+            "id": "louisa",
+            "match": "Louisa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L UW0 W AY1 Z AH0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_381f9a12e5957d79"
                 }
             ]
         },

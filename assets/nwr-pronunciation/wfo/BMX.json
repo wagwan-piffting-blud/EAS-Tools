@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "BMX"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,28 +23,77 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 100,
-            "verified": true
+            "value": 107,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 100 before."
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 930,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
+        {
+            "id": "calera",
+            "match": "Calera",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH L IH1 R AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "953877691852013639"
+                }
+            ]
+        },
         {
             "id": "columbiana",
             "match": "Columbiana",
             "replace": {
                 "kind": "phoneme",
-                "ph": "K AH1 L AH0 M B IY1 AE1 N AH"
+                "ph": "K AH0 L AH2 M B IY2 AE1 N AH0"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_0e79e520cdc8bd93"
+                }
+            ]
+        },
+        {
+            "id": "etowah",
+            "match": "Etowah",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH2 T T AA0 W AH0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_0e79e520cdc8bd93"
                 }
             ]
         },
@@ -59,6 +108,34 @@
                 {
                     "source": "tmyk",
                     "page": 9
+                }
+            ]
+        },
+        {
+            "id": "mobile",
+            "match": "Mobile",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M OW1 B IY0 AH0 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "940385082915565610"
+                }
+            ]
+        },
+        {
+            "id": "sylacauga",
+            "match": "Sylacauga",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S IH1 L AH0 K AA1 G AH1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_b39ee31545a7b543"
                 }
             ]
         }

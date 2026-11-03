@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "BGM"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -33,5 +37,76 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "allegany",
+            "match": "Allegany",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE L AH G EY1 N IY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1488247656068284738"
+                }
+            ]
+        },
+        {
+            "id": "genesee",
+            "match": "Genesee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "JH EH N AH S IY2"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1488247989259600154"
+                }
+            ]
+        },
+        {
+            "id": "oswego",
+            "match": "Oswego",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH1 S W IY1 G OW"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1488248075444027616"
+                }
+            ]
+        },
+        {
+            "id": "schuylkill",
+            "match": "Schuylkill",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S K UW1 K AH L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1480036174390104177"
+                }
+            ]
+        },
+        {
+            "id": "steuben",
+            "match": "Steuben",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S T UW B EH1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1480036404078841928"
+                }
+            ]
+        }
+    ]
 }

@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "BIS"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 3,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,15 +23,79 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 116,
-            "verified": true
+            "value": 114,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 116 before."
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 190,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 830,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "minot",
+            "match": "Minot",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AY1 N AA0 T"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_d714f9205fcb11dc"
+                }
+            ]
+        },
+        {
+            "id": "oahe",
+            "match": "Oahe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW0 W AH2 AH2 AH0 HH IY0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1273800695765794949"
+                }
+            ]
+        },
+        {
+            "id": "richardton",
+            "match": "Richardton",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R IH1 CH ER0 D T IH0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1268309775486025902"
+                }
+            ]
+        }
+    ]
 }

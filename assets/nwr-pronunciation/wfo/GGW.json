@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "GGW"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,17 +23,41 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 104,
-            "verified": true
+            "value": 100,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 104 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "saskatchewan",
+            "match": "Saskatchewan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH S K AE1 T CH AH W IH N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_14293a0e73729602"
+                }
+            ]
+        }
+    ],
     "style": {
         "regionOfState": "Yes",
         "saysTimeZone": "Yes",

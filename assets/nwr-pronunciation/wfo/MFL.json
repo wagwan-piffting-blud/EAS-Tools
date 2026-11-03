@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "MFL"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,12 +23,34 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
-        "speed": null,
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "speed": {
+            "value": 115,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01).",
+            "variants": [
+                {
+                    "value": 109,
+                    "label": "Station ID ONLY for ALL MFL Stations"
+                }
+            ]
+        },
+        "commaPauseMs": {
+            "value": 225,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 940,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [],
     "style": {

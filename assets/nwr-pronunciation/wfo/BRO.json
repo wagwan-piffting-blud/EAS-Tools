@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "BRO"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,13 +23,25 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 100,
-            "verified": true,
-            "notes": "Present",
+            "value": 107,
+            "verified": false,
+            "notes": "Present. Office speed sheet (green, 2026-11-01). Was 100 before.",
             "variants": [
                 {
                     "value": 90,
@@ -37,8 +49,16 @@
                 }
             ]
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (red): little or no proof."
+        },
+        "periodPauseMs": {
+            "value": 925,
+            "verified": false,
+            "notes": "Office speed sheet (red): little or no proof."
+        }
     },
     "entries": [
         {
@@ -98,12 +118,12 @@
             "match": "Watch",
             "replace": {
                 "kind": "phoneme",
-                "ph": "W AH0 CH"
+                "ph": "W AH1 T T CH"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 5
+                    "source": "community",
+                    "submission": "sub_c04dd5561b094c2f"
                 }
             ]
         },
@@ -122,16 +142,30 @@
             ]
         },
         {
+            "id": "winds",
+            "match": "Winds",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH N D Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1014677685882069102"
+                }
+            ]
+        },
+        {
             "id": "zapata",
             "match": "Zapata",
             "replace": {
                 "kind": "phoneme",
-                "ph": "Z AA0 P AA0 T AA0"
+                "ph": "Z AA P AA T T AA2"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 6
+                    "source": "community",
+                    "submission": "sub_c04dd5561b094c2f"
                 }
             ]
         }

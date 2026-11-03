@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "MLB"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,18 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,10 +42,32 @@
             "value": 107,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 230,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 960,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
+        {
+            "id": "apopka",
+            "match": "Apopka",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH P OW P K AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_75aa3243a42ccc7f"
+                }
+            ]
+        },
         {
             "id": "beach",
             "match": "Beach",
@@ -53,12 +87,40 @@
             "match": "Brevard",
             "replace": {
                 "kind": "phoneme",
-                "ph": "B R EH V AA R D"
+                "ph": "B R AH V AA R D"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_82c8b4f578dba4ea"
+                }
+            ]
+        },
+        {
+            "id": "cloudiness",
+            "match": "Cloudiness",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K L AW1 D IY0 N EH2 S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1020724087892475986"
+                }
+            ]
+        },
+        {
+            "id": "columbia",
+            "match": "Columbia",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH1 L AH1 M B IY AH1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_75aa3243a42ccc7f"
                 }
             ]
         },
@@ -81,12 +143,42 @@
             "match": "Inlet",
             "replace": {
                 "kind": "phoneme",
-                "ph": "IH0 N L EH2 T"
+                "ph": "IH N L EH T"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 3
+                    "source": "community",
+                    "submission": "sub_82c8b4f578dba4ea"
+                }
+            ]
+        },
+        {
+            "id": "intra-coastal",
+            "match": "Intra Coastal",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH0 N T R AH",
+                "on": "Intra"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_75aa3243a42ccc7f"
+                }
+            ]
+        },
+        {
+            "id": "lake-delancy",
+            "match": "Lake Delancy",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D AH1 L AE N S IY",
+                "on": "Delancy"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1001690301045424198"
                 }
             ]
         },
@@ -94,13 +186,125 @@
             "id": "melbourne",
             "match": "Melbourne",
             "replace": {
-                "kind": "respell",
-                "text": "Melburne"
+                "kind": "phoneme",
+                "ph": "M EH1 L B ER N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_82c8b4f578dba4ea"
+                }
+            ]
+        },
+        {
+            "id": "okeechobee",
+            "match": "Okeechobee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW K AH CH OW B IY2"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1211077239228071996"
+                }
+            ]
+        },
+        {
+            "id": "osceola",
+            "match": "Osceola",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AO S IY OW1 L AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_82c8b4f578dba4ea"
+                }
+            ]
+        },
+        {
+            "id": "oviedo",
+            "match": "Oviedo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 V IY1 D OW"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1244677080164204614"
+                }
+            ]
+        },
+        {
+            "id": "pinellas",
+            "match": "Pinellas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P IH N IH1 L AH S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1418226246424461463"
+                }
+            ]
+        },
+        {
+            "id": "storm",
+            "match": "Storm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S T AO1 R M"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_75aa3243a42ccc7f"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1006769361480060958"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorms",
+            "match": "Thunderstorms",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER # S T AO2 R M S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1011072648282898492"
+                }
+            ]
+        },
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T OW1 ER N AE1 D IH K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "958836204323872808"
                 }
             ]
         },
@@ -108,13 +312,27 @@
             "id": "volusia",
             "match": "Volusia",
             "replace": {
-                "kind": "respell",
-                "text": "Voloosha"
+                "kind": "phoneme",
+                "ph": "V AH1 L UW SH AH"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_82c8b4f578dba4ea"
+                }
+            ]
+        },
+        {
+            "id": "wekiva",
+            "match": "Wekiva",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AH2 K AY V AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1265023369665843284"
                 }
             ]
         },
@@ -123,12 +341,12 @@
             "match": "Winds",
             "replace": {
                 "kind": "phoneme",
-                "ph": "W IH1 N D S"
+                "ph": "W IH2 N D S"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 3
+                    "source": "community",
+                    "submission": "sub_82c8b4f578dba4ea"
                 }
             ]
         }

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "LMK"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -46,6 +50,20 @@
                 {
                     "source": "tmyk",
                     "page": 10
+                }
+            ]
+        },
+        {
+            "id": "rowan",
+            "match": "Rowan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AW1 AH N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1419803374911750226"
                 }
             ]
         }

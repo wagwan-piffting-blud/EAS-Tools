@@ -1,0 +1,34 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/KIH43",
+    "scope": {
+        "type": "tx",
+        "id": "KIH43",
+        "wfo": "LMK"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 107,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": []
+}

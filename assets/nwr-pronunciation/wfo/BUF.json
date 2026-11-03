@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "BUF"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,15 +23,32 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 114,
-            "verified": true
+            "value": 115,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 114 before."
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 195,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 940,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
         {
@@ -45,6 +62,20 @@
                 {
                     "source": "tmyk",
                     "page": 10
+                }
+            ]
+        },
+        {
+            "id": "cattaraugus",
+            "match": "Cattaraugus",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE1 T UH R AO G AH S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_57ef5dcf2e6ce026"
                 }
             ]
         },

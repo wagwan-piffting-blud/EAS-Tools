@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "BOU"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -63,6 +71,62 @@
             ]
         },
         {
+            "id": "anton",
+            "match": "Anton",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE1 N T AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1190579608773459968"
+                }
+            ]
+        },
+        {
+            "id": "boyero",
+            "match": "Boyero",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B OY0 EH1 ER0 OW0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1140810854510637137"
+                }
+            ]
+        },
+        {
+            "id": "estes",
+            "match": "Estes",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH0 S T EH0 S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1140361289911238817"
+                }
+            ]
+        },
+        {
+            "id": "julesburg",
+            "match": "Julesburg",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "JH UW1 L Z B ER2 G"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1190570258294116373"
+                }
+            ]
+        },
+        {
             "id": "keenesburg",
             "match": "Keenesburg",
             "replace": {
@@ -87,16 +151,30 @@
             ]
         },
         {
-            "id": "limon",
-            "match": "Limon",
+            "id": "kiowa",
+            "match": "Kiowa",
             "replace": {
-                "kind": "respell",
-                "text": "Lymon"
+                "kind": "phoneme",
+                "ph": "K AY1 OW0 W AH0"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_23b4d4facea474e6"
+                }
+            ]
+        },
+        {
+            "id": "limon",
+            "match": "Limon",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AY0 M AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_d1b7e06777947eec"
                 }
             ]
         },
@@ -111,6 +189,34 @@
                 {
                     "source": "tmyk",
                     "page": 12
+                }
+            ]
+        },
+        {
+            "id": "pueblo",
+            "match": "Pueblo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P UW0 EH0 B L OW0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1140361462192279703"
+                }
+            ]
+        },
+        {
+            "id": "reservoir",
+            "match": "Reservoir",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R EH1 Z ER2 V AO2 R"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1190570103591419976"
                 }
             ]
         },
@@ -139,6 +245,20 @@
                 {
                     "source": "tmyk",
                     "page": 12
+                }
+            ]
+        },
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T OW1 ER0 N AE0 D IH0 K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1269506071236710462"
                 }
             ]
         }

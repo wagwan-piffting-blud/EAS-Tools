@@ -6,7 +6,7 @@
         "id": "KHB34",
         "wfo": "MFL"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -24,12 +24,17 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 117,
-            "verified": true
+            "value": 121,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 117 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null

@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "PSR"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -39,13 +47,13 @@
             "id": "gila",
             "match": "Gila",
             "replace": {
-                "kind": "respell",
-                "text": "He-Luh"
+                "kind": "phoneme",
+                "ph": "HH IY1 L L AH0"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_0caf22f62cefcaf1"
                 }
             ]
         },
@@ -53,13 +61,41 @@
             "id": "pinal",
             "match": "Pinal",
             "replace": {
-                "kind": "respell",
-                "text": "Pin all"
+                "kind": "phoneme",
+                "ph": "P AE2 N AE1 L"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_0caf22f62cefcaf1"
+                }
+            ]
+        },
+        {
+            "id": "show-low",
+            "match": "Show Low",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH OW L OW"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1371233631502209035"
+                }
+            ]
+        },
+        {
+            "id": "yavapai",
+            "match": "Yavapai",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "Y AE1 V AH1 P AY1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_ea2beaaed5968e43"
                 }
             ]
         }

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "GRR"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -63,6 +71,20 @@
             ]
         },
         {
+            "id": "oceana",
+            "match": "Oceana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW SH IY1 AE1 N AH1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "925510036124495902"
+                }
+            ]
+        },
+        {
             "id": "saugatuck",
             "match": "Saugatuck",
             "replace": {
@@ -73,6 +95,34 @@
                 {
                     "source": "tmyk",
                     "page": 11
+                }
+            ]
+        },
+        {
+            "id": "twenties-2",
+            "match": "Twenties",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T W UH2 N T T IY0 Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_e88786cf1c00363e"
+                }
+            ]
+        },
+        {
+            "id": "walhalla",
+            "match": "Walhalla",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AO0 L HH AO1 L AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1566296160543580191"
                 }
             ]
         }

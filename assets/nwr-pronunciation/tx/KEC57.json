@@ -1,0 +1,42 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/KEC57",
+    "scope": {
+        "type": "tx",
+        "id": "KEC57",
+        "wfo": "STO"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 932,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        }
+    },
+    "entries": []
+}

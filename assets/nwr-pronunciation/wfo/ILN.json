@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "ILN"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -38,13 +42,13 @@
             "id": "lima",
             "match": "Lima",
             "replace": {
-                "kind": "vtml",
-                "markup": "Lie <vtml_phoneme alphabet=\"x-cmu\" ph=\"M AH\"></vtml_phoneme>"
+                "kind": "phoneme",
+                "ph": "M AH"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_4f220be9ce23c601"
                 }
             ]
         },
@@ -59,6 +63,20 @@
                 {
                     "source": "tmyk",
                     "page": 10
+                }
+            ]
+        },
+        {
+            "id": "wapakoneta",
+            "match": "Wapakoneta",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AA1 P AW1 K AH N EH2 T AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_6adb37b0c79c6a88"
                 }
             ]
         }

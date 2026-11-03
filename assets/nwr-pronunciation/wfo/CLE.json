@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "CLE"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -34,6 +42,77 @@
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "40s",
+            "match": "40s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AO1 R R T IY0 Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "925827832003837972"
+                }
+            ]
+        },
+        {
+            "id": "columbiana",
+            "match": "Columbiana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AH L AH1 M B IY AE1 N AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1527979416884609114"
+                }
+            ]
+        },
+        {
+            "id": "coshocton",
+            "match": "Coshocton",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K OW SH AW2 K T AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "987573534240948224"
+                }
+            ]
+        },
+        {
+            "id": "craft",
+            "match": "Craft",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K R AE1 F T T"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_0321903969449fdf"
+                }
+            ]
+        },
+        {
+            "id": "double-u",
+            "match": "Double U",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D AH1 B AH0 L",
+                "on": "Double"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_0321903969449fdf"
+                }
+            ]
+        },
         {
             "id": "geauga",
             "match": "Geauga",
@@ -63,6 +142,34 @@
             ]
         },
         {
+            "id": "impact",
+            "match": "Impact",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IH0 M P AE1 K T"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_0321903969449fdf"
+                }
+            ]
+        },
+        {
+            "id": "inland",
+            "match": "Inland",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AE2 N D"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_0321903969449fdf"
+                }
+            ]
+        },
+        {
             "id": "medina",
             "match": "Medina",
             "replace": {
@@ -83,6 +190,48 @@
                 {
                     "source": "tmyk",
                     "page": 6
+                }
+            ]
+        },
+        {
+            "id": "thunderstorms",
+            "match": "Thunderstorms",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_0321903969449fdf"
+                }
+            ]
+        },
+        {
+            "id": "tuscarawas",
+            "match": "Tuscarawas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AH1 S K AH W AA1 R EH0 Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "985731661662654515"
+                }
+            ]
+        },
+        {
+            "id": "venango",
+            "match": "Venango",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V EH0 N AE2 N G AO2"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_0321903969449fdf"
                 }
             ]
         },

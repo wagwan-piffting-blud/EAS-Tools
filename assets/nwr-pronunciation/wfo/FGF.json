@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "FGF"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -33,7 +37,65 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "baudette",
+            "match": "Baudette",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B AH1 # D EH1 T"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1317933638318297150"
+                }
+            ]
+        },
+        {
+            "id": "grand",
+            "match": "Grand",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "G R AE2 N D"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1268373555821809684"
+                }
+            ]
+        },
+        {
+            "id": "kenora",
+            "match": "Kenora",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE1 # N AO1 R AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1317936951759999147"
+                }
+            ]
+        },
+        {
+            "id": "sioux-lookout",
+            "match": "Sioux Lookout",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IH1 K OW T",
+                "on": "Lookout"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1317937665609302097"
+                }
+            ]
+        }
+    ],
     "style": {
         "regionOfState": "Yes",
         "onePmReading": "1 PM",

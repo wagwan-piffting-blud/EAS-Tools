@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "OAX"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -31,6 +39,35 @@
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "atchison",
+            "match": "Atchison",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE1 CH AH S AH N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1511272835472162846"
+                }
+            ]
+        },
+        {
+            "id": "miles-an-hour",
+            "match": "miles an hour",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH N AW1 ER",
+                "on": "an hour"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_b7009bbe490cbd69"
+                }
+            ]
+        },
         {
             "id": "miles-per-hour",
             "match": "miles per hour",
@@ -48,6 +85,76 @@
             "notes": "The guide says \"Try\" this."
         },
         {
+            "id": "montgomery",
+            "match": "Montgomery",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AA N T G AH1 M ER IY"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_b7009bbe490cbd69"
+                }
+            ]
+        },
+        {
+            "id": "nemaha",
+            "match": "Nemaha",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N IY1 M AH2 HH AA1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1530713845507817612"
+                }
+            ]
+        },
+        {
+            "id": "norfolk",
+            "match": "Norfolk",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N AO2 R F AO2 R K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1034972824869277726"
+                }
+            ]
+        },
+        {
+            "id": "onawa",
+            "match": "Onawa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA1 N AH0 W AA1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1566388116993081405"
+                }
+            ]
+        },
+        {
+            "id": "particulates",
+            "match": "Particulates",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AA2 R T IY2 K K UH0 L AH0 T S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1557764943757975573"
+                }
+            ]
+        },
+        {
             "id": "saline",
             "match": "Saline",
             "replace": {
@@ -58,6 +165,34 @@
                 {
                     "source": "tmyk",
                     "page": 12
+                }
+            ]
+        },
+        {
+            "id": "saunders",
+            "match": "Saunders",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AA1 N D ER0 Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1160714791082524722"
+                }
+            ]
+        },
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T OW0 R N AE1 D IH0 K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1406141765588750346"
                 }
             ]
         }

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "GYX"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -33,5 +37,20 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "20s",
+            "match": "20s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T W EH1 N # T IY1 Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1075216976089190551"
+                }
+            ]
+        }
+    ]
 }

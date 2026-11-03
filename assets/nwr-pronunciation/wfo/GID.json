@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "GID"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -33,7 +37,50 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "hail",
+            "match": "Hail",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH EY0 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1066934278753099816"
+                }
+            ]
+        },
+        {
+            "id": "holdrege",
+            "match": "Holdrege",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH OW1 L D R IH0 JH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158130500926443611"
+                }
+            ]
+        },
+        {
+            "id": "kearney",
+            "match": "Kearney",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA1 R N IY0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1158131086308671510"
+                }
+            ]
+        }
+    ],
     "style": {
         "preamble": "(Event) Warning Information",
         "regionOfState": "No",

@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "OTX"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,18 +23,68 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 104,
+            "value": 115,
             "verified": false,
-            "notes": "Needs a speed test"
+            "notes": "Needs a speed test. Office speed sheet (green, 2026-11-01). Was 104 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "asotin",
+            "match": "Asotin",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH S OW1 T IH N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1509876197905928342"
+                }
+            ]
+        },
+        {
+            "id": "chelan",
+            "match": "Chelan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH AH L AE N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1509876017446260867"
+                }
+            ]
+        },
+        {
+            "id": "kootenai",
+            "match": "Kootenai",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K UW1 T N IY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1509876704225525770"
+                }
+            ]
+        },
         {
             "id": "spokane",
             "match": "Spokane",

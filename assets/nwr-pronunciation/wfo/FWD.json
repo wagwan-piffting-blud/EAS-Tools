@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "FWD"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -39,12 +47,12 @@
             "match": "Bosque",
             "replace": {
                 "kind": "phoneme",
-                "ph": "B AO1 S K EY"
+                "ph": "B AA1 S K IY"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 7
+                    "source": "community",
+                    "submission": "sub_77e76c112f88285c"
                 }
             ]
         },
@@ -63,6 +71,21 @@
             ]
         },
         {
+            "id": "fort-worth",
+            "match": "Fort Worth",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W ER1 TH",
+                "on": "Worth"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_77e76c112f88285c"
+                }
+            ]
+        },
+        {
             "id": "milam",
             "match": "Milam",
             "replace": {
@@ -73,6 +96,48 @@
                 {
                     "source": "tmyk",
                     "page": 7
+                }
+            ]
+        },
+        {
+            "id": "montague",
+            "match": "Montague",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH2 N T EY1 G"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1296684787360071750"
+                }
+            ]
+        },
+        {
+            "id": "muenster",
+            "match": "Muenster",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH1 N S T ER0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1086895729118806066"
+                }
+            ]
+        },
+        {
+            "id": "palestine",
+            "match": "Palestine",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AE1 L AH0 S T IY1 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1188675589201211552"
                 }
             ]
         },
@@ -113,8 +178,22 @@
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 7
+                    "source": "community",
+                    "submission": "sub_77e76c112f88285c"
+                }
+            ]
+        },
+        {
+            "id": "waxahachie",
+            "match": "Waxahachie",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AO1 HH K S AH HH AE1 CH IY"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_5aaa9c3c060b224d"
                 }
             ]
         }

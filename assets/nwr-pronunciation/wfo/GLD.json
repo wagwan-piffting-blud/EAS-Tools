@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "GLD"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -33,5 +37,34 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "norcatur",
+            "match": "Norcatur",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N AO1 R K EY1 T # ER1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1178047631969226772"
+                }
+            ]
+        },
+        {
+            "id": "severe",
+            "match": "Severe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 V IY1 R"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "983920210123833375"
+                }
+            ]
+        }
+    ]
 }

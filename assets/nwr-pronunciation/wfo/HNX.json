@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "HNX"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
@@ -30,10 +38,75 @@
             "value": 100,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 930,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "fog",
+            "match": "Fog",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AO1 G"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1097634274880004156"
+                }
+            ]
+        },
+        {
+            "id": "madera",
+            "match": "Madera",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH D EH1 R AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "901959208189190195"
+                }
+            ]
+        },
+        {
+            "id": "tehachapi",
+            "match": "Tehachapi",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AH0 HH AE1 CH AH0 P IY0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1252454504184418444"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "909094106666504312"
+                }
+            ]
+        }
+    ],
     "style": {
         "saysOfficeState": {
             "value": true,

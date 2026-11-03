@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "ARX"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,12 +23,21 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 119,
-            "verified": true
+            "value": 114,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 119 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
@@ -48,6 +57,20 @@
                 }
             ],
             "notes": "Tornadic variant 4."
+        },
+        {
+            "id": "wabasha",
+            "match": "Wabasha",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AA1 B AH0 SH AH2"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_c680935ba95ccb83"
+                }
+            ]
         }
     ]
 }

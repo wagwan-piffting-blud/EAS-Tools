@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "RIW"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,12 +23,17 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 111,
-            "verified": true
+            "value": 115,
+            "verified": false,
+            "notes": "Office speed sheet (red): little or no proof."
         },
         "commaPauseMs": null,
         "periodPauseMs": null

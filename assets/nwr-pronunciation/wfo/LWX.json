@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "LWX"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -46,16 +54,72 @@
             ]
         },
         {
+            "id": "objects",
+            "match": "Objects",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA AH0 B JH EH0 K T S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1561465052735873025"
+                }
+            ]
+        },
+        {
             "id": "projectiles",
             "match": "Projectiles",
             "replace": {
                 "kind": "phoneme",
-                "ph": "P R UH0 JH EH0 K T AY2 L Z"
+                "ph": "P R UH JH EH T AY0 L S"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 4
+                    "source": "community",
+                    "submission": "sub_9fbb5b6b97062efa"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1561465052735873025"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorms",
+            "match": "Thunderstorms",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1561465052735873025"
+                }
+            ]
+        },
+        {
+            "id": "wind",
+            "match": "Wind",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W IH N D"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1561465052735873025"
                 }
             ]
         }

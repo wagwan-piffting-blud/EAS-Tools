@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "MOB"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -39,12 +47,12 @@
             "match": "Conecuh",
             "replace": {
                 "kind": "phoneme",
-                "ph": "K AH N EH1 K AH1"
+                "ph": "K AH1 N EH1 K AH1"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_0c03ee54b1cebf04"
                 }
             ]
         },
@@ -94,16 +102,16 @@
             "notes": "Spelled \"Oklaloosa\" in the guide."
         },
         {
-            "id": "pascagoula",
+            "id": "pascagoula-3",
             "match": "Pascagoula",
             "replace": {
                 "kind": "phoneme",
-                "ph": "P AE S K AH1 G UW L AH1"
+                "ph": "P AE S K AH2 G UH1 L AH1"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_0c03ee54b1cebf04"
                 }
             ]
         }

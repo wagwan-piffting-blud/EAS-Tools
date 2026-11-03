@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "JAX"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -56,6 +64,20 @@
             "notes": "Applies to the article \"a\"."
         },
         {
+            "id": "airport",
+            "match": "Airport",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH1 R P OW R T"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1008875128366583898"
+                }
+            ]
+        },
+        {
             "id": "duval",
             "match": "Duval",
             "replace": {
@@ -66,6 +88,34 @@
                 {
                     "source": "tmyk",
                     "page": 9
+                }
+            ]
+        },
+        {
+            "id": "ichetucknee",
+            "match": "Ichetucknee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IH2 CH IH T AH1 K N IY"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_95bd5637c5f631a8"
+                }
+            ]
+        },
+        {
+            "id": "levy",
+            "match": "Levy",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L IY1 V V IY"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1419798013957771304"
                 }
             ]
         },
@@ -84,6 +134,48 @@
                 }
             ],
             "notes": "Capitalised only, so \"mobile homes\" is left alone mid-sentence."
+        },
+        {
+            "id": "suwannee",
+            "match": "Suwannee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S W AO1 N IY"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1476444403525484595"
+                }
+            ]
+        },
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T OW1 ER N AE1 D IH K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "900922657418125353"
+                }
+            ]
+        },
+        {
+            "id": "vidalia",
+            "match": "Vidalia",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V AY D EY1 L IY AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1042615214060863519"
+                }
+            ]
         }
     ],
     "style": {

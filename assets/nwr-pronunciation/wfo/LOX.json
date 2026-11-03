@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "LOX"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -34,6 +42,203 @@
         "periodPauseMs": null
     },
     "entries": [
+        {
+            "id": "agoura",
+            "match": "Agoura",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH1 G ER1 R AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1414088630762471555"
+                }
+            ]
+        },
+        {
+            "id": "alhambra",
+            "match": "Alhambra",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AW0 L HH AO2 M B R AH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "calabasas",
+            "match": "Calabasas",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE0 L AH0 B AE0 S IH0 S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1414088630762471555"
+                }
+            ]
+        },
+        {
+            "id": "camarillo",
+            "match": "Camarillo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE0 M AH0 R IY1 Y OW1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_54b4c6807b34b474"
+                }
+            ]
+        },
+        {
+            "id": "carpinteria",
+            "match": "Carpinteria",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA0 R P AH0 N T T AH0 R IY0 AH0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "cuyama",
+            "match": "Cuyama",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K UH2 Y AA1 M AH0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "gaviota",
+            "match": "Gaviota",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "G AE0 V IY0 OW0 T AH0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "hueneme",
+            "match": "Hueneme",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AY0 N IY1 M IY2"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "isla-vista",
+            "match": "Isla Vista",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AY L AH",
+                "on": "Isla"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1430374430718296167"
+                }
+            ]
+        },
+        {
+            "id": "jalama",
+            "match": "Jalama",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH AH0 L AA1 M AH0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "lancaster",
+            "match": "Lancaster",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AE1 N K AE0 S T ER"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1250043535441531003"
+                }
+            ]
+        },
+        {
+            "id": "llano",
+            "match": "Llano",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "Y AA1 N OW0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1414088630762471555"
+                }
+            ]
+        },
+        {
+            "id": "lompoc",
+            "match": "Lompoc",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AA0 M P OW0 K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1250004855137894420"
+                }
+            ]
+        },
+        {
+            "id": "moorpark",
+            "match": "Moorpark",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AO0 R ER0 P AA2 R K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1414088630762471555"
+                }
+            ]
+        },
         {
             "id": "mugu",
             "match": "Mugu",
@@ -50,16 +255,44 @@
             "notes": "Spelled \"Mugo\" in the guide (Point Mugu)."
         },
         {
+            "id": "nipomo",
+            "match": "Nipomo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N IY AO2 M OW1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "nordhoff",
+            "match": "Nordhoff",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N OW0 R D AA0 V F"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
             "id": "ojai",
             "match": "Ojai",
             "replace": {
                 "kind": "phoneme",
-                "ph": "OW HH AY2"
+                "ph": "OW0 HH AY2"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_54b4c6807b34b474"
                 }
             ]
         },
@@ -72,8 +305,212 @@
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_54b4c6807b34b474"
+                }
+            ]
+        },
+        {
+            "id": "pearblossom",
+            "match": "Pearblossom",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AE ER R B L AA2 S IH M"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "piru",
+            "match": "Piru",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AY1 R UW2"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "port-hueneme",
+            "match": "Port Hueneme",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AY0 N IY1 M IY0",
+                "on": "Hueneme"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "refugio",
+            "match": "Refugio",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R IY0 F UW1 F D IY1 OW0"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "san-luis-obispo",
+            "match": "San Luis Obispo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW B IH S P OW",
+                "on": "Obispo"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1082139696026628216"
+                }
+            ]
+        },
+        {
+            "id": "san-pedro",
+            "match": "San Pedro",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P EY1 D R OW0",
+                "on": "Pedro"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1540228895587041382"
+                }
+            ]
+        },
+        {
+            "id": "santa-catalina",
+            "match": "Santa Catalina",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AE2 T AH0 L IY1 N AH0",
+                "on": "Catalina"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1399104192039354368"
+                }
+            ]
+        },
+        {
+            "id": "santa-clarita",
+            "match": "Santa Clarita",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K L EY2 R IY1 T AH0",
+                "on": "Clarita"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "santa-lucia-mountains",
+            "match": "Santa Lucia Mountains",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L UW0 S IY1 AH0",
+                "on": "Lucia"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1249078307132145675"
+                }
+            ]
+        },
+        {
+            "id": "santa-ynez",
+            "match": "Santa Ynez",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IY0 N EH0 Z",
+                "on": "Ynez"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_54b4c6807b34b474"
+                }
+            ]
+        },
+        {
+            "id": "solimar",
+            "match": "Solimar",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S OW0 L IH2 M AA0 R"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "somis",
+            "match": "Somis",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S OW2 M AH0 S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
+                }
+            ]
+        },
+        {
+            "id": "tejon-pass",
+            "match": "Tejon Pass",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T EY0 HH OW1 N",
+                "on": "Tejon"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1250040638607589376"
+                }
+            ]
+        },
+        {
+            "id": "ynez",
+            "match": "Ynez",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "Y N EH1 Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_83212bf5a7005203"
                 }
             ]
         }

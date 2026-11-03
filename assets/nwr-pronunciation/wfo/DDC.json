@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "DDC"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 3,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,12 +23,21 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 116,
-            "verified": true
+            "value": 121,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 116 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
@@ -39,12 +48,12 @@
             "match": "Kiowa",
             "replace": {
                 "kind": "phoneme",
-                "ph": "K AA1 AH0 W AA0"
+                "ph": "K AY OW W AH"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 7
+                    "source": "community",
+                    "submission": "sub_9e7be2b824587a8c"
                 }
             ]
         }

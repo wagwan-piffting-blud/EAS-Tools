@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "BTV"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,12 +23,21 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 117,
-            "verified": true
+            "value": 119,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 117 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
@@ -45,6 +54,20 @@
                 {
                     "source": "tmyk",
                     "page": 10
+                }
+            ]
+        },
+        {
+            "id": "mhz",
+            "match": "MHz",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M EH1 G AH0 HH ER0 T Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1167279014759641119"
                 }
             ]
         }

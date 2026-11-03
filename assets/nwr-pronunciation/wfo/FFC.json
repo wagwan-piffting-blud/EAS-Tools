@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "FFC"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,18 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,21 +42,57 @@
             "value": 103,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 975,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
+        {
+            "id": "abbeville",
+            "match": "Abbeville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AA1 # B IY2 V IH2 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1420242484893581455"
+                }
+            ]
+        },
+        {
+            "id": "aragon",
+            "match": "Aragon",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH1 R AH0 G IH1 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "927659797732536380"
+                }
+            ]
+        },
         {
             "id": "buchanan",
             "match": "Buchanan",
             "replace": {
-                "kind": "respell",
-                "text": "Buck-cannon"
+                "kind": "phoneme",
+                "ph": "B AH1 K AE1 N AH N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 8
+                    "source": "community",
+                    "submission": "sub_f62ecf7d0b292f1c"
                 }
             ]
         },
@@ -77,6 +125,20 @@
             ]
         },
         {
+            "id": "colbert",
+            "match": "Colbert",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AO1 L B ER T"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1273430192312029206"
+                }
+            ]
+        },
+        {
             "id": "coweta",
             "match": "Coweta",
             "replace": {
@@ -87,6 +149,34 @@
                 {
                     "source": "tmyk",
                     "page": 8
+                }
+            ]
+        },
+        {
+            "id": "dacula",
+            "match": "Dacula",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D AE1 K Y UW1 L AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "949224345287405630"
+                }
+            ]
+        },
+        {
+            "id": "don",
+            "match": "Don",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D AO1 N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_228ed6b9f4a042f1"
                 }
             ]
         },
@@ -119,16 +209,30 @@
             ]
         },
         {
+            "id": "glascock",
+            "match": "Glascock",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "G L AE1 S K AA2 K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1406514768080146452"
+                }
+            ]
+        },
+        {
             "id": "hazardous",
             "match": "Hazardous",
             "replace": {
                 "kind": "phoneme",
-                "ph": "HH AE1 Z R D AH0 S"
+                "ph": "HH AE1 Z R D AH S"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 3
+                    "source": "community",
+                    "submission": "sub_f62ecf7d0b292f1c"
                 }
             ]
         },
@@ -146,6 +250,20 @@
                 }
             ],
             "notes": "Houston County, Georgia."
+        },
+        {
+            "id": "megahertz",
+            "match": "Megahertz",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M EH1 G AH HH ER1 T S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "960712738810781766"
+                }
+            ]
         },
         {
             "id": "muscogee",
@@ -193,13 +311,27 @@
             "id": "taliaferro",
             "match": "Taliaferro",
             "replace": {
-                "kind": "respell",
-                "text": "Tallifer"
+                "kind": "phoneme",
+                "ph": "T AA1 L IH V ER"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 8
+                    "source": "community",
+                    "submission": "sub_f62ecf7d0b292f1c"
+                }
+            ]
+        },
+        {
+            "id": "twenties",
+            "match": "Twenties",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T W UH2 N T T IY Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_228ed6b9f4a042f1"
                 }
             ]
         },

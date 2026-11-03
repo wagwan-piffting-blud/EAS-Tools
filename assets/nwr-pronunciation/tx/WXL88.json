@@ -1,0 +1,42 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/WXL88",
+    "scope": {
+        "type": "tx",
+        "id": "WXL88",
+        "wfo": "STO"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 107,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "commaPauseMs": {
+            "value": 203,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 930,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        }
+    },
+    "entries": []
+}

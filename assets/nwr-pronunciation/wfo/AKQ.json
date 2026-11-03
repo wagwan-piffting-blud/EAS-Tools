@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "AKQ"
     },
-    "rev": 1,
+    "rev": 5,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,28 +23,65 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 117,
-            "verified": true
+            "value": 120,
+            "verified": false,
+            "notes": "Office speed sheet (red): little or no proof."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
     "entries": [
         {
+            "id": "appomattox",
+            "match": "Appomattox",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE1 P AH M AE2 T IH K S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1374176043690098748"
+                }
+            ]
+        },
+        {
             "id": "chowan",
             "match": "Chowan",
             "replace": {
                 "kind": "phoneme",
-                "ph": "CH OW1 W AA N"
+                "ph": "CH AH W AA N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_9803448c9104da29"
+                }
+            ]
+        },
+        {
+            "id": "noaas",
+            "match": "NOAA's",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N OW1 AH2 Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1106349070492127284"
                 }
             ]
         },
@@ -62,6 +99,48 @@
                 }
             ],
             "notes": "Spelled \"Pasqotank\" in the guide."
+        },
+        {
+            "id": "poquoson",
+            "match": "Poquoson",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P OW K OW1 S AH N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1155346280067895398"
+                }
+            ]
+        },
+        {
+            "id": "raleigh",
+            "match": "Raleigh",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AW L IY"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "927663609176281158"
+                }
+            ]
+        },
+        {
+            "id": "wicomico",
+            "match": "Wicomico",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AY0 K OW0 M AH2 AH2 K OW1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_c4ed190825779c17"
+                }
+            ]
         }
     ],
     "style": {

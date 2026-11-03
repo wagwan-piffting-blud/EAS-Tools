@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "LSX"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,12 +23,21 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 102,
-            "verified": true
+            "value": 100,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 102 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
@@ -69,6 +78,20 @@
                 {
                     "source": "tmyk",
                     "page": 3
+                }
+            ]
+        },
+        {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T OW1 ER N AE1 D IH K"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1170688107163689064"
                 }
             ]
         }

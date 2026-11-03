@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "LOT"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,18 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,10 +42,46 @@
             "value": 113,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 925,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
+        {
+            "id": "channahon",
+            "match": "Channahon",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH AE1 N AH1 HH AA N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "928780952937840650"
+                }
+            ]
+        },
+        {
+            "id": "dekalb",
+            "match": "DeKalb",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D IH0 K AE1 L B"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_8b6b0aa561e4ec95"
+                }
+            ]
+        },
         {
             "id": "illinois",
             "match": "Illinois",
@@ -77,12 +125,56 @@
             "match": "La Salle",
             "replace": {
                 "kind": "phoneme",
-                "ph": "L AH1 S AE1 L"
+                "ph": "L AH1",
+                "on": "La"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_6e550d4c0ccb7c61"
+                }
+            ]
+        },
+        {
+            "id": "machesney-park",
+            "match": "Machesney Park",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH0 CH EH2 Z N IY #",
+                "on": "Machesney"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_8b6b0aa561e4ec95"
+                }
+            ]
+        },
+        {
+            "id": "pulaski",
+            "match": "Pulaski",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P OW # L AE # S K AY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "928736399203651655"
+                }
+            ]
+        },
+        {
+            "id": "valparaiso",
+            "match": "Valparaiso",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "V AE1 L P AA R IY S OW"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "928780896729964555"
                 }
             ]
         },

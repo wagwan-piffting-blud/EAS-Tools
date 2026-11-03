@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "TWC"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,16 +23,67 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 104,
+            "value": 106,
             "verified": false,
-            "notes": "Needs a speed test"
+            "notes": "Office speed sheet (red): little or no proof."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "gila",
+            "match": "Gila",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH IY1 L AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1170043988787609600"
+                }
+            ]
+        },
+        {
+            "id": "pinal",
+            "match": "Pinal",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P AH N AY L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1170043192343805982"
+                }
+            ]
+        },
+        {
+            "id": "tucson",
+            "match": "Tucson",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T UW1 S AA0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1162893092664381580"
+                }
+            ]
+        }
+    ]
 }

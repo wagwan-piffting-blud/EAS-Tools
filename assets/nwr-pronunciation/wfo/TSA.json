@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "TSA"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,17 +23,164 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 107,
-            "verified": true
+            "value": 103,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 107 before."
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 240,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 1010,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
+        {
+            "id": "adair",
+            "match": "Adair",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EY0 D EY0 R"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_fa292e52af451a1a"
+                }
+            ]
+        },
+        {
+            "id": "inola",
+            "match": "Inola",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AY1 # N OW1 L AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "948396061834235924"
+                }
+            ]
+        },
+        {
+            "id": "kiowa",
+            "match": "Kiowa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AY1 AH1 # W AA1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1130009919412785254"
+                }
+            ]
+        },
+        {
+            "id": "muskogee",
+            "match": "Muskogee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AH0 S K OW1 G IY"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_fa292e52af451a1a"
+                }
+            ]
+        },
+        {
+            "id": "okemah",
+            "match": "Okemah",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 # K IY1 M AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1128432615788126288"
+                }
+            ]
+        },
+        {
+            "id": "okfuskee",
+            "match": "Okfuskee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 K # F AH1 S K IY2"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1128914917643260054"
+                }
+            ]
+        },
+        {
+            "id": "okmulgee",
+            "match": "Okmulgee",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 K # M AH1 L G IY1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1128917786979217438"
+                }
+            ]
+        },
+        {
+            "id": "oktaha",
+            "match": "Oktaha",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW1 K # T AH1 # HH AA1"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1171993534270808115"
+                }
+            ]
+        },
+        {
+            "id": "schulter",
+            "match": "Schulter",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "SH UW1 L T ER0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1130000776169787422"
+                }
+            ]
+        },
         {
             "id": "siloam-springs",
             "match": "Siloam Springs",
@@ -45,6 +192,20 @@
                 {
                     "source": "tmyk",
                     "page": 7
+                }
+            ]
+        },
+        {
+            "id": "weleetka",
+            "match": "Weleetka",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "W AA1 L IY1 T K AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1128923225829691392"
                 }
             ]
         }

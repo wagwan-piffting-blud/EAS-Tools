@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "ALY"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -33,7 +37,22 @@
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "megahertz",
+            "match": "Megahertz",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M EH1 G AH0 HH ER2 T S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_c63dc23caaf8a4e9"
+                }
+            ]
+        }
+    ],
     "style": {
         "regionOfState": "Yes",
         "saysTimeZone": "Yes",

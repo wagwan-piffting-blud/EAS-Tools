@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "CHS"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
@@ -30,10 +38,33 @@
             "value": 116,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 932,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        }
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "johnsonville",
+            "match": "Johnsonville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "JH AA N S AH N V IH L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1218748452108767313"
+                }
+            ]
+        }
+    ],
     "style": {
         "currentTimePhrase": "The Local Time is;",
         "marineThunderstormPhrase": "Mariners are reminded that winds and waves can be higher in, and near <vtml_phoneme alphabet=\"x-cmu\" ph=\"TH AH1 N D ER0 S T OW0 R M Z\"></vtml_phoneme>.",

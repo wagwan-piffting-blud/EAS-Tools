@@ -1,0 +1,29 @@
+{
+    "schemaVersion": 1,
+    "id": "tx/KIH41",
+    "scope": {
+        "type": "tx",
+        "id": "KIH41",
+        "wfo": "LMK"
+    },
+    "rev": 1,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "notes": "Community submission sub_542db4ed4ae347f9"
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": []
+}

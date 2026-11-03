@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "SHV"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
         }
     ],
     "prosody": {
@@ -87,6 +91,20 @@
                 {
                     "source": "tmyk",
                     "page": 7
+                }
+            ]
+        },
+        {
+            "id": "texarkana",
+            "match": "Texarkana",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T EH1 K S ER1 K AE1 N AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1196951052457615511"
                 }
             ]
         }

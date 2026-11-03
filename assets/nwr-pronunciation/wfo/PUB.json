@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "PUB"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,15 +23,53 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 100,
-            "verified": true
+            "value": 101,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 100 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "kiowa",
+            "match": "Kiowa",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AY1 OW0 W AH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1161007897212358666"
+                }
+            ]
+        },
+        {
+            "id": "pueblo",
+            "match": "Pueblo",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P W EH0 B L OW0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1160682468148510731"
+                }
+            ]
+        }
+    ]
 }

@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "TBW"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,17 +23,66 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 113,
-            "verified": true
+            "value": 115,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 113 before."
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 900,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
+        {
+            "id": "air",
+            "match": "Air",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH2 R R"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_943d7dd505e22959"
+                }
+            ]
+        },
+        {
+            "id": "apopka",
+            "match": "Apopka",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH1 P AO1 P K AH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "996126190463094868"
+                }
+            ]
+        },
         {
             "id": "hernando",
             "match": "Hernando",
@@ -43,8 +92,8 @@
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_a37f9131b543d16d"
                 }
             ]
         },
@@ -67,13 +116,27 @@
             "id": "kissimmee",
             "match": "Kissimmee",
             "replace": {
-                "kind": "respell",
-                "text": "Kisimee"
+                "kind": "phoneme",
+                "ph": "K IH1 Z EH0 M IY2"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 9
+                    "source": "community",
+                    "submission": "sub_a37f9131b543d16d"
+                }
+            ]
+        },
+        {
+            "id": "moderate",
+            "match": "Moderate",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AA1 D AH R IH T"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_943d7dd505e22959"
                 }
             ]
         },
@@ -116,6 +179,20 @@
                 {
                     "source": "tmyk",
                     "page": 9
+                }
+            ]
+        },
+        {
+            "id": "zephyrhills",
+            "match": "Zephyrhills",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "Z EH F ER1 IH L Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_a37f9131b543d16d"
                 }
             ]
         }

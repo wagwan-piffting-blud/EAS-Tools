@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "PAH"
     },
-    "rev": 1,
+    "rev": 4,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,18 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,10 +42,15 @@
             "value": 100,
             "verified": true
         },
-        "commaPauseMs": null,
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
         "periodPauseMs": {
-            "value": 910,
-            "verified": true
+            "value": 932,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 910 before."
         }
     },
     "entries": [
@@ -41,13 +58,28 @@
             "id": "cape-girardeau",
             "match": "Cape Girardeau",
             "replace": {
-                "kind": "vtml",
-                "markup": "Cape <vtml_phoneme alphabet=\"x-cmu\" ph=\"JH ER R AA1 R D D OW2\"></vtml_phoneme>"
+                "kind": "phoneme",
+                "ph": "JH ER R AA1 R D D OW2",
+                "on": "Girardeau"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_bd53fa6ca42559ac"
+                }
+            ]
+        },
+        {
+            "id": "crittenden",
+            "match": "Crittenden",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K R IH1 T AH0 N D EH2 N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_debc25de8566c553"
                 }
             ]
         },
@@ -62,6 +94,20 @@
                 {
                     "source": "tmyk",
                     "page": 4
+                }
+            ]
+        },
+        {
+            "id": "dubois",
+            "match": "Dubois",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D UW0 B OY1 S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_debc25de8566c553"
                 }
             ]
         },
@@ -118,6 +164,35 @@
             ]
         },
         {
+            "id": "muhlenberg",
+            "match": "Muhlenberg",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M Y UW2 L IH2 N B ER G"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1483929285696946187"
+                }
+            ]
+        },
+        {
+            "id": "new-madrid",
+            "match": "New Madrid",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AE1 D R IH0 D",
+                "on": "Madrid"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1208257337186324490"
+                }
+            ]
+        },
+        {
             "id": "noaa",
             "match": "NOAA",
             "replace": {
@@ -132,6 +207,34 @@
             ]
         },
         {
+            "id": "obion",
+            "match": "Obion",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW0 B AY1 AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1183948713455001701"
+                }
+            ]
+        },
+        {
+            "id": "saline",
+            "match": "Saline",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S AH0 L IY1 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1382504143045791774"
+                }
+            ]
+        },
+        {
             "id": "vincennes",
             "match": "Vincennes",
             "replace": {
@@ -142,6 +245,21 @@
                 {
                     "source": "tmyk",
                     "page": 10
+                }
+            ]
+        },
+        {
+            "id": "weather-maps",
+            "match": "Weather Maps",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AE0 P S",
+                "on": "Maps"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_debc25de8566c553"
                 }
             ]
         }

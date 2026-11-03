@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "MRX"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,18 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,8 +42,16 @@
             "value": 115,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 900,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
     "entries": [
         {
@@ -63,6 +83,34 @@
             ]
         },
         {
+            "id": "collegedale",
+            "match": "Collegedale",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA1 L IH JH D EY2 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "929122195383394375"
+                }
+            ]
+        },
+        {
+            "id": "elizabethton",
+            "match": "Elizabethton",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH0 L IH1 Z AH0 B EH1 TH T AH0 N"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_528b96ae0e543d6b"
+                }
+            ]
+        },
+        {
             "id": "grainger",
             "match": "Grainger",
             "replace": {
@@ -73,6 +121,34 @@
                 {
                     "source": "tmyk",
                     "page": 8
+                }
+            ]
+        },
+        {
+            "id": "honaker",
+            "match": "Honaker",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH OW1 N EY2 K ER"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1389471402318630972"
+                }
+            ]
+        },
+        {
+            "id": "less",
+            "match": "Less",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L EH S"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1168993304663298179"
                 }
             ]
         },
@@ -91,6 +167,20 @@
             ]
         },
         {
+            "id": "sequatchie",
+            "match": "Sequatchie",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S EH K W AO CH IY"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "917254501591830598"
+                }
+            ]
+        },
+        {
             "id": "sevier",
             "match": "Sevier",
             "replace": {
@@ -105,6 +195,20 @@
             ]
         },
         {
+            "id": "tornadic",
+            "match": "Tornadic",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T OW1 ER N AE1 D IH K"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_528b96ae0e543d6b"
+                }
+            ]
+        },
+        {
             "id": "winds",
             "match": "Winds",
             "replace": {
@@ -115,6 +219,21 @@
                 {
                     "source": "tmyk",
                     "page": 3
+                }
+            ]
+        },
+        {
+            "id": "with-content",
+            "match": "with content",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "K AA1 N T EH N T",
+                "on": "content"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1141815771165634631"
                 }
             ]
         }

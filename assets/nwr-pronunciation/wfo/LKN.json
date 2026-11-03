@@ -1,0 +1,122 @@
+{
+    "schemaVersion": 1,
+    "id": "wfo/LKN",
+    "scope": {
+        "type": "wfo",
+        "id": "LKN"
+    },
+    "rev": 2,
+    "updatedAt": "2026-11-01",
+    "voices": [
+        "paul"
+    ],
+    "sources": [
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        }
+    ],
+    "prosody": {
+        "speed": {
+            "value": 100,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "commaPauseMs": null,
+        "periodPauseMs": null
+    },
+    "entries": [
+        {
+            "id": "ely",
+            "match": "Ely",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IY1 L IY0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "949286658434560030"
+                }
+            ]
+        },
+        {
+            "id": "hail",
+            "match": "Hail",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "HH EY AH L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "952216340163342376"
+                }
+            ]
+        },
+        {
+            "id": "north",
+            "match": "North",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "N OW ER1 TH"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "894298602426482789"
+                }
+            ]
+        },
+        {
+            "id": "storms",
+            "match": "Storms",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S T OW0 R M Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_38d6851f9bc00a25"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D R S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "894301915268124792"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorms",
+            "match": "Thunderstorms",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D R S T OW0 R M Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_38d6851f9bc00a25"
+                }
+            ]
+        }
+    ]
+}

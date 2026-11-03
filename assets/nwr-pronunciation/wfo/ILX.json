@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "ILX"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 3,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,28 +23,55 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 116,
-            "verified": true
+            "value": 115,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01). Was 116 before."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
     "entries": [
         {
+            "id": "bulpitt",
+            "match": "Bulpitt",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B OW1 P IH0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "987841264143720518"
+                }
+            ]
+        },
+        {
             "id": "champaign",
             "match": "Champaign",
             "replace": {
                 "kind": "phoneme",
-                "ph": "SH AE1 M P EY N"
+                "ph": "SH AE0 M P EY N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_bdd056c685891ddf"
                 }
             ]
         },
@@ -77,12 +104,40 @@
             "match": "Indianapolis",
             "replace": {
                 "kind": "phoneme",
-                "ph": "IH2 N D IY AE2 N AE2 P AH L IH S"
+                "ph": "IH1 N D IY1 AE1 N N AE1 P AH L AH S"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 12
+                    "source": "community",
+                    "submission": "sub_bdd056c685891ddf"
+                }
+            ]
+        },
+        {
+            "id": "manito",
+            "match": "Manito",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "M AE1 N IH1 T T OW0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "919738128363843644"
+                }
+            ]
+        },
+        {
+            "id": "owaneco",
+            "match": "Owaneco",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "OW W AO1 N IH0 K OW0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "987826605273522217"
                 }
             ]
         },
@@ -91,12 +146,26 @@
             "match": "Precipitation",
             "replace": {
                 "kind": "phoneme",
-                "ph": "P R IY2 S IH1 P IH T EY1 SH AH0 N"
+                "ph": "P R IY S IH0 P IH T EY1 SH AH0 N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 4
+                    "source": "community",
+                    "submission": "sub_bdd056c685891ddf"
+                }
+            ]
+        },
+        {
+            "id": "rio",
+            "match": "Rio",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AY1 # AA2"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "929815865497636954"
                 }
             ]
         },
@@ -133,13 +202,14 @@
             "id": "terre-haute",
             "match": "Terre Haute",
             "replace": {
-                "kind": "vtml",
-                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"T EH R AH2\"></vtml_phoneme> <vtml_phoneme alphabet=\"x-cmu\" ph=\"HH OW2 T\"></vtml_phoneme>"
+                "kind": "phoneme",
+                "ph": "HH OW2 T",
+                "on": "Haute"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_bdd056c685891ddf"
                 }
             ]
         }

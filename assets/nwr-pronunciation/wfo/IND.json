@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "IND"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -39,12 +47,12 @@
             "match": "Areas",
             "replace": {
                 "kind": "phoneme",
-                "ph": "EH1 R IH0 R Z"
+                "ph": "EH1 R IY2 ER Z"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 4
+                    "source": "community",
+                    "submission": "sub_940b66cddd5ad5d6"
                 }
             ]
         },
@@ -52,13 +60,13 @@
             "id": "carmel",
             "match": "Carmel",
             "replace": {
-                "kind": "respell",
-                "text": "Car-mole"
+                "kind": "phoneme",
+                "ph": "K AA1 R M AH L"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_940b66cddd5ad5d6"
                 }
             ]
         },
@@ -76,6 +84,34 @@
                 }
             ],
             "notes": "Spelled \"Chesterfeild\" in the guide."
+        },
+        {
+            "id": "daviess",
+            "match": "Daviess",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D EY1 V IY1 Z"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_940b66cddd5ad5d6"
+                }
+            ]
+        },
+        {
+            "id": "dubois",
+            "match": "Dubois",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D UW1 B OY1 Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1442680529869733910"
+                }
+            ]
         },
         {
             "id": "edinburgh",
@@ -130,6 +166,20 @@
             ]
         },
         {
+            "id": "impacts",
+            "match": "Impacts",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "IH0 M P AE1 K T Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1396377256028405820"
+                }
+            ]
+        },
+        {
             "id": "kosciusko",
             "match": "Kosciusko",
             "replace": {
@@ -144,16 +194,30 @@
             ]
         },
         {
+            "id": "lagrange",
+            "match": "LaGrange",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "L AH1 G ER1 EY N JH"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_2a4568462fff74a1"
+                }
+            ]
+        },
+        {
             "id": "louisville",
             "match": "Louisville",
             "replace": {
                 "kind": "phoneme",
-                "ph": "L UW2 AH0 V OW1 L"
+                "ph": "L UW2 AH0 V OW0 L"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_940b66cddd5ad5d6"
                 }
             ]
         },
@@ -175,13 +239,28 @@
             "id": "terre-haute",
             "match": "Terre Haute",
             "replace": {
-                "kind": "vtml",
-                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"T EH R AH1\"></vtml_phoneme> <vtml_phoneme alphabet=\"x-cmu\" ph=\"HH OW0 T\"></vtml_phoneme>"
+                "kind": "phoneme",
+                "ph": "HH OW0 T",
+                "on": "Haute"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_940b66cddd5ad5d6"
+                }
+            ]
+        },
+        {
+            "id": "thunderstorm",
+            "match": "Thunderstorm",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "TH AH1 N D ER0 S T OW0 R M"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1396377256028405820"
                 }
             ]
         },
@@ -204,12 +283,12 @@
             "match": "Vincennes",
             "replace": {
                 "kind": "phoneme",
-                "ph": "V IH1 N S EH1 N Z"
+                "ph": "V IH0 N S EH1 N D S"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 10
+                    "source": "community",
+                    "submission": "sub_940b66cddd5ad5d6"
                 }
             ]
         }

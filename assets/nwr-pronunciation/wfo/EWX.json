@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "EWX"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 2,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,10 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -188,13 +192,13 @@
             "id": "guadalupe",
             "match": "Guadalupe",
             "replace": {
-                "kind": "respell",
-                "text": "Gwada-loopeh"
+                "kind": "phoneme",
+                "ph": "G W AA2 D AO1 L UW1 P EH2"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 6
+                    "source": "community",
+                    "submission": "sub_06e8d75760a92a7a"
                 }
             ]
         },
@@ -274,12 +278,12 @@
             "match": "Seguin",
             "replace": {
                 "kind": "phoneme",
-                "ph": "S IH0 G IY2 N"
+                "ph": "S AH G IY2 N"
             },
             "sources": [
                 {
-                    "source": "tmyk",
-                    "page": 6
+                    "source": "community",
+                    "submission": "sub_06e8d75760a92a7a"
                 }
             ]
         }

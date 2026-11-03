@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "VEF"
     },
-    "rev": 1,
+    "rev": 3,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,15 +23,35 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
         "speed": {
-            "value": 100,
-            "verified": true
+            "value": 103,
+            "verified": false,
+            "notes": "Office speed sheet (red): little or no proof."
         },
         "commaPauseMs": null,
         "periodPauseMs": null
     },
-    "entries": []
+    "entries": [
+        {
+            "id": "potosi",
+            "match": "Potosi",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T AH0 S IY1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_f849ed10e5788d6b"
+                }
+            ]
+        }
+    ]
 }

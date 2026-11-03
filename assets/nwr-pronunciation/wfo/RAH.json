@@ -5,8 +5,8 @@
         "type": "wfo",
         "id": "RAH"
     },
-    "rev": 1,
-    "updatedAt": "2026-11-01",
+    "rev": 4,
+    "updatedAt": "2026-11-02",
     "voices": [
         "paul"
     ],
@@ -23,6 +23,18 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
+        },
+        {
+            "id": "community",
+            "title": "EAS Tools community submissions"
         }
     ],
     "prosody": {
@@ -30,10 +42,46 @@
             "value": 117,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 932,
+            "verified": true,
+            "notes": "Office speed sheet (blue, 2026-11-01)."
+        }
     },
     "entries": [
+        {
+            "id": "20s",
+            "match": "20s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "T W UH2 N T T IY Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1046923856125898912"
+                }
+            ]
+        },
+        {
+            "id": "40s",
+            "match": "40s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AO2 R T IY Z"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "967980332957728778"
+                }
+            ]
+        },
         {
             "id": "alamance",
             "match": "Alamance",
@@ -45,6 +93,174 @@
                 {
                     "source": "tmyk",
                     "page": 8
+                }
+            ]
+        },
+        {
+            "id": "albemarle",
+            "match": "Albemarle",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AE L B AH M AA R L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1047075798571552768"
+                }
+            ]
+        },
+        {
+            "id": "appomattox",
+            "match": "Appomattox",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "AH M AE1 T IH K S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_6658d6973c35ae3a"
+                }
+            ]
+        },
+        {
+            "id": "badin",
+            "match": "Badin",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B EY1 D AH N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1275550676998422598"
+                }
+            ]
+        },
+        {
+            "id": "bertie",
+            "match": "Bertie",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "B ER T IY1"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_6658d6973c35ae3a"
+                }
+            ]
+        },
+        {
+            "id": "dont",
+            "match": "Don't",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D OW N T"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1110078989877387366"
+                }
+            ]
+        },
+        {
+            "id": "ellerbe",
+            "match": "Ellerbe",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "EH1 L ER2 B IY0"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1046925109295853699"
+                }
+            ]
+        },
+        {
+            "id": "fayetteville",
+            "match": "Fayetteville",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F EY1 AH T V IH2 L"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1428247204082225233"
+                }
+            ]
+        },
+        {
+            "id": "fuquay",
+            "match": "Fuquay",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F Y UW1 K W EY2"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1296032318435098715"
+                }
+            ]
+        },
+        {
+            "id": "gaston",
+            "match": "Gaston",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "G AA1 # S T AO1 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1147396757198737418"
+                }
+            ]
+        },
+        {
+            "id": "peachland",
+            "match": "Peachland",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "P IY1 CH L AH N D"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1148984850079031406"
+                }
+            ]
+        },
+        {
+            "id": "ramseur",
+            "match": "Ramseur",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R AE M S ER"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1141241517646819348"
+                }
+            ]
+        },
+        {
+            "id": "rowan",
+            "match": "Rowan",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "R OW AE1 N"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1082352493297680474"
                 }
             ]
         },
@@ -62,6 +278,35 @@
                 }
             ],
             "notes": "RAH uses its own phoneme, not the IND one."
+        },
+        {
+            "id": "synopsis",
+            "match": "Synopsis",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "S IH N AA1 P S IH S"
+            },
+            "sources": [
+                {
+                    "source": "community",
+                    "submission": "sub_e1468036b75a7a99"
+                }
+            ]
+        },
+        {
+            "id": "upper-40s",
+            "match": "upper 40s",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "F AO2 R T IY0 Z",
+                "on": "40s"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1046734970162516049"
+                }
+            ]
         }
     ],
     "style": {

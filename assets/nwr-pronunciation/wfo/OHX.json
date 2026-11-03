@@ -5,7 +5,7 @@
         "type": "wfo",
         "id": "OHX"
     },
-    "rev": 1,
+    "rev": 2,
     "updatedAt": "2026-11-01",
     "voices": [
         "paul"
@@ -23,6 +23,14 @@
                 "ThunderBuddy01",
                 "SPCSafetyHarbor"
             ]
+        },
+        {
+            "id": "nwr-discord",
+            "title": "NWR Reference Discord, office pronunciation channels"
+        },
+        {
+            "id": "office-speeds",
+            "title": "NWS office speeds sheet (NWR Reference community)"
         }
     ],
     "prosody": {
@@ -30,10 +38,33 @@
             "value": 119,
             "verified": true
         },
-        "commaPauseMs": null,
-        "periodPauseMs": null
+        "commaPauseMs": {
+            "value": 200,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        },
+        "periodPauseMs": {
+            "value": 975,
+            "verified": false,
+            "notes": "Office speed sheet (green, 2026-11-01)."
+        }
     },
-    "entries": [],
+    "entries": [
+        {
+            "id": "decatur",
+            "match": "Decatur",
+            "replace": {
+                "kind": "phoneme",
+                "ph": "D IY1 K EY2 T ER"
+            },
+            "sources": [
+                {
+                    "source": "nwr-discord",
+                    "message": "1406365231017365596"
+                }
+            ]
+        }
+    ],
     "style": {
         "regionOfState": "Yes",
         "saysTimeZone": "Yes",
