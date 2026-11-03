@@ -19,6 +19,16 @@ if (tool === 'splicer') return document.getElementById('useSplicerOverrideTZ').s
 return true;
 "#;
 
+/// A JSON data file the site ships, relative to the repo root. Tests take expected values from
+/// the data rather than literals, so a data update (a sync, an import, a rebuilt NWS list)
+/// does not break them while the code still behaves.
+pub fn shipped_json(path: &str) -> Result<Value> {
+    let full = eas_tools_e2e::browser::repo_root().join(path);
+    let text =
+        std::fs::read_to_string(&full).with_context(|| format!("read {}", full.display()))?;
+    serde_json::from_str(&text).with_context(|| format!("parse {}", full.display()))
+}
+
 pub async fn wait_for_tool(tab: &Tab, tool: &str) -> Result<()> {
     let deadline = std::time::Instant::now() + Duration::from_secs(40);
     loop {

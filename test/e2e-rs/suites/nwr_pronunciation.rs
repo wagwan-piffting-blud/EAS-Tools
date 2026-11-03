@@ -5,7 +5,7 @@
 
 use eas_tools_e2e::*;
 
-use crate::common::{generate, open_tool, open_tool_tracking_errors, set_field};
+use crate::common::{generate, open_tool, open_tool_tracking_errors, set_field, shipped_json};
 
 const STUB_TTS_JS: &str = r#"
 window.__ttsPosts = [];
@@ -99,6 +99,44 @@ async fn encoder_with_paul(tab: &Tab, text: &str) -> Result<()> {
     tab.wait_until("!document.getElementById('nwrPron').hidden && !!document.querySelector('#nwrPronSource option[value=\"wfo:LOT\"]')", Duration::from_secs(30)).await
 }
 
+/// A set from the bundled snapshot. Expected values come from the data, not literals, so a
+/// pronunciation import that changes an office's numbers does not break these tests.
+fn shipped_set(id: &str) -> Result<Value> {
+    shipped_json(&format!("assets/nwr-pronunciation/{id}.json"))
+}
+
+/// The prosody value the most specific set defines, as `resolveProsody` picks it.
+fn shipped_prosody(sets: &[&Value], field: &str) -> Option<i64> {
+    sets.iter()
+        .rev()
+        .find_map(|set| set["prosody"][field]["value"].as_i64())
+}
+
+/// What the most specific set turns `word` into: the respelled text, or the phoneme string.
+fn shipped_replacement(sets: &[&Value], word: &str) -> Result<String> {
+    for set in sets.iter().rev() {
+        let entries = set["entries"].as_array().into_iter().flatten();
+        for entry in entries {
+            if !entry["match"]
+                .as_str()
+                .is_some_and(|m| m.eq_ignore_ascii_case(word))
+            {
+                continue;
+            }
+            let replace = &entry["replace"];
+            return match replace["kind"].as_str() {
+                Some("respell") => Ok(replace["text"].as_str().unwrap_or_default().to_string()),
+                Some("phoneme") => Ok(format!(
+                    "ph=\"{}\"",
+                    replace["ph"].as_str().unwrap_or_default()
+                )),
+                other => bail!("{word}: replacement kind {other:?} is not checked here"),
+            };
+        }
+    }
+    bail!("no shipped set has an entry for {word}")
+}
+
 async fn last_post(tab: &Tab) -> Result<Value> {
     tab.wait_until("window.__ttsPosts.length > 0", Duration::from_secs(30))
         .await?;
@@ -114,11 +152,19 @@ pub fn cases() -> Vec<Case> {
         case(
             "paul_gets_office_pronunciations_speed_and_pauses",
             |tab| async move {
+                let (national, lot) = (shipped_set("national")?, shipped_set("wfo/LOT")?);
+                let sets = [&national, &lot];
+                let speed = shipped_prosody(&sets, "speed").context("LOT has no speed")?;
+                let comma = shipped_prosody(&sets, "commaPauseMs").context("no comma pause")?;
+                let period = shipped_prosody(&sets, "periodPauseMs").context("no period pause")?;
+                let illinois = shipped_replacement(&sets, "Illinois")?;
                 stub(&tab, None).await?;
                 encoder_with_paul(&tab, "Severe storms over Illinois.").await?;
                 set_field(&tab, "#nwrPronSource", "wfo:LOT").await?;
                 tab.wait_until(
-                    "document.getElementById('nwrPronSummary').textContent.includes('speed 113')",
+                    &format!(
+                        "document.getElementById('nwrPronSummary').textContent.includes('speed {speed}')"
+                    ),
                     Duration::from_secs(15),
                 )
                 .await?;
@@ -126,16 +172,19 @@ pub fn cases() -> Vec<Case> {
                 let post = last_post(&tab).await?;
                 ensure!(post["voice"] == "paul", "{post}");
                 let text = post["text"].as_str().unwrap_or_default();
-                ensure!(text.contains("Illynois"), "LOT respelling missing: {text}");
+                ensure!(
+                    text.contains(&illinois),
+                    "LOT pronunciation of Illinois ({illinois}) missing: {text}"
+                );
                 ensure!(
                     !text.contains("vtml_speed"),
                     "speed went into markup although the server takes vtSpeed: {text}"
                 );
                 ensure!(
-                    post["vtSpeed"] == "113"
-                        && post["vtCommaPauseMs"] == "200"
-                        && post["vtPeriodPauseMs"] == "900",
-                    "{post}"
+                    post["vtSpeed"] == speed.to_string()
+                        && post["vtCommaPauseMs"] == comma.to_string()
+                        && post["vtPeriodPauseMs"] == period.to_string(),
+                    "expected speed {speed}, comma {comma}, period {period}: {post}"
                 );
                 let status: String = tab
                     .eval("document.getElementById('status').innerText")
@@ -147,16 +196,16 @@ pub fn cases() -> Vec<Case> {
         case(
             "national_only_is_on_by_default_and_sends_no_pauses",
             |tab| async move {
+                let national = shipped_set("national")?;
+                let thunderstorms = shipped_replacement(&[&national], "Thunderstorms")?;
                 stub(&tab, None).await?;
                 encoder_with_paul(&tab, "Thunderstorms likely.").await?;
                 generate(&tab, "Paul national").await?;
                 let post = last_post(&tab).await?;
                 let text = post["text"].as_str().unwrap_or_default();
                 ensure!(
-                    text.contains(
-                        "ph=\"TH AH1 N D ER0 S T OW0 R M Z\">Thunderstorms</vtml_phoneme>"
-                    ),
-                    "{text}"
+                    text.contains(&format!("{thunderstorms}>Thunderstorms</vtml_phoneme>")),
+                    "expected {thunderstorms}: {text}"
                 );
                 ensure!(
                     post.get("vtSpeed").is_none() && post.get("vtCommaPauseMs").is_none(),
@@ -229,6 +278,8 @@ pub fn cases() -> Vec<Case> {
         case(
             "preview_and_personal_pronunciations_win",
             |tab| async move {
+                let (national, lot) = (shipped_set("national")?, shipped_set("wfo/LOT")?);
+                let winds = shipped_replacement(&[&national, &lot], "winds")?;
                 stub(&tab, None).await?;
                 encoder_with_paul(&tab, "Calm winds near Waukesha.").await?;
                 set_field(&tab, "#nwrPronSource", "tx:KEC76").await?;
@@ -280,10 +331,10 @@ pub fn cases() -> Vec<Case> {
                     .await?;
                 ensure!(preview.starts_with("Kahm "), "{preview}");
                 ensure!(
-                    preview.contains(
-                        "<vtml_phoneme alphabet=\"x-cmu\" ph=\"W IH1 N D S\">winds</vtml_phoneme>"
-                    ),
-                    "{preview}"
+                    preview.contains(&format!(
+                        "<vtml_phoneme alphabet=\"x-cmu\" {winds}>winds</vtml_phoneme>"
+                    )),
+                    "expected {winds}: {preview}"
                 );
                 axe::assert_clean(&tab, json!("#nwrPron"), &[], "pronunciation picker").await?;
                 Ok(())
@@ -443,6 +494,10 @@ pub fn cases() -> Vec<Case> {
             },
         ),
         case("splicer_generate_uses_the_selection", |tab| async move {
+            let (national, mkx) = (shipped_set("national")?, shipped_set("wfo/MKX")?);
+            let sets = [&national, &mkx];
+            let speed = shipped_prosody(&sets, "speed").context("MKX has no speed")?;
+            let waukesha = shipped_replacement(&sets, "Waukesha")?;
             stub(&tab, None).await?;
             open_tool_tracking_errors(&tab, "splicer").await?;
             tab.wait_until(
@@ -458,10 +513,13 @@ pub fn cases() -> Vec<Case> {
             let post = last_post(&tab).await?;
             let text = post["text"].as_str().unwrap_or_default();
             ensure!(
-                text.contains("an hour") && text.contains("ph=\"W AO1 K AH SH AO2\""),
-                "{text}"
+                text.contains("an hour") && text.contains(&waukesha),
+                "expected {waukesha} for Waukesha: {text}"
             );
-            ensure!(post["vtSpeed"] == "114", "{post}");
+            ensure!(
+                post["vtSpeed"] == speed.to_string(),
+                "expected speed {speed}: {post}"
+            );
             Ok(())
         }),
     ]

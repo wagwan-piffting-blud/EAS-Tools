@@ -3,7 +3,59 @@
 
 use eas_tools_e2e::*;
 
-use crate::common::open_tool_tracking_errors;
+use crate::common::{open_tool_tracking_errors, shipped_json};
+
+/// Two marine zones (not area-wide `..000` codes) from different marine areas, with their
+/// names, picked from the shipped same-marine.json so an NWS list update cannot break the test.
+fn two_marine_zones() -> Result<[(String, String); 2]> {
+    let marine = shipped_json("assets/E2T/include/same-marine.json")?;
+    let same = marine["SAME"]
+        .as_object()
+        .context("same-marine.json has no SAME")?;
+    let mut zones = same
+        .iter()
+        .filter(|(code, _)| code.len() == 5 && !code.ends_with("000"))
+        .map(|(code, name)| (code.clone(), name.as_str().unwrap_or_default().to_string()));
+    let first = zones.next().context("no marine zones")?;
+    let second = zones
+        .find(|(code, _)| code[..2] != first.0[..2])
+        .context("marine zones from only one area")?;
+    Ok([first, second])
+}
+
+/// The name E2T prints: the table name without its trailing UGC prefix (", AM").
+fn spoken_name(name: &str) -> &str {
+    match name.rsplit_once(", ") {
+        Some((head, tail)) if tail.len() == 2 && tail.chars().all(|c| c.is_ascii_uppercase()) => {
+            head
+        }
+        _ => name,
+    }
+}
+
+/// The Encoder's marine fields must equal same-marine.json exactly (so retired zones are
+/// gone), and every land code it holds must carry its same-us.json name. same-us.json also
+/// lists Canadian codes that collide with US ones; the US table leaves those out on purpose.
+const TABLE_DIFF_JS: &str = "
+const done = arguments[arguments.length - 1];
+Promise.all(['same-us.json', 'same-marine.json'].map((f) => fetch('assets/E2T/include/' + f).then((r) => r.json()))).then(([us, marine]) => {
+    const bad = [];
+    const at = (code) => (window.county[code.slice(0, 2)] || {})[code.slice(2)];
+    let land = 0;
+    for (const [code, name] of Object.entries(us.SAME)) {
+        if (at(code) === undefined) continue;
+        land++;
+        if (at(code) !== name) bad.push('us ' + code + ': ' + at(code));
+    }
+    if (!land) bad.push('no same-us.json code reached the Encoder');
+    for (const [code, name] of Object.entries(marine.SAME)) if (at(code) !== name) bad.push('marine ' + code + ': ' + at(code));
+    for (const field of Object.keys(marine.AREAS)) {
+        for (const rest of Object.keys(window.county[field] || {})) {
+            if (!((field + rest) in marine.SAME)) bad.push('not in the NWS marine list: ' + field + rest);
+        }
+    }
+    done({ checked: Object.keys(us.SAME).length + Object.keys(marine.SAME).length, bad: bad.slice(0, 20) });
+});";
 
 async fn open(tab: &Tab) -> Result<()> {
     open_tool_tracking_errors(tab, "encoder").await?;
@@ -44,21 +96,19 @@ pub fn cases() -> Vec<Case> {
         case(
             "a_marine_zone_only_nws_lists_resolves_in_the_encoder",
             |tab| async move {
+                let [(a, a_name), (b, b_name)] = two_marine_zones()?;
                 open(&tab).await?;
-                add_manual(&tab, "075040-077001").await?;
+                add_manual(&tab, &format!("0{a}-0{b}")).await?;
                 let locations: Vec<String> = tab.eval("window.locations.slice()").await?;
-                ensure!(locations == ["075040", "077001"], "{locations:?}");
+                ensure!(
+                    locations == [format!("0{a}"), format!("0{b}")],
+                    "{locations:?}"
+                );
                 let rows: String = tab
                     .eval("document.getElementById('container').innerText")
                     .await?;
-                ensure!(
-                    rows.contains("Caribbean N of 18N W of 85W including Yucatan Basin, AM"),
-                    "{rows}"
-                );
-                ensure!(
-                    rows.contains("Synopsis for the Gulf of America, GM"),
-                    "{rows}"
-                );
+                ensure!(rows.contains(&a_name), "expected {a_name}: {rows}");
+                ensure!(rows.contains(&b_name), "expected {b_name}: {rows}");
                 ensure!(!rows.contains("Custom code"), "{rows}");
                 let status = statuses(&tab).await?;
                 ensure!(!status.contains("custom FIPS"), "{status}");
@@ -69,16 +119,11 @@ pub fn cases() -> Vec<Case> {
             "retired_marine_zones_are_gone_and_land_codes_stay",
             |tab| async move {
                 open(&tab).await?;
-                let (retired, travis, palau): (Option<String>, Option<String>, Option<String>) =
-                tab.eval("[window.county['58']['041'] ?? null, window.county['48']['453'] ?? null, (window.county['70'] || {})['002'] ?? null]").await?;
+                let diff: Value = tab.js_async(TABLE_DIFF_JS, json!([])).await?;
+                ensure!(diff["checked"].as_u64().unwrap_or(0) > 0, "{diff}");
                 ensure!(
-                    retired.is_none(),
-                    "58041 is not in the NWS marine list: {retired:?}"
-                );
-                ensure!(travis.as_deref() == Some("Travis County, TX"), "{travis:?}");
-                ensure!(
-                    palau.is_some(),
-                    "territory field 70 must stay in same-us.json"
+                    diff["bad"].as_array().is_some_and(|b| b.is_empty()),
+                    "the Encoder's location tables differ from same-us.json + same-marine.json: {diff}"
                 );
                 Ok(())
             },
@@ -86,18 +131,16 @@ pub fn cases() -> Vec<Case> {
         case(
             "e2t_names_marine_codes_from_same_marine_json",
             |tab| async move {
+                let [(a, a_name), (b, b_name)] = two_marine_zones()?;
                 open(&tab).await?;
-                let text = e2t(&tab, "ZCZC-WXR-SMW-073350-057100+0100-2701505-KOKX/NWS-").await?;
-                ensure!(
-                    text.contains("Moriches Inlet NY to Montauk Point NY out 20 nm"),
-                    "{text}"
-                );
-                ensure!(
-                    text.contains(
-                        "Synopsis for Northern and Central Washington Coast and Inland Waters"
-                    ),
-                    "{text}"
-                );
+                let text = e2t(
+                    &tab,
+                    &format!("ZCZC-WXR-SMW-0{a}-0{b}+0100-2701505-KOKX/NWS-"),
+                )
+                .await?;
+                for name in [spoken_name(&a_name), spoken_name(&b_name)] {
+                    ensure!(text.contains(name), "expected {name}: {text}");
+                }
                 Ok(())
             },
         ),

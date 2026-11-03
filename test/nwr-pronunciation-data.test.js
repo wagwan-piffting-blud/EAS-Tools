@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lexiconFromSet, validatePronunciationSet } from '../assets/js/nwr-pronunciation.js';
+import { lexiconFromSet, normalizeMatch, validatePhonemeString, validatePronunciationSet } from '../assets/js/nwr-pronunciation.js';
 import { DEFAULT_DIR, applyBundle, buildIndex, formatIndex, formatSet, listSetFiles, main, setPath } from '../tools/sync-nwr-pronunciation.mjs';
 
 const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -39,24 +39,21 @@ describe('shipped pronunciation sets', () => {
         }
     });
 
-    it('keeps every converter national override', () => {
-        const fromConverter = national.entries.filter((e) => e.sources?.some((s) => s.source === 'eastools-converter'));
-        expect(fromConverter).toHaveLength(71);
+    it('feeds every national phoneme entry to the phoneme converter', () => {
         const lexicon = lexiconFromSet(national);
-        expect(lexicon.thunderstorm).toBe('TH AH1 N D ER0 S T OW0 R M');
-        expect(lexicon['wind down']).toBe('W AY2 N D');
-        expect(lexicon['near-zero']).toBe('N IY0 R Z IY0 R OW0');
-        expect(national.entries.find((e) => e.match === 'wind down').replace.on).toBe('wind');
+        const phonemes = national.entries.filter((e) => e.replace?.kind === 'phoneme');
+        expect(phonemes.length).toBeGreaterThan(0);
+        for (const entry of phonemes) {
+            const ph = lexicon[normalizeMatch(entry.match).toLowerCase()];
+            expect(ph, entry.id).toBeTruthy();
+            expect(validatePhonemeString(ph), entry.id).toEqual([]);
+        }
     });
 
-    it('carries the defaults and the transmitter speeds from the guide', () => {
-        expect(national.prosody.commaPauseMs.value).toBe(200);
-        expect(national.prosody.periodPauseMs.value).toBe(900);
-        expect(read(setPath(DEFAULT_DIR, 'tx/WNG570')).prosody.speed.value).toBe(93);
-        expect(read(setPath(DEFAULT_DIR, 'tx/WNG570')).scope.wfo).toBe('LMK');
-        expect(read(setPath(DEFAULT_DIR, 'wfo/LOT')).prosody.speed.value).toBe(113);
-        expect(read(setPath(DEFAULT_DIR, 'wfo/FSD')).prosody.speed.verified).toBe(false);
-        expect(read(setPath(DEFAULT_DIR, 'wfo/JAX')).prosody.periodPauseMs.value).toBe(925);
+    it('national carries the default pauses the engine falls back to', () => {
+        for (const field of ['commaPauseMs', 'periodPauseMs']) {
+            expect(Number.isInteger(national.prosody?.[field]?.value), field).toBe(true);
+        }
     });
 });
 

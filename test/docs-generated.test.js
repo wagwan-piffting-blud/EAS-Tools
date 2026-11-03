@@ -14,21 +14,35 @@ describe('generated documentation mirrors', () => {
         const tts = readGenerated('docs/generated/tts.md');
         const faq = readGenerated('docs/generated/faq.md');
 
-        expect(demos).toContain('This page showcases the various Text-to-Speech');
-        expect(demos).toContain('[AT&T Crystal](../../assets/demo%5Ffiles/AT%26T%20Crystal%20Demo.wav)');
-        expect(demos).toContain('[WASM](../../assets/demo%5Ffiles/WASM%20Demo.wav)');
+        const demoFiles = fs.readdirSync(path.join(root, 'assets/demo_files')).filter((name) => /\.wav$/i.test(name));
+        const demoLinks = demos.match(/\]\(\.\.\/\.\.\/assets\/demo%5Ffiles\/[^)]+\.wav\)/gi) || [];
+        expect(demoFiles.length).toBeGreaterThan(0);
+        expect(demoLinks).toHaveLength(demoFiles.length);
         expect(demos).not.toContain('Back to EAS Tools');
-        expect(demos).not.toContain('  various');
+        expect(demos).not.toMatch(/\S {2,}\S/);
         expect(tts).toContain('limit of the configured number of successful requests');
-        expect(tts).toContain('This Hazardous Weather Outlook is for southwest Iowa');
+        const ttsHtml = fs.readFileSync(path.join(root, 'tts-docs.html'), 'utf8');
+        const examples = new Map([...ttsHtml.matchAll(/\b(vtml|bal|dt)CodePre\.setValue\(`([\s\S]*?)`\);/g)].map((m) => [m[1], m[2]]));
+        const exampleOrder = [...ttsHtml.matchAll(/\bid\s*=\s*["'](vtml|bal|dt)-example["']/gi)].map((m) => m[1].toLowerCase()).filter((name) => examples.has(name));
+        expect(exampleOrder.length).toBeGreaterThan(0);
         const fenceLines = tts.split('\n').filter((line) => line.startsWith('```'));
-        expect(fenceLines.filter((_line, index) => index % 2 === 0)).toEqual(['```xml', '```xml', '```text']);
+        expect(fenceLines.filter((_line, index) => index % 2 === 0)).toEqual(exampleOrder.map((name) => (name === 'dt' ? '```text' : '```xml')));
+        for (const name of exampleOrder) {
+            const firstLine = examples.get(name).split('\n').map((line) => line.trim()).find((line) => line && !line.includes('${'));
+            if (firstLine) expect(tts, name).toContain(firstLine);
+        }
+        expect(tts).not.toContain('${currentTime}');
         expect(tts).not.toContain('Copy text');
         expect(tts).not.toContain('Back to EAS Tools');
-        expect(faq).toContain('- [What is the EAS?](#what-is-the-eas)');
-        expect(faq).toContain('- [Are there currently any known issues or limitations with EAS Tools? (updated as of 2026-04-26)](#are-there-currently-any-known-issues-or-limitations-with-eas-tools)');
+        const toc = [...faq.matchAll(/^- \[(.+)\]\(#([^)]*)\)$/gm)];
+        expect(toc.length).toBeGreaterThan(0);
+        const headings = new Set([...faq.matchAll(/^#{2,6} (.+)$/gm)].map((m) => m[1].replace(/\s+\(updated as of [^)]+\)\s*$/i, '').trim()));
+        for (const [, label, anchor] of toc) {
+            expect(anchor, label).not.toBe('');
+            expect(anchor, label).not.toMatch(/updated-as-of/);
+            expect(headings.has(label.replace(/\s+\(updated as of [^)]+\)\s*$/i, '').trim()), label).toBe(true);
+        }
         expect(faq).not.toContain('](#)');
-        expect(faq).toContain('[You mentioned a web TTS service? What\'s that, and how does it work?](#you-mentioned-a-web-tts-service-whats-that-and-how-does-it-work)');
     });
 
     it('contains no trailing horizontal whitespace', () => {

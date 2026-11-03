@@ -3,7 +3,7 @@
 
 use eas_tools_e2e::*;
 
-use crate::common::open_tool_tracking_errors;
+use crate::common::{open_tool_tracking_errors, shipped_json};
 
 const FAKE_BRIDGE_JS: &str = "
 window.__bridgeHandlers = {};
@@ -61,14 +61,19 @@ pub fn cases() -> Vec<Case> {
                         && travis["hay"].as_str().unwrap_or("").contains("texas"),
                     "{travis}"
                 );
-                let caribbean = find("75040")
-                    .ok_or_else(|| anyhow!("marine zone 75040 missing from the index"))?;
+                let marine = shipped_json("assets/E2T/include/same-marine.json")?;
+                let (zone, zone_name) = marine["SAME"]
+                    .as_object()
+                    .and_then(|same| same.iter().find(|(code, _)| !code.ends_with("000")))
+                    .map(|(code, name)| {
+                        (code.clone(), name.as_str().unwrap_or_default().to_string())
+                    })
+                    .ok_or_else(|| anyhow!("same-marine.json has no zones"))?;
+                let entry = find(&zone)
+                    .ok_or_else(|| anyhow!("marine zone {zone} missing from the index"))?;
                 ensure!(
-                    caribbean["label"]
-                        .as_str()
-                        .unwrap_or("")
-                        .starts_with("Caribbean N of 18N"),
-                    "{caribbean}"
+                    entry["label"] == zone_name.as_str(),
+                    "expected {zone_name}: {entry}"
                 );
 
                 let sent = call(

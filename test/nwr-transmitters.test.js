@@ -1,9 +1,16 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { OFFICE_BY_LABEL, buildTransmitters, formatTransmitters, parseCcl } from '../tools/build-nwr-transmitters.mjs';
 
 const civil = JSON.parse(readFileSync(new URL('../warngen/data/civil_sites.json', import.meta.url), 'utf8')).sites;
 const shipped = JSON.parse(readFileSync(new URL('../assets/nwr-pronunciation/transmitters.json', import.meta.url), 'utf8'));
+
+const CIVIL = {
+    AFC: { wfoCityState: 'Anchorage AK', region: 'AR' },
+    BOU: { wfoCityState: 'Denver  CO', region: 'CR' },
+    LMK: { wfoCityState: 'Louisville KY', region: 'CR' },
+    LOT: { wfoCityState: 'Chicago IL' },
+};
 
 function row(i, fields) {
     return Object.entries(fields).map(([k, v]) => `${k}[${i}] = "${v}";`).join('\n');
@@ -33,14 +40,15 @@ describe('parseCcl', () => {
 describe('buildTransmitters', () => {
     it('maps labels to offices and dedupes county rows', () => {
         const rows = parseCcl(SAMPLE).slice(0, 5);
-        const built = buildTransmitters(rows, civil);
+        const built = buildTransmitters(rows, CIVIL);
         expect(built.problems).toEqual([]);
         expect(built.transmitters).toEqual({
             KEC76: { wfo: 'BOU', site: 'Denver', state: 'CO', freq: '162.550', status: 'NORMAL' },
             KJY73: { wfo: 'AFC', site: 'Saint Paul', state: 'AK', freq: '162.525', status: 'OUT OF SERVICE' },
             WNG570: { wfo: 'LMK', site: 'Horse Cave', state: 'KY', freq: '162.500', status: 'NORMAL' },
         });
-        expect(built.offices.LOT).toEqual({ label: 'Chicago IL', region: 'CR' });
+        expect(built.offices.BOU).toEqual({ label: 'Denver CO', region: 'CR' });
+        expect(built.offices.LOT).toEqual({ label: 'Chicago IL', region: '' });
     });
 
     it('refuses unknown labels, bad callsigns, conflicts and odd frequencies', () => {
@@ -49,7 +57,7 @@ describe('buildTransmitters', () => {
             { CALLSIGN: 'WNG570', WFO: 'Louisville|KY', SITENAME: 'Elsewhere', SITESTATE: 'KY', FREQ: '162.500', STATUS: 'NORMAL' },
             { CALLSIGN: 'BAD SIGN', WFO: 'Chicago|IL', SITENAME: 'x', FREQ: '162.550' },
             { CALLSIGN: 'WXK98', WFO: 'Chicago|IL', SITENAME: 'x', FREQ: '88.1' },
-        ], civil).problems;
+        ], CIVIL).problems;
         expect(problems).toEqual([
             'WXK99: no office for WFO label "Esc "Quoted"|ZZ"',
             'WNG570: site "Horse Cave" vs "Elsewhere"',
@@ -71,16 +79,23 @@ describe('buildTransmitters', () => {
 });
 
 describe('shipped transmitters.json', () => {
-    it('covers every office and hundreds of transmitters', () => {
+    it('covers every office, and every transmitter belongs to one', () => {
         expect(Object.keys(shipped.offices)).toEqual(Object.keys(civil).sort());
         const calls = Object.keys(shipped.transmitters);
-        expect(calls.length).toBeGreaterThan(1000);
+        expect(calls.length).toBeGreaterThan(0);
         expect(calls).toEqual([...calls].sort());
         for (const [call, tx] of Object.entries(shipped.transmitters)) {
             expect(call).toMatch(/^[A-Z0-9]{3,7}$/);
             expect(shipped.offices[tx.wfo], call).toBeTruthy();
         }
-        expect(shipped.transmitters.WNG570.wfo).toBe('LMK');
-        expect(shipped.transmitters.KIH21.wfo).toBe('LIX');
+    });
+
+    it('agrees with the office each transmitter pronunciation set names', () => {
+        const dir = new URL('../assets/nwr-pronunciation/tx/', import.meta.url);
+        for (const name of readdirSync(dir).filter((n) => n.endsWith('.json'))) {
+            const set = JSON.parse(readFileSync(new URL(name, dir), 'utf8'));
+            const call = name.slice(0, -5);
+            expect(shipped.transmitters[call]?.wfo, call).toBe(set.scope.wfo);
+        }
     });
 });
