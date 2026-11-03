@@ -192,7 +192,7 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
     const submitButton = el('button', { type: 'button', text: 'Send for review' });
     const submissionsList = el('ul', { class: 'nwr-pron-editor__submissions' });
     const submitSection = el('section', { 'aria-labelledby': 'nwrPronSubmitTitle', hidden: !canSubmit }, [
-        el('h4', { id: 'nwrPronSubmitTitle', text: 'Suggest these for everyone' }),
+        el('h4', { id: 'nwrPronSubmitTitle', text: 'Suggest these changes for everyone who uses EAS Tools' }),
         el('p', { text: 'Submissions are anonymous and are reviewed before anyone else hears them. Include how you know, such as a recording of the transmitter.' }),
         field('Dictionary to change', submitTarget),
         submitChoices,
@@ -210,29 +210,36 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
         el('h4', { text: 'My submissions' }),
         submissionsList,
     ]);
-
+    const hr = el('hr');
+    const br = el('br');
     const closeButton = el('button', { type: 'button', text: 'Close' });
     const dialog = el('dialog', { class: 'sp-alert-dialog nwr-pron-editor', 'aria-labelledby': title.id }, [
         title,
         intro,
+        hr.cloneNode(),
         form,
         personalTable,
+        br.cloneNode(),
+        hr.cloneNode(),
+        submitSection,
+        hr.cloneNode(),
+        br.cloneNode(),
         el('section', { 'aria-labelledby': 'nwrPronInheritedTitle' }, [
             el('h4', { id: 'nwrPronInheritedTitle', text: 'Shared dictionary for this selection' }),
             field('Filter by word', filterInput),
             inheritedCount,
             inheritedTable,
         ]),
+        hr.cloneNode(),
         el('section', { 'aria-labelledby': 'nwrPronShareTitle' }, [
-            el('h4', { id: 'nwrPronShareTitle', text: 'Back up or share a file' }),
+            el('h4', { id: 'nwrPronShareTitle', text: 'Import other\'s pronunciations, or export your own to share' }),
             el('div', { class: 'sp-alert-actions nwr-pron-editor__left' }, [
-                el('button', { type: 'button', text: 'Export my pronunciations', onclick: exportFile }),
-                el('button', { type: 'button', text: 'Import a pronunciation file', onclick: () => fileInput.click() }),
+                el('button', { type: 'button', text: 'Import', onclick: () => fileInput.click() }),
+                el('button', { type: 'button', text: 'Export', onclick: exportFile }),
             ]),
             fileInput,
             shareStatus,
         ]),
-        submitSection,
         el('div', { class: 'sp-alert-actions' }, [closeButton]),
     ]);
 
@@ -286,7 +293,7 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
             ]));
         }
         submitChoices.replaceChildren(el('legend', { text: 'Pronunciations to send' }));
-        if (!entries.length) submitChoices.appendChild(el('p', { text: 'Save a pronunciation first, or send only speed and pauses.' }));
+        if (!entries.length) submitChoices.appendChild(el('p', { text: 'Save a pronunciation first, or send only speed and pauses (below).' }));
         entries.forEach((entry, i) => {
             const box = el('input', { type: 'checkbox', id: 'nwrPronSend' + i, value: String(i) });
             submitChoices.appendChild(el('div', { class: 'sp-alert-field sp-alert-check' }, [box, el('label', { for: box.id, text: entry.match + ' → ' + (entry.disabled ? 'remove' : replacementText(entry.replace)) })]));
@@ -497,6 +504,19 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
     });
     submitButton.addEventListener('click', submitAll);
     closeButton.addEventListener('click', () => dialog.close());
+    const outsideDialog = (event) => {
+        if (event.target !== dialog) return false;
+        const rect = dialog.getBoundingClientRect();
+        return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+    };
+    let pressedOutside = false;
+    dialog.addEventListener('pointerdown', (event) => {
+        pressedOutside = outsideDialog(event);
+    });
+    dialog.addEventListener('click', (event) => {
+        if (pressedOutside && outsideDialog(event)) dialog.close();
+        pressedOutside = false;
+    });
     dialog.addEventListener('close', () => {
         dialog.remove();
         openDialog = null;

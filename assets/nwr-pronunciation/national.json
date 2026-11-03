@@ -860,8 +860,8 @@
             "id": "record",
             "match": "Record",
             "replace": {
-                "kind": "vtml",
-                "markup": "<vtml_phoneme alphabet=\"x-cmu\" ph=\"R EH1 K HH\"></vtml_phoneme> <vtml_break level=\"1\"/> <vtml_phoneme alphabet=\"x-cmu\" ph=\"ER2 D\"></vtml_phoneme>"
+                "kind": "phoneme",
+                "ph": "R EH1 K HH ER2 D"
             },
             "sources": [
                 {

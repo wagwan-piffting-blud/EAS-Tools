@@ -1,5 +1,13 @@
 # EAS Tools Changelog
 
+2026-11-03:
+
+- Re-do the automatic NWS pronunciations modal slightly. The modal is rearranged to put the submission process front and center, and I added some breaks and headings for flow.
+
+- Add an option to de-select radio buttons in WarnGen. This allows users to clear their selection of a radio button in the WarnGen tool, providing more flexibility and control over the alert generation process. Just click the selected radio button again to de-select it. This change improves the user experience and allows for more accurate and relevant alert generation.
+
+---
+
 2026-11-01:
 
 - Add automatic NWS pronunciations for the VT Paul voice (#158). Picking Paul in the SAME Encoder or Audio Splicer now applies the NWS national dictionary, and you can choose your forecast office or NOAA Weather Radio transmitter in a searchable list to get its pronunciations, speed, and comma/period pauses too. You can add your own pronunciations, preview exactly what will be sent, and suggest pronunciations for everyone; suggestions are anonymous and reviewed before they are published. The office and transmitter lists start from the VoiceText phoneme guide PDF. Thank you to GitHub user @InternOfCEOs for suggesting this change.

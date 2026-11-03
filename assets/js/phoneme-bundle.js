@@ -69,20 +69,13 @@ const { Backend, wordToBackend, convertPhonemes, crossPhonemes } = window.Phonem
     const out = document.getElementById("phonemeOutput");
 
     const overrides = {
-        "tekamah": "T AH K EY0 M AH",
-        "saunders": "S AA1 N D ER0 Z",
         "impact": "IH0 M P AE1 K T",
         "impacts": "IH0 M P AE1 K T Z",
         "tornadic": "T AO R N AE1 D IH K",
         "frequent": "F R IY2 K W EH1 N T",
-        "saline": "S AH L IY N",
-        "pottawattamie": "P AA1 T AX W AA T UW M IY",
         "wichita": "W IH0 CH AX0 T AA",
         "sawdust": "S AO1 D AH0 S T",
-        "beatrice": "B IY0 AE1 T R IH0 S",
-        "pickrell": "P IH0 K ER0 L",
         "speechify": "S P IY0 CH AH0 F AY0",
-        "louisville": "L UW1 AH V IH L",
         "monday": "M AH1 N D EY2",
         "tuesday": "T UW1 Z D EY2",
         "wednesday": "W EH1 N Z D EY2",

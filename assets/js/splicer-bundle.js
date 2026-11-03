@@ -3559,6 +3559,7 @@ buildPanel(document.getElementById('splicer-panel'));
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-label', 'Macro chain editor');
+        modal.tabIndex = -1;
 
         const title = document.createElement('h3');
         title.textContent = 'Macro Chain Editor';
@@ -3931,7 +3932,8 @@ buildPanel(document.getElementById('splicer-panel'));
             renderChainList();
             chainEditorStatus('');
             backdrop.hidden = false;
-            availSearch.focus();
+            if (window.matchMedia && window.matchMedia('(hover: none)').matches) modal.focus({ preventScroll: true });
+            else availSearch.focus();
         };
         function closeChainEditor() {
             backdrop.hidden = true;
@@ -4013,6 +4015,13 @@ buildPanel(document.getElementById('splicer-panel'));
             }
         });
         availSearch.addEventListener('input', renderAvailList);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                const active = document.activeElement;
+                if (backdrop.hidden || !active || !modal.contains(active) || !active.matches('input, textarea, select')) return;
+                active.scrollIntoView({ block: 'nearest' });
+            });
+        }
 
         clearBtn.addEventListener('click', () => {
             target.items = [];

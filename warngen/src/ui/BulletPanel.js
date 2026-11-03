@@ -95,6 +95,26 @@
             container.appendChild(label);
             inputsByName[b.name] = input;
 
+            if (b.group) {
+                // Clicking (or Space on) the checked radio clears the group. A click on an
+                // already-checked radio fires no change event, and the group record still names
+                // this bullet, so that is how a re-click is told apart from a new selection.
+                var clearGroup = function () {
+                    if (input.disabled || groupSelection[b.group] !== b.name) return false;
+                    input.checked = false;
+                    delete selected[b.name];
+                    delete groupSelection[b.group];
+                    onChange(getSelectedNames());
+                    return true;
+                };
+                input.addEventListener("click", clearGroup);
+                // Chromium sends no click for Space on a checked radio; WebKit does. Handle the
+                // key here and cancel its default so WebKit's click cannot re-check it.
+                input.addEventListener("keyup", function (event) {
+                    if (event.key === " " && clearGroup()) event.preventDefault();
+                });
+            }
+
             input.addEventListener("change", function () {
                 if (b.group) {
 

@@ -305,5 +305,39 @@ deaths occur in vehicles.
         ensure!(output().await? == before, "turning the option off did not restore the classic text");
         Ok(())
     }));
+    cases.push(case("checked_bullet_radio_clears_on_a_second_click", |tab| async move {
+        open(&tab).await?;
+        let group: String = tab
+            .eval(
+                "(() => {
+                    const on = [...document.querySelectorAll('.bullet-option[data-group] input[type=radio]:checked')].find((r) => !r.disabled
+                        && r.closest('.bullet-panel').querySelectorAll('input[type=radio][name=\"' + r.name + '\"]:not(:disabled)').length > 1);
+                    if (!on) return '';
+                    on.id = 'e2e-radio-on';
+                    const other = [...document.querySelectorAll('input[type=radio][name=\"' + on.name + '\"]')].find((r) => r !== on);
+                    other.id = 'e2e-radio-other';
+                    return on.name;
+                })()",
+            )
+            .await?;
+        ensure!(!group.is_empty(), "no bullet radio group with a default selection to test");
+        let checked = |tab: Tab, group: String| async move {
+            tab.js::<Vec<String>>(
+                "return [...document.querySelectorAll('input[type=radio][name=\"' + arguments[0] + '\"]:checked')].map((r) => r.id || r.value);",
+                json!([group]),
+            )
+            .await
+        };
+        tab.click("#e2e-radio-on").await?;
+        ensure!(checked(tab.clone(), group.clone()).await?.is_empty(), "a second click left the group selected");
+        tab.click("#e2e-radio-on").await?;
+        ensure!(checked(tab.clone(), group.clone()).await? == ["e2e-radio-on"], "a third click did not select it again");
+        tab.click("#e2e-radio-other").await?;
+        ensure!(checked(tab.clone(), group.clone()).await? == ["e2e-radio-other"], "picking another bullet did not switch the group");
+        tab.focus("#e2e-radio-other").await?;
+        tab.press(" ", &[]).await?;
+        ensure!(checked(tab.clone(), group.clone()).await?.is_empty(), "Space on the checked radio did not clear the group");
+        Ok(())
+    }));
     cases
 }

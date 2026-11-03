@@ -290,6 +290,36 @@ pub fn cases() -> Vec<Case> {
             },
         ),
         case(
+            "editor_closes_on_a_click_outside_only",
+            |tab| async move {
+                stub(&tab, None).await?;
+                encoder_with_paul(&tab, "Calm winds.").await?;
+                tab.exec("document.getElementById('nwrPronEdit').click();", json!([]))
+                    .await?;
+                tab.wait_until(
+                    "!!document.querySelector('dialog.nwr-pron-editor[open]')",
+                    Duration::from_secs(15),
+                )
+                .await?;
+                tab.click("#nwrPronEditorTitle").await?;
+                tab.click("#nwrPronMatch").await?;
+                ensure!(
+                    tab.eval::<bool>("!!document.querySelector('dialog.nwr-pron-editor[open]')").await?,
+                    "a click inside the editor closed it"
+                );
+                let y: f64 = tab.eval("window.innerHeight / 2").await?;
+                tab.click_at(3.0, y).await?;
+                tab.wait_until(
+                    "!document.querySelector('dialog.nwr-pron-editor')",
+                    Duration::from_secs(5),
+                )
+                .await?;
+                let focused: String = tab.eval("document.activeElement ? document.activeElement.id : ''").await?;
+                ensure!(focused == "nwrPronEdit", "focus did not return to the button: {focused}");
+                Ok(())
+            },
+        ),
+        case(
             "submissions_are_anonymous_and_grouped_by_action",
             |tab| async move {
                 stub(&tab, None).await?;

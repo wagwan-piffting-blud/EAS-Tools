@@ -1032,16 +1032,60 @@ textarea:disabled {
 }
 
 @media (max-width: 720px) {
+    /* Stacked columns: the whole modal scrolls and each column keeps its content height.
+       Letting the columns shrink inside their own scroller made each list spill over the next. */
+    .splice-chain-modal {
+        max-height: 88vh;
+        max-height: 88dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-bottom: 0;
+    }
+
     .splice-chain-cols {
         flex-direction: column;
-        overflow-y: auto;
+        flex: 0 0 auto;
+    }
+
+    .splice-chain-col {
+        flex: 0 0 auto;
     }
 
     .splice-chain-avail-list,
     .splice-chain-list {
+        flex: 0 0 auto;
         min-height: 130px;
         max-height: 30vh;
+        max-height: 30dvh;
     }
+
+    .splice-chain-actions {
+        position: sticky;
+        bottom: 0;
+        padding: 8px 0 14px;
+        background-color: inherit;
+    }
+}
+
+/* Short viewport on a phone, usually the on-screen keyboard: the intro would fill the whole
+   modal, and a pinned button row would cover what is left. */
+@media (max-width: 720px) and (max-height: 520px) {
+    .splice-chain-intro {
+        display: none;
+    }
+
+    .splice-chain-actions {
+        position: static;
+    }
+
+    .splice-chain-avail-list,
+    .splice-chain-list {
+        min-height: 96px;
+    }
+}
+
+.splice-chain-modal:focus {
+    outline: none;
 }
 
 #eas-tools-logo {
@@ -3380,7 +3424,8 @@ html.eas-pane #announcement-toast {
 }
 
 .nwr-pron-editor {
-    width: min(860px, calc(100vw - 32px));
+    min-width: min(860px, calc(100vw - 32px));
+    width: 85vw;
     overflow: auto;
 }
 
