@@ -2,6 +2,7 @@
   "name": "eas-tools",
   "version": "0.0.0-private",
   "private": true,
+  "type": "module",
   "description": "Development, testing, and documentation tooling for EAS Tools",
   "packageManager": "pnpm@12.16.1",
   "engines": {

@@ -83,12 +83,18 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             test/e2e-rs/target/
-          key: e2e-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('test/e2e-rs/Cargo.lock', 'test/e2e-rs/src/**', 'test/e2e-rs/suites/**') }}
+          key: e2e-v2-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('test/e2e-rs/Cargo.lock', 'test/e2e-rs/src/**', 'test/e2e-rs/suites/**') }}
           restore-keys: |
-            e2e-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-
+            e2e-v2-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-
 
+      # check, clippy and llvm-cov each keep their own artifacts, separate from a test build;
+      # warm every flavour `make e2e` uses so the saved cache covers all of them.
       - name: Build e2e suite
-        run: cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e --no-run
+        run: |
+          cargo check --manifest-path test/e2e-rs/Cargo.toml --all-targets --locked
+          cargo clippy --manifest-path test/e2e-rs/Cargo.toml --all-targets --locked
+          cargo llvm-cov --manifest-path test/e2e-rs/Cargo.toml --lib --locked --no-report
+          cargo test --manifest-path test/e2e-rs/Cargo.toml --test e2e --no-run
 
       - name: Save e2e build cache
         if: steps.e2e-cache.outputs.cache-hit != 'true'

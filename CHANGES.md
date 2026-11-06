@@ -16,6 +16,8 @@
 
 - Fix a Flood Watch (and other watch) in WarnGen showing an empty "WHEN" line when its saved Valid from / Until times had already passed (#165). The line now shows a fill-in, the status line explains why, and a new WHEN box lets you type your own. Thank you to GitHub user @InternOfCEOs for reporting this bug.
 
+- Fix more CI issues.
+
 ---
 
 2026-11-03:
