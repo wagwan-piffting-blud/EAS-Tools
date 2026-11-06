@@ -2163,6 +2163,8 @@
                 { id: "surgeHi", label: "Inundation to (ft)", type: "number", show: ["CF"] },
                 { id: "what", label: "WHAT / WINDS", type: "textarea", show: ["zone"], hint: "blank = generated" },
                 { id: "where", label: "WHERE", type: "textarea", show: ["zone"], hint: "blank = generated" },
+                { id: "when", label: "WHEN", type: "textarea", show: ["WS", "EC", "HW", "FA", "CF", "WS.W", "BZ.W", "IS.W", "EC.W", "HW.W"],
+                    hint: "blank = from Valid from / Until" },
                 { id: "impacts", label: "IMPACTS", type: "textarea", show: ["zone"], hint: "blank = hazard default" },
                 { id: "details", label: "ADDITIONAL DETAILS", type: "textarea", show: ["zone"] },
                 { id: "cta", label: "Precautionary actions", type: "textarea", show: ["zone"], hint: "blank = GFE default" },
@@ -2476,7 +2478,7 @@
                 var start = parseLocalInput(f.start);
                 var end = parseLocalInput(f.end);
                 if (fam === "zone") {
-                    start = start || hourUp(issued, 12);
+                    start = start || (end && hourUp(issued, 12).getTime() >= end.getTime() ? issued : hourUp(issued, 12));
                     end = end || new Date(start.getTime() + 24 * 3600000);
                 } else {
                     start = start || issued;
@@ -2558,7 +2560,8 @@
                         fields: { snowLo: f.snowLo, snowHi: f.snowHi, ice: f.ice, gust: f.gust, windChill: f.windChill,
                             dir: f.dir, windLo: f.windLo, windHi: f.windHi, flash: f.flash, surgeLo: f.surgeLo,
                             surgeHi: f.surgeHi, rh: f.rh },
-                        text: { what: f.what, where: f.where, impacts: f.impacts, details: f.details, cta: f.cta, wrapup: f.wrapup },
+                        text: { what: f.what, where: f.where, when: f.when, impacts: f.impacts, details: f.details, cta: f.cta,
+                            wrapup: f.wrapup },
                         upgrade: { etn: parseInt(f.upgEtn, 10) || etn, start: parseLocalInput(f.upgStart),
                             end: parseLocalInput(f.upgEnd) }
                     }).text;
@@ -2614,9 +2617,14 @@
                     if (sameKey.slice(-2) === ".A") sameKey = sameKey.slice(0, 2);
                 }
                 var same = WarngenWatches.SAME[sameKey];
+                var lapsed = fam === "zone" && action !== "CAN" && action !== "EXP"
+                    && end.getTime() <= Math.max(issued.getTime(), start.getTime());
+                var lapsedNote = lapsed ? ". Until is not after the issue time and Valid from, so the VTEC, headline and WHEN"
+                    + " have no valid period; update Valid from and Until." : "";
                 setStatus("Rendered " + p.name + " for " + hits.length + " " + resolved.srcSpec.nouns
-                    + " [" + tag + (same ? ", SAME " + same : "") + "]", false,
-                    mapCommandBusy ? "" : renderSpeech("Rendered " + p.name + " for " + hits.length + " " + resolved.srcSpec.nouns));
+                    + " [" + tag + (same ? ", SAME " + same : "") + "]" + lapsedNote, lapsed,
+                    mapCommandBusy ? "" : renderSpeech("Rendered " + p.name + " for " + hits.length + " " + resolved.srcSpec.nouns
+                        + lapsedNote));
             }
 
             // A bullet without a parseString in one action group can borrow the one its

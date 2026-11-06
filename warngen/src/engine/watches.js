@@ -933,7 +933,7 @@
         var auto = {
             WHAT: whatText(hazardKey(o.phen, sig), o.fields),
             WHERE: whereText(o.zones, o.stateNames),
-            WHEN: sentence(timingPhrase(h, o.issued, o.tz, o.dstLess)),
+            WHEN: sentence(timingPhrase(h, o.issued, o.tz, o.dstLess)) || "!** Valid period **!",
             IMPACTS: typeof hz.impacts === "function" ? hz.impacts(o.fields || {}) : hz.impacts,
             "AFFECTED AREA": whereText(o.zones, o.stateNames),
             WINDS: o.fields && o.fields.windLo

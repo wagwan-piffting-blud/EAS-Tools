@@ -1,6 +1,7 @@
 // This file is part of E2T-NG, a tool to convert EAS messages to text. See the full repository here for more information: https://github.com/wagwan-piffting-blud/E2T-NG
 
 import { eventDisplayName } from '../js/custom-events.js';
+import { customLocationName } from '../js/custom-locations.js';
 
 const EAS_REGEX =/^ZCZC-([A-Z]{3})-([A-Z\?]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{1,8}?)-$/m;
 const RESOURCE_PATHS = {
@@ -312,6 +313,10 @@ function lookupSame(sectionKey, itemKey, canadian_mode=false) {
     return lookupResource('sameUS', sectionKey, itemKey)
 }
 
+function locationName(code, canadian_mode=false) {
+    return lookupSame('SAME', code.slice(1, 6), canadian_mode) ?? customLocationName(code) ?? `FIPS Code ${code}`;
+}
+
 function applyModeTemplate(modeKey, replacements) {
     let template = lookupResource('endecModes', 'TEMPLATES', modeKey);
     if (typeof template !== 'string') return null;
@@ -475,7 +480,7 @@ function buildFIPSContext(locationCodes, canadian_mode=false) {
     const sortedCodes = [...new Set(locationCodes)];
     const fipsText = sortedCodes.map((code) => {
         const subdiv = lookupResource('sameUS', 'SUBDIV', code.slice(0, 1)) ?? '';
-        const sameName = lookupSame('SAME', code.slice(1, 6), canadian_mode) ?? `FIPS Code ${code}`;
+        const sameName = locationName(code, canadian_mode);
         return `${subdiv ? `${subdiv} ` : ''}${sameName}`;
     });
     const fipsTextWithAnd = fipsText.slice();
@@ -881,7 +886,7 @@ export function parseHeaderDetailed(header, timezone_override=null, canadian_mod
         locationNames: parsed.locations.map((code) => ({
             code,
             subdivision: lookupResource(canadian_mode ? 'sameCA' : 'sameUS', 'SUBDIV', code.slice(0, 1)) ?? '',
-            name: lookupSame('SAME', code.slice(1, 6), canadian_mode) ?? `FIPS Code ${code}`
+            name: locationName(code, canadian_mode)
         })),
         durationHours: parsed.duration.hours,
         durationMinutes: parsed.duration.minutes,

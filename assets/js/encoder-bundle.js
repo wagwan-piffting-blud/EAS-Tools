@@ -1,9 +1,11 @@
-import { ENDEC_MODE_OPTIONS, responseOk, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain, getPronunciationRepository } from './common-functions.js';
+import { ENDEC_MODE_OPTIONS, responseOk, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain, getPronunciationRepository, getRemoteTtsFeatures, TTS_BACKEND_URL } from './common-functions.js';
 import { createSendMenu, receive, handIn, audioFile } from './handoff.js';
 import { addCustomEvent, removeCustomEvent, readCustomEvents, customEventTable, onCustomEventsChange } from './custom-events.js';
+import { addCustomLocation, removeCustomLocation, readCustomLocations, customLocationName, onCustomLocationsChange } from './custom-locations.js';
 import { mountPronunciationControls } from './nwr-pronunciation-ui.js';
-import { summarizePlan } from './nwr-pronunciation.js';
-import { readSelection as readPronunciationSelection, writeSelection as writePronunciationSelection, onSelectionChange as onPronunciationSelectionChange } from './nwr-pronunciation-store.js';
+import { entryKey, summarizePlan } from './nwr-pronunciation.js';
+import { readSelection as readPronunciationSelection, writeSelection as writePronunciationSelection, onSelectionChange as onPronunciationSelectionChange, readPersonal as readPersonalPronunciations, readSubmissions as readPronunciationSubmissions } from './nwr-pronunciation-store.js';
+import { STATUS_LABELS as PRONUNCIATION_STATUS_LABELS, checkSubmission, draftEntry as draftPronunciation, editorSnapshot, exportPersonalText as exportPersonalPronunciationText, importPersonalText as importPersonalPronunciationText, loadEditorContext, planSubmissions, removePersonalByKey, savePersonalDraft, sendSubmissions, turnOffShared, withdrawSubmission } from './nwr-pronunciation-editing.js';
 
 if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
@@ -897,6 +899,36 @@ async function fetchAndStore() {
     function silenceSamples(key) {
         const gaps = activeSilenceGaps || getSilenceGapsMs();
         return samplesFromMs(gaps[key]);
+    }
+
+    const MESSAGE_LIMIT_DEFAULT_SECONDS = 120;
+    const MESSAGE_LIMIT_MAX_SECONDS = 600;
+
+    function readMessageLimitSeconds() {
+        if (!document.getElementById("messageLimitEnabled")?.checked) return 0;
+        const seconds = parseFloat(document.getElementById("messageLimitSeconds")?.value);
+        if (!Number.isFinite(seconds) || seconds <= 0) return MESSAGE_LIMIT_DEFAULT_SECONDS;
+        return Math.min(seconds, MESSAGE_LIMIT_MAX_SECONDS);
+    }
+
+    function formatLimitSeconds(seconds) {
+        const whole = Math.floor(seconds);
+        const minutes = Math.floor(whole / 60);
+        const rest = seconds - minutes * 60;
+        const restText = Number.isInteger(rest) ? String(rest).padStart(2, "0") : rest.toFixed(1).padStart(4, "0");
+        return minutes + ":" + restText;
+    }
+
+    function applyMessageTimeLimit() {
+        const seconds = readMessageLimitSeconds();
+        if (!seconds) return;
+        const voice = alertParts.find((part) => part.role === "voice");
+        if (!voice) return;
+        const limit = voice.at + Math.round(seconds * SAMPLE_RATE);
+        if (samples.length <= limit) return;
+        const cut = (samples.length - limit) / SAMPLE_RATE;
+        samples.length = limit;
+        addStatus("Voice message cut off at " + formatLimitSeconds(seconds) + " (" + cut.toFixed(1) + " s removed), as an ENDEC with a message time limit would.");
     }
 
     const LEGACY_DIGITAL_MODE = "DIGITAL_LEGACY";
@@ -1839,6 +1871,7 @@ async function fetchAndStore() {
             }
         }
 
+        applyMessageTimeLimit();
         markPart("eom");
         if (tone !== null) {
             switch (tone.toString()) {
@@ -2441,6 +2474,9 @@ async function fetchAndStore() {
             'silenceAttentionToMessage': document.getElementById('silenceAttentionToMessage')?.value ?? '1000',
             'silenceMessageToEom': document.getElementById('silenceMessageToEom')?.value ?? '1000',
             'silenceEomToEnd': document.getElementById('silenceEomToEnd')?.value ?? '1000',
+            'ttsMatchEndec': document.getElementById('ttsMatchEndec')?.checked || false,
+            'messageLimitEnabled': document.getElementById('messageLimitEnabled')?.checked || false,
+            'messageLimitSeconds': document.getElementById('messageLimitSeconds')?.value ?? String(MESSAGE_LIMIT_DEFAULT_SECONDS),
             'preHeaderAudio': readPrePostChoice("pre"),
             'postEomAudio': readPrePostChoice("post"),
             'silencePreHeaderToHeaders': document.getElementById('silencePreHeaderToHeaders')?.value ?? String(prePostOverrides.preGap ?? PRE_POST_GAP_FALLBACK_MS),
@@ -2709,8 +2745,13 @@ async function fetchAndStore() {
             addStatus("Skipped malformed FIPS code(s), which need 6 digits (or 5 plus the Region above): " + invalid.join(", "), "ERROR");
         }
 
-        if (result.custom.length) {
-            addStatus("Added custom FIPS code(s) that are not in the location tables: " + result.custom.join(", ") + ". They go into the header as-is; decoders will not have a name for them.", "WARN");
+        const named = result.custom.filter((code) => customLocationName(code));
+        const unnamed = result.custom.filter((code) => !customLocationName(code));
+        if (named.length) {
+            addStatus("Added your saved custom location code(s): " + named.map((code) => code + " (" + customLocationName(code) + ")").join(", ") + ".");
+        }
+        if (unnamed.length) {
+            addStatus("Added custom FIPS code(s) that are not in the location tables: " + unnamed.join(", ") + ". They go into the header as-is; save a name for them under \"Custom location codes\" so the Decoder and Text Crawl can show it.", "WARN");
         }
 
         if (duplicateCount > 0 && addedCount > 0) {
@@ -2724,11 +2765,11 @@ async function fetchAndStore() {
         const region = rgn[re] || re;
         if (isCA) {
             const caCode = code.slice(1);
-            return { name: canadaCounty[caCode] || "Custom code", area: caProvinces[caCode.charAt(0)] || "Unknown", region };
+            return { name: canadaCounty[caCode] || customLocationName(code) || "Custom code", area: caProvinces[caCode.charAt(0)] || "Unknown", region };
         }
         const st = code.slice(1, 3);
         const co = code.slice(3, 6);
-        let name = (county[st] && county[st][co]) || "Custom code";
+        let name = (county[st] && county[st][co]) || customLocationName(code) || "Custom code";
         if (co == "000" && st !== "00") { name = "Entire State"; }
         return { name, area: state[st] || st, region };
     }
@@ -2968,6 +3009,11 @@ async function fetchAndStore() {
                 });
             });
         }
+        const listed = new Set(entries.map((entry) => entry.code));
+        Object.entries(readCustomLocations()).forEach(([code, name]) => {
+            if (listed.has(code)) return;
+            entries.push({ code, label: name + " (custom)", hay: (name + " " + code + " custom").toLowerCase() });
+        });
         entries.sort((a, b) => a.label.localeCompare(b.label));
         return entries;
     }
@@ -3196,6 +3242,115 @@ async function fetchAndStore() {
     }
 
     locationSearch = initLocationSearch();
+
+    function isStandardLocationKey(key) {
+        const usCounty = county[key.slice(0, 2)];
+        return (!!usCounty && usCounty[key.slice(2)] !== undefined) || !!canadaCounty[key];
+    }
+
+    function refreshCustomLocationViews() {
+        updateTable();
+        if (locationSearch) locationSearch.index = null;
+        refreshLocationSearchMarks();
+    }
+
+    function mountCustomLocationEditor() {
+        const anchor = document.getElementById("locSearchCount");
+        if (!anchor || document.getElementById("customLocationsEditor")) return;
+        const details = document.createElement("details");
+        details.id = "customLocationsEditor";
+        details.className = "custom-events";
+        details.innerHTML =
+            '<summary>Custom location codes</summary>' +
+            '<p class="custom-events__hint">Codes saved here stay in this browser. Use 2 digits for the state and 3 for the county (the Region above still sets the first header digit). The Encoder can put them in a header, and the Decoder and Text Crawl show their names instead of "FIPS Code".</p>' +
+            '<div class="custom-events__form">' +
+            '<label for="customLocationCode">Code</label> ' +
+            '<input id="customLocationCode" maxlength="6" size="7" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="17999"> ' +
+            '<label for="customLocationName">Name</label> ' +
+            '<input id="customLocationName" maxlength="60" autocomplete="off" placeholder="e.g. Springfield Township, IL"> ' +
+            '<button type="button" id="customLocationSave">Save code</button>' +
+            '</div>' +
+            '<p id="customLocationMessage" class="custom-events__message" role="status" aria-live="polite"></p>' +
+            '<ul id="customLocationList" class="custom-events__list" aria-label="Saved custom location codes"></ul>';
+        anchor.after(details);
+
+        const codeInput = details.querySelector("#customLocationCode");
+        const nameInput = details.querySelector("#customLocationName");
+        const message = details.querySelector("#customLocationMessage");
+        const list = details.querySelector("#customLocationList");
+
+        const render = () => {
+            const custom = readCustomLocations();
+            list.innerHTML = "";
+            const codes = Object.keys(custom);
+            if (!codes.length) {
+                const empty = document.createElement("li");
+                empty.className = "custom-events__empty";
+                empty.textContent = "No custom location codes yet.";
+                list.appendChild(empty);
+                return;
+            }
+            codes.forEach((code) => {
+                const item = document.createElement("li");
+                const codeEl = document.createElement("code");
+                codeEl.textContent = code;
+                const add = document.createElement("button");
+                add.type = "button";
+                add.textContent = "Add";
+                add.setAttribute("aria-label", "Add custom location " + code + ", " + custom[code] + " to the alert");
+                add.addEventListener("click", () => {
+                    const result = addLocationCodes([code], currentFallbackSubdiv());
+                    message.textContent = result.added.length
+                        ? "Added " + result.added[0] + " (" + custom[code] + "). " + locationCountText() + "."
+                        : "That location is already in the list.";
+                });
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "custom-events__remove";
+                remove.textContent = "Remove";
+                remove.setAttribute("aria-label", "Remove custom location code " + code + ", " + custom[code]);
+                remove.addEventListener("click", () => {
+                    removeCustomLocation(code);
+                    message.textContent = "Removed " + code + ".";
+                    (list.querySelector(".custom-events__remove") || codeInput).focus();
+                });
+                item.append(codeEl, " " + custom[code] + " ", add, " ", remove);
+                list.appendChild(item);
+            });
+        };
+
+        const save = () => {
+            const result = addCustomLocation(codeInput.value, nameInput.value, { isReserved: isStandardLocationKey });
+            if (!result.ok) {
+                message.textContent = result.error;
+                return;
+            }
+            message.textContent = (result.replaced ? "Updated " : "Saved ") + result.code + " (" + result.name + "). Use its Add button, the search box or the FIPS code box to put it in the alert.";
+            codeInput.value = "";
+            nameInput.value = "";
+            codeInput.focus();
+        };
+
+        details.querySelector("#customLocationSave").addEventListener("click", save);
+        [codeInput, nameInput].forEach((input) => input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                save();
+            }
+        }));
+        codeInput.addEventListener("input", () => {
+            const digits = codeInput.value.replace(/\D/g, "");
+            if (digits !== codeInput.value) codeInput.value = digits;
+        });
+
+        render();
+        onCustomLocationsChange(() => {
+            refreshCustomLocationViews();
+            render();
+        });
+    }
+
+    mountCustomLocationEditor();
 
     function parseSameHeaderParam(rawHeader) {
         if (!rawHeader) {
@@ -3567,6 +3722,65 @@ async function fetchAndStore() {
         updateHeaderPreview();
         addStatus("Loaded a header from another tool.");
     }
+
+    const ENDEC_TTS_VOICES = { DEFAULT: "nanotts", NWS: "paul", NWS_BMH: "paul", NWS_CRS: "Speechify Tom", DASDEC: "FestvoxKal", SAGE_DIGITAL_3644: "Loquendo Dave", DIGITAL_LEGACY: "Loquendo Dave" };
+    const ENDEC_TEXT_STYLES = { TFT: "TFT", DASDEC: "DAS2PLUS", SAGE_DIGITAL_3644: "SAGE", SAGE_ANALOG_1822: "SAGE", DIGITAL_LEGACY: "SAGE", TRILITHIC: "TRILITHIC8PLUS", TRILITHIC_POP: "TRILITHIC8PLUS", HOLLYANNE: "HOLLYANNE" };
+
+    function suggestedTtsVoice(mode, originator) {
+        return ENDEC_TTS_VOICES[mode] || (originator === "WXR" ? "paul" : "FestvoxKal");
+    }
+
+    function matchTtsVoiceToEndec() {
+        if (!document.getElementById("ttsMatchEndec")?.checked) return;
+        const select = document.getElementById("ttsVoice");
+        const voice = suggestedTtsVoice(getOverallEndecMode(), originators.value);
+        const option = select && Array.from(select.options).find((opt) => opt.value === voice && !opt.disabled);
+        if (!option || select.value === voice) return;
+        select.value = voice;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        encoderAnnounce("Voice set to " + option.textContent.trim() + " to match the ENDEC.");
+    }
+
+    async function fillTtsFromAlert() {
+        updateHeaderPreview();
+        const header = (document.getElementById("headerPreview")?.textContent || "").trim();
+        if (!header) {
+            addStatus("Add at least one location (or enter a header) first, so there is an alert to read.", "ERROR");
+            return;
+        }
+        try {
+            const { text, style } = await alertTextFor(header, getOverallEndecMode(), fipsModeSelect?.value === "ca");
+            setTtsText(text);
+            addStatus("Filled the message with the alert's text" + (style ? " in " + style + " wording." : "."));
+        } catch (error) {
+            addStatus("Could not turn this header into text.", "ERROR");
+        }
+    }
+
+    async function alertTextFor(header, mode, canadian) {
+        const e2t = await import("../E2T/EAS2Text-NG.js");
+        await e2t.resourcesReady;
+        const style = ENDEC_TEXT_STYLES[normalizeEndecMode(mode)] || ENDEC_TEXT_STYLES[mode] || null;
+        const text = e2t.E2T(header, style, !!canadian);
+        if (!text) throw new Error("no text");
+        return { text, style };
+    }
+
+    function setTtsText(text) {
+        if (window.encoderEditor) {
+            window.encoderEditor.setValue(text);
+        } else {
+            const field = document.getElementById("ttsText");
+            if (field) field.value = text;
+        }
+        window.ttsText = text.trim();
+        requestAnimationFrame(() => window.__ensureTextEditorsRefreshed?.("encoder"));
+    }
+
+    document.getElementById("overallEndecMode")?.addEventListener("change", matchTtsVoiceToEndec);
+    originators?.addEventListener("change", matchTtsVoiceToEndec);
+    document.getElementById("ttsMatchEndec")?.addEventListener("change", matchTtsVoiceToEndec);
+    document.getElementById("ttsFillFromAlert")?.addEventListener("click", fillTtsFromAlert);
 
     function loadIncomingText(text) {
         announcementTypeSelect.value = "tts";
@@ -4142,6 +4356,109 @@ async function fetchAndStore() {
             writePronunciationSelection({ enabled: params?.enabled, source: params?.source });
         });
 
+        let nwrEditorContext = null;
+        let nwrEditorQuery = '';
+        const nwrEditorResult = (op, result) => {
+            window.EASBridge.send('encoder:nwrEditorResult', { op, ok: !!result.ok, message: result.message || '', error: result.error || '' });
+        };
+        const loadNwrEditorContext = async () => {
+            nwrEditorContext = await loadEditorContext(getPronunciationRepository(), readPronunciationSelection());
+            return nwrEditorContext;
+        };
+        const sendNwrEditor = async () => {
+            try {
+                const context = await loadNwrEditorContext();
+                window.EASBridge.send('encoder:nwrEditor', editorSnapshot(context, {
+                    personal: readPersonalPronunciations(),
+                    submissions: readPronunciationSubmissions(),
+                    canSubmit: !!getRemoteTtsFeatures()?.pronunciation?.submit,
+                    features: getRemoteTtsFeatures(),
+                    query: nwrEditorQuery,
+                }));
+            } catch (error) {
+                nwrEditorResult('load', { ok: false, error: 'Could not load the pronunciation dictionary: ' + error.message });
+            }
+        };
+
+        window.EASBridge.on('encoder:requestNwrEditor', (params) => {
+            nwrEditorQuery = String(params?.query || '');
+            sendNwrEditor();
+        });
+
+        window.EASBridge.on('encoder:nwrEditorSave', (params) => {
+            const editing = params?.editingId ? { id: String(params.editingId), scope: String(params.editingScope || '') } : null;
+            const result = savePersonalDraft({
+                match: params?.match, kind: params?.kind, value: params?.value, caseSensitive: !!params?.caseSensitive, scope: params?.scope,
+            }, editing);
+            nwrEditorResult('save', result);
+            if (result.ok) sendNwrEditor();
+        });
+
+        window.EASBridge.on('encoder:nwrEditorRemove', (params) => {
+            const result = removePersonalByKey(String(params?.id || ''), String(params?.scope || ''));
+            nwrEditorResult('remove', result);
+            sendNwrEditor();
+        });
+
+        window.EASBridge.on('encoder:nwrEditorTurnOff', async (params) => {
+            const context = nwrEditorContext || await loadNwrEditorContext();
+            const item = context.inherited.find((i) => entryKey(i.entry) === params?.key);
+            const result = item ? turnOffShared(item.entry, String(params?.scope || '')) : { ok: false, error: 'That shared pronunciation is no longer in the list.' };
+            nwrEditorResult('turnOff', result);
+            sendNwrEditor();
+        });
+
+        window.EASBridge.on('encoder:nwrEditorTest', async (params) => {
+            const { testDraftWithPaul } = await import('./nwr-pronunciation-editor.js');
+            const draft = draftPronunciation({ match: params?.match, kind: params?.kind, value: params?.value, caseSensitive: !!params?.caseSensitive, scope: 'all' });
+            nwrEditorResult('test', await testDraftWithPaul(draft, String(params?.voice || 'paul')));
+        });
+
+        window.EASBridge.on('encoder:nwrEditorSubmit', async (params) => {
+            const context = nwrEditorContext || await loadNwrEditorContext();
+            const wanted = new Set((Array.isArray(params?.entries) ? params.entries : []).map((e) => String(e?.scope) + '|' + String(e?.id)));
+            const chosen = readPersonalPronunciations().filter((e) => wanted.has(e.scope + '|' + e.id));
+            const target = String(params?.target || '');
+            const plan = planSubmissions({
+                chosen,
+                target,
+                sets: context.sets,
+                prosody: { speed: params?.speed, comma: params?.comma, period: params?.period },
+                notes: params?.notes,
+                links: params?.links,
+                client: { app: /iphone|ipad/i.test(navigator.userAgent) ? 'ios' : 'android', version: '' },
+            });
+            if (!plan.ok) {
+                nwrEditorResult('submit', plan);
+                return;
+            }
+            const sent = await sendSubmissions(plan.requests, { apiUrl: TTS_BACKEND_URL, target });
+            nwrEditorResult('submit', { ok: !sent.error, message: sent.message, error: sent.error });
+            sendNwrEditor();
+        });
+
+        window.EASBridge.on('encoder:nwrEditorCheck', async (params) => {
+            const result = await checkSubmission(String(params?.id || ''), { apiUrl: TTS_BACKEND_URL });
+            if (result.newlyApproved) getPronunciationRepository().invalidate();
+            nwrEditorResult('check', result.ok ? { ok: true, message: 'Status: ' + (PRONUNCIATION_STATUS_LABELS[result.status] || result.status) + '.' } : result);
+            sendNwrEditor();
+        });
+
+        window.EASBridge.on('encoder:nwrEditorExport', () => {
+            window.EASBridge.send('encoder:nwrEditorExportData', exportPersonalPronunciationText());
+        });
+
+        window.EASBridge.on('encoder:nwrEditorImport', (params) => {
+            nwrEditorResult('import', importPersonalPronunciationText(params?.text));
+            sendNwrEditor();
+        });
+
+        window.EASBridge.on('encoder:nwrEditorWithdraw', async (params) => {
+            const result = await withdrawSubmission(String(params?.id || ''), { apiUrl: TTS_BACKEND_URL });
+            nwrEditorResult('withdraw', result.ok ? { ok: true, message: 'Withdrawn.' } : result);
+            sendNwrEditor();
+        });
+
         onPronunciationSelectionChange(() => sendNwrPronunciationData());
 
         window.EASBridge.on('encoder:requestCustomEvents', () => {
@@ -4162,6 +4479,45 @@ async function fetchAndStore() {
         });
 
         onCustomEventsChange(() => sendEventsData());
+
+        window.EASBridge.on('encoder:suggestVoice', (params) => {
+            const voice = suggestedTtsVoice(String(params?.endecMode || 'DEFAULT'), String(params?.originator || ''));
+            window.EASBridge.send('encoder:suggestedVoice', { voice, endecMode: params?.endecMode || '', originator: params?.originator || '' });
+        });
+
+        window.EASBridge.on('encoder:requestAlertText', async (params) => {
+            const header = String(params?.header || '').trim();
+            if (!header) {
+                window.EASBridge.send('encoder:alertText', { ok: false, error: 'Add at least one location first, so there is an alert to read.' });
+                return;
+            }
+            try {
+                const { text, style } = await alertTextFor(header, String(params?.endecMode || 'DEFAULT'), params?.fipsMode === 'ca');
+                window.EASBridge.send('encoder:alertText', { ok: true, text, style: style || '' });
+            } catch (error) {
+                window.EASBridge.send('encoder:alertText', { ok: false, error: 'Could not turn this header into text.' });
+            }
+        });
+
+        const sendCustomLocationsData = () => {
+            window.EASBridge.send('encoder:customLocationsData', { locations: readCustomLocations() });
+        };
+
+        window.EASBridge.on('encoder:requestCustomLocations', sendCustomLocationsData);
+
+        window.EASBridge.on('encoder:saveCustomLocation', (params) => {
+            const result = addCustomLocation(params?.code, params?.name, { isReserved: isStandardLocationKey });
+            window.EASBridge.send('encoder:customLocationResult', result.ok
+                ? { ok: true, action: result.replaced ? 'updated' : 'saved', code: result.code, name: result.name }
+                : { ok: false, error: result.error });
+        });
+
+        window.EASBridge.on('encoder:removeCustomLocation', (params) => {
+            const result = removeCustomLocation(params?.code);
+            window.EASBridge.send('encoder:customLocationResult', { ok: result.ok, action: 'removed', code: result.code || String(params?.code || '') });
+        });
+
+        onCustomLocationsChange(() => sendCustomLocationsData());
 
         window.EASBridge.on('encoder:requestCounties', (params) => {
             const stateCode = params?.state;
@@ -4221,6 +4577,8 @@ async function fetchAndStore() {
                 for (const silenceId of ['silencePreTone', 'silenceHeadersToAttention', 'silenceAttentionToMessage', 'silenceMessageToEom', 'silenceEomToEnd']) {
                     if (params[silenceId] != null && el(silenceId)) el(silenceId).value = params[silenceId].toString();
                 }
+                if (params.messageLimitEnabled != null && el('messageLimitEnabled')) el('messageLimitEnabled').checked = !!params.messageLimitEnabled;
+                if (params.messageLimitSeconds != null && el('messageLimitSeconds')) el('messageLimitSeconds').value = params.messageLimitSeconds.toString();
                 if (params.preHeaderAudio != null || params.postEomAudio != null) {
                     await loadPrePostManifest();
                 }
@@ -4475,12 +4833,10 @@ async function fetchAndStore() {
                 const countyCode = fips.slice(3, 6);
                 const countyName = window.county?.[stateCode]?.[countyCode] || '';
                 const stateAbbr = window.state?.[stateCode] || '';
-                if (countyName || stateAbbr) {
-                    return { code: fips, county: countyName, state: stateAbbr };
-                }
-                const caCode = fips.slice(1);
-                const caName = window.canadaCounty?.[caCode] || '';
-                return { code: fips, county: caName || 'Custom code', state: caName ? 'CA' : '' };
+                const caName = window.canadaCounty?.[fips.slice(1)] || '';
+                if (countyName) return { code: fips, county: countyName, state: stateAbbr };
+                if (caName) return { code: fips, county: caName, state: 'CA' };
+                return { code: fips, county: customLocationName(fips) || 'Custom code', state: stateAbbr };
             });
             window.EASBridge.send('encoder:fipsResolved', { results: results });
         });

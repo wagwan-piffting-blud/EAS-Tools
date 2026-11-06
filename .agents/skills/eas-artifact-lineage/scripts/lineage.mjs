@@ -38,6 +38,20 @@ const registry = [
         classification: 'derived checked-in data',
     },
     {
+        name: 'Texscan PSC-902 crawl font',
+        outputs: ['assets/fonts/texscan-psc902.ttf'],
+        inputs: ['external Texscan-MSI SpectraGen Z-Series font ROM "U6 FONTS AM27C2048.BIN" (cg-wiki.org z4000_roms.zip, sha256 a77b01f6...; not in the repository)', 'the PSC-902 glyph overrides in the generator (I, period, colon, comma, semicolon, J, R)'],
+        generator: 'tools/build-texscan-psc902-font.py',
+        classification: 'derived checked-in data',
+    },
+    {
+        name: 'NWS office names (mock NWS text style)',
+        outputs: ['assets/nws-office-names.json'],
+        inputs: ['warngen/index.html OFFICE_LABELS + NORMALIZED_OFFICE_LABELS_ONLY (parsed as text)'],
+        generator: 'tools/build-nws-office-names.mjs',
+        classification: 'derived checked-in data',
+    },
+    {
         name: 'NWR transmitter registry',
         outputs: ['assets/nwr-pronunciation/transmitters.json'],
         inputs: ['external NWS county coverage listing https://www.weather.gov/source/nwr/JS/CCL.js (parsed as text)', 'warngen/data/civil_sites.json'],

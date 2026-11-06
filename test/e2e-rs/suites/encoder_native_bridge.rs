@@ -39,6 +39,112 @@ fn last<'a>(sent: &'a [(String, Value)], channel: &str) -> Option<&'a Value> {
 
 pub fn cases() -> Vec<Case> {
     vec![
+        case("the_engine_suggests_each_endecs_voice", |tab| async move {
+            open(&tab).await?;
+            for (mode, originator, voice) in [
+                ("DEFAULT", "WXR", "nanotts"),
+                ("NWS_BMH", "CIV", "paul"),
+                ("NWS_CRS", "WXR", "Speechify Tom"),
+                ("DASDEC", "WXR", "FestvoxKal"),
+                ("SAGE_DIGITAL_3644", "CIV", "Loquendo Dave"),
+                ("TFT", "WXR", "paul"),
+                ("TFT", "CIV", "FestvoxKal"),
+            ] {
+                let sent = call(
+                    &tab,
+                    "encoder:suggestVoice",
+                    json!({ "endecMode": mode, "originator": originator }),
+                )
+                .await?;
+                let got = last(&sent, "encoder:suggestedVoice")
+                    .cloned()
+                    .unwrap_or_default();
+                ensure!(got["voice"] == voice, "{mode}/{originator}: {got}");
+            }
+            Ok(())
+        }),
+        case("alert_text_is_worded_like_the_endec", |tab| async move {
+            open(&tab).await?;
+            tab.exec(
+                "window.__bridgeSent.length = 0; window.__bridgeHandlers['encoder:requestAlertText'](arguments[0]);",
+                json!([{ "header": "ZCZC-WXR-TOR-017031+0030-1352200-KLOT/NWS-", "endecMode": "DASDEC", "fipsMode": "us" }]),
+            )
+            .await?;
+            tab.wait_until(
+                "window.__bridgeSent.some(([name]) => name === 'encoder:alertText')",
+                Duration::from_secs(15),
+            )
+            .await?;
+            let sent: Vec<(String, Value)> = tab.eval("window.__bridgeSent.slice()").await?;
+            let reply = last(&sent, "encoder:alertText")
+                .cloned()
+                .unwrap_or_default();
+            ensure!(
+                reply["ok"] == true
+                    && reply["style"] == "DAS2PLUS"
+                    && reply["text"]
+                        .as_str()
+                        .unwrap_or("")
+                        .contains("for the following counties or areas"),
+                "{reply}"
+            );
+            let empty = call(&tab, "encoder:requestAlertText", json!({ "header": "" })).await?;
+            ensure!(
+                last(&empty, "encoder:alertText").map(|r| r["ok"] == false) == Some(true),
+                "{empty:?}"
+            );
+            Ok(())
+        }),
+        case(
+            "a_saved_custom_location_resolves_by_name",
+            |tab| async move {
+                open(&tab).await?;
+                let saved = call(
+                    &tab,
+                    "encoder:saveCustomLocation",
+                    json!({ "code": "08888", "name": "Test Ranch, CO" }),
+                )
+                .await?;
+                let result = last(&saved, "encoder:customLocationResult")
+                    .cloned()
+                    .unwrap_or_default();
+                ensure!(
+                    result["ok"] == true && result["code"] == "08888",
+                    "{result}"
+                );
+                let data = last(&saved, "encoder:customLocationsData")
+                    .cloned()
+                    .unwrap_or_default();
+                ensure!(data["locations"]["08888"] == "Test Ranch, CO", "{data}");
+                let resolved =
+                    call(&tab, "encoder:resolveFips", json!({ "codes": ["508888"] })).await?;
+                let results = last(&resolved, "encoder:fipsResolved").unwrap()["results"].clone();
+                ensure!(results[0]["county"] == "Test Ranch, CO", "{results}");
+                let reserved = call(
+                    &tab,
+                    "encoder:saveCustomLocation",
+                    json!({ "code": "48453", "name": "Not Travis" }),
+                )
+                .await?;
+                let refused = last(&reserved, "encoder:customLocationResult")
+                    .cloned()
+                    .unwrap_or_default();
+                ensure!(refused["ok"] == false, "{refused}");
+                let removed = call(
+                    &tab,
+                    "encoder:removeCustomLocation",
+                    json!({ "code": "08888" }),
+                )
+                .await?;
+                ensure!(
+                    last(&removed, "encoder:customLocationResult")
+                        .map(|r| r["action"] == "removed" && r["ok"] == true)
+                        == Some(true),
+                    "{removed:?}"
+                );
+                Ok(())
+            },
+        ),
         case(
             "the_location_index_matches_the_web_search_for_both_modes",
             |tab| async move {

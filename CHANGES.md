@@ -1,5 +1,21 @@
 # EAS Tools Changelog
 
+2026-11-06:
+
+- Add an "Alert text style" option to the Decoder (#165). The human-readable text in each alert's details can now be worded like a DASDEC (v1 or II), Trilithic EASyPLUS, SAGE, TFT, HollyAnne, Gorman-Redlich or Burk ENDEC, or as a mock NWS/AWIPS-style headline for weather (WXR) alerts ("The National Weather Service in Chicago has issued a * Tornado Warning for... Cook County in northeastern Illinois... * Until 530 PM CDT."), with the office taken from the sender ID and the Storm Prediction Center named for national watches. The NWS style is a mock built from the SAME header, not an official product. The default stays the plain wording, and your choice is remembered with the other Decoder options. Office names match what WarnGen prints ("The National Weather Service in the Quad Cities"). The option is in the Android and iOS apps' Decoder too as of the next release. Thank you to GitHub user @InternOfCEOs for suggesting this change.
+
+- Add an optional message time limit to the SAME Encoder (#159). Real ENDECs usually stop a message at 2 minutes and send the EOM tones even if the voice message is still going; turn on "Cut the voice message off at a time limit" under Message Time Limit to do the same. The limit counts from the end of the attention signal, defaults to 120 seconds and can be set from 1 to 600 seconds. It is off by default and will be added in the Android and iOS apps too soon. Thank you to GitHub user @GreatLordBug for asking for this change.
+
+- Add custom location codes to the SAME Encoder. Like custom event codes, you can save a 5-digit state + county code with a name (for example 17999, "Springfield Township, IL"); the Encoder lists it in its location table and search, and the Decoder, Text Crawl and E2T text show your name instead of "FIPS Code". The Region picker still sets the first header digit. Codes stay in your browser, and the Android and iOS apps will have the same editor in their location picker. Thank you to Discord user @trainzman2422 for suggesting this.
+
+- Add two TTS helpers to the SAME Encoder (#165). "Pick a matching voice when the ENDEC or originator changes" chooses NanoTTS for EASyCAP, VT Paul for the NWS ENDECs, Speechify Tom for CRS, Festvox Kal for DASDEC and Loquendo Dave for the SAGE 3644; other ENDECs get VT Paul for weather alerts and Festvox Kal otherwise. It is off by default. "Use the alert's text" fills the message with the header's text, worded like the selected ENDEC. Thank you to GitHub user @InternOfCEOs for requesting this change.
+
+- Add the Trilithic PSC-902 (Texscan-MSI) screen to the Text Crawl (#164). Pick "Trilithic PSC-902 (Texscan-MSI)" as a pre-made background or built-in style for the blue "EMERGENCY ALERT SYSTEM" screen, with the event name in large letters and a crawl band that is green for tests, red for warnings and orange for watches. Its font, "Texscan PSC-902", is rebuilt pixel for pixel from a similar character generator's font ROM, with the few letters the PSC-902 drew differently corrected from off-air footage. It will be coming to the Android and iOS apps soon, too. Thank you to GitHub user @itsmewilliam12 for suggesting this change.
+
+- Fix a Flood Watch (and other watch) in WarnGen showing an empty "WHEN" line when its saved Valid from / Until times had already passed (#165). The line now shows a fill-in, the status line explains why, and a new WHEN box lets you type your own. Thank you to GitHub user @InternOfCEOs for reporting this bug.
+
+---
+
 2026-11-03:
 
 - Re-do the automatic NWS pronunciations modal slightly. The modal is rearranged to put the submission process front and center, and I added some breaks and headings for flow.

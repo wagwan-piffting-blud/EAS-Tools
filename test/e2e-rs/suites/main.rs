@@ -6,6 +6,7 @@ mod crawl_dasdec;
 mod crawl_dimension_inputs;
 mod crawl_easyplus_event_names;
 mod crawl_premade_locks;
+mod crawl_psc902;
 mod crawl_screen_builder;
 mod crawl_sender_override;
 mod crawl_top_left_manual;
@@ -16,8 +17,10 @@ mod decoder_alarm;
 mod decoder_custom_alarms;
 mod decoder_same;
 mod decoder_settings;
+mod decoder_text_style;
 mod demo_wav_headers;
 mod demos_page;
+mod encoder_alert_options;
 mod encoder_events;
 mod encoder_location_search;
 mod encoder_native_bridge;
@@ -55,6 +58,7 @@ fn main() -> std::process::ExitCode {
             crawl_easyplus_event_names::cases(),
         ),
         ("crawl_premade_locks", crawl_premade_locks::cases()),
+        ("crawl_psc902", crawl_psc902::cases()),
         ("crawl_screen_builder", crawl_screen_builder::cases()),
         ("crawl_sender_override", crawl_sender_override::cases()),
         ("crawl_top_left_manual", crawl_top_left_manual::cases()),
@@ -68,8 +72,10 @@ fn main() -> std::process::ExitCode {
         ("decoder_custom_alarms", decoder_custom_alarms::cases()),
         ("decoder_same", decoder_same::cases()),
         ("decoder_settings", decoder_settings::cases()),
+        ("decoder_text_style", decoder_text_style::cases()),
         ("demo_wav_headers", demo_wav_headers::cases()),
         ("demos_page", demos_page::cases()),
+        ("encoder_alert_options", encoder_alert_options::cases()),
         ("encoder_events", encoder_events::cases()),
         ("encoder_location_search", encoder_location_search::cases()),
         ("encoder_native_bridge", encoder_native_bridge::cases()),

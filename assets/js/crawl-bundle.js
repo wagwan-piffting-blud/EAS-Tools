@@ -133,7 +133,8 @@ async function initCrawlEditor() {
         'dasdec_black': { topLeft: { x: 9999, y: 9999 } },
         'dasdec_blue': { topLeft: { x: 9999, y: 9999 } },
         'eas_1cg': { topLeft: { x: 9999, y: 9999 } },
-        'atari_800xl': { topLeft: { x: 9999, y: 9999 } }
+        'atari_800xl': { topLeft: { x: 9999, y: 9999 } },
+        'psc_902': { topLeft: { x: 0, y: 318 } }
     });
 
     const DASDEC_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
@@ -227,6 +228,23 @@ async function initCrawlEditor() {
         watch: '#FF8000',
         advisory: '#02D306'
     });
+    const PSC_902_SOURCE = 'psc_902';
+    const PSC_902_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
+    const PSC_902_FONT_FAMILY = 'Texscan PSC-902';
+    const PSC_902_BACKGROUND_COLOR = '#001AC6';
+    const PSC_902_TEXT_COLOR = '#FFFFFF';
+    const PSC_902_SHADOW_COLOR = '#000000';
+    const PSC_902_BAND_COLORS = Object.freeze({
+        warning: '#F40728',
+        watch: '#FF9100',
+        advisory: '#49D831'
+    });
+    const PSC_902_CELL = Object.freeze({ width: 32, height: 64, capCenterRow: 26 });
+    const PSC_902_HEADLINE = Object.freeze({ text: 'EMERGENCY ALERT SYSTEM', centerY: 112, scaleX: 0.64, scaleY: 0.55, shadow: 2 });
+    const PSC_902_EVENT = Object.freeze({ lastLineY: 290, lineSpacing: 65, scaleX: 1.25, scaleY: 1.25, shadow: 3, maxLines: 3, columns: 16 });
+    const PSC_902_BAND = Object.freeze({ y: 328, height: 61 });
+    const PSC_902_CRAWL_FONT_SIZE = 80;
+    const PSC_902_CRAWL_SHADOW = 3;
     const ATARI_FLASH_INTERVAL_MS = 500;
     const ATARI_GENERIC_AREA = 'YOUR AREA';
     const ATARI_INDEFINITE = 'FURTHER NOTICE';
@@ -265,6 +283,7 @@ async function initCrawlEditor() {
             { family: 'VDSwiss V1', file: 'vdswiss-v1.otf', description: 'sans-serif font used on VDS crawls (made by Gigabyte97)' },
             { family: 'XBOB-4 8x13', file: 'BDF-8x13.ttf', description: 'bitmap font used on XBOB-4 crawls' },
             { family: 'Atari 800XL', file: 'atari-800xl.ttf', description: 'Atari Classic font used on Atari 800XL override screens' },
+            { family: 'Texscan PSC-902', file: 'texscan-psc902.ttf', description: 'Trilithic PSC-902 / Texscan-MSI SpectraGen font, from the character generator ROM' },
             { family: 'User-Upload', file: 'user-upload.ttf', description: 'upload your own font to use!' }
         ];
         window.crawlFontsToLoad = fontsToLoad;
@@ -562,20 +581,30 @@ async function initCrawlEditor() {
         return ctx.measureText(text).width * (Number.isFinite(scaleX) ? scaleX : 1);
     }
 
-    function createTextRenderer(ctx, outlineColor, outlineWidth, scaleX) {
+    function createTextRenderer(ctx, outlineColor, outlineWidth, scaleX, shadow) {
         const parsedWidth = Number(outlineWidth);
         const hasOutline = Boolean(outlineColor) && Number.isFinite(parsedWidth) && parsedWidth > 0;
         const sx = Number.isFinite(scaleX) && scaleX > 0 ? scaleX : 1;
         const stretched = sx !== 1;
+        const shadowOffset = shadow && Number(shadow.offset) > 0 ? Number(shadow.offset) : 0;
 
         if (hasOutline) {
             ctx.strokeStyle = outlineColor;
             ctx.lineWidth = parsedWidth;
         }
 
-        const paint = hasOutline
+        const paintText = hasOutline
             ? (stringText, x, y) => { ctx.strokeText(stringText, x, y); ctx.fillText(stringText, x, y); }
             : (stringText, x, y) => { ctx.fillText(stringText, x, y); };
+        const paint = shadowOffset
+            ? (stringText, x, y) => {
+                const fill = ctx.fillStyle;
+                ctx.fillStyle = shadow.color;
+                ctx.fillText(stringText, x + shadowOffset / sx, y + shadowOffset);
+                ctx.fillStyle = fill;
+                paintText(stringText, x, y);
+            }
+            : paintText;
 
         return (text, x, y) => {
             if (text === undefined || text === null) return;
@@ -1349,7 +1378,10 @@ async function initCrawlEditor() {
             ? (scale === 1 ? outlineWidth : Math.max(1, Math.round(outlineWidth * scale)))
             : undefined;
         const textScaleX = normalizeTextScale(generator.textWidthPercent);
-        const renderText = createTextRenderer(ctx, generator.outlineColor, scaledOutlineWidth, textScaleX);
+        const exportShadow = generator.textShadow
+            ? { color: generator.textShadow.color, offset: scale === 1 ? generator.textShadow.offset : Math.max(1, Math.round(generator.textShadow.offset * scale)) }
+            : null;
+        const renderText = createTextRenderer(ctx, generator.outlineColor, scaledOutlineWidth, textScaleX, exportShadow);
         const vdsState = useVdsMode ? createVdsExportState(ctx, lines, textScaleX) : null;
 
         const maxLineWidth = lines.reduce((maxWidth, line) => {
@@ -2239,6 +2271,7 @@ async function initCrawlEditor() {
             this.crawlRepetitions = 0;
             this.kerningPercent = 0;
             this.textWidthPercent = DEFAULT_TEXT_WIDTH_PERCENT;
+            this.textShadow = null;
             this._frameHistory = [];
             this._frameHistoryLimit = 15;
             this._responsiveViewportHandler = null;
@@ -2607,7 +2640,7 @@ async function initCrawlEditor() {
             if (this.vdsMode) {
                 this.ctx.textAlign = 'left';
                 const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth,
-                    this._textScaleX());
+                    this._textScaleX(), this.textShadow);
                 const state = this._ensureVdsState(lines);
                 const maxLineWidth = state.maxLineWidth || 0;
                 const translation = this._computeTopLeftTranslation(maxLineWidth, lines.length);
@@ -2658,7 +2691,7 @@ async function initCrawlEditor() {
             this.ctx.textAlign = 'center';
             const frameScaleX = this._textScaleX();
             const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth,
-                frameScaleX);
+                frameScaleX, this.textShadow);
             const maxLineWidth = this._maxLineWidth(lines, frameScaleX);
             const translation = this._computeTopLeftTranslation(maxLineWidth, lines.length);
             const translationX = Number.isFinite(translation.x) ? translation.x : 0;
@@ -3242,7 +3275,7 @@ async function initCrawlEditor() {
             this.ctx.fillStyle = this.textColor;
             this.ctx.lineJoin = this.outlineJoin;
             const renderText = createTextRenderer(this.ctx, this.outlineColor, this.outlineWidth,
-                this._textScaleX());
+                this._textScaleX(), this.textShadow);
             const releaseClip = this._applyCrawlClip(this.ctx, bounds.inset);
 
             const translation = this._computeTopLeftTranslation(maxLineWidth, lines.length);
@@ -3384,7 +3417,7 @@ async function initCrawlEditor() {
         return { type, source };
     }
 
-    const ALERT_PICKER_SOURCES = new Set(['easyplus', 'easyplus_gray', 'atari_800xl']);
+    const ALERT_PICKER_SOURCES = new Set(['easyplus', 'easyplus_gray', 'atari_800xl', PSC_902_SOURCE]);
 
     function premadeUsesAlertPickers(value) {
         const descriptor = parseBackgroundSelectionValue(value);
@@ -3632,6 +3665,15 @@ async function initCrawlEditor() {
             updateCrawlControlsFromAsset({
                 width: ATARI_RENDER_DIMENSIONS.width,
                 height: ATARI_RENDER_DIMENSIONS.height,
+                topLeft: initialTopLeft
+            }, { premade: true });
+            return;
+        }
+
+        if (descriptor.source === PSC_902_SOURCE) {
+            updateCrawlControlsFromAsset({
+                width: PSC_902_RENDER_DIMENSIONS.width,
+                height: PSC_902_RENDER_DIMENSIONS.height,
                 topLeft: initialTopLeft
             }, { premade: true });
             return;
@@ -4620,6 +4662,86 @@ async function initCrawlEditor() {
         return img;
     }
 
+    function psc902EventLines(eventText) {
+        const words = String(eventText || '').split(/\s+/).filter(Boolean);
+        const lines = words.slice();
+        while (lines.length > PSC_902_EVENT.maxLines) {
+            let best = -1;
+            for (let i = 0; i < lines.length - 1; i++) {
+                const joined = lines[i].length + 1 + lines[i + 1].length;
+                if (joined <= PSC_902_EVENT.columns && (best < 0 || joined < lines[best].length + 1 + lines[best + 1].length)) {
+                    best = i;
+                }
+            }
+            if (best < 0) {
+                best = lines.length - 2;
+            }
+            lines.splice(best, 2, `${lines[best]} ${lines[best + 1]}`);
+        }
+        return lines;
+    }
+
+    async function formatPsc902(rawHeader, e2tMode, alertChoice) {
+        const model = await formatAtari(rawHeader, e2tMode, alertChoice);
+        return { eventLines: psc902EventLines(model.eventText), severity: model.severity };
+    }
+
+    async function generatePsc902ScreenImage(model) {
+        const screen = model || {};
+        const canvas = document.createElement('canvas');
+        canvas.width = PSC_902_RENDER_DIMENSIONS.width;
+        canvas.height = PSC_902_RENDER_DIMENSIONS.height;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = PSC_902_BACKGROUND_COLOR;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = PSC_902_BAND_COLORS[screen.severity] || PSC_902_BAND_COLORS.advisory;
+        ctx.fillRect(0, PSC_902_BAND.y, canvas.width, PSC_902_BAND.height);
+
+        await ensureFontsReady();
+        await document.fonts.load(`normal ${PSC_902_CELL.height}px "${PSC_902_FONT_FAMILY}"`);
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+
+        const drawLine = (text, centerY, style) => {
+            const fontSize = PSC_902_CELL.height * style.scaleY;
+            const stretch = style.scaleX / style.scaleY;
+            const columns = text.length;
+            const fit = Math.min(1, canvas.width / (columns * PSC_902_CELL.width * style.scaleX));
+            const width = columns * PSC_902_CELL.width * style.scaleX * fit;
+            const left = (canvas.width - width) / 2;
+            const middle = centerY + (PSC_902_CELL.height / 2 - PSC_902_CELL.capCenterRow) * style.scaleY;
+            ctx.font = `normal ${fontSize}px "${PSC_902_FONT_FAMILY}"`;
+            ctx.save();
+            ctx.translate(left, 0);
+            ctx.scale(stretch * fit, 1);
+            ctx.fillStyle = PSC_902_SHADOW_COLOR;
+            ctx.fillText(text, style.shadow / (stretch * fit), middle + style.shadow);
+            ctx.fillStyle = PSC_902_TEXT_COLOR;
+            ctx.fillText(text, 0, middle);
+            ctx.restore();
+        };
+
+        drawLine(PSC_902_HEADLINE.text, PSC_902_HEADLINE.centerY, PSC_902_HEADLINE);
+        const lines = Array.isArray(screen.eventLines) ? screen.eventLines : [];
+        const top = PSC_902_EVENT.lastLineY - (lines.length - 1) * PSC_902_EVENT.lineSpacing;
+        lines.forEach((line, index) => drawLine(line, top + index * PSC_902_EVENT.lineSpacing, PSC_902_EVENT));
+
+        const img = new Image();
+        img.width = canvas.width;
+        img.height = canvas.height;
+        img.src = canvas.toDataURL('image/png');
+        await new Promise((resolve) => {
+            if (img.complete && img.naturalWidth > 0) {
+                resolve();
+                return;
+            }
+            img.addEventListener('load', resolve, { once: true });
+            img.addEventListener('error', resolve, { once: true });
+        });
+        return img;
+    }
+
     async function loadCrawlBackgroundAssets(mode) {
         if (mode !== 'premade') {
             stopDasdecRotationState();
@@ -4875,6 +4997,26 @@ async function initCrawlEditor() {
                         }
                         window.__dasdecBackground = null;
                     }
+
+                    else if (descriptor.source === PSC_902_SOURCE) {
+                        stopDasdecRotationState();
+                        window.__dasdecBackground = null;
+                        const crawlModeValue = document.getElementById('crawlMode').value;
+                        const rawHeader = crawlModeValue === 'header'
+                            ? document.getElementById('crawlRawHeader').value
+                            : document.getElementById('crawlText').value;
+                        const model = await formatPsc902(rawHeader, crawlModeValue === 'header', readAlertPickerChoice());
+                        const media = await generatePsc902ScreenImage(model);
+                        if (media) {
+                            return {
+                                image: media,
+                                width: media.naturalWidth || media.width || PSC_902_RENDER_DIMENSIONS.width,
+                                height: media.naturalHeight || media.height || PSC_902_RENDER_DIMENSIONS.height,
+                                topLeft: getPremadeTopLeft(descriptor.source),
+                                source: descriptor.source
+                            };
+                        }
+                    }
                 }
             }
         }
@@ -4896,6 +5038,9 @@ async function initCrawlEditor() {
         if (resolvedAssets.image && (mode === 'image' || mode === 'premade')) {
             generator.setBgImage(resolvedAssets.image);
         }
+        generator.textShadow = mode === 'premade' && resolvedAssets.source === PSC_902_SOURCE
+            ? { color: PSC_902_SHADOW_COLOR, offset: PSC_902_CRAWL_SHADOW }
+            : null;
     }
 
     let crawlPaused = true;
@@ -5023,7 +5168,7 @@ async function initCrawlEditor() {
             : null;
         const source = descriptor ? descriptor.source : '';
         const isScreen = Boolean(descriptor && descriptor.type === SCREEN_TYPE);
-        const usesCrawlText = isScreen || isDasdecSource(source) || source === 'eas_1cg' || source === 'atari_800xl';
+        const usesCrawlText = isScreen || isDasdecSource(source) || source === 'eas_1cg' || source === 'atari_800xl' || source === PSC_902_SOURCE;
         const screen = isScreen ? getScreen(source) : null;
         return [
             controls.crawlBackgroundMode,
@@ -6228,8 +6373,16 @@ async function initCrawlEditor() {
         resourcesReady.then(populateEndecModes).catch(() => populateEndecModes());
     }
 
+    const premadeSelectForPsc902 = document.getElementById('crawlBackgroundPremadeSelect');
+    if (!premadeSelectForPsc902.querySelector('option[value="trilithic:psc_902"]')) {
+        premadeSelectForPsc902.add(new Option('Trilithic PSC-902 (Texscan-MSI)', 'trilithic:psc_902'));
+    }
+
     document.getElementById('crawlBackgroundPremadeSelect').addEventListener('change', (event) => {
         syncEasyplusSettingsVisibility(event.target.value);
+        if (event.isTrusted && event.target.value === `trilithic:${PSC_902_SOURCE}`) {
+            applyCrawlStylePreset(PSC_902_SOURCE);
+        }
     });
 
     document.getElementById('crawlBackgroundPremadeSelect').dispatchEvent(new Event('change', { bubbles: true }));
@@ -6298,7 +6451,24 @@ async function initCrawlEditor() {
                 { id: 'dasdec_black', label: 'DASDEC (black)', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'dasdec:dasdec_black', endecMode: 'DAS2PLUS' } },
                 { id: 'dasdec_blue', label: 'DASDEC (blue)', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'dasdec:dasdec_blue', endecMode: 'DAS2PLUS' } },
                 { id: 'eas_1cg', label: 'Gorman Redlich EAS-1CG', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'gorman:eas_1cg', endecMode: 'GORMAN' } },
-                { id: 'atari_800xl', label: 'Atari 800XL Override Screen', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'atari:atari_800xl' } }
+                { id: 'atari_800xl', label: 'Atari 800XL Override Screen', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'atari:atari_800xl' } },
+                {
+                    id: PSC_902_SOURCE,
+                    label: 'Trilithic PSC-902 (Texscan-MSI)',
+                    settings: {
+                        crawlBackgroundMode: 'premade',
+                        crawlBackgroundPremadeSelect: 'trilithic:psc_902',
+                        endecMode: 'GORMAN',
+                        crawlFontFamily: PSC_902_FONT_FAMILY,
+                        crawlFontSize: String(PSC_902_CRAWL_FONT_SIZE),
+                        crawlFontStyle: 'normal',
+                        crawlTextColor: PSC_902_TEXT_COLOR,
+                        crawlOutlineWidth: '0',
+                        crawlKerning: '0',
+                        crawlTextWidth: '100',
+                        crawlUseVDSMode: false
+                    }
+                }
             ]
         },
         {

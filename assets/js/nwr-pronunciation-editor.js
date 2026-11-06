@@ -1,22 +1,32 @@
 import { TTS_BACKEND_URL, fetchRemoteTtsAudio, getPronunciationRepository, getRemoteTtsFeatures, saveFile } from './common-functions.js';
-import { entryKey, mergeLayers, parseSourceId, renderReplacement, slugifyMatch, validateEntry, LIMITS } from './nwr-pronunciation.js';
+import { renderReplacement, LIMITS } from './nwr-pronunciation.js';
+import { readPersonal, readSelection, readSubmissions } from './nwr-pronunciation-store.js';
 import {
-    buildSubmission,
-    exportPersonal,
-    importPersonal,
-    parseApiResponse,
-    readPersonal,
-    readSelection,
-    readSubmissions,
-    recordSubmission,
-    removePersonalEntry,
-    savePersonalEntry,
-    updateSubmission,
-} from './nwr-pronunciation-store.js';
-
-const KIND_LABELS = { phoneme: 'Phoneme (CMU)', respell: 'Respelling', vtml: 'VTML markup' };
-const LAYER_LABELS = { national: 'National', wfo: 'Office', tx: 'Transmitter' };
-const STATUS_LABELS = { pending: 'Waiting for review', approved: 'Approved', rejected: 'Not accepted', withdrawn: 'Withdrawn', superseded: 'Replaced by a newer submission' };
+    KIND_LABELS,
+    PRON_TEST_FIELDS,
+    exportPersonalText,
+    importPersonalText,
+    LAYER_LABELS,
+    SHARED_LIMIT,
+    STATUS_LABELS,
+    testNote,
+    VALUE_HINTS,
+    checkSubmission,
+    draftEntry,
+    draftProblem,
+    filterShared,
+    loadEditorContext,
+    planSubmissions,
+    removePersonalByKey,
+    replacementText,
+    replacementValue,
+    savePersonalDraft,
+    scopeLabel,
+    sendSubmissions,
+    targetLabel,
+    turnOffShared,
+    withdrawSubmission,
+} from './nwr-pronunciation-editing.js';
 
 let openDialog = null;
 
@@ -44,50 +54,11 @@ function field(labelText, control, hint) {
     return wrap;
 }
 
-function replacementText(replace) {
-    if (!replace) return '(turned off)';
-    if (replace.kind === 'phoneme') return replace.ph + (replace.on ? ' (on "' + replace.on + '")' : '');
-    if (replace.kind === 'respell') return replace.text;
-    return replace.markup;
+export function clientInfo() {
+    return { app: window.Capacitor ? (/iphone|ipad/i.test(navigator.userAgent) ? 'ios' : 'android') : 'web', version: '' };
 }
 
-function replacementValue(replace) {
-    if (!replace) return '';
-    return replace.kind === 'phoneme' ? replace.ph : replace.kind === 'respell' ? replace.text : replace.markup;
-}
-
-function buildReplace(kind, value) {
-    const text = String(value || '').trim();
-    if (kind === 'phoneme') return { kind, ph: text.toUpperCase().replace(/\s+/g, ' ') };
-    if (kind === 'respell') return { kind, text };
-    return { kind, markup: text };
-}
-
-function scopeLabel(scope) {
-    if (scope === 'all') return 'Everywhere';
-    const parsed = parseSourceId(scope);
-    return parsed ? parsed.id + (parsed.type === 'wfo' ? ' office' : ' transmitter') : scope;
-}
-
-async function postForm(url, body) {
-    try {
-        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-        return parseApiResponse(response.status, await response.text(), response.headers.get('Retry-After'));
-    } catch {
-        return parseApiResponse(0, '');
-    }
-}
-
-async function getJson(url) {
-    try {
-        const response = await fetch(url);
-        return parseApiResponse(response.status, await response.text(), response.headers.get('Retry-After'));
-    } catch {
-        return parseApiResponse(0, '');
-    }
-}
-
-async function playPcm(pcm, sampleRate) {
+export async function playPcm(pcm, sampleRate) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) throw new Error('this browser cannot play audio');
     const ctx = new Ctx();
@@ -100,38 +71,31 @@ async function playPcm(pcm, sampleRate) {
     node.start();
 }
 
+export async function testDraftWithPaul(draft, voice = 'paul') {
+    const problem = draftProblem(draft);
+    if (problem) return { ok: false, error: problem };
+    try {
+        const result = await fetchRemoteTtsAudio({ text: renderReplacement(draft.replace, draft.match), voice, backend: 'VT', pronunciation: false, extraFields: PRON_TEST_FIELDS });
+        await playPcm(result.pcm, result.sampleRate);
+        return { ok: true, message: 'Playing "' + draft.match + '".' };
+    } catch (error) {
+        return { ok: false, error: 'Could not test: ' + error.message };
+    }
+}
+
 export async function openPronunciationEditor({ returnFocus = null, voice = 'paul', onClose = null } = {}) {
     if (openDialog) {
         openDialog.focus();
         return openDialog;
     }
     const repository = getPronunciationRepository();
-    const selection = readSelection();
-    const source = parseSourceId(selection.source) || { type: 'national', id: '' };
-    const registry = await repository.loadTransmitters();
-    const txWfo = source.type === 'tx' ? registry.transmitters?.[source.id]?.wfo || '' : '';
-    const wfoId = source.type === 'wfo' ? source.id : txWfo;
-    const [national, wfoSet, txSet] = await Promise.all([
-        repository.loadSet('national'),
-        wfoId ? repository.loadSet('wfo/' + wfoId) : null,
-        source.type === 'tx' ? repository.loadSet('tx/' + source.id) : null,
-    ]);
-    const inherited = mergeLayers([
-        { layer: 'national', entries: national?.entries },
-        { layer: 'wfo', entries: wfoSet?.entries },
-        { layer: 'tx', entries: txSet?.entries },
-    ]).sort((a, b) => a.entry.match.localeCompare(b.entry.match));
-    const scopes = ['all'];
-    if (wfoId) scopes.push('wfo:' + wfoId);
-    if (source.type === 'tx') scopes.push('tx:' + source.id);
-    const targets = ['national'];
-    if (wfoId) targets.push('wfo/' + wfoId);
-    if (source.type === 'tx') targets.push('tx/' + source.id);
+    const context = await loadEditorContext(repository, readSelection());
+    const { scopes, targets, inherited, sets } = context;
     const canSubmit = !!getRemoteTtsFeatures()?.pronunciation?.submit;
     let editing = null;
 
     const title = el('h3', { id: 'nwrPronEditorTitle', text: 'My VT Paul pronunciations' });
-    const intro = el('p', { text: 'Your own pronunciations are kept in this browser and win over the shared ones. Showing the shared dictionary for ' + (source.type === 'national' ? 'the national list' : (source.type === 'tx' ? source.id + ' (' + txWfo + ')' : wfoId)) + '.' });
+    const intro = el('p', { text: 'Your own pronunciations are kept in this browser and win over the shared ones. Showing the shared dictionary for ' + context.label + '.' });
 
     const matchInput = el('input', { id: 'nwrPronMatch', type: 'text', maxlength: String(LIMITS.matchChars), autocomplete: 'off', spellcheck: 'false' });
     const kindSelect = el('select', { id: 'nwrPronKind' }, Object.entries(KIND_LABELS).map(([value, label]) => el('option', { value, text: label })));
@@ -143,20 +107,16 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
     const saveButton = el('button', { type: 'button', text: 'Save pronunciation' });
     const testButton = el('button', { type: 'button', text: 'Test with Paul' });
     const clearButton = el('button', { type: 'button', text: 'Clear form' });
-    const valueHints = {
-        phoneme: 'CMU phones separated by spaces, e.g. IH1 L AH0 N OY1. Stress digits 0 to 2 go on vowels only.',
-        respell: 'How Paul should read it, e.g. Illynois.',
-        vtml: 'Allowed tags: vtml_phoneme, vtml_pause, vtml_break. Write {{match}} for the original word.',
-    };
     const form = el('section', { class: 'nwr-pron-editor__form', 'aria-labelledby': 'nwrPronFormTitle' }, [
         el('h4', { id: 'nwrPronFormTitle', text: 'Add or change a pronunciation' }),
         field('Word or phrase', matchInput),
         field('Kind of replacement', kindSelect),
-        field('Replacement', valueInput, valueHints.phoneme),
+        field('Replacement', valueInput, VALUE_HINTS.phoneme),
         el('div', { class: 'sp-alert-field sp-alert-check' }, [caseInput, el('label', { for: caseInput.id, text: 'Only when the capitalisation matches exactly' })]),
         field('Applies to', scopeSelect),
         formError,
         el('div', { class: 'sp-alert-actions' }, [clearButton, testButton, saveButton]),
+        el('small', { class: 'nwr-pron-editor__test-note', text: testNote(getRemoteTtsFeatures()), hidden: !testNote(getRemoteTtsFeatures()) }),
         formStatus,
     ]);
 
@@ -179,7 +139,7 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
     const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: true, 'aria-hidden': 'true', tabindex: '-1' });
     const shareStatus = el('p', { 'aria-live': 'polite' });
 
-    const submitTarget = el('select', { id: 'nwrPronSubmitTarget' }, targets.map((t) => el('option', { value: t, text: t === 'national' ? 'National dictionary' : t.replace('wfo/', '').replace('tx/', '') + (t.startsWith('wfo/') ? ' office' : ' transmitter') })));
+    const submitTarget = el('select', { id: 'nwrPronSubmitTarget' }, targets.map((t) => el('option', { value: t, text: targetLabel(t) })));
     submitTarget.value = targets[targets.length - 1];
     const submitNotes = el('textarea', { id: 'nwrPronSubmitNotes', rows: '3', maxlength: String(LIMITS.evidenceNotesChars) });
     const submitLinks = el('input', { id: 'nwrPronSubmitLinks', type: 'text', autocomplete: 'off' });
@@ -243,11 +203,7 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
         el('div', { class: 'sp-alert-actions' }, [closeButton]),
     ]);
 
-    function draftEntry() {
-        const match = matchInput.value.trim().replace(/\s+/g, ' ');
-        const entry = { id: editing?.id || slugifyMatch(match), match, replace: buildReplace(kindSelect.value, valueInput.value), caseSensitive: caseInput.checked, scope: scopeSelect.value };
-        return entry;
-    }
+    const formValues = () => ({ match: matchInput.value, kind: kindSelect.value, value: valueInput.value, caseSensitive: caseInput.checked, scope: scopeSelect.value });
 
     function fillForm(entry, scope) {
         editing = entry && scope ? { id: entry.id, scope } : null;
@@ -263,7 +219,7 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
 
     function updateHint() {
         const hint = form.querySelector('#nwrPronValueHint');
-        if (hint) hint.textContent = valueHints[kindSelect.value];
+        if (hint) hint.textContent = VALUE_HINTS[kindSelect.value];
     }
 
     function renderPersonal() {
@@ -284,8 +240,8 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
                     el('button', {
                         type: 'button', text: 'Remove', 'aria-label': 'Remove ' + name,
                         onclick: () => {
-                            removePersonalEntry(entry.id, entry.scope);
-                            formStatus.textContent = 'Removed ' + name + '.';
+                            const result = removePersonalByKey(entry.id, entry.scope);
+                            formStatus.textContent = result.ok ? result.message : result.error;
                             renderAll();
                         },
                     }),
@@ -301,20 +257,20 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
     }
 
     function renderInherited() {
-        const query = filterInput.value.trim().toLowerCase();
-        const rows = inherited.filter((item) => !query || item.entry.match.toLowerCase().includes(query));
+        const rows = filterShared(inherited, filterInput.value);
         inheritedBody.replaceChildren();
-        for (const item of rows.slice(0, 200)) {
+        for (const item of rows.slice(0, SHARED_LIMIT)) {
             const { entry, layer } = item;
             const name = '"' + entry.match + '"';
+            const scope = scopes[scopes.length - 1];
             const actions = [
-                el('button', { type: 'button', text: 'Override', 'aria-label': 'Write your own pronunciation for ' + name, onclick: () => fillForm({ ...entry, id: entry.id }, scopes[scopes.length - 1]) }),
+                el('button', { type: 'button', text: 'Override', 'aria-label': 'Write your own pronunciation for ' + name, onclick: () => fillForm({ ...entry, id: entry.id }, scope) }),
                 ' ',
                 el('button', {
                     type: 'button', text: 'Turn off', 'aria-label': 'Turn off the shared pronunciation for ' + name,
                     onclick: () => {
-                        const result = savePersonalEntry({ id: entry.id, match: entry.match, caseSensitive: !!entry.caseSensitive, scope: scopes[scopes.length - 1], disabled: true });
-                        formStatus.textContent = result.ok ? 'Turned off ' + name + ' for ' + scopeLabel(scopes[scopes.length - 1]) + '.' : result.error;
+                        const result = turnOffShared(entry, scope);
+                        formStatus.textContent = result.ok ? result.message : result.error;
                         renderAll();
                     },
                 }),
@@ -322,7 +278,7 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
             for (const v of entry.variants || []) {
                 actions.push(' ', el('button', {
                     type: 'button', text: 'Use: ' + (v.label || v.id), 'aria-label': 'Use the variant "' + (v.label || v.id) + '" for ' + name,
-                    onclick: () => fillForm({ ...entry, replace: v.replace }, scopes[scopes.length - 1]),
+                    onclick: () => fillForm({ ...entry, replace: v.replace }, scope),
                 }));
             }
             inheritedBody.appendChild(el('tr', {}, [
@@ -332,7 +288,7 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
                 el('td', {}, actions),
             ]));
         }
-        inheritedCount.textContent = rows.length > 200 ? 'Showing 200 of ' + rows.length + ' entries; filter to narrow it down.' : rows.length + (rows.length === 1 ? ' entry.' : ' entries.');
+        inheritedCount.textContent = rows.length > SHARED_LIMIT ? 'Showing ' + SHARED_LIMIT + ' of ' + rows.length + ' entries; filter to narrow it down.' : rows.length + (rows.length === 1 ? ' entry.' : ' entries.');
     }
 
     function renderSubmissions() {
@@ -348,10 +304,9 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
                 el('button', {
                     type: 'button', text: 'Check status', 'aria-label': 'Check the status of submission ' + sub.id,
                     onclick: async () => {
-                        const result = await getJson(TTS_BACKEND_URL + '&pron=status&id=' + encodeURIComponent(sub.id) + '&token=' + encodeURIComponent(sub.token));
+                        const result = await checkSubmission(sub.id, { apiUrl: TTS_BACKEND_URL });
                         if (result.ok) {
-                            if (result.data.status === 'approved' && sub.lastStatus !== 'approved') getPronunciationRepository().invalidate();
-                            updateSubmission(sub.id, { lastStatus: result.data.status, reviewerNote: result.data.reviewerNote || '' });
+                            if (result.newlyApproved) repository.invalidate();
                             renderSubmissions();
                         } else {
                             status.textContent = result.error;
@@ -364,10 +319,8 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
                 item.appendChild(el('button', {
                     type: 'button', text: 'Withdraw', 'aria-label': 'Withdraw submission ' + sub.id,
                     onclick: async () => {
-                        const body = new URLSearchParams({ id: sub.id, token: sub.token }).toString();
-                        const result = await postForm(TTS_BACKEND_URL + '&pron=withdraw', body);
-                        if (result.ok) updateSubmission(sub.id, { lastStatus: 'withdrawn' });
-                        else status.textContent = result.error;
+                        const result = await withdrawSubmission(sub.id, { apiUrl: TTS_BACKEND_URL });
+                        if (!result.ok) status.textContent = result.error;
                         renderSubmissions();
                     },
                 }));
@@ -383,9 +336,9 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
     }
 
     function exportFile() {
-        const doc = exportPersonal(readPersonal());
-        saveFile('eas-tools-pronunciations.json', JSON.stringify(doc, null, 4), 'application/json')
-            .then(() => { shareStatus.textContent = 'Exported ' + doc.entries.length + ' pronunciations.'; })
+        const file = exportPersonalText();
+        saveFile(file.fileName, file.text, 'application/json')
+            .then(() => { shareStatus.textContent = 'Exported ' + file.count + ' pronunciations.'; })
             .catch((error) => { shareStatus.textContent = 'Could not export: ' + error.message; });
     }
 
@@ -394,56 +347,25 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
         const personal = readPersonal();
         const chosen = [...submitChoices.querySelectorAll('input[type="checkbox"]:checked')].map((box) => personal[Number(box.value)]).filter(Boolean);
         const target = submitTarget.value;
-        const targetSet = target === 'national' ? national : target.startsWith('wfo/') ? wfoSet : txSet;
-        const existing = new Map((targetSet?.entries || []).map((e) => [entryKey(e), e]));
-        const groups = { add: [], change: [], remove: [] };
-        for (const entry of chosen) {
-            const prior = existing.get(entryKey(entry));
-            if (entry.disabled) {
-                if (prior) groups.remove.push({ ...prior });
-            } else if (prior) {
-                groups.change.push({ ...entry, id: prior.id });
-            } else {
-                groups.add.push(entry);
-            }
-        }
-        const prosody = {};
-        const num = (input) => (input.value === '' ? null : Number(input.value));
-        if (num(speedInput) !== null) prosody.speed = { value: num(speedInput) };
-        if (num(commaInput) !== null) prosody.commaPauseMs = { value: num(commaInput) };
-        if (num(periodInput) !== null) prosody.periodPauseMs = { value: num(periodInput) };
-        const evidence = { notes: submitNotes.value, links: submitLinks.value.split(/\s+/).filter(Boolean) };
-        const client = { app: window.Capacitor ? (/iphone|ipad/i.test(navigator.userAgent) ? 'ios' : 'android') : 'web', version: '' };
-        const requests = [];
-        for (const action of ['add', 'change', 'remove']) {
-            if (groups[action].length) requests.push(buildSubmission({ target, action, entries: groups[action], evidence, client }));
-        }
-        if (Object.keys(prosody).length) requests.push(buildSubmission({ target, action: 'prosody', prosody, evidence, client }));
-        if (!requests.length) {
-            submitError.textContent = chosen.length ? 'Those pronunciations already match the shared dictionary.' : 'Choose at least one pronunciation, or fill in speed or pauses.';
-            return;
-        }
-        const invalid = requests.find((r) => !r.ok);
-        if (invalid) {
-            submitError.textContent = invalid.error;
+        const plan = planSubmissions({
+            chosen,
+            target,
+            sets,
+            prosody: { speed: speedInput.value, comma: commaInput.value, period: periodInput.value },
+            notes: submitNotes.value,
+            links: submitLinks.value,
+            client: clientInfo(),
+        });
+        if (!plan.ok) {
+            submitError.textContent = plan.error;
             return;
         }
         submitButton.disabled = true;
         submitStatus.textContent = 'Sending...';
-        let sent = 0;
-        for (const request of requests) {
-            const result = await postForm(TTS_BACKEND_URL + '&pron=submit', request.body);
-            if (!result.ok) {
-                submitError.textContent = result.code === 'rate_limited' && result.retryAfter
-                    ? 'Too many submissions for now; try again in ' + Math.ceil(result.retryAfter / 60) + ' minutes.'
-                    : result.error + (result.details[0] ? ' (' + result.details[0].path + ': ' + result.details[0].problem + ')' : '');
-                break;
-            }
-            recordSubmission({ id: result.data.id, token: result.data.token, target, action: request.payload.action, submittedAt: Date.now(), lastStatus: result.data.status || 'pending' });
-            sent++;
-        }
+        const result = await sendSubmissions(plan.requests, { apiUrl: TTS_BACKEND_URL, target });
         submitButton.disabled = false;
-        submitStatus.textContent = sent ? 'Sent ' + sent + (sent === 1 ? ' submission' : ' submissions') + ' for review. Thank you.' : '';
+        if (result.error) submitError.textContent = result.error;
+        submitStatus.textContent = result.message || '';
         renderSubmissions();
     }
 
@@ -451,55 +373,36 @@ export async function openPronunciationEditor({ returnFocus = null, voice = 'pau
     filterInput.addEventListener('input', renderInherited);
     clearButton.addEventListener('click', () => fillForm(null, scopes[scopes.length - 1]));
     saveButton.addEventListener('click', () => {
-        const draft = draftEntry();
-        const problems = validateEntry({ ...draft, scope: undefined });
-        if (problems.length) {
-            formError.textContent = problems[0].problem;
-            return;
-        }
-        if (editing && (editing.scope !== draft.scope || editing.id !== draft.id)) removePersonalEntry(editing.id, editing.scope);
-        const result = savePersonalEntry(draft);
+        const result = savePersonalDraft(formValues(), editing);
         if (!result.ok) {
             formError.textContent = result.error;
             return;
         }
         formError.textContent = '';
-        formStatus.textContent = (result.replaced ? 'Updated ' : 'Saved ') + '"' + result.entry.match + '" for ' + scopeLabel(result.entry.scope) + '.';
+        formStatus.textContent = result.message;
         editing = null;
         renderAll();
     });
     testButton.addEventListener('click', async () => {
-        const draft = draftEntry();
-        const problems = validateEntry({ ...draft, scope: undefined });
-        if (problems.length) {
-            formError.textContent = problems[0].problem;
+        const draft = draftEntry(formValues(), editing);
+        const problem = draftProblem(draft);
+        if (problem) {
+            formError.textContent = problem;
             return;
         }
         formError.textContent = '';
         testButton.disabled = true;
         formStatus.textContent = 'Asking Paul...';
-        try {
-            const result = await fetchRemoteTtsAudio({ text: renderReplacement(draft.replace, draft.match), voice, backend: 'VT', pronunciation: false });
-            await playPcm(result.pcm, result.sampleRate);
-            formStatus.textContent = 'Playing "' + draft.match + '".';
-        } catch (error) {
-            formStatus.textContent = 'Could not test: ' + error.message;
-        } finally {
-            testButton.disabled = false;
-        }
+        const result = await testDraftWithPaul(draft, voice);
+        formStatus.textContent = result.ok ? result.message : result.error;
+        testButton.disabled = false;
     });
     fileInput.addEventListener('change', async () => {
         const file = fileInput.files?.[0];
         fileInput.value = '';
         if (!file) return;
-        try {
-            const result = importPersonal(JSON.parse(await file.text()));
-            shareStatus.textContent = result.ok
-                ? 'Imported ' + result.added + ' pronunciations' + (result.skipped ? ', skipped ' + result.skipped + ' (' + result.error + ')' : '') + '.'
-                : result.error;
-        } catch {
-            shareStatus.textContent = 'That file is not valid JSON.';
-        }
+        const result = importPersonalText(await file.text());
+        shareStatus.textContent = result.ok ? result.message : result.error;
         renderAll();
     });
     submitButton.addEventListener('click', submitAll);

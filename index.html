@@ -348,6 +348,13 @@
                             <option value="espeak:fr">[eSpeak] eSpeak NG (local) - French</option>
                         </select>
                         <br>
+                        <label for="ttsMatchEndec">Pick a matching voice when the ENDEC or originator changes:</label>
+                        <input type="checkbox" id="ttsMatchEndec" name="ttsMatchEndec" aria-describedby="ttsMatchEndecHint">
+                        <span id="ttsMatchEndecHint" class="inline-note">NanoTTS for EASyCAP, VT Paul for the NWS ENDECs, Speechify Tom for CRS, Festvox Kal for DASDEC, Loquendo Dave for SAGE 3644; other ENDECs get VT Paul for weather alerts and Festvox Kal otherwise.</span>
+                        <br>
+                        <button type="button" id="ttsFillFromAlert" aria-describedby="ttsFillFromAlertHint">Use the alert's text</button>
+                        <span id="ttsFillFromAlertHint" class="inline-note">Replaces the message with the header's text, worded like the selected ENDEC.</span>
+                        <br>
                         <br>
                         <div id="ttsRatePitchControls">
                             <label for="ttsRate">Speech Speed:</label>
@@ -488,6 +495,17 @@
                     <br>
                     <label for="silenceEomToEnd">Between the EOM tones and the end of the audio:</label>
                     <input type="number" id="silenceEomToEnd" name="silenceEomToEnd" min="0" max="30000" step="50" value="1000">
+                </div>
+                <div id="messageLimitContainer" role="group" aria-labelledby="messageLimitHeading">
+                    <br>
+                    <strong id="messageLimitHeading">Message Time Limit:</strong>
+                    <br>
+                    <label for="messageLimitEnabled">Cut the voice message off at a time limit, like many real ENDECs do:</label>
+                    <input type="checkbox" id="messageLimitEnabled" name="messageLimitEnabled" aria-describedby="messageLimitHint">
+                    <br>
+                    <label for="messageLimitSeconds">Time limit after the attention signal (1-600 seconds):</label>
+                    <input type="number" id="messageLimitSeconds" name="messageLimitSeconds" min="1" max="600" step="1" value="120" aria-describedby="messageLimitHint">
+                    <p id="messageLimitHint" class="inline-note">Most ENDECs stop a message at 2 minutes (120 seconds) and send the EOM tones, even if the voice message has not finished.</p>
                 </div>
                 <hr>
                 <div class="control-panel">
@@ -715,6 +733,7 @@
                             <option value="dasdec:dasdec_blue">DASDEC (blue)</option>
                             <option value="gorman:eas_1cg">Gorman Redlich EAS-1CG</option>
                             <option value="atari:atari_800xl">Atari 800XL Override Screen</option>
+                            <option value="trilithic:psc_902">Trilithic PSC-902 (Texscan-MSI)</option>
                         </select>
                         <div id="easyplusSettings" style="display: none;">
                             <br>

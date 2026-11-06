@@ -10,7 +10,9 @@ import {
     USES_DARK_THEME
 } from './common-functions.js';
 
-import { E2T } from '../E2T/EAS2Text-NG.js';
+import { E2T, allEndecModes, parseHeaderDetailed } from '../E2T/EAS2Text-NG.js';
+import { customLocationName } from './custom-locations.js';
+import { NWS_TEXT_STYLE, countyRegionsFromGeoJson, formatNwsStyle } from './nws-text-style.js';
 import { loadSeattyWasm, createSeattySameDemod } from './seatty-same-wasm.js';
 import { SEATTY_EVENT_TONE, decodeBatches, readWavLayout, wavChannelChunks } from './seatty-worker.js';
 import { createSendMenu, receive, audioFile } from './handoff.js';
@@ -2445,6 +2447,72 @@ function eventLabel(code) {
 
     const DECODER_SETTINGS_KEY = "eas-tools-decoder-settings";
     const DECODER_TOGGLE_IDS = ["decoder-loopback", "decoder-auto-record", "decoder-alarm-beep", "decoder-alarm-beep-customization"];
+    const DECODER_TEXT_STYLE_ID = "decoder-text-style";
+    const DECODER_TEXT_STYLE_LABELS = {
+        BURK: "Burk",
+        DAS1: "DASDEC (v1 firmware, DASDEC-1EN)",
+        DAS2PLUS: "DASDEC II (v2 firmware and newer)",
+        GORMAN: "Gorman-Redlich EAS-1CG",
+        HOLLYANNE: "HollyAnne HU-961",
+        SAGE: "SAGE ENDEC",
+        TFT: "TFT EAS 911",
+        TRILITHIC6: "Trilithic EASyPLUS (v6 firmware)",
+        TRILITHIC8PLUS: "Trilithic EASyPLUS (v8 firmware and newer)"
+    };
+    const DECODER_TEXT_STYLE_NWS_LABEL = "NWS-style (mock AWIPS look, weather alerts only)";
+
+    function decoderTextStyleOptions() {
+        let modes = [];
+        try {
+            modes = allEndecModes();
+        } catch (error) {
+            modes = [];
+        }
+        if (!modes.length) modes = Object.keys(DECODER_TEXT_STYLE_LABELS);
+        const endecOptions = modes
+            .filter((mode) => mode !== "JSON" && mode !== "ALL" && mode !== NWS_TEXT_STYLE)
+            .map((mode) => ({ value: mode, label: DECODER_TEXT_STYLE_LABELS[mode] || mode }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+        return [{ value: "", label: "Plain wording (default)" }]
+            .concat(endecOptions)
+            .concat([{ value: NWS_TEXT_STYLE, label: DECODER_TEXT_STYLE_NWS_LABEL }]);
+    }
+
+    function createTextStyleControl() {
+        const existing = document.getElementById(DECODER_TEXT_STYLE_ID);
+        if (existing) return existing;
+        const options = document.getElementById("decoder-options");
+        if (!options) return null;
+        const label = document.createElement("label");
+        label.htmlFor = DECODER_TEXT_STYLE_ID;
+        label.textContent = "Alert text style:";
+        const select = document.createElement("select");
+        select.id = DECODER_TEXT_STYLE_ID;
+        select.name = DECODER_TEXT_STYLE_ID;
+        select.setAttribute("aria-describedby", DECODER_TEXT_STYLE_ID + "-note");
+        decoderTextStyleOptions().forEach((option) => select.add(new Option(option.label, option.value)));
+        const note = document.createElement("span");
+        note.id = DECODER_TEXT_STYLE_ID + "-note";
+        note.className = "visually-hidden";
+        note.textContent = "Sets the wording of the human-readable text in each alert's details. ENDEC styles copy that unit's wording; the NWS style is a mock, not an official National Weather Service product.";
+        options.appendChild(label);
+        options.appendChild(document.createTextNode(" "));
+        options.appendChild(select);
+        options.appendChild(note);
+        options.appendChild(document.createElement("br"));
+        return select;
+    }
+
+    function selectedTextStyle() {
+        const select = document.getElementById(DECODER_TEXT_STYLE_ID);
+        return select ? select.value : "";
+    }
+
+    function selectedTextStyleLabel() {
+        const select = document.getElementById(DECODER_TEXT_STYLE_ID);
+        const option = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
+        return option ? option.textContent : "";
+    }
 
     function readDecoderSettings() {
         try {
@@ -2471,6 +2539,9 @@ function eventLabel(code) {
             }
             const deviceSelect = document.getElementById("device");
             if (deviceSelect && deviceSelect.value) settings.device = deviceSelect.value;
+            const textStyleSelect = document.getElementById(DECODER_TEXT_STYLE_ID);
+            const textStyle = textStyleSelect ? textStyleSelect.value : previous.textStyle;
+            if (textStyle) settings.textStyle = textStyle;
             const streamUrl = (streamUrlOverride === undefined)
                 ? previous.streamUrl
                 : streamUrlOverride;
@@ -2495,6 +2566,11 @@ function eventLabel(code) {
             if (toggle.checked === !!saved[id]) continue;
             toggle.checked = !!saved[id];
             toggle.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        const textStyleSelect = document.getElementById(DECODER_TEXT_STYLE_ID);
+        if (textStyleSelect && typeof saved.textStyle === "string"
+            && Array.from(textStyleSelect.options).some((option) => option.value === saved.textStyle)) {
+            textStyleSelect.value = saved.textStyle;
         }
         if (saved.streamUrl && !window.streamUrl) {
             window.streamUrl = saved.streamUrl;
@@ -2723,6 +2799,87 @@ function eventLabel(code) {
             return E2T(cleanHeader, null, false, userTimezone) || "";
         } catch (error) {
             return "";
+        }
+    }
+
+    let nwsOfficesPromise = null;
+    let nwsRegionsPromise = null;
+
+    function fetchJsonOrNull(url, what) {
+        return fetch(url)
+            .then((response) => {
+                if (!responseOk(response)) {
+                    throw new Error("HTTP " + response.status);
+                }
+                return response.json();
+            })
+            .catch((error) => {
+                console.warn("Unable to load " + what + ":", error);
+                return null;
+            });
+    }
+
+    function loadNwsStyleData() {
+        if (!nwsOfficesPromise) {
+            nwsOfficesPromise = fetchJsonOrNull("assets/nws-office-names.json", "NWS office names").then((data) => {
+                if (!data) nwsOfficesPromise = null;
+                return data && data.offices ? data.offices : null;
+            });
+        }
+        if (!nwsRegionsPromise) {
+            nwsRegionsPromise = fetchJsonOrNull("warngen/data/us_counties.geojson", "county area-of-state data").then((data) => {
+                if (!data) nwsRegionsPromise = null;
+                return data ? countyRegionsFromGeoJson(data) : null;
+            });
+        }
+        return Promise.all([nwsOfficesPromise, nwsRegionsPromise])
+            .then(([offices, regions]) => ({ offices, regions }));
+    }
+
+    function sendStyledHeaderToBridge(parsedHeader, plainText) {
+        const style = selectedTextStyle();
+        if (!window.EASBridge || !style || !parsedHeader || !parsedHeader.rawHeader) return;
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const cleanHeader = parsedHeader.rawHeader.trim().replace(window.EASREGEX, "ZCZC-$1-$2-$3+$4-$5-$6-");
+        styledAlertText(cleanHeader, plainText, style, timeZone).then((styled) => {
+            window.EASBridge.send('decoder:headerStyled', {
+                raw: parsedHeader.rawHeader || '',
+                style,
+                label: selectedTextStyleLabel(),
+                text: styled.text || '',
+                note: styled.note || '',
+                preformatted: !!styled.preformatted,
+            });
+        }).catch(() => { });
+    }
+
+    function sendTextStylesToBridge() {
+        if (!window.EASBridge) return;
+        window.EASBridge.send('decoder:textStyles', { styles: decoderTextStyleOptions(), selected: selectedTextStyle() });
+    }
+
+    async function styledAlertText(cleanHeader, plainText, style, timeZone) {
+        if (!style) {
+            return { text: plainText, note: "", preformatted: false };
+        }
+        if (style === NWS_TEXT_STYLE) {
+            try {
+                const detailed = parseHeaderDetailed(cleanHeader, timeZone);
+                const data = await loadNwsStyleData();
+                const result = formatNwsStyle(detailed, { offices: data.offices, regions: data.regions, timeZone });
+                return result.ok
+                    ? { text: result.text, note: result.note, preformatted: true }
+                    : { text: plainText, note: result.note, preformatted: false };
+            } catch (error) {
+                console.warn("Unable to build NWS-style alert text:", error);
+                return { text: plainText, note: "NWS-style text could not be built for this alert, so the plain wording is shown.", preformatted: false };
+            }
+        }
+        try {
+            return { text: E2T(cleanHeader, style, false, timeZone) || plainText, note: "", preformatted: false };
+        } catch (error) {
+            console.warn("Unable to build " + style + " alert text:", error);
+            return { text: plainText, note: "This text style could not be built for this alert, so the plain wording is shown.", preformatted: false };
         }
     }
 
@@ -4816,6 +4973,7 @@ function eventLabel(code) {
                                             expiresAt: expirationTime ? expirationTime.getTime() : null,
                                             endecMode: parsedHeader.endecModeReady ? (parsedHeader.endecMode || '') : '',
                                         });
+                                        sendStyledHeaderToBridge(parsedHeader, easText);
                                     }
                                     const view = document.createElement("button");
                                     view.addEventListener("click", () => {
@@ -4968,6 +5126,7 @@ function eventLabel(code) {
                                                 expiresAt: expirationTime ? expirationTime.getTime() : null,
                                                 endecMode: parsedHeader.endecModeReady ? (parsedHeader.endecMode || '') : '',
                                             });
+                                            sendStyledHeaderToBridge(parsedHeader, easText);
                                         }
                                         const view = document.createElement("button");
                                         view.addEventListener("click", () => {
@@ -5369,7 +5528,7 @@ function eventLabel(code) {
                 ret.county = caName;
             } else {
                 ret.state = state[st] || "Unknown";
-                ret.county = `FIPS Code ${loc}`;
+                ret.county = customLocationName(loc) || `FIPS Code ${loc}`;
             }
         }
         return ret;
@@ -5470,6 +5629,7 @@ function eventLabel(code) {
                 expiresAt: expirationTime ? expirationTime.getTime() : null,
                 endecMode: parsedHeader.endecModeReady ? (parsedHeader.endecMode || '') : '',
             });
+            sendStyledHeaderToBridge(parsedHeader, easText);
         }
 
         view.addEventListener("click", () => {
@@ -5574,6 +5734,11 @@ function eventLabel(code) {
 
         let eas = E2T(cleanHeader, null, false, userTimezone);
         const easText = eas.replace(/\n/g, "<br>");
+        const textStyle = selectedTextStyle();
+        const styled = await styledAlertText(cleanHeader, eas, textStyle, userTimezone);
+        if (requestToken !== modalRequestToken) {
+            return;
+        }
 
         if (easText.match(/(Warning|Emergency|Immediate)/i) && !easText.match(/(Demo)/i)) {
             modalBox.style.border = "3px solid red";
@@ -5621,9 +5786,35 @@ function eventLabel(code) {
         infoContainer.appendChild(createInfo(`Sender ID: ${header.sender}`));
         infoContainer.appendChild(createInfo(`ENDEC Used (best-guess): ${endecMode}`));
         infoContainer.appendChild(document.createElement("br"));
-        infoContainer.appendChild(createInfo(`Human-Readable Alert Text: "${easText}"`));
+        if (!textStyle) {
+            infoContainer.appendChild(createInfo(`Human-Readable Alert Text: "${easText}"`));
+        } else {
+            const styledInfo = document.createElement("div");
+            styledInfo.className = "info";
+            styledInfo.appendChild(document.createTextNode(`Human-Readable Alert Text (${selectedTextStyleLabel()}):`));
+            const styledText = document.createElement("div");
+            styledText.setAttribute("data-decoder-styled-text", textStyle);
+            if (styled.preformatted) {
+                styledText.style.whiteSpace = "pre-wrap";
+                styledText.style.fontFamily = "monospace";
+                styledText.textContent = styled.text;
+            } else {
+                styledText.textContent = `"${styled.text}"`;
+            }
+            styledInfo.appendChild(styledText);
+            infoContainer.appendChild(styledInfo);
+            if (styled.note) {
+                const styledNote = document.createElement("div");
+                styledNote.className = "info";
+                styledNote.setAttribute("data-decoder-styled-note", "");
+                const emphasis = document.createElement("em");
+                emphasis.textContent = styled.note;
+                styledNote.appendChild(emphasis);
+                infoContainer.appendChild(styledNote);
+            }
+        }
         infoContainer.appendChild(document.createElement("br"));
-        infoContainer.appendChild(createAlertSendMenu(cleanHeader, eas).element);
+        infoContainer.appendChild(createAlertSendMenu(cleanHeader, textStyle ? styled.text : eas).element);
     }
 
     function createAlertSendMenu(cleanHeader, easText) {
@@ -6295,6 +6486,9 @@ function eventLabel(code) {
     }
     if (sel) sel.addEventListener('change', function () { saveDecoderSettings(); });
 
+    const textStyleSelect = createTextStyleControl();
+    if (textStyleSelect) textStyleSelect.addEventListener('change', function () { saveDecoderSettings(); });
+
     applyDecoderSettings();
 
     const rawHeaderButton = document.querySelector('[data-decoder-load-raw]');
@@ -6439,6 +6633,18 @@ function eventLabel(code) {
                     refreshLoopback();
                 }
             }
+        });
+
+        window.EASBridge.on('decoder:requestTextStyles', () => sendTextStylesToBridge());
+
+        window.EASBridge.on('decoder:setTextStyle', (params) => {
+            const select = document.getElementById(DECODER_TEXT_STYLE_ID);
+            const style = String(params?.style ?? '');
+            if (select && Array.from(select.options).some((option) => option.value === style)) {
+                select.value = style;
+                saveDecoderSettings();
+            }
+            sendTextStylesToBridge();
         });
 
         window.EASBridge.on('decoder:setAutoRecord', (params) => {

@@ -1209,7 +1209,7 @@ export async function planTtsPronunciation({ text, voice, backend = '', prosody 
     }
 }
 
-export async function fetchRemoteTtsAudio({ text, voice, overrideTZ = 'UTC', backend = '', prosody = null, pronunciation } = {}) {
+export async function fetchRemoteTtsAudio({ text, voice, overrideTZ = 'UTC', backend = '', prosody = null, pronunciation, extraFields = null } = {}) {
     const plan = await planTtsPronunciation({ text, voice, backend, prosody, pronunciation });
     const marked = plan.prosody ? applyTtsProsodyMarkup(plan.text, backend, plan.prosody) : plan.text;
     const spoken = /vt|bal/.test(('' + (backend || '')).toLowerCase()) ? normalizeMarkupTags(marked) : marked;
@@ -1219,6 +1219,9 @@ export async function fetchRemoteTtsAudio({ text, voice, overrideTZ = 'UTC', bac
     params.append('voice', voice);
     params.append('useOverrideTZ', overrideTZ ?? 'UTC');
     for (const [field, value] of Object.entries(plan.fields)) params.append(field, String(value));
+    if (isObject(extraFields)) {
+        for (const [field, value] of Object.entries(extraFields)) params.append(field, String(value));
+    }
 
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();

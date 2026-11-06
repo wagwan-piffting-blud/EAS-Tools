@@ -105,6 +105,39 @@ fn shipped_set(id: &str) -> Result<Value> {
     shipped_json(&format!("assets/nwr-pronunciation/{id}.json"))
 }
 
+/// Calls a native-bridge handler and waits for what the engine sends back: the
+/// `encoder:nwrEditorResult` (null for a plain request) and the newest `encoder:nwrEditor`
+/// snapshot sent after the call.
+const EDITOR_CALL_JS: &str = "
+const done = arguments[arguments.length - 1];
+const [name, params] = arguments;
+const before = window.__bridgeSent.length;
+const after = (channel) => window.__bridgeSent.slice(before).filter(([n]) => n === channel).map(([, p]) => p);
+const wantsResult = name !== 'encoder:requestNwrEditor';
+const alwaysResends = !['encoder:nwrEditorSave', 'encoder:nwrEditorTest', 'encoder:nwrEditorSubmit'].includes(name);
+const deadline = Date.now() + 20000;
+window.__bridgeHandlers[name](params);
+(async () => {
+    while (Date.now() < deadline) {
+        const result = after('encoder:nwrEditorResult')[0] || null;
+        const snapshots = after('encoder:nwrEditor');
+        const resultIn = !wantsResult || result;
+        const snapshotIn = name === 'encoder:nwrEditorTest' || snapshots.length > 0 || (result && !result.ok && !alwaysResends);
+        if (resultIn && snapshotIn) return done([result, snapshots.at(-1) || null]);
+        await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    done([after('encoder:nwrEditorResult')[0] || null, after('encoder:nwrEditor').at(-1) || null]);
+})();";
+
+async fn editor_call(tab: &Tab, name: &str, params: Value) -> Result<(Value, Value)> {
+    let out: (Value, Value) = tab.js_async(EDITOR_CALL_JS, json!([name, params])).await?;
+    ensure!(
+        name == "encoder:requestNwrEditor" || !out.0.is_null(),
+        "{name}: no result"
+    );
+    Ok(out)
+}
+
 /// A form field of the stubbed synthesis POST read as an integer.
 fn posted_int(post: &Value, field: &str) -> Option<i64> {
     post[field].as_str()?.parse().ok()
@@ -463,15 +496,26 @@ pub fn cases() -> Vec<Case> {
                         json!([]),
                     )
                     .await?;
+                let registry = shipped_json("assets/nwr-pronunciation/transmitters.json")?;
+                let count = |v: &Value| v.as_object().map_or(0, |o| o.len());
                 ensure!(
-                    sources["offices"].as_array().map_or(0, |a| a.len()) == 123,
+                    sources["offices"].as_array().map_or(0, |a| a.len())
+                        == count(&registry["offices"]),
                     "offices: {}",
                     sources["offices"]
                 );
                 ensure!(
-                    sources["transmitters"].as_array().map_or(0, |a| a.len()) > 1000,
-                    "too few transmitters"
+                    sources["transmitters"].as_array().map_or(0, |a| a.len())
+                        == count(&registry["transmitters"]),
+                    "transmitters differ from transmitters.json"
                 );
+                let (national, lmk, wng570) = (
+                    shipped_set("national")?,
+                    shipped_set("wfo/LMK")?,
+                    shipped_set("tx/WNG570")?,
+                );
+                let speed = shipped_prosody(&[&national, &lmk, &wng570], "speed")
+                    .context("WNG570 and LMK have no speed")?;
                 tab.exec(
                 "window.__bridgeHandlers['encoder:generate']({ originator: 'WXR', event: 'SVR', hours: 1, minutes: 0, sender: 'KLMK/NWS', attentionTone: 4,
                     announcementType: 'tts', ttsVoice: 'paul', ttsText: 'Severe weather', nwrPronunciation: { enabled: true, source: 'tx:WNG570' } });",
@@ -479,14 +523,209 @@ pub fn cases() -> Vec<Case> {
             )
             .await?;
                 let post = last_post(&tab).await?;
-                ensure!(post["vtSpeed"] == "93", "{post}");
                 ensure!(
-                    post["text"] == "Severe weather",
-                    "LMK has no Severe entry, so the word stays plain: {post}"
+                    posted_int(&post, "vtSpeed") == Some(speed),
+                    "expected WNG570's speed {speed}: {post}"
                 );
                 Ok(())
             },
         ),
+        case("native_bridge_editor_saves_and_submits", |tab| async move {
+            tab.add_init_script(FAKE_BRIDGE_JS).await?;
+            stub(&tab, None).await?;
+            open_tool(&tab, "encoder").await?;
+            tab.wait_until("!!(window.__bridgeHandlers['encoder:requestNwrEditor'] && document.querySelector('#ttsVoice option[value=\"paul\"]'))", Duration::from_secs(30)).await?;
+            tab.exec(
+                "window.__bridgeHandlers['encoder:setNwrPronunciation']({ enabled: true, source: 'tx:WNG570' });",
+                json!([]),
+            )
+            .await?;
+
+            let snapshot = editor_call(&tab, "encoder:requestNwrEditor", json!({ "query": "" }))
+                .await?
+                .1;
+            let ids = |key: &str| -> Vec<String> {
+                snapshot[key]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|o| o["id"].as_str().map(String::from))
+                    .collect()
+            };
+            ensure!(
+                ids("scopes") == ["all", "wfo:LMK", "tx:WNG570"],
+                "{snapshot}"
+            );
+            ensure!(
+                ids("targets") == ["national", "wfo/LMK", "tx/WNG570"],
+                "{snapshot}"
+            );
+            ensure!(snapshot["canSubmit"] == true, "{snapshot}");
+            let first_shared = snapshot["shared"][0]["key"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string();
+            ensure!(!first_shared.is_empty(), "no shared entries: {snapshot}");
+
+            let (bad, _) = editor_call(
+                &tab,
+                "encoder:nwrEditorSave",
+                json!({ "match": "QQ", "kind": "phoneme", "value": "AR2", "scope": "all" }),
+            )
+            .await?;
+            ensure!(
+                bad["ok"] == false && bad["error"] == "unknown phone AR2",
+                "{bad}"
+            );
+
+            let (saved, snapshot) = editor_call(&tab, "encoder:nwrEditorSave", json!({ "match": "Calm", "kind": "respell", "value": "Kahm", "scope": "tx:WNG570" })).await?;
+            ensure!(
+                saved["ok"] == true && saved["message"] == "Saved \"Calm\" for WNG570 transmitter.",
+                "{saved}"
+            );
+            ensure!(
+                snapshot["personal"].as_array().is_some_and(|p| p
+                    .iter()
+                    .any(|e| e["match"] == "Calm" && e["text"] == "Kahm")),
+                "{snapshot}"
+            );
+
+            let (off, _) = editor_call(
+                &tab,
+                "encoder:nwrEditorTurnOff",
+                json!({ "key": first_shared, "scope": "tx:WNG570" }),
+            )
+            .await?;
+            ensure!(
+                off["ok"] == true
+                    && off["message"]
+                        .as_str()
+                        .is_some_and(|m| m.starts_with("Turned off ")),
+                "{off}"
+            );
+
+            let (sent, snapshot) = editor_call(&tab, "encoder:nwrEditorSubmit", json!({
+                "target": "tx/WNG570", "entries": [{ "id": "calm", "scope": "tx:WNG570" }], "speed": "95", "comma": "", "period": "", "notes": "Heard it on WNG570", "links": "",
+            })).await?;
+            ensure!(
+                sent["ok"] == true
+                    && sent["message"] == "Sent 2 submissions for review. Thank you.",
+                "{sent}"
+            );
+            let posts: Value = tab.eval("window.__pronPosts").await?;
+            let actions: Vec<&str> = posts
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|p| p["action"].as_str())
+                .collect();
+            ensure!(actions == ["add", "prosody"], "{posts}");
+            ensure!(
+                posts[0]["client"]["app"] != "web" && posts[0]["target"] == "tx/WNG570",
+                "{posts}"
+            );
+            ensure!(
+                snapshot["submissions"].as_array().map_or(0, |s| s.len()) == 2,
+                "{snapshot}"
+            );
+
+            let (none, _) = editor_call(
+                &tab,
+                "encoder:nwrEditorSubmit",
+                json!({ "target": "tx/WNG570", "entries": [] }),
+            )
+            .await?;
+            ensure!(
+                none["ok"] == false
+                    && none["error"]
+                        == "Choose at least one pronunciation, or fill in speed or pauses.",
+                "{none}"
+            );
+
+            let posts_before: usize = tab.eval("window.__ttsPosts.length").await?;
+            let (tested, _) = editor_call(
+                &tab,
+                "encoder:nwrEditorTest",
+                json!({ "match": "Calm", "kind": "respell", "value": "Kahm" }),
+            )
+            .await?;
+            ensure!(tested["ok"] == true, "{tested}");
+            let test_post = last_post(&tab).await?;
+            let posts_after: usize = tab.eval("window.__ttsPosts.length").await?;
+            ensure!(
+                posts_after == posts_before + 1
+                    && test_post["pronTest"] == "1"
+                    && test_post["text"] == "Kahm",
+                "a pronunciation test must carry pronTest=1 so the server does not count it: {test_post}"
+            );
+
+            tab.exec(
+                "window.__bridgeHandlers['encoder:nwrEditorExport']();",
+                json!([]),
+            )
+            .await?;
+            tab.wait_until(
+                "window.__bridgeSent.some(([n]) => n === 'encoder:nwrEditorExportData')",
+                Duration::from_secs(15),
+            )
+            .await?;
+            let exported: Value = tab
+                .js(
+                    "return window.__bridgeSent.filter(([n]) => n === 'encoder:nwrEditorExportData').at(-1)[1];",
+                    json!([]),
+                )
+                .await?;
+            ensure!(
+                exported["fileName"] == "eas-tools-pronunciations.json" && exported["count"] == 2,
+                "{exported}"
+            );
+            let exported_text = exported["text"].as_str().unwrap_or_default().to_string();
+
+            let (removed, snapshot) = editor_call(
+                &tab,
+                "encoder:nwrEditorRemove",
+                json!({ "id": "calm", "scope": "tx:WNG570" }),
+            )
+            .await?;
+            ensure!(
+                removed["ok"] == true && removed["message"] == "Removed \"Calm\".",
+                "{removed}"
+            );
+            ensure!(
+                !snapshot["personal"]
+                    .as_array()
+                    .is_some_and(|p| p.iter().any(|e| e["match"] == "Calm")),
+                "{snapshot}"
+            );
+
+            let (imported, snapshot) = editor_call(
+                &tab,
+                "encoder:nwrEditorImport",
+                json!({ "text": exported_text }),
+            )
+            .await?;
+            ensure!(
+                imported["ok"] == true && imported["message"] == "Imported 2 pronunciations.",
+                "{imported}"
+            );
+            ensure!(
+                snapshot["personal"]
+                    .as_array()
+                    .is_some_and(|p| p.iter().any(|e| e["match"] == "Calm")),
+                "{snapshot}"
+            );
+            let (broken, _) = editor_call(
+                &tab,
+                "encoder:nwrEditorImport",
+                json!({ "text": "{not json" }),
+            )
+            .await?;
+            ensure!(
+                broken["ok"] == false && broken["error"] == "That file is not valid JSON.",
+                "{broken}"
+            );
+            Ok(())
+        }),
         case(
             "handoffs_from_an_office_switch_the_picker",
             |tab| async move {

@@ -86,6 +86,7 @@ const o = Object.assign({
               windLo: "30", windHi: "40" },
     text: {}
 }, extra || {});
+["start", "end"].forEach(k => { if (typeof o[k] === "string") o[k] = new Date(o[k]); });
 return WarngenWatches.buildZoneWatch(o).text;
 "#;
 
@@ -129,7 +130,7 @@ async fn render_state(tab: &Tab, template: &str, action: &str, iw: Value) -> Res
         .await?;
     tab.goto("warngen/").await?;
     tab.wait_until(
-        "typeof lastRawOutput !== 'undefined' && /^WWUS\\d\\d /.test(lastRawOutput || '')
+        "typeof lastRawOutput !== 'undefined' && /^W[A-Z]US\\d\\d /.test(lastRawOutput || '')
          && /^Rendered /.test(document.getElementById('status').textContent)",
         Duration::from_secs(60),
     )
@@ -379,6 +380,68 @@ pub fn cases() -> Vec<Case> {
         ensure!(hidden == [false, false, false, false, true], "{hidden:?}");
         Ok(())
     }));
+    cases.push(case("flood_watch_when_is_never_blank", |tab| async move {
+        open(&tab).await?;
+        let text = build(&tab, "FA", "NEW", json!({ "sig": null })).await?;
+        for needle in [
+            "/O.NEW.KOAX.FA.A.0001.260115T1200Z-260116T1200Z/",
+            "...FLOOD WATCH IN EFFECT FROM THURSDAY MORNING THROUGH LATE THURSDAY",
+            "* WHEN...From Thursday morning through late Thursday night.",
+        ] {
+            ensure!(text.contains(needle), "missing {needle:?} in\n{text}");
+        }
+        let lapsed =
+            json!({ "sig": null, "start": "2026-01-12T12:00:00Z", "end": "2026-01-13T12:00:00Z" });
+        let text = build(&tab, "FA", "NEW", lapsed.clone()).await?;
+        ensure!(text.contains("\n* WHEN...!** Valid period **!\n"), "{text}");
+        let mut typed = lapsed;
+        typed["text"] = json!({ "when": "From this evening through Saturday morning." });
+        let text = build(&tab, "FA", "NEW", typed).await?;
+        ensure!(
+            text.contains("\n* WHEN...From this evening through Saturday morning.\n"),
+            "{text}"
+        );
+        Ok(())
+    }));
+    cases.push(case(
+        "panel_flood_watch_flags_a_lapsed_valid_period",
+        |tab| async move {
+            open(&tab).await?;
+            let result = render_state(
+                &tab,
+                "watch:FA",
+                "NEW",
+                json!({ "start": "2026-01-12T06:00", "end": "2026-01-13T06:00" }),
+            )
+            .await?;
+            ensure!(
+                result.raw.contains("\n* WHEN...!** Valid period **!\n"),
+                "{}",
+                result.raw
+            );
+            ensure!(
+                result.status.starts_with("Rendered Flood Watch")
+                    && result.status.contains("SAME FFA]")
+                    && result.status.contains("update Valid from and Until"),
+                "{}",
+                result.status
+            );
+            let hidden: bool = tab
+                .eval("document.getElementById('iw-when').closest('.civil-row').hidden")
+                .await?;
+            ensure!(!hidden, "WHEN override row hidden for the Flood Watch");
+            let until = render_state(
+                &tab,
+                "watch:FA",
+                "NEW",
+                json!({ "start": "", "end": "2026-01-14T20:00" }),
+            )
+            .await?;
+            ensure!(until.raw.contains("\n* WHEN...Until "), "{}", until.raw);
+            ensure!(!until.status.contains("Valid from"), "{}", until.status);
+            Ok(())
+        },
+    ));
     cases.push(case(
         "saved_watch_values_still_render_watches",
         |tab| async move {
