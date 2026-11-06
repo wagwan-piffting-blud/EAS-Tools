@@ -1516,7 +1516,7 @@ async function fetchAndStore() {
     }
 
     function checkZCZCIsValid(header) {
-        const zczcPattern = /^ZCZC-([A-Z]{3})-([A-Z]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{0,8})-?$/;
+        const zczcPattern = window.EASREGEX;
         return zczcPattern.test(header);
     }
 

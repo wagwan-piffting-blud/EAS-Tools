@@ -3,7 +3,7 @@
 import { eventDisplayName } from '../js/custom-events.js';
 import { customLocationName } from '../js/custom-locations.js';
 
-const EAS_REGEX =/^ZCZC-([A-Z]{3})-([A-Z\?]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{1,8}?)-$/m;
+const EAS_REGEX = window.EASREGEX;
 const RESOURCE_PATHS = {
     sameUS: 'assets/E2T/include/same-us.json',
     sameCA: 'assets/E2T/include/same-ca.json',

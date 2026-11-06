@@ -67,7 +67,7 @@ const BURSTS_PER_TX = 3;
 const TONE_SECONDS = 10;
 const PEAK_LIMIT = 0.8912509381337456;
 const SAME_TONE_SUPPRESSION_MS = 300000;
-const VALID_HEADER = /^ZCZC-[A-Z]{3}-[A-Z0-9]{3}(?:-\d{6}){1,31}\+\d{4}-\d{7}-[\x20-\x2c\x2e-\x5e\x60-\x7e]{8}-/;
+const VALID_HEADER = window.EASREGEX || /^ZCZC-([A-Z]{3})-([A-Z]{3})-(\d{6}(?:-\d{6}){0,30})\+(\d{4})-(\d{7})-([\x20-\x2A\x2C\x2E-\x7E]{1,8})-$/m;
 
 const ORIGINATORS = ['WXR', 'EAS', 'CIV', 'PEP'];
 const EVENTS = ['TOR', 'SVR', 'FFW', 'FLW', 'SVS', 'SQW', 'WSW', 'BZW', 'EWW', 'SPW', 'CEM', 'EAN', 'RWT', 'RMT', 'DMO'];

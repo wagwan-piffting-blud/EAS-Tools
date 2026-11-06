@@ -907,7 +907,7 @@
         <script src="assets/js/footer.js"></script>
         <script type="module" src="assets/E2T/EAS2Text-NG.js"></script>
         <script>
-            window.EASREGEX = /^ZCZC-([A-Z]{3})-([A-Z]{3})-((?:\d{6}(?:-?)){1,31})\+(\d{4})-(\d{7})-([A-Za-z0-9\/ ]{1,8}?)-$/m;
+            window.EASREGEX = /^ZCZC-([A-Z]{3})-([A-Z]{3})-(\d{6}(?:-\d{6}){0,30})\+(\d{4})-(\d{7})-([\x20-\x2A\x2C\x2E-\x7E]{1,8})-$/m;
 
             (function () {
                 const panelIds = {

@@ -2,6 +2,8 @@
 
 2026-11-06:
 
+- Fix what is considered a valid SAME header to be both more consistent in each tool, and more valid/in-line with the SAME/FCC Part 11 specification. Thank you to Discord user @_tru3 for reporting this issue.
+
 - Add an "Alert text style" option to the Decoder (#165). The human-readable text in each alert's details can now be worded like a DASDEC (v1 or II), Trilithic EASyPLUS, SAGE, TFT, HollyAnne, Gorman-Redlich or Burk ENDEC, or as a mock NWS/AWIPS-style headline for weather (WXR) alerts ("The National Weather Service in Chicago has issued a * Tornado Warning for... Cook County in northeastern Illinois... * Until 530 PM CDT."), with the office taken from the sender ID and the Storm Prediction Center named for national watches. The NWS style is a mock built from the SAME header, not an official product. The default stays the plain wording, and your choice is remembered with the other Decoder options. Office names match what WarnGen prints ("The National Weather Service in the Quad Cities"). The option is in the Android and iOS apps' Decoder too as of the next release. Thank you to GitHub user @InternOfCEOs for suggesting this change.
 
 - Add an optional message time limit to the SAME Encoder (#159). Real ENDECs usually stop a message at 2 minutes and send the EOM tones even if the voice message is still going; turn on "Cut the voice message off at a time limit" under Message Time Limit to do the same. The limit counts from the end of the attention signal, defaults to 120 seconds and can be set from 1 to 600 seconds. It is off by default and will be added in the Android and iOS apps too soon. Thank you to GitHub user @GreatLordBug for asking for this change.

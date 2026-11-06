@@ -12,7 +12,7 @@ const MARK_INC = TWO_PI * MARK_FREQ / GEN_RATE;
 const SPACE_INC = TWO_PI * SPACE_FREQ / GEN_RATE;
 const SAME_PREAMBLE = '\xAB'.repeat(16);
 const DIGITAL_TAIL = '\xFF\xFF\xFF';
-const HEADER_RE = new RegExp('^ZCZC-([A-Z]{3})-([A-Z]{3})-((?:\\d{6}(?:-?)){1,31})\\+(\\d{4})-(\\d{7})-([A-Za-z0-9/ ]{0,8})-?$');
+const HEADER_RE = new RegExp(window.EASREGEX);
 
 export const MODE_OPTIONS = [...ENDEC_MODE_OPTIONS, { value: LEGACY_DIGITAL_MODE, label: 'SAGE 3644/DIGITAL (Legacy)' }];
 
