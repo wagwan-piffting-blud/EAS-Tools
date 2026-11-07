@@ -1,6 +1,7 @@
 import { saveFile, responseOk, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
 import { createSendMenu, receive } from './handoff.js';
 import { stripArticle as stripEventArticle, unrecognizedEventName } from './custom-events.js';
+import { screenSeverity } from './event-severity.js';
 import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady } from '../E2T/EAS2Text-NG.js';
 import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec, Input, BlobSource, CanvasSink, ALL_FORMATS } from './mediabunny/mediabunny.min.js';
 import { SCREEN_TYPE, SCREEN_TOKENS, MAX_SCREEN_PAGES, EVERY_PAGE, openScreenBuilder, listScreens, getScreen, adoptScreen, saveScreen, deleteScreen, parseScreenJson, normalizeScreen, createScreenTemplate, renderScreenCanvas, screenElementBounds, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices } from './crawl-screen-builder.js';
@@ -4296,15 +4297,8 @@ async function initCrawlEditor() {
         return lines;
     }
 
-    function atariSeverityFor(eventName) {
-        const text = String(eventName || '');
-        if (/(Warning|Emergency|Immediate)/i.test(text) && !/Demo/i.test(text)) {
-            return 'warning';
-        }
-        if (/Watch/i.test(text)) {
-            return 'watch';
-        }
-        return 'advisory';
+    function atariSeverityFor(eventName, eventCode) {
+        return screenSeverity(eventName, eventCode);
     }
 
     function atariEventText(eventName) {
@@ -4402,7 +4396,7 @@ async function initCrawlEditor() {
                 const detail = parseHeaderDetailed(source, timezoneOverride, false, crawlSenderOverride());
                 return {
                     eventText: atariEventText(detail.eventName),
-                    severity: atariSeverityFor(detail.eventName),
+                    severity: atariSeverityFor(detail.eventName, detail.eventCode),
                     areaText: atariAreaText(detail.locationNames),
                     untilText: atariUntilText(detail),
                     senderText: String(detail.senderId || '').toUpperCase()
@@ -4421,7 +4415,7 @@ async function initCrawlEditor() {
                 : '';
             return {
                 eventText: atariEventText(pickedEventName),
-                severity: atariSeverityFor(pickedEventName),
+                severity: atariSeverityFor(pickedEventName, pickedEventCode),
                 areaText: ATARI_GENERIC_AREA,
                 untilText: ATARI_INDEFINITE,
                 senderText: (crawlSenderOverride() || originatorName).toUpperCase()
@@ -4490,7 +4484,7 @@ async function initCrawlEditor() {
                     SENDER: String(detail.senderId || ''),
                     HEADLINE: eventCode === 'EAN' || eventCode === 'EAT' ? 'NATIONAL ALERT' : 'EMERGENCY ALERT SYSTEM',
                     TEXT: crawlText,
-                    SEVERITY: atariSeverityFor(detail.eventName)
+                    SEVERITY: atariSeverityFor(detail.eventName, eventCode)
                 };
             } catch (error) {
                 console.error('Failed to parse the EAS header for the custom screen:', error);
@@ -4519,7 +4513,7 @@ async function initCrawlEditor() {
                 SENDER: crawlSenderOverride() || '',
                 HEADLINE: pickedEventCode === 'EAN' || pickedEventCode === 'EAT' ? 'NATIONAL ALERT' : 'EMERGENCY ALERT SYSTEM',
                 TEXT: crawlText,
-                SEVERITY: atariSeverityFor(pickedEvent)
+                SEVERITY: atariSeverityFor(pickedEvent, pickedEventCode)
             };
         }
 

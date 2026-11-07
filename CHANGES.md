@@ -1,5 +1,11 @@
 # EAS Tools Changelog
 
+2026-11-07:
+
+- Fix events whose names don't end in a word like "Warning", "Watch" or "Emergency" showing an Unknown severity in the Decoder (#167). Blue Alerts (BLU) and Missing and Endangered Persons (MEP) are now warnings; Network Message Notifications (NMN), Administrative Messages (ADR), Daily Check Messages (ADM), 911 Telephone Outage Messages (TOM) and the transmitter status codes (TXB, TXF, TXO, TXP) are now advisories. The same severities choose the alarm sound and the Text Crawl screens' warning/watch colors, and the Android and iOS apps pick them up automatically. Thank you to GitHub user @InternOfCEOs for reporting this bug.
+
+---
+
 2026-11-06:
 
 - Fix what is considered a valid SAME header to be both more consistent in each tool, and more valid/in-line with the SAME/FCC Part 11 specification. Thank you to Discord user @_tru3 for reporting this issue.

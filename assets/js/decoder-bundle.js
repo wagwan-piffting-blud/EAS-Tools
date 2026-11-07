@@ -12,6 +12,7 @@ import {
 
 import { E2T, allEndecModes, parseHeaderDetailed } from '../E2T/EAS2Text-NG.js';
 import { customLocationName } from './custom-locations.js';
+import { eventSeverity } from './event-severity.js';
 import { NWS_TEXT_STYLE, countyRegionsFromGeoJson, formatNwsStyle } from './nws-text-style.js';
 import { loadSeattyWasm, createSeattySameDemod } from './seatty-same-wasm.js';
 import { SEATTY_EVENT_TONE, decodeBatches, readWavLayout, wavChannelChunks } from './seatty-worker.js';
@@ -2883,13 +2884,17 @@ function eventLabel(code) {
         }
     }
 
-    function alertSeverity(easText) {
-        const text = easText || "";
-        if (text.match(/(Warning|Emergency|Immediate)/i) && !text.match(/(Demo)/i)) return "Warning";
-        if (text.match(/(Watch)/i)) return "Watch";
-        if (text.match(/(Advisory)/i)) return "Advisory";
-        if (text.match(/(Statement)/i)) return "Statement";
-        return "Information";
+    const SEVERITY_BORDER_COLORS = {
+        Warning: "red",
+        Watch: "orange",
+        Advisory: "yellow",
+        Statement: "blue",
+        Information: "green",
+        Unknown: "gray"
+    };
+
+    function alertSeverity(easText, eventCode) {
+        return eventSeverity(easText, eventCode) || "Information";
     }
 
     function loadAlarmSound(url) {
@@ -4954,7 +4959,7 @@ function eventLabel(code) {
                                     noteSameActivity(true);
                                     const needsSeverity = !!window.EASBridge || isAlarmBeepEnabled();
                                     const easText = needsSeverity ? alertTextForSeverity(parsedHeader) : '';
-                                    const severity = alertSeverity(easText);
+                                    const severity = alertSeverity(easText, parsedHeader.event);
                                     if (window.EASBridge) {
                                         const alertName = eventLabel(parsedHeader.event);
                                         const issueTime = parsedHeader.issueTime;
@@ -5107,7 +5112,7 @@ function eventLabel(code) {
                                         product.alerts.push(parsedHeader);
                                         const needsSeverity = !!window.EASBridge || isAlarmBeepEnabled();
                                         const easText = needsSeverity ? alertTextForSeverity(parsedHeader) : '';
-                                        const severity = alertSeverity(easText);
+                                        const severity = alertSeverity(easText, parsedHeader.event);
                                         if (window.EASBridge) {
                                             const alertName = eventLabel(parsedHeader.event);
                                             const issueTime = parsedHeader.issueTime;
@@ -5612,7 +5617,7 @@ function eventLabel(code) {
         if (window.EASBridge) {
             const alertName = eventLabel(parsedHeader.event);
             const easText = alertTextForSeverity(parsedHeader);
-            const severity = alertSeverity(easText);
+            const severity = alertSeverity(easText, parsedHeader.event);
             const issueTime = parsedHeader.issueTime;
             const expirationTime = typeof getExpirationTime === 'function' ? getExpirationTime(issueTime, parsedHeader.alertTime) : null;
             window.EASBridge.send('decoder:header', {
@@ -5740,41 +5745,9 @@ function eventLabel(code) {
             return;
         }
 
-        if (easText.match(/(Warning|Emergency|Immediate)/i) && !easText.match(/(Demo)/i)) {
-            modalBox.style.border = "3px solid red";
-            modalBox.style.borderRadius = "10px";
-            alertType = "Warning";
-        }
-
-        else if (easText.match(/(Watch)/i)) {
-            modalBox.style.border = "3px solid orange";
-            modalBox.style.borderRadius = "10px";
-            alertType = "Watch";
-        }
-
-        else if (easText.match(/(Advisory)/i)) {
-            modalBox.style.border = "3px solid yellow";
-            modalBox.style.borderRadius = "10px";
-            alertType = "Advisory";
-        }
-
-        else if (easText.match(/(Statement)/i)) {
-            modalBox.style.border = "3px solid blue";
-            modalBox.style.borderRadius = "10px";
-            alertType = "Statement";
-        }
-
-        else if (easText.match(/(Information|Test|Demo)/i)) {
-            modalBox.style.border = "3px solid green";
-            modalBox.style.borderRadius = "10px";
-            alertType = "Information";
-        }
-
-        else {
-            modalBox.style.border = "3px solid gray";
-            modalBox.style.borderRadius = "10px";
-            alertType = "Unknown";
-        }
+        alertType = eventSeverity(easText, header.event) || "Unknown";
+        modalBox.style.border = "3px solid " + (SEVERITY_BORDER_COLORS[alertType] || SEVERITY_BORDER_COLORS.Unknown);
+        modalBox.style.borderRadius = "10px";
 
         infoContainer.appendChild(createInfo(`Severity: ${alertType}`));
         infoContainer.appendChild(createInfo(`Type: ${alertName}`));

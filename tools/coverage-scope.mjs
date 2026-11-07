@@ -5,6 +5,7 @@
 export const measuredFiles = [
     'assets/js/custom-events.js',
     'assets/js/custom-locations.js',
+    'assets/js/event-severity.js',
     'assets/js/nwr-pronunciation.js',
     'assets/js/nwr-pronunciation-store.js',
     'assets/js/nwr-pronunciation-editing.js',

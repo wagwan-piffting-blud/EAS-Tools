@@ -17,6 +17,7 @@ mod decoder_alarm;
 mod decoder_custom_alarms;
 mod decoder_same;
 mod decoder_settings;
+mod decoder_severity;
 mod decoder_text_style;
 mod demo_wav_headers;
 mod demos_page;
@@ -72,6 +73,7 @@ fn main() -> std::process::ExitCode {
         ("decoder_custom_alarms", decoder_custom_alarms::cases()),
         ("decoder_same", decoder_same::cases()),
         ("decoder_settings", decoder_settings::cases()),
+        ("decoder_severity", decoder_severity::cases()),
         ("decoder_text_style", decoder_text_style::cases()),
         ("demo_wav_headers", demo_wav_headers::cases()),
         ("demos_page", demos_page::cases()),
