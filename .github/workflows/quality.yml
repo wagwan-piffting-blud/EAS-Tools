@@ -17,6 +17,9 @@ jobs:
     name: Quality gates
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: always
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -33,12 +36,27 @@ jobs:
           cache: pnpm
 
       - name: Setup Rust
+        id: rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy, llvm-tools-preview
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
+
+      # Restore-only: the e2e job warms and saves this cache with the same check, clippy and
+      # llvm-cov builds that `make checks` runs, so both jobs never race to save one key.
+      - name: Restore e2e build cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            test/e2e-rs/target/
+          key: e2e-v2-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('test/e2e-rs/Cargo.lock', 'test/e2e-rs/src/**', 'test/e2e-rs/suites/**') }}
+          restore-keys: |
+            e2e-v2-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
