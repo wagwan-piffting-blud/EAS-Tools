@@ -4,7 +4,7 @@ Run with `make e2e` from the repo root. `make quality` and CI include it. It run
 8 slots by default (`EAS_TOOLS_TABS`). Each slot is its own headless Chrome with
 one browser context that its tests take turns in. An in-process static server
 serves the repo at `/eas-tools` unless `EAS_TOOLS_BASE_URL` is set. Tests slower
-than 2 s print `[slow]` to stderr; `EAS_TOOLS_SLOW_SECS` changes the threshold
+than 2 s print `[slow]` to stderr (off when `CI` is set, including inside the container runner, which forwards `CI`, `EAS_TOOLS_TABS` and `EAS_TOOLS_SLOW_SECS`); `EAS_TOOLS_SLOW_SECS` changes the threshold
 (`0` turns it off), and it is off by default when `CI` is set. libtest-mimic takes
 ONE name filter (substring), plus `--skip`.
 

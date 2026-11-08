@@ -173,11 +173,7 @@ pub(crate) fn run_container(test_args: &[OsString], build_container: bool) -> Re
         "--tmpfs",
         "/tmp:rw,nosuid,nodev,size=2g",
     ]);
-    if let Some(tabs) = std::env::var_os("EAS_TOOLS_TABS") {
-        command
-            .arg("--env")
-            .arg(format!("EAS_TOOLS_TABS={}", tabs.to_string_lossy()));
-    }
+    command.args(forwarded_env_args(|name| std::env::var_os(name)));
     command.arg(&image).args(test_args.iter().skip(1));
     let status = command
         .status()
@@ -199,6 +195,20 @@ fn build_args() -> Vec<OsString> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Host settings the suite reads, passed into the container so it behaves like a native run;
+/// `CI` keeps the `[slow]` notes off under CI.
+const FORWARDED_ENV: [&str; 3] = ["EAS_TOOLS_TABS", "EAS_TOOLS_SLOW_SECS", "CI"];
+
+fn forwarded_env_args(lookup: impl Fn(&str) -> Option<OsString>) -> Vec<OsString> {
+    FORWARDED_ENV
+        .iter()
+        .filter_map(|name| {
+            lookup(name).map(|value| OsString::from(format!("{name}={}", value.to_string_lossy())))
+        })
+        .flat_map(|pair| [OsString::from("--env"), pair])
+        .collect()
 }
 
 fn env_flag(name: &str) -> bool {
@@ -230,6 +240,20 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["e2e", "decoder_same", "--skip", "quiet"]
         );
+    }
+
+    #[test]
+    fn container_receives_the_suite_settings_that_are_set() {
+        let args = forwarded_env_args(|name| match name {
+            "EAS_TOOLS_TABS" => Some(OsString::from("4")),
+            "CI" => Some(OsString::from("true")),
+            _ => None,
+        });
+        assert_eq!(
+            args,
+            ["--env", "EAS_TOOLS_TABS=4", "--env", "CI=true"].map(OsString::from)
+        );
+        assert!(forwarded_env_args(|_| None).is_empty());
     }
 
     #[test]

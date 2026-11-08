@@ -6,11 +6,17 @@ ARG CHROMIUM_BINARY=/usr/lib/chromium/chromium-headless-shell
 FROM rust:trixie AS build
 WORKDIR /build
 COPY test/e2e-rs/Cargo.toml test/e2e-rs/Cargo.lock test/e2e-rs/
+# Dependencies build against stub sources in their own layer, so editing src/ or suites/ reuses
+# it. No cache mounts: their contents never reach the layer, so CI's layer cache could not keep them.
+RUN mkdir -p test/e2e-rs/src test/e2e-rs/suites && \
+    : > test/e2e-rs/src/lib.rs && \
+    echo 'fn main() {}' > test/e2e-rs/suites/main.rs && \
+    cargo test --locked --release --manifest-path test/e2e-rs/Cargo.toml --test e2e --no-run && \
+    rm -rf test/e2e-rs/src test/e2e-rs/suites
 COPY test/e2e-rs/src test/e2e-rs/src
 COPY test/e2e-rs/suites test/e2e-rs/suites
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/build/test/e2e-rs/target \
-    find test/e2e-rs/target/release/deps -maxdepth 1 -type f -name 'e2e-*' -perm /111 -delete 2>/dev/null || true; \
+RUN find test/e2e-rs/src test/e2e-rs/suites -type f -exec touch '{}' + && \
+    find test/e2e-rs/target/release/deps -maxdepth 1 -type f -name 'e2e-*' -perm /111 -delete && \
     cargo test --locked --release --manifest-path test/e2e-rs/Cargo.toml --test e2e --no-run && \
     find test/e2e-rs/target/release/deps -maxdepth 1 -type f -name 'e2e-*' -perm /111 -exec cp '{}' /tmp/eas-tools-e2e \; && \
     test -x /tmp/eas-tools-e2e
