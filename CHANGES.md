@@ -20,6 +20,10 @@
 
 - WarnGen now draws Alaska, Hawaii and the territories where they really are, instead of in boxes moved next to the lower 48 (#171). The old boxes overlapped real states: Guam and the Northern Mariana Islands sat over Arizona and Utah, so a polygon over Tucson or Phoenix could print Guam or Marianas coordinates in its LAT...LON, and Alaska and Hawaii roads floated over empty map. Every layer (counties, zones, cities, roads, rivers, lakes, time zones, radar) is now at its true location, the Aleutians, Guam and the Marianas run continuously across the 180th meridian, and LAT...LON, storm motion and exports print real coordinates. "All US" now shows the lower 48; pick an office to go to Alaska, Hawaii, Puerto Rico, Guam or American Samoa. A session saved by the old map is moved to the real location the first time it opens. This reaches the Android and iOS apps with their next release; until then they keep the old map. Thank you to GitHub user @InternOfCEOs for reporting this bug.
 
+- Fix the Text Crawl's "VDS (VDSwiss, VDS mode on)" style not switching to the VDSwiss font after VDSwiss was updated to V1.2. Settings, presets and custom screens saved with the old VDSwiss font now load it too, instead of switching to User Upload.
+
+- Fix the Browser E2E CI job failing after Rust 1.100 moved where Cargo puts test binaries. Also move three crates only the tests use to dev-dependencies, which clears Cargo's new unused-dependency warnings.
+
 ---
 
 2026-11-07:

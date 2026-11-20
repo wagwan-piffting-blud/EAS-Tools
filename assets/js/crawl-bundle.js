@@ -5,7 +5,7 @@ import { screenSeverity } from './event-severity.js';
 import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady, stateNameForLocation } from '../E2T/EAS2Text-NG.js';
 import { EASYCAP_FONTS, EASYCAP_SOURCES, isEasycapSource, normalizeEasycapSettings, easycapDimensions, easycapCharsPerSecond, easycapCrawlActive, easycapGeometry, easycapAreaText, easycapUntilText, easycapZoneName, easycapEventName, easycapMessage, easycapPlainText, wrapEasycapText, easycapHeaderLines, easycapPageLayout, paginateEasycapLines, easycapPageCounter, easycapPageDelayMs, easycapCrawlRow, easycapCrawlHeaderTop, easycapCrawlSpeed } from './easycap-screen.js';
 import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec, Input, BlobSource, CanvasSink, ALL_FORMATS } from './mediabunny/mediabunny.min.js';
-import { SCREEN_TYPE, SCREEN_TOKENS, MAX_SCREEN_PAGES, EVERY_PAGE, openScreenBuilder, listScreens, getScreen, adoptScreen, saveScreen, deleteScreen, parseScreenJson, normalizeScreen, createScreenTemplate, renderScreenCanvas, screenElementBounds, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices } from './crawl-screen-builder.js';
+import { SCREEN_TYPE, SCREEN_TOKENS, MAX_SCREEN_PAGES, EVERY_PAGE, openScreenBuilder, listScreens, getScreen, adoptScreen, saveScreen, deleteScreen, parseScreenJson, normalizeScreen, createScreenTemplate, renderScreenCanvas, screenElementBounds, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices, currentFontFamily, renamedFontFamilies } from './crawl-screen-builder.js';
 
 async function initCrawlEditor() {
     let crawlTextEditor = null;
@@ -6410,6 +6410,9 @@ async function initCrawlEditor() {
                 normalized[domId] = normalized[legacyKey];
             }
         });
+        if (typeof normalized.crawlFontFamily === 'string') {
+            normalized.crawlFontFamily = currentFontFamily(normalized.crawlFontFamily);
+        }
         if (!Object.prototype.hasOwnProperty.call(normalized, 'crawlTopLeftManual')) {
             const mode = normalizeCrawlBackgroundMode(normalized.crawlBackgroundMode);
             const wasPositioned = (value) => {
@@ -6811,7 +6814,7 @@ async function initCrawlEditor() {
         {
             label: 'Crawl fonts by system',
             presets: [
-                { id: 'vds', label: 'VDS (VDSwiss, VDS mode on)', settings: { crawlFontFamily: 'VDSwiss V1', crawlFontStyle: 'normal', crawlUseVDSMode: true } },
+                { id: 'vds', label: 'VDS (VDSwiss, VDS mode on)', settings: { crawlFontFamily: 'VDSwiss V1.2', crawlFontStyle: 'normal', crawlUseVDSMode: true } },
                 { id: 'verizon', label: 'Verizon (Akzidenz)', settings: { crawlFontFamily: 'Akzidenz', crawlFontStyle: 'normal', crawlUseVDSMode: false } },
                 { id: 'texscan', label: 'Texscan', settings: { crawlFontFamily: 'Texscan', crawlFontStyle: 'normal', crawlUseVDSMode: false } },
                 { id: 'xbob4', label: 'XBOB-4 (8x13 bitmap)', settings: { crawlFontFamily: 'XBOB-4 8x13', crawlFontStyle: 'normal', crawlUseVDSMode: false } },
@@ -7010,7 +7013,7 @@ async function initCrawlEditor() {
             const fonts = list
                 .filter((f) => f.family !== 'User-Upload')
                 .map((f) => ({ value: f.family, label: `${f.family} (${f.description})`, file: f.file }));
-            window.EASBridge.send('crawl:fontsData', { fonts: fonts });
+            window.EASBridge.send('crawl:fontsData', { fonts: fonts, renamed: renamedFontFamilies() });
         }
         function sendPremadeListToNative() {
             const sel = document.getElementById('crawlBackgroundPremadeSelect');
@@ -7284,7 +7287,7 @@ async function initCrawlEditor() {
                 setVal('crawlFontSize', params.fontSize);
                 setVal('crawlTextColor', params.textColor);
                 setVal('crawlBgColor', params.bgColor);
-                setVal('crawlFontFamily', params.fontFamily);
+                setVal('crawlFontFamily', currentFontFamily(params.fontFamily));
                 if (params.customFontData) {
                     const bytes = Uint8Array.from(atob(params.customFontData), (c) => c.charCodeAt(0));
                     window.__nativeCrawlFiles = window.__nativeCrawlFiles || {};

@@ -668,19 +668,44 @@ pub fn cases() -> Vec<Case> {
             tab.exec("document.getElementById('crawlStylePreset').value = 'vds';", json!([])).await?;
             tab.click("#applyCrawlStylePreset").await?;
             tab.wait_until(
-                "document.getElementById('crawlFontFamily').value === 'VDSwiss V1' && document.getElementById('crawlUseVDSMode').checked",
+                "document.getElementById('crawlFontFamily').value === 'VDSwiss V1.2' && document.getElementById('crawlUseVDSMode').checked",
                 Duration::from_secs(20),
             )
             .await?;
             let premade: String = tab.eval("document.getElementById('crawlBackgroundPremadeSelect').value").await?;
             ensure!(premade == "easyplus:easyplus_gray", "a font-only style changed the background to {premade}");
             tab.wait_until(
-                "(() => { try { const s = JSON.parse(localStorage.getItem('eas-tools-crawl-settings')); return !!s && (s.fontFamily === 'VDSwiss V1' || s.crawlFontFamily === 'VDSwiss V1'); } catch (e) { return false; } })()",
+                "(() => { try { const s = JSON.parse(localStorage.getItem('eas-tools-crawl-settings')); return !!s && (s.fontFamily === 'VDSwiss V1.2' || s.crawlFontFamily === 'VDSwiss V1.2'); } catch (e) { return false; } })()",
                 Duration::from_secs(10),
             )
             .await?;
             let persisted: bool = tab.eval("'crawlStylePreset' in JSON.parse(localStorage.getItem('eas-tools-crawl-settings'))").await?;
             ensure!(!persisted, "the style picker leaked into the saved settings");
+            Ok(())
+        }),
+        case("a_renamed_font_still_loads_from_saved_settings_and_screens", |tab| async move {
+            tab.goto("demos.html").await?;
+            tab.local_storage_set("eas-tools-crawl-settings", &json!({ "crawlFontFamily": "VDSwiss V1" }).to_string())
+                .await?;
+            open_crawl(&tab).await?;
+            tab.wait_until(
+                "document.getElementById('crawlFontFamily').value === 'VDSwiss V1.2'",
+                Duration::from_secs(20),
+            )
+            .await?;
+            let upload_shown: bool = tab
+                .eval("Array.from(document.querySelectorAll('.customFontUpload')).some((el) => el.style.display === 'block')")
+                .await?;
+            ensure!(!upload_shown, "the old VDSwiss name fell back to User-Upload");
+            let font: Value = tab
+                .js_async(
+                    "const done = arguments[arguments.length - 1];
+                     import(arguments[0]).then((m) => done(m.normalizeScreen({ format: 'eas-tools-screen', version: 1, elements: [{ type: 'text', text: 'X', font: 'VDSwiss V1' }] }).elements[0].font))
+                         .catch((e) => done({ error: String(e) }));",
+                    json!([MODULE]),
+                )
+                .await?;
+            ensure!(font == "VDSwiss V1.2", "a saved screen kept the old font name: {font}");
             Ok(())
         }),
     ]);

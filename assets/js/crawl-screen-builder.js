@@ -95,6 +95,18 @@ function pickEnum(value, allowed, fallback) {
     return allowed.includes(value) ? value : fallback;
 }
 
+const RENAMED_FONT_FAMILIES = Object.freeze({ 'VDSwiss V1': 'VDSwiss V1.2' });
+
+export function renamedFontFamilies() {
+    return { ...RENAMED_FONT_FAMILIES };
+}
+
+export function currentFontFamily(family) {
+    return typeof family === 'string' && Object.prototype.hasOwnProperty.call(RENAMED_FONT_FAMILIES, family)
+        ? RENAMED_FONT_FAMILIES[family]
+        : family;
+}
+
 function normalizeElement(raw) {
     if (!raw || typeof raw !== 'object') {
         return null;
@@ -119,7 +131,7 @@ function normalizeElement(raw) {
             width: roundTo(clampNumber(raw.width, 0, 20000, 400)),
             align: pickEnum(raw.align, ['left', 'center', 'right'], 'left'),
             valign: pickEnum(raw.valign, ['top', 'middle', 'bottom'], 'top'),
-            font: typeof raw.font === 'string' && raw.font.trim() ? raw.font.trim().slice(0, 120) : 'Arial',
+            font: typeof raw.font === 'string' && raw.font.trim() ? currentFontFamily(raw.font.trim().slice(0, 120)) : 'Arial',
             size,
             bold: raw.bold === true,
             italic: raw.italic === true,
