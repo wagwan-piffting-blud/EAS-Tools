@@ -48,6 +48,7 @@ export function describeSelectionSummary(summary, features = getRemoteTtsFeature
     const pauses = pauseText(summary);
     if (pauses) parts.push(pauses);
     let text = parts.join(' · ') + '.';
+    if (summary.ttsReady) text += ' TTS-ready output is on (BMH formatting).';
     if (summary.unsupported.length) {
         const speedOnly = summary.unsupported.every((f) => f === 'vtSpeed');
         text += features?.vtProsody
@@ -68,6 +69,7 @@ export function mountPronunciationControls({ anchor, suffix = '', getText = () =
     let sourcesReady = null;
 
     const enabled = el('input', { type: 'checkbox', id: id('Enabled') });
+    const ttsReady = el('input', { type: 'checkbox', id: id('TtsReady'), 'aria-describedby': id('TtsReadyHint') });
     const select = el('select', { id: id('Source') }, [el('option', { value: '', text: 'National dictionary only' })]);
     const summary = el('p', { id: id('Summary'), class: 'inline-note nwr-pron__summary', 'aria-live': 'polite' });
     const previewButton = el('button', { type: 'button', id: id('Preview'), text: 'Preview replacements' });
@@ -77,6 +79,8 @@ export function mountPronunciationControls({ anchor, suffix = '', getText = () =
         el('legend', { text: 'NWR pronunciations (VT Paul)' }),
         el('div', { class: 'nwr-pron__row' }, [enabled, el('label', { for: enabled.id, text: ' Use NWS pronunciations, speed and pauses' })]),
         el('div', { class: 'nwr-pron__row' }, [el('label', { for: select.id, text: 'Office or transmitter: ' }), select]),
+        el('div', { class: 'nwr-pron__row' }, [ttsReady, el('label', { for: ttsReady.id, text: ' TTS-ready output (BMH formatting)' })]),
+        el('p', { id: id('TtsReadyHint'), class: 'inline-note', text: 'Formats the text the way the NWS Broadcast Message Handler does before VT Paul reads it: removes bullets and line breaks, capitalizes every word and drops punctuation-only fragments. Only the text is changed.' }),
         summary,
         el('div', { class: 'nwr-pron__row' }, [previewButton, document.createTextNode(' '), editButton]),
         previewOut,
@@ -86,6 +90,7 @@ export function mountPronunciationControls({ anchor, suffix = '', getText = () =
     function syncFromStore() {
         const selection = readSelection();
         enabled.checked = selection.enabled;
+        ttsReady.checked = selection.ttsReady;
         select.disabled = !selection.enabled;
         if (select.value !== selection.source) {
             if (selection.source && !select.querySelector('option[value="' + selection.source + '"]')) {
@@ -133,7 +138,9 @@ export function mountPronunciationControls({ anchor, suffix = '', getText = () =
         if (fieldset.hidden) return;
         const selection = readSelection();
         if (!selection.enabled) {
-            summary.textContent = 'Off: text is sent to VT Paul exactly as written.';
+            summary.textContent = selection.ttsReady
+                ? 'NWS pronunciations are off. TTS-ready output is on, so only the BMH formatting is applied.'
+                : 'Off: text is sent to VT Paul exactly as written.';
             return;
         }
         const plan = await planTtsPronunciation({ text: '', voice, backend, prosody: getProsody(), pronunciation: selection });
@@ -177,6 +184,10 @@ export function mountPronunciationControls({ anchor, suffix = '', getText = () =
     enabled.addEventListener('change', () => {
         writeSelection({ enabled: enabled.checked });
     });
+    ttsReady.addEventListener('change', () => {
+        previewOut.hidden = true;
+        writeSelection({ ttsReady: ttsReady.checked });
+    });
     select.addEventListener('change', () => {
         previewOut.hidden = true;
         if (select.value !== readSelection().source) writeSelection({ source: select.value });
@@ -191,9 +202,11 @@ export function mountPronunciationControls({ anchor, suffix = '', getText = () =
         previewOut.textContent = plan.text;
         previewOut.hidden = false;
         const hits = plan.hits ? plan.hits.length : 0;
-        summary.textContent = plan.applied
-            ? hits + (hits === 1 ? ' word or phrase' : ' words or phrases') + ' will be replaced. ' + describeSelectionSummary(plan.summary)
-            : 'Pronunciations are off, so nothing will be replaced.';
+        summary.textContent = !plan.applied
+            ? 'Pronunciations are off, so nothing will be replaced.'
+            : plan.summary?.pronunciations === false
+                ? 'NWS pronunciations are off; the preview shows the TTS-ready formatting only.'
+                : hits + (hits === 1 ? ' word or phrase' : ' words or phrases') + ' will be replaced. ' + describeSelectionSummary(plan.summary);
     });
     editButton.addEventListener('click', async () => {
         if (typeof onEdit === 'function') {

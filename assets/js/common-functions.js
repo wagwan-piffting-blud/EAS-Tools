@@ -1198,10 +1198,10 @@ export async function planTtsPronunciation({ text, voice, backend = '', prosody 
         const index = await repository.loadIndex();
         if (!isEligibleVoice(voice, backend, index.voices)) return unchanged;
         const selection = isObject(pronunciation)
-            ? { enabled: pronunciation.enabled !== false, source: pronunciation.source || '' }
+            ? { enabled: pronunciation.enabled !== false, source: pronunciation.source || '', ttsReady: pronunciation.ttsReady === true }
             : readSelection();
         const context = await repository.resolveContext(selection, readPersonal());
-        const plan = planRemoteSpeech({ text, voice, backend, prosody: prosody || {}, context, features: remoteTtsFeatures });
+        const plan = planRemoteSpeech({ text, voice, backend, prosody: prosody || {}, context, features: remoteTtsFeatures, ttsReady: selection.ttsReady === true });
         return plan.applied ? plan : unchanged;
     } catch (error) {
         console.warn('[TTS] Pronunciation overrides skipped:', error);

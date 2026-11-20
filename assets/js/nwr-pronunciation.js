@@ -1,3 +1,5 @@
+import { formatTtsReady } from './bmh-format.js';
+
 export const SCHEMA_VERSION = 1;
 
 export const DEFAULT_VOICES = Object.freeze(['paul']);
@@ -624,11 +626,17 @@ function supportedFields(features, voice) {
     return new Set(vt.fields);
 }
 
-export function planRemoteSpeech({ text, voice, backend, prosody = {}, context = null, features = null } = {}) {
-    const input = String(text ?? '');
+export function planRemoteSpeech({ text, voice, backend, prosody = {}, context = null, features = null, ttsReady = false } = {}) {
+    const raw = String(text ?? '');
     const baseProsody = { ...(prosody || {}) };
-    const unchanged = { text: input, prosody: baseProsody, fields: {}, summary: null, applied: false };
-    if (!context || !context.enabled || !isEligibleVoice(voice, backend, context.voices)) return unchanged;
+    const unchanged = { text: raw, prosody: baseProsody, fields: {}, summary: null, applied: false };
+    if (!context || !isEligibleVoice(voice, backend, context.voices)) return unchanged;
+    const input = ttsReady ? formatTtsReady(raw) : raw;
+    if (!context.enabled) {
+        if (!ttsReady) return unchanged;
+        const summary = { source: '', label: 'NWS pronunciations off', hits: 0, speed: null, commaPauseMs: null, periodPauseMs: null, unsupported: [], ttsReady: true, pronunciations: false };
+        return { text: input, prosody: baseProsody, fields: {}, summary, applied: true, hits: [] };
+    }
 
     const { text: replaced, hits } = applyPronunciations(input, context.matcher);
     const supported = supportedFields(features, voice);
@@ -643,6 +651,8 @@ export function planRemoteSpeech({ text, voice, backend, prosody = {}, context =
         commaPauseMs: null,
         periodPauseMs: null,
         unsupported: [],
+        ttsReady: !!ttsReady,
+        pronunciations: true,
     };
     let out = replaced;
 

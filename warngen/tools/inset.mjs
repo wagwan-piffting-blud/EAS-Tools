@@ -24,11 +24,12 @@ export const INSETS = {
 export const UNPLACEABLE_CWAS = ['SJU', 'GUM', 'PQE', 'PQW', 'STU'];
 
 /**
- * Territory insets, taken exactly from COMPOSITE_TRANSFORMS in warngen/index.html (pure
- * translations, scale 1). A least-squares fit of the EDEX WarnGenLoc points against the
- * old all-the-cities us_cities.json agreed to within 0.01 degrees. Only build_cities.mjs
- * uses these; the zone builders still treat these offices as unplaceable. Guam and the
- * Marianas keep their native east longitude -- no unwrap.
+ * Territory insets as us_counties.geojson lays them out (pure translations, scale 1). A
+ * least-squares fit of the EDEX WarnGenLoc points against the old all-the-cities
+ * us_cities.json agreed to within 0.01 degrees. Only build_cities.mjs uses these; the zone
+ * builders still treat these offices as unplaceable. Guam and the Marianas keep their native
+ * east longitude -- no unwrap. The map draws everything at real coordinates and undoes this
+ * layout on load (DATA_INSETS in src/geo/insets.js), so keep the two in step.
  */
 export const TERRITORY_INSETS = {
     PR: { lat: [1, 7],  lon: [1, -10] },

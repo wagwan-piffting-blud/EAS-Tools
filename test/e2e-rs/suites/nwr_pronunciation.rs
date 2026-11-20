@@ -5,7 +5,9 @@
 
 use eas_tools_e2e::*;
 
-use crate::common::{generate, open_tool, open_tool_tracking_errors, set_field, shipped_json};
+use crate::common::{
+    generate, open_tool, open_tool_tracking_errors, set_checkbox, set_field, shipped_json,
+};
 
 const STUB_TTS_JS: &str = r#"
 window.__ttsPosts = [];
@@ -764,6 +766,54 @@ pub fn cases() -> Vec<Case> {
                 posted_int(&post, "vtSpeed") == Some(speed),
                 "expected speed {speed}: {post}"
             );
+            Ok(())
+        }),
+        case("tts_ready_formats_the_text_paul_reads", |tab| async move {
+            stub(&tab, None).await?;
+            encoder_with_paul(&tab, "* WHAT...SEVERE STORMS.\n- WHERE...COOK COUNTY.").await?;
+            set_checkbox(&tab, "nwrPronEnabled", false).await?;
+            set_checkbox(&tab, "nwrPronTtsReady", true).await?;
+            tab.wait_until(
+                "document.getElementById('nwrPronSummary').textContent.includes('TTS-ready output is on')",
+                Duration::from_secs(15),
+            )
+            .await?;
+            let stored: Value = tab
+                .js(
+                    "return JSON.parse(localStorage.getItem('eas-tools-nwr-pron-selection'));",
+                    json!([]),
+                )
+                .await?;
+            ensure!(
+                stored["ttsReady"] == true && stored["enabled"] == false,
+                "{stored}"
+            );
+            tab.click("#nwrPronPreview").await?;
+            tab.wait_until(
+                "!document.getElementById('nwrPronPreviewOut').hidden",
+                Duration::from_secs(15),
+            )
+            .await?;
+            let preview: String = tab
+                .eval("document.getElementById('nwrPronPreviewOut').textContent")
+                .await?;
+            ensure!(
+                preview == "What...severe Storms. Where...cook County.",
+                "{preview}"
+            );
+            generate(&tab, "Paul TTS-ready").await?;
+            let post = last_post(&tab).await?;
+            let text = post["text"].as_str().unwrap_or_default();
+            ensure!(
+                text == "What...severe Storms. Where...cook County.",
+                "{text}"
+            );
+            set_checkbox(&tab, "nwrPronTtsReady", false).await?;
+            tab.exec("window.__ttsPosts.length = 0;", json!([])).await?;
+            generate(&tab, "Paul as written").await?;
+            let post = last_post(&tab).await?;
+            let text = post["text"].as_str().unwrap_or_default();
+            ensure!(text.contains("* WHAT...SEVERE STORMS."), "{text}");
             Ok(())
         }),
     ]

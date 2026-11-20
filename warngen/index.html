@@ -78,6 +78,8 @@
             click on the map to place vertices &rarr; click the first vertex (or
             double-click anywhere) to close the shape. The bulletin re-renders
             live with the impacted counties. Click <em class="redEm">Clear</em> to start over fresh.
+            Right-click the polygon to delete it, or right-click a selected area to remove it
+            (long-press on touch screens).
             <br>
             <strong>Keyboard:</strong> Tab to the map, then use the arrow keys to move a cursor,
             <em>+</em> and <em>&minus;</em> to change the step, <em>Enter</em> to place a point and
@@ -779,7 +781,7 @@
             function getTimezoneFor(lon, lat) {
 
                 var iana;
-                try { iana = window.tzlookup(lat, lon); }
+                try { iana = window.tzlookup(lat, WarngenInsets.wrapLon(lon)); }
                 catch (e) { return { abbr: "CST", dstLess: false }; }
                 var tuple = IANA_TO_NWS[iana];
                 if (tuple) return { abbr: tuple[0], dstLess: tuple[1] };
@@ -810,12 +812,6 @@
             };
 
             function zoneLetterAt(lon, lat) {
-                var t = detectTerritory(lon, lat, "compositeBbox");
-                if (t) {
-                    var real = inverseTransformPoint(lon, lat, t);
-                    lon = real[0];
-                    lat = real[1];
-                }
                 var tz = getTimezoneFor(lon, lat);
                 return NWS_ZONE_LETTER[tz.abbr + (tz.dstLess ? "!" : "")] || NWS_ZONE_LETTER[tz.abbr] || "C";
             }
@@ -985,7 +981,6 @@
             var followupSourceText = null;
             var officeNameOverrides = {};
             var placesByCwa = {};
-            var realCityCache = new Map();
             var pendingDuration = null;
             var pendingAction = null;
             var pendingNormalize = false;
@@ -996,6 +991,7 @@
             function saveState() {
                 try {
                     var state = {
+                        geo: 1,
                         polygon: currentRing,
                         form: {
                             template: document.getElementById("template-select").value,
@@ -1225,7 +1221,7 @@
                     fetch("data/us_counties.geojson").then(function (r) { return r.json(); }),
                     fetch("data/cwa_county_index.json").then(function (r) { return r.json(); })
                 ]).then(function (parts) {
-                    countyGeojson = parts[0];
+                    countyGeojson = WarngenInsets.toMapFeatures(parts[0]);
                     cwaCountyIndex = parts[1] || {};
                     resolveCountiesReady();
                 });
@@ -1261,6 +1257,7 @@
                 extraLoading[kind] = fetch(spec.file)
                     .then(function (r) { return r.json(); })
                     .then(function (j) {
+                        j = WarngenInsets.toMapFeatures(j);
                         extraGeojson[kind] = j;
                         applyExtraFilter(kind, document.getElementById("office-select").value);
                         return j;
@@ -1275,7 +1272,15 @@
             function loadAirports() {
                 return fetch("data/us_airports.json")
                     .then(function (r) { return r.json(); })
-                    .then(function (j) { airportIndex = (j && j.airports) || {}; })
+                    .then(function (j) {
+                        airportIndex = (j && j.airports) || {};
+                        Object.keys(airportIndex).forEach(function (cwa) {
+                            WarngenInsets.toMapPoints(airportIndex[cwa]).forEach(function (a) {
+                                var ring = WarngenXmlParser.parseCoords(a.coords);
+                                a.ring = ring && WarngenInsets.toMapCoordinates(ring, a.state);
+                            });
+                        });
+                    })
                     .catch(function () { airportIndex = {}; });
             }
 
@@ -1390,7 +1395,7 @@
                 function apply(byGid) {
                     if (!byGid) return;
                     cityDB.forEach(function (c) {
-                        if (!c.rings && byGid[c.gid]) c.rings = byGid[c.gid];
+                        if (!c.rings && byGid[c.gid]) c.rings = WarngenInsets.toMapCoordinates(byGid[c.gid], c.state);
                     });
                 }
                 if (placesByCwa.hasOwnProperty(cwa)) {
@@ -1413,7 +1418,7 @@
                 return fetch("data/us_cities.json")
                     .then(function (r) { return r.json(); })
                     .then(function (db) {
-                        cityDBAll = db.cities || [];
+                        cityDBAll = WarngenInsets.toMapPoints(db.cities || []);
                         cityHasLevels = cityDBAll.length > 0 && cityDBAll[0].lev != null;
                         var land = cityDBAll.filter(landwaterIn(LANDWATER.land));
                         var coast = cityDBAll.filter(landwaterIn(LANDWATER.marineClosest));
@@ -1444,7 +1449,7 @@
                 return fetch("data/us_highways.geojson")
                     .then(function (r) { return r.ok ? r.json() : null; })
                     .then(function (db) {
-                        highwaysGeojson = db || { type: "FeatureCollection", features: [] };
+                        highwaysGeojson = WarngenInsets.toMapFeatures(db || { type: "FeatureCollection", features: [] });
                     })
                     .catch(function () {
                         highwaysGeojson = { type: "FeatureCollection", features: [] };
@@ -2913,7 +2918,7 @@
             function airportRingFor(names) {
                 for (var i = 0; i < names.length; i++) {
                     var a = cwaAirports[names[i]];
-                    if (a && a.coords) return WarngenXmlParser.parseCoords(a.coords);
+                    if (a && a.ring) return a.ring;
                 }
                 return null;
             }
@@ -2948,13 +2953,12 @@
                 zoomSnap: 0.25
             });
 
-            var ALL_US_BOUNDS = L.latLngBounds([12, -130], [49, -66]);
+            var ALL_US_BOUNDS = L.latLngBounds([24, -125], [49.5, -66.5]);
 
             // The archive is gitignored and only lives on eas.tools. Copies of the site without it
             // (the mobile apps) borrow the hosted one, and only while online.
             var SATELLITE_URLS = ["data/satellite.pmtiles", "https://eas.tools/warngen/data/satellite.pmtiles"];
             var satelliteLayer = null;
-            var satelliteInsetLayer = null;
             var satelliteArchive = null;
 
             function resolveSatellite() {
@@ -2977,7 +2981,6 @@
                 if (!on) {
                     if (!satelliteLayer || !map.hasLayer(satelliteLayer)) return;
                     map.removeLayer(satelliteLayer);
-                    if (satelliteInsetLayer) map.removeLayer(satelliteInsetLayer);
                     document.documentElement.classList.remove("wg-satellite");
                     applyMapTheme();
                     return;
@@ -2989,17 +2992,6 @@
                     }
                     satelliteLayer.addTo(map);
                     satelliteLayer.bringToBack();
-                    // The insets need the county outlines as a clip mask; they load at boot.
-                    countiesReady.then(function () {
-                        if (!cb.checked) return;
-                        if (!satelliteInsetLayer) {
-                            // GU and MP sit over Arizona, so only their land is drawn.
-                            satelliteInsetLayer = WarngenInsets.createSatelliteLayer(L, archive, COMPOSITE_TRANSFORMS, countyGeojson, {
-                                fillBoxes: ["AK", "HI", "AS", "PR", "VI"]
-                            });
-                        }
-                        satelliteInsetLayer.addTo(map);
-                    });
                     document.documentElement.classList.add("wg-satellite");
                     applyMapTheme();
                 }, function () {
@@ -3089,7 +3081,7 @@
                         });
                     })).then(function (parts) {
                         var group = L.layerGroup();
-                        parts.forEach(function (data) { basemapGeoLayer(key, data).addTo(group); });
+                        parts.forEach(function (data) { basemapGeoLayer(key, WarngenInsets.toMapFeatures(data)).addTo(group); });
                         return group;
                     });
                 }
@@ -3292,8 +3284,7 @@
             map.createPane("radarPane").style.zIndex = 350;
             var radarLayer = WarngenRadarLayer.create(L, {
                 pane: "radarPane",
-                opacity: 0.7,
-                insets: function () { return COMPOSITE_TRANSFORMS; }
+                opacity: 0.7
             });
             var radarVolume = null;
             var RADAR_MPS_TO_KTS = 1.9438445;
@@ -3391,12 +3382,8 @@
             var synthLastOffice = null;
             var synthReturnFocus = null;
 
-            // Map coordinates are composite (inset) coordinates for Alaska, Hawaii and the territories.
             function synthRealPoint(latlng) {
-                var t = detectTerritory(latlng.lng, latlng.lat, "compositeBbox");
-                if (!t) return { lat: latlng.lat, lon: latlng.lng };
-                var p = inverseTransformPoint(latlng.lng, latlng.lat, t);
-                return { lat: p[1], lon: p[0] };
+                return { lat: latlng.lat, lon: WarngenInsets.wrapLon(latlng.lng) };
             }
 
             function synthSetPoint(prefix, point) {
@@ -3747,7 +3734,7 @@
                     document.getElementById("centroid-lat").disabled = false;
                     document.getElementById("centroid-lon").disabled = false;
                     document.getElementById("centroid-lat").value = pos.lat.toFixed(3);
-                    document.getElementById("centroid-lon").value = pos.lng.toFixed(3);
+                    document.getElementById("centroid-lon").value = WarngenInsets.wrapLon(pos.lng).toFixed(3);
                     doRender();
                     saveState();
                 });
@@ -3772,17 +3759,15 @@
             var MOTION_HEAD_SVG = '<svg viewBox="-18 -18 36 36" aria-hidden="true" style="transform: rotate({deg}deg)">'
                 + '<path d="M0 0 L-17 -8 L-12 0 L-17 8 Z"/></svg>';
 
-            // One arrow per storm position, as far as the storm travels before the warning
-            // expires. Ends are worked out in real coordinates, then drawn in map space.
-            function showStormMotion(mapStarts, geoStarts, toDeg, miles, territory) {
+            // One arrow per storm position, as far as the storm travels before the warning expires.
+            function showStormMotion(starts, toDeg, miles) {
                 hideStormMotion();
                 if (!(miles > 0)) return;
                 stormMotionLayer = L.layerGroup().addTo(map);
-                geoStarts.forEach(function (g, i) {
+                starts.forEach(function (g) {
                     var end = WarngenCities.destinationPoint(g, toDeg, miles);
-                    var endMap = territory ? forwardTransformPoint(end.lon, end.lat, territory) : [end.lon, end.lat];
-                    var a = L.latLng(mapStarts[i].lat, mapStarts[i].lon);
-                    var b = L.latLng(endMap[1], endMap[0]);
+                    var a = L.latLng(g.lat, g.lon);
+                    var b = L.latLng(end.lat, end.lon);
                     L.polyline([a, b], {
                         className: "storm-motion-shaft",
                         weight: 4,
@@ -3817,45 +3802,20 @@
                 return out;
             }
 
-            function realPoint(p, territory) {
-                var r = inverseTransformPoint(p.lon, p.lat, territory);
-                return { lon: r[0], lat: r[1] };
-            }
-
-            // Real-coordinate stand-in for a city drawn in an inset, outline included.
-            function realCity(c) {
-                var t = territoryForState(c.state);
-                if (!t) return c;
-                var m = realCityCache.get(c);
-                if (m && (m.rings || !c.rings)) return m;
-                m = Object.create(c);
-                var p = inverseTransformPoint(c.lon, c.lat, t);
-                m.lon = p[0];
-                m.lat = p[1];
-                m._feature = null;
-                m._bbox = null;
-                m.rings = c.rings
-                    ? c.rings.map(function (r) {
-                        return r.map(function (q) { return inverseTransformPoint(q[0], q[1], t); });
-                    })
-                    : null;
-                realCityCache.set(c, m);
-                return m;
-            }
-
-            function insetCities(list) {
-                return list.filter(function (c) { return territoryForState(c.state); }).map(realCity);
+            // Product coordinates: longitudes unwrapped past -180 on the map go back to east longitudes.
+            function realRing(ring) {
+                return ring.map(function (p) { return [WarngenInsets.wrapLon(p[0]), p[1]]; });
             }
 
             function formatStormLine(line) {
-                return line.map(function (v) { return v.lat.toFixed(3) + " " + v.lon.toFixed(3); }).join(", ");
+                return line.map(function (v) { return v.lat.toFixed(3) + " " + WarngenInsets.wrapLon(v.lon).toFixed(3); }).join(", ");
             }
 
             function parseStormLine(text) {
                 var verts = String(text || "").split(",").map(function (pair) {
                     var nums = pair.trim().split(/\s+/).map(parseFloat);
                     return (nums.length === 2 && isFinite(nums[0]) && isFinite(nums[1]))
-                        ? { lat: nums[0], lon: nums[1] }
+                        ? { lat: nums[0], lon: WarngenInsets.unwrapLon(nums[1]) }
                         : null;
                 });
                 if (verts.length < 2 || verts.some(function (v) { return !v; })) return null;
@@ -3969,91 +3929,9 @@
                 setStatus("Click on the map to place vertices. Click the first vertex (or double-click) to close.", false);
             });
 
-            var COMPOSITE_TRANSFORMS = [
-                {
-                    name: "AK",
-                    src: [-152, 63], dst: [-117, 21],
-                    scaleLon: 0.35, scaleLat: 0.75, normalizePositiveLon: true,
-                    realBbox: [-180, 50, -125, 72],
-                    realBboxAlt: [150, 50, 180, 72],
-                    compositeBbox: [-130, 12, -109, 29]
-                },
-                {
-                    name: "HI",
-                    src: [-157, 20], dst: [-105, 26],
-                    scaleLon: 1.0, scaleLat: 1.0,
-                    realBbox: [-161, 18, -154, 23],
-                    compositeBbox: [-109, 24, -102, 29]
-                },
-                {
-                    name: "AS",
-                    src: [-170, -14], dst: [-101, 24],
-                    scaleLon: 1.0, scaleLat: 1.0,
-                    realBbox: [-172, -15, -169, -13],
-                    compositeBbox: [-102, 23, -100, 25]
-                },
-                {
-                    name: "GU",
-                    src: [144, 13], dst: [-112, 32],
-                    scaleLon: 1.0, scaleLat: 1.0,
-                    realBbox: [143, 13, 146, 14],
-                    compositeBbox: [-113, 31, -110, 33]
-                },
-                {
-                    name: "MP",
-                    src: [145, 16], dst: [-112, 34],
-                    scaleLon: 1.0, scaleLat: 1.0,
-                    realBbox: [143, 14, 146, 21],
-                    compositeBbox: [-113, 31, -110, 38]
-                },
-                {
-                    name: "PR",
-                    src: [-66, 18], dst: [-76, 25],
-                    scaleLon: 1.0, scaleLat: 1.0,
-                    realBbox: [-68, 17, -65, 19],
-                    compositeBbox: [-78, 24, -74, 26]
-                },
-                {
-                    name: "VI",
-                    src: [-65, 18], dst: [-75, 26],
-                    scaleLon: 1.0, scaleLat: 1.0,
-                    realBbox: [-65, 17, -64, 19],
-                    compositeBbox: [-76, 25, -74, 27]
-                }
-            ];
-
-            function detectTerritory(lon, lat, bboxKey) {
-                for (var i = 0; i < COMPOSITE_TRANSFORMS.length; i++) {
-                    var t = COMPOSITE_TRANSFORMS[i];
-                    var b = t[bboxKey];
-                    if (b && lon >= b[0] && lat >= b[1] && lon <= b[2] && lat <= b[3]) return t;
-
-                    if (bboxKey === "realBbox" && t.realBboxAlt) {
-                        var ba = t.realBboxAlt;
-                        if (lon >= ba[0] && lat >= ba[1] && lon <= ba[2] && lat <= ba[3]) return t;
-                    }
-                }
-                return null;
-            }
-
-            function forwardTransformPoint(lon, lat, t) {
-                if (t.normalizePositiveLon && lon > 0) lon -= 360;
-                return [
-                    (lon - t.src[0]) * t.scaleLon + t.dst[0],
-                    (lat - t.src[1]) * t.scaleLat + t.dst[1]
-                ];
-            }
-
-            function inverseTransformPoint(lon, lat, t) {
-                var rlon = (lon - t.dst[0]) / t.scaleLon + t.src[0];
-                var rlat = (lat - t.dst[1]) / t.scaleLat + t.src[1];
-
-                if (t.normalizePositiveLon && rlon < -180) rlon += 360;
-                return [rlon, rlat];
-            }
-
-            function transformRing(ring, pointFn) {
-                return ring.map(function (p) { return pointFn(p[0], p[1]); });
+            // Imported polygons are real coordinates; east longitudes go past -180 on the map.
+            function mapRing(ring) {
+                return ring.map(function (p) { return [WarngenInsets.unwrapLon(p[0]), p[1]]; });
             }
 
             function autoResolveCwaFromPolygon(force) {
@@ -4171,6 +4049,37 @@
                 saveState();
             });
 
+            // Leaflet.draw's edit and delete tools hold their own copy of the polygon until they stop.
+            var editToolActive = false;
+            map.on(L.Draw.Event.EDITSTART, function () { editToolActive = true; });
+            map.on(L.Draw.Event.EDITSTOP, function () { editToolActive = false; });
+            map.on(L.Draw.Event.DELETESTART, function () { editToolActive = true; });
+            map.on(L.Draw.Event.DELETESTOP, function () { editToolActive = false; });
+
+            // Right-click (a long press on touch screens) removes what is under the pointer: a selected
+            // area in "Click whole areas" mode, or the polygon in "Draw polygon" mode.
+            map.on("contextmenu", function (e) {
+                if (e.originalEvent) L.DomEvent.preventDefault(e.originalEvent);
+                var pt = [e.latlng.lng, e.latlng.lat];
+                if (selectionMode === "areas") {
+                    var hatch = cursorHatch();
+                    var area = hatch.source ? WarngenIntersect.findFeatureContaining(pt, hatch.source) : null;
+                    if (!area || !selectedAreaKeys[featureAreaKey(area)]) return;
+                    toggleAreaSelection(area);
+                    setStatus("Deselected " + areaSpeechName(area) + ". "
+                        + plural(selectedAreaCount(), "area", "areas") + " selected.", false);
+                    return;
+                }
+                if (isDrawing || editToolActive || polygonDrawer.enabled()) return;
+                if (!currentRing || currentRing.length < 4 || !WarngenIntersect.pointInRing(pt, currentRing)) return;
+                drawLayer.clearLayers();
+                currentPolygon = null;
+                currentRing = null;
+                resetAfterPolygonClear();
+                setStatus("Polygon deleted.", false);
+                saveState();
+            });
+
             document.getElementById("clear-poly-btn").addEventListener("click", function () {
                 drawLayer.clearLayers();
                 currentPolygon = null;
@@ -4203,7 +4112,6 @@
             var mapCursorMarker = null;
             var mapStepIndex = 3;
             var mapHeard = { primary: null, county: null, inPolygon: null };
-            var mapTerritory = null;
             var mapMoveTimer = null;
             var mapFocusTimer = null;
             var mapCommandBusy = false;
@@ -4215,19 +4123,6 @@
                 iconAnchor: [11, 11],
                 html: '<div class="map-cursor-inner"></div>'
             });
-
-            function territoryForState(state) {
-                for (var i = 0; i < COMPOSITE_TRANSFORMS.length; i++) {
-                    if (COMPOSITE_TRANSFORMS[i].name === state) return COMPOSITE_TRANSFORMS[i];
-                }
-                return null;
-            }
-
-            // Alaska, Hawaii and the territories are drawn as shifted, scaled insets, so distances
-            // are measured on their real coordinates.
-            function realLonLat(lon, lat, territory) {
-                return territory ? inverseTransformPoint(lon, lat, territory) : [lon, lat];
-            }
 
             function capitalize(s) {
                 return s.charAt(0).toUpperCase() + s.slice(1);
@@ -4291,15 +4186,13 @@
                 var county = countyGeojson ? WarngenIntersect.findFeatureContaining(pt, countyGeojson) : null;
                 var area = hatch.source ? WarngenIntersect.findFeatureContaining(pt, hatch.source) : null;
                 var near = cityDBAllNamed.length ? WarngenCities.nearestCity(cityDBAllNamed, { lon: pt[0], lat: pt[1] }) : null;
-                var territory = territoryForState(county ? county.properties.state : (near && near.city.state));
                 var city = null;
                 if (near) {
-                    var here = realLonLat(pt[0], pt[1], territory);
-                    var there = realLonLat(near.city.lon, near.city.lat, territoryForState(near.city.state));
+                    var there = [near.city.lon, near.city.lat];
                     city = {
                         city: near.city,
-                        distance: WarngenCities.distanceMiles(there, here),
-                        bearing: WarngenCities.bearingDeg(there, here)
+                        distance: WarngenCities.distanceMiles(there, pt),
+                        bearing: WarngenCities.bearingDeg(there, pt)
                     };
                 }
                 var drawing = polygonDrawer.enabled();
@@ -4310,7 +4203,6 @@
                     kind: hatch.kind,
                     loaded: !!hatch.source,
                     city: city,
-                    territory: territory,
                     drawing: drawing,
                     inPolygon: (selectionMode === "polygon" && !drawing && currentRing && currentRing.length >= 4)
                         ? WarngenIntersect.pointInRing(pt, currentRing)
@@ -4359,10 +4251,10 @@
                 return plural(miles, "mile", "miles") + " " + dir + " of " + name;
             }
 
-            function coordinatePhrase(info) {
-                var real = realLonLat(mapCursor.lng, mapCursor.lat, info.territory);
-                return Math.abs(real[1]).toFixed(2) + (real[1] < 0 ? " south, " : " north, ")
-                    + Math.abs(real[0]).toFixed(2) + (real[0] > 0 ? " east" : " west");
+            function coordinatePhrase() {
+                var lon = WarngenInsets.wrapLon(mapCursor.lng);
+                return Math.abs(mapCursor.lat).toFixed(2) + (mapCursor.lat < 0 ? " south, " : " north, ")
+                    + Math.abs(lon).toFixed(2) + (lon > 0 ? " east" : " west");
             }
 
             function polygonPhrase(info) {
@@ -4388,7 +4280,6 @@
                     county: countyLabel(info),
                     inPolygon: info.inPolygon
                 };
-                mapTerritory = info.territory;
             }
 
             function mapReadout(full) {
@@ -4398,7 +4289,7 @@
                     primaryLabel(info),
                     countyLabel(info),
                     cityPhrase(info),
-                    full ? coordinatePhrase(info) : "",
+                    full ? coordinatePhrase() : "",
                     "Step " + mapStepPhrase(),
                     polygonPhrase(info),
                     full ? impactedPhrase() : ""
@@ -4489,17 +4380,15 @@
             function placeMapCursor(lat, lng) {
                 mapCursor = {
                     lat: Math.max(-80, Math.min(80, lat)),
-                    lng: Math.max(-180, Math.min(180, lng))
+                    lng: Math.max(-270, Math.min(180, lng))
                 };
                 showMapCursor();
             }
 
             function moveMapCursor(direction) {
-                var territory = (mapHeard.primary === null) ? lookupMapCursor().territory : mapTerritory;
                 var miles = MAP_STEPS_MI[mapStepIndex];
-                var real = realLonLat(mapCursor.lng, mapCursor.lat, territory);
-                var dLat = (miles / 69) * (territory ? territory.scaleLat : 1);
-                var dLon = (miles / (69 * Math.cos(real[1] * Math.PI / 180))) * (territory ? territory.scaleLon : 1);
+                var dLat = miles / 69;
+                var dLon = miles / (69 * Math.cos(mapCursor.lat * Math.PI / 180));
                 var lat = mapCursor.lat, lng = mapCursor.lng;
                 if (direction === "north") lat += dLat;
                 else if (direction === "south") lat -= dLat;
@@ -5215,9 +5104,9 @@
 
                 var hatchSource = activeHatchSource();
 
-                // Puerto Rico, Guam and Samoa have no forecast-zone geometry here (their
-                // basemap inset has no verified transform), so those offices fall back to
-                // counties and the C-format UGC they used before zones were bundled.
+                // Puerto Rico and Guam have no forecast-zone geometry here (the zone builder
+                // drops them), so those offices fall back to counties and the C-format UGC
+                // they used before zones were bundled.
                 // Marine gets no such fallback: county names inside a marine product are
                 // exactly the wrong answer.
                 var zoneFellBack = false;
@@ -5356,7 +5245,7 @@
                         if (redrawn) issuedRing = redrawn;
                     }
                     showIssuedPolygon(redrawn || lockedRing);
-                    var areaPoly = awipsPolyCoords(WarngenRedraw.finalize(issuedRing));
+                    var areaPoly = awipsPolyCoords(realRing(WarngenRedraw.finalize(issuedRing)));
 
                     var effectiveRing = polyRing;
                     var motionToDeg = parseFloat(document.getElementById("motion-bearing").value) || 0;
@@ -5372,11 +5261,11 @@
                             ? WarngenCities.polygonRearPoint(effectiveRing, motionFromDeg)
                             : WarngenCities.polygonCentroid(effectiveRing);
                         document.getElementById("centroid-lat").value = stormPos.lat.toFixed(3);
-                        document.getElementById("centroid-lon").value = stormPos.lon.toFixed(3);
+                        document.getElementById("centroid-lon").value = WarngenInsets.wrapLon(stormPos.lon).toFixed(3);
                     } else {
                         stormPos = {
                             lat: parseFloat(document.getElementById("centroid-lat").value) || 0,
-                            lon: parseFloat(document.getElementById("centroid-lon").value) || 0
+                            lon: WarngenInsets.unwrapLon(parseFloat(document.getElementById("centroid-lon").value) || 0)
                         };
                     }
 
@@ -5393,29 +5282,10 @@
 
                     var duration = parseInt(document.getElementById("duration-select").value, 10) || 30;
 
-                    // Alaska, Hawaii and the territories are drawn as insets (Alaska squashed east to
-                    // west), so distances, bearings and the printed LAT...LON/LOC use real coordinates.
-                    var ringCentroid = WarngenCities.polygonCentroid(effectiveRing);
-                    var insetTerritory = detectTerritory(ringCentroid.lon, ringCentroid.lat, "compositeBbox");
-                    var geoRing = effectiveRing, geoStormPos = stormPos, geoStormLine = stormLine;
                     var marine = currentAreaSource === "MARINE";
                     var areaPlaces = cityDB.filter(landwaterIn(marine ? LANDWATER.marineArea : LANDWATER.land));
                     var namedPlaces = marine ? cityDBMarineNamed : cityDBAllNamed;
                     var majorPlaces = marine ? cityDBMarineMajor : cityDBAllMajor;
-                    var geoCityDB = areaPlaces, geoNamed = namedPlaces, geoMajor = majorPlaces;
-                    if (insetTerritory) {
-                        geoRing = transformRing(effectiveRing, function (lon, lat) {
-                            return inverseTransformPoint(lon, lat, insetTerritory);
-                        });
-                        geoStormPos = realPoint(stormPos, insetTerritory);
-                        geoStormLine = stormLine && stormLine.map(function (v) { return realPoint(v, insetTerritory); });
-                        geoCityDB = areaPlaces.map(realCity);
-                        geoNamed = insetCities(namedPlaces);
-                        geoMajor = insetCities(majorPlaces);
-                        areaPoly = awipsPolyCoords(WarngenRedraw.finalize(transformRing(issuedRing, function (lon, lat) {
-                            return inverseTransformPoint(lon, lat, insetTerritory);
-                        })));
-                    }
 
                     if (stormLine) {
                         if (stormMarker) {
@@ -5428,23 +5298,22 @@
                         ensureStormMarker();
                         stormMarker.setLatLng([stormPos.lat, stormPos.lon]);
                     }
-                    showStormMotion(stormLine || [stormPos], geoStormLine || [geoStormPos],
-                        motionToDeg, motionSpeed * duration / 60, insetTerritory);
+                    showStormMotion(stormLine || [stormPos], motionToDeg, motionSpeed * duration / 60);
 
                     // WARNGENLEV sets per pointSource in geospatialConfig_COUNTY.xml. The closest-point
                     // searches have no CWA filter there, so a town across the office line still counts.
                     var closestPoints, otherClosestPoints;
-                    if (geoStormLine) {
-                        closestPoints = WarngenCities.closestPointsForLine(geoNamed, geoStormLine, 1);
-                        otherClosestPoints = WarngenCities.closestPointsForLine(geoMajor, geoStormLine, 5);
+                    if (stormLine) {
+                        closestPoints = WarngenCities.closestPointsForLine(namedPlaces, stormLine, 1);
+                        otherClosestPoints = WarngenCities.closestPointsForLine(majorPlaces, stormLine, 5);
                     } else {
-                        var nearAny = WarngenCities.nearestCity(geoNamed, geoStormPos);
-                        var nearMajor = WarngenCities.nearestCity(geoMajor, geoStormPos);
+                        var nearAny = WarngenCities.nearestCity(namedPlaces, stormPos);
+                        var nearMajor = WarngenCities.nearestCity(majorPlaces, stormPos);
                         closestPoints = nearAny
-                            ? [WarngenCities.toClosestPoint(nearAny.city, geoStormPos, nearAny.distance, nearAny.partOfArea)]
+                            ? [WarngenCities.toClosestPoint(nearAny.city, stormPos, nearAny.distance, nearAny.partOfArea)]
                             : [];
                         otherClosestPoints = (nearMajor && (!nearAny || nearMajor.city.name !== nearAny.city.name))
-                            ? [WarngenCities.toClosestPoint(nearMajor.city, geoStormPos, nearMajor.distance, nearMajor.partOfArea)]
+                            ? [WarngenCities.toClosestPoint(nearMajor.city, stormPos, nearMajor.distance, nearMajor.partOfArea)]
                             : [];
                     }
 
@@ -5458,7 +5327,7 @@
                         })(closestPoints.concat(otherClosestPoints));
                     }
 
-                    var inPoly = WarngenCities.placesInPolygon(geoCityDB, geoRing);
+                    var inPoly = WarngenCities.placesInPolygon(areaPlaces, effectiveRing);
                     inPoly.sort(function (a, b) { return (a.lev || 0) - (b.lev || 0) || b.pop - a.pop; });
                     var cityList = inPoly.slice(0, 20).map(function (c) {
                         return { name: c.name, partOfArea: c.partOfArea || [] };
@@ -5500,8 +5369,8 @@
                         var pathcastStop = followupEndTime(document.getElementById("action-select").value, duration)
                             || WarngenUtils.roundDateTo15(new Date(issuedDate.getTime() + duration * 60000));
                         pathCast = WarngenCities.awipsPathCast(
-                            WarngenCities.withLevel(geoCityDB, marine ? [1, 2, 3] : [1, 2]), geoRing,
-                            geoStormLine || [geoStormPos], motionToDeg, motionSpeed,
+                            WarngenCities.withLevel(areaPlaces, marine ? [1, 2, 3] : [1, 2]), effectiveRing,
+                            stormLine || [stormPos], motionToDeg, motionSpeed,
                             eventDate, pathcastStop, localtimezone || "CST", pathcastConfig);
                         // The otherPoints pointSource: WARNGENLEV 3-4 inside the polygon.
                         otherPoints = inPoly.filter(function (c) { return c.lev === 3 || c.lev === 4; })
@@ -5510,13 +5379,13 @@
                             .map(function (c) { return { name: c.name, partOfArea: c.partOfArea || [] }; });
                     } else {
                         var pcResult = WarngenCities.computePathCast(
-                            geoCityDB, geoRing, geoStormPos, motionFromDeg, motionSpeed,
+                            areaPlaces, effectiveRing, stormPos, motionFromDeg, motionSpeed,
                             issuedDate,
                             localtimezone || "CST",
                             {
                                 maxMinutes: duration,
                                 candidates: WarngenCities.withLevel(inPoly, [1, 2]),
-                                stormLine: geoStormLine
+                                stormLine: stormLine
                             }
                         );
                         pathCast = pcResult.pathCast;
@@ -5602,9 +5471,9 @@
                         TMLtime: (action === "COR" && followStart) ? followStart : eventDate,
                         ugcPurge: ugcPurge,
                         ugcCanPurge: ugcCanPurge,
-                        eventLocation: geoStormLine
-                            ? geoStormLine.map(function (v) { return { x: v.lon, y: v.lat }; })
-                            : [{ x: geoStormPos.lon, y: geoStormPos.lat }],
+                        eventLocation: stormLine
+                            ? stormLine.map(function (v) { return { x: WarngenInsets.wrapLon(v.lon), y: v.lat }; })
+                            : [{ x: WarngenInsets.wrapLon(stormPos.lon), y: stormPos.lat }],
                         stormType: stormLine ? "line" : "single",
                         movementSpeed: currentUnits.speed === "kn" ? motionSpeed * 0.868976 : motionSpeed,
                         movementInKnots: Math.round(motionSpeed * 0.868976),
@@ -6013,13 +5882,7 @@
                 var siteId = document.getElementById("office-select").value;
                 var etn = String(parseInt(document.getElementById("etn-input").value, 10) || 0).padStart(4, "0");
 
-                var cent = WarngenCities.polygonCentroid(currentRing);
-                var territory = detectTerritory(cent.lon, cent.lat, "compositeBbox");
-                var exportRing = territory
-                    ? transformRing(currentRing, function (lon, lat) {
-                        return inverseTransformPoint(lon, lat, territory);
-                    })
-                    : currentRing.slice();
+                var exportRing = realRing(currentRing);
                 var feature = {
                     type: "Feature",
                     properties: {
@@ -6028,9 +5891,7 @@
                         office: siteId,
                         productId: currentProductId,
                         etn: etn,
-                        template: document.getElementById("template-select").value,
-
-                        composite_source: territory ? territory.name : "CONUS"
+                        template: document.getElementById("template-select").value
                     },
                     geometry: {
                         type: "Polygon",
@@ -6162,18 +6023,8 @@
                         var result = lower.endsWith(".kml")
                             ? parseKmlPolygon(reader.result)
                             : parseGeoJsonPolygon(reader.result);
-                        ring = result.ring;
+                        ring = mapRing(result.ring);
                         productName = result.productName;
-
-                        var icent = [0, 0], np = ring.length - 1;
-                        for (var ii = 0; ii < np; ii++) { icent[0] += ring[ii][0]; icent[1] += ring[ii][1]; }
-                        icent[0] /= np; icent[1] /= np;
-                        var importTerritory = detectTerritory(icent[0], icent[1], "realBbox");
-                        if (importTerritory) {
-                            ring = transformRing(ring, function (lon, lat) {
-                                return forwardTransformPoint(lon, lat, importTerritory);
-                            });
-                        }
                     } catch (e) {
                         setStatus("Import failed: " + e.message, true);
                         ev.target.value = "";
@@ -6302,16 +6153,9 @@
                     if (result.productClass === "O" || result.productClass === "T") {
                         document.getElementById("mode-select").value = result.productClass;
                     }
-                    var ring = result.polygon.map(function (p) { return [p[1], p[0]]; });
-                    var icent = [0, 0], np = ring.length - 1;
-                    for (var ii = 0; ii < np; ii++) { icent[0] += ring[ii][0]; icent[1] += ring[ii][1]; }
-                    icent[0] /= np; icent[1] /= np;
-                    var importTerritory = detectTerritory(icent[0], icent[1], "realBbox");
-                    if (importTerritory) {
-                        ring = transformRing(ring, function (lon, lat) {
-                            return forwardTransformPoint(lon, lat, importTerritory);
-                        });
-                    }
+                    // LAT...LON prints longitudes without a sign, and Guam's are east.
+                    var east = result.siteId === "GUM";
+                    var ring = result.polygon.map(function (p) { return [east ? WarngenInsets.unwrapLon(-p[1]) : p[1], p[0]]; });
 
                     drawLayer.clearLayers();
                     currentPolygon = null;
@@ -6444,13 +6288,9 @@
                     updateBearingLabel();
 
                     // The bulletin's own storm position: one LOC pair is a storm, several are a line.
-                    var locs = (result.motion && result.motion.locations) || [];
-                    if (importTerritory) {
-                        locs = locs.map(function (p) {
-                            var t = forwardTransformPoint(p[1], p[0], importTerritory);
-                            return [t[1], t[0]];
-                        });
-                    }
+                    var locs = ((result.motion && result.motion.locations) || []).map(function (p) {
+                        return east ? [p[0], -p[1]] : p;
+                    });
                     var fromLoc = locs.length > 0;
                     document.getElementById("centroid-auto-cb").checked = !fromLoc;
                     document.getElementById("centroid-lat").disabled = fromLoc === false;
@@ -6508,7 +6348,10 @@
                 initCivilForm();
                 initWatchForm();
 
-                var saved = loadState();
+                var saved = WarngenInsets.migrateSavedState(loadState(), function (lon, lat) {
+                    var county = WarngenIntersect.findFeatureContaining([lon, lat], countyGeojson);
+                    return county ? county.properties.state : null;
+                });
                 var savedBullets = null;
                 if (saved) {
                     applyFormState(saved.form);

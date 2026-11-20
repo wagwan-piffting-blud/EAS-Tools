@@ -1,0 +1,82 @@
+[
+  {
+    "input": "THE NATIONAL WEATHER SERVICE IN CHICAGO HAS ISSUED A\n\n* TORNADO WARNING FOR...\n  NORTHWESTERN COOK COUNTY IN NORTHEASTERN ILLINOIS...\n\n* UNTIL 530 PM CDT.\n\n* AT 452 PM CDT, A SEVERE THUNDERSTORM CAPABLE OF PRODUCING A TORNADO WAS LOCATED NEAR ELGIN, MOVING EAST AT 30 MPH.",
+    "output": "The National Weather Service In Chicago Has Issued A * Tornado Warning For... Northwestern Cook County In Northeastern Illinois... * Until 530 Pm Cdt. * At 452 Pm Cdt, A Severe Thunderstorm Capable Of Producing A Tornado Was Located Near Elgin, Moving East At 30 Mph."
+  },
+  {
+    "input": "...TORNADO WARNING REMAINS IN EFFECT UNTIL 530 PM CDT FOR NORTHWESTERN COOK COUNTY...",
+    "output": "tornado Warning Remains In Effect Until 530 Pm Cdt For Northwestern Cook County..."
+  },
+  {
+    "input": "Hello world. this is a TEST of the system! Is it working? \"Yes.\" Done",
+    "output": "Hello World. This Is A Test Of The System! Is It Working? \"yes.\" Done"
+  },
+  {
+    "input": "Winds 10 to 15 mph | gusts to 25 mph. Lows around 5 below.",
+    "output": "Winds 10 To 15 Mph Gusts To 25 Mph. Lows Around 5 Below."
+  },
+  {
+    "input": "precautionary/preparedness actions...\n\nTAKE COVER NOW! MOVE TO A BASEMENT OR AN INTERIOR ROOM ON THE LOWEST FLOOR OF A STURDY BUILDING.",
+    "output": "Precautionary/preparedness Actions... Take Cover Now! Move To A Basement Or An Interior Room On The Lowest Floor Of A Sturdy Building."
+  },
+  {
+    "input": "Highs in the mid 70s.Lows near 60. Chance of rain 40 percent.",
+    "output": "Highs In The Mid 70s.lows Near 60. Chance Of Rain 40 Percent."
+  },
+  {
+    "input": "The <vtml_phoneme alphabet=\"x-cmu\" ph=\"IH1 L AH0 N OY2\">ILLINOIS</vtml_phoneme> RIVER near PEORIA. <vtml_pause time=\"500\"/>next",
+    "output": "The <vtml_phoneme alphabet=\"x-cmu\" ph=\"IH1 L AH0 N OY2\">Illinois</vtml_phoneme> River Near Peoria. <vtml_pause time=\"500\"/>Next"
+  },
+  {
+    "input": "o'hare international airport. mcHENRY county, de kalb.",
+    "output": "O'hare International Airport. Mchenry County, De Kalb."
+  },
+  {
+    "input": "   leading and trailing   spaces    collapse   ",
+    "output": "Leading And Trailing Spaces Collapse"
+  },
+  {
+    "input": "Temperatures 3.5 degrees above normal. U.S. Highway 30... at 1.5 miles",
+    "output": "Temperatures 3.5 Degrees Above Normal. U.s. Highway 30... At 1.5 Miles"
+  },
+  {
+    "input": "...",
+    "output": ""
+  },
+  {
+    "input": "- First key message\n- Second key message here.\n  - nested dash item",
+    "output": "- First Key Message - Second Key Message Here. - Nested Dash Item"
+  },
+  {
+    "input": "",
+    "output": ""
+  },
+  {
+    "input": "e.g. this.that and 10:30 a.m. CDT",
+    "output": "E.g. This.that And 10:30 A.m. Cdt"
+  },
+  {
+    "input": "<vtml_pause time=\"500\"/> Hello there.",
+    "output": "<vtml_pause time=\"500\"/> Hello There."
+  },
+  {
+    "input": "Hello there. <vtml_pause time=\"500\"/>",
+    "output": "Hello There. <vtml_pause time=\"500\"/>"
+  },
+  {
+    "input": "<vtml_pause time=\"500\"/>",
+    "output": "<vtml_pause time=\"500\"/>"
+  },
+  {
+    "input": "One. <vtml_sub alias=\"x\">Two. Three</vtml_sub> four.",
+    "output": "One. <vtml_sub alias=\"x\">Two. Three</vtml_sub> Four."
+  },
+  {
+    "input": "... !! <vtml_break level=\"2\"/>",
+    "output": "<vtml_break level=\"2\"/>"
+  },
+  {
+    "input": "A<vtml_pause time=\"5\"/>BC and ... <b>X</b>",
+    "output": "A<vtml_pause time=\"5\"/>Bc And... <b>X</b>"
+  }
+]

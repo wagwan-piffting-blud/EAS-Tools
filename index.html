@@ -280,6 +280,10 @@
                     <label for="cheader">Enter a SAME header or paste an AWIPS/VTEC product:</label>&nbsp;
                     <br class="mobileBreak">
                     <textarea id="cheader" name="cheader" rows="4" placeholder="ZCZC-WXR-TOR-035013+0045-2321657-KEPZ/NWS-&#10;&#10;...or a product carrying its UGC and P-VTEC lines:&#10;NMC013-201730-&#10;/O.NEW.KEPZ.DS.W.0001.260820T1657Z-260820T1730Z/"></textarea>
+                    <br>
+                    <label for="productToTts">Put a pasted AWIPS product's normalized text in the TTS message:</label>
+                    <input type="checkbox" id="productToTts" name="productToTts" checked aria-describedby="productToTtsHint">
+                    <span id="productToTtsHint" class="inline-note">Runs the Product Normalizer on the product (also one sent from WarnGen) and replaces the TTS message with the result.</span>
                     <br class="mobileBreak">
                     <button type="button" data-encoder-transfer>Transfer Header to Builder Mode</button>
                 </div>
@@ -318,6 +322,20 @@
                 <br>
                 <label for="clip">Clip Signal (for authenticity):</label>
                 <input type="checkbox" id="clip" checked>
+                <div id="dasdecLanguageContainer" hidden>
+                    <br>
+                    <label for="dasdecLanguage">DASDEC alert language:</label>
+                    <select id="dasdecLanguage" aria-describedby="dasdecLanguageHint">
+                        <option value="en" selected>English</option>
+                        <option value="en-es">English, then Spanish</option>
+                        <option value="es">Spanish only</option>
+                    </select>
+                    <span id="dasdecLanguageHint" class="inline-note">The Spanish part reads the alert the way a DASDEC words it in Spanish, after the English message or instead of it.</span>
+                    <div id="dasdecSpanishVoiceRow" hidden>
+                        <label for="dasdecSpanishVoice">Spanish voice:</label>
+                        <select id="dasdecSpanishVoice"></select>
+                    </div>
+                </div>
                 <hr>
                 <label for="announcementType">Select Announcement Type:</label>
                 <select id="announcementType">
@@ -599,9 +617,6 @@
                     <hr class="shorter-hr">
                     <label for="crawlUseVDSMode">Use VDS Mode:</label>
                     <input type="checkbox" id="crawlUseVDSMode">
-                    <br>
-                    <label for="vdsFrameDelay">VDS Frame Delay (fps/hz, 1-360):</label>
-                    <input type="number" id="vdsFrameDelay" min="1" max="360" value="30">
                     <hr class="shorter-hr">
                     <label for="crawlTextColor">Font Color:</label>
                     <input type="color" id="crawlTextColor" value="#FFFFFF">
@@ -734,6 +749,8 @@
                             <option value="gorman:eas_1cg">Gorman Redlich EAS-1CG</option>
                             <option value="atari:atari_800xl">Atari 800XL Override Screen</option>
                             <option value="trilithic:psc_902">Trilithic PSC-902 (Texscan-MSI)</option>
+                            <option value="trilithic:easycap">Trilithic EASyCAP</option>
+                            <option value="trilithic:easycap_sdi">Trilithic EASyCAP (SDI)</option>
                         </select>
                         <div id="easyplusSettings" style="display: none;">
                             <br>

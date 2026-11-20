@@ -317,6 +317,21 @@ function locationName(code, canadian_mode=false) {
     return lookupSame('SAME', code.slice(1, 6), canadian_mode) ?? customLocationName(code) ?? `FIPS Code ${code}`;
 }
 
+const LAND_TERRITORY_STATE_CODES = new Set([60, 66, 69, 72, 78]);
+
+export function stateNameForLocation(code, canadian_mode=false) {
+    const stateCode = String(code ?? '').slice(1, 3);
+    const numeric = Number(stateCode);
+    if (!/^\d{2}$/.test(stateCode) || numeric === 0 || (numeric > 56 && !LAND_TERRITORY_STATE_CODES.has(numeric))) {
+        return '';
+    }
+    const name = lookupSame('SAME', `${stateCode}000`, canadian_mode);
+    if (typeof name !== 'string') {
+        return '';
+    }
+    return name.replace(/^(?:State of|The)\s+/i, '').replace(/,\s*[A-Z]{2}$/, '').trim();
+}
+
 function applyModeTemplate(modeKey, replacements) {
     let template = lookupResource('endecModes', 'TEMPLATES', modeKey);
     if (typeof template !== 'string') return null;

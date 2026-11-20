@@ -113,6 +113,7 @@
         };
     }
 
+    // Insets are only passed by the page bundled in the apps, which still draws the old insets.
     function insetForSite(insets, site) {
         var list = typeof insets === "function" ? insets() : insets;
         return (list || []).filter(function (t) {
@@ -293,12 +294,13 @@
                 return sample(this._raster, latlng.lat, latlng.lng);
             },
 
-            // Where the site sits on the map: its inset position for Alaska, Hawaii and the territories.
+            // Where the site sits on the map: east longitudes unwrapped past -180, or, for the apps'
+            // bundled page that passes insets, its inset position.
             mapSite: function () {
                 if (!this._volume) return null;
                 var site = this._volume.site;
                 var inset = insetForSite(options.insets, site);
-                if (!inset) return { lat: site.lat, lon: site.lon };
+                if (!inset) return { lat: site.lat, lon: site.lon > 0 ? site.lon - 360 : site.lon };
                 var lon = inset.normalizePositiveLon && site.lon > 0 ? site.lon - 360 : site.lon;
                 return {
                     lat: (site.lat - inset.src[1]) * inset.scaleLat + inset.dst[1],

@@ -82,6 +82,34 @@ describe('splicer project model', () => {
         expect(a.clips[0].id).toBe('aaa');
     });
 
+    it('moves a clip a small amount and shifts only the clips it runs into (#172)', () => {
+        const p = model.createProject(1000);
+        const t = model.addTrack(p, 'voice', 'Voice');
+        const sid = model.addSource(p, new Float32Array(10000), 'tts');
+        const clips = [0, 1, 2, 3, 4].map((i) => model.placeClip(p, t.id, model.makeClip(sid, i * 1000, 1000, { id: `c${i}` })));
+        const far = model.placeClip(p, t.id, model.makeClip(sid, 120000, 1000, { id: 'far' }));
+        const starts = () => t.clips.map((c) => [c.id, c.start]);
+
+        expect(model.moveClip(p, 'c1', 1250).start).toBe(1250);
+        expect(starts()).toEqual([['c0', 0], ['c1', 1250], ['c2', 2250], ['c3', 3250], ['c4', 4250], ['far', 120000]]);
+
+        expect(model.moveClip(p, 'c1', 1100).start).toBe(1100);
+        expect(clips[2].start).toBe(2250);
+
+        expect(model.moveClip(p, 'c1', 600).start).toBe(1000);
+        expect(model.moveClip(p, 'c3', 3100).start).toBe(3250);
+        expect(model.moveClip(p, 'c2', 3600).start).toBe(4250);
+        expect(starts()).toEqual([['c0', 0], ['c1', 1000], ['c3', 3250], ['c2', 4250], ['c4', 5250], ['far', 120000]]);
+
+        expect(model.moveClip(p, 'c4', 9000).start).toBe(9000);
+        expect(far.start).toBe(120000);
+        expect(model.moveClip(p, 'far', 7000).start).toBe(7000);
+        expect(clips[4].start).toBe(9000);
+        expect(model.moveClip(p, 'far', 8500).start).toBe(8500);
+        expect(clips[4].start).toBe(9500);
+        for (let i = 1; i < t.clips.length; i++) expect(t.clips[i].start).toBeGreaterThanOrEqual(model.clipEnd(t.clips[i - 1]));
+    });
+
     it('trims, splits, resizes, duplicates, and replaces clips', () => {
         const { project: p, track, sourceId, clip } = projectWithClip([0, 1, 2, 3, 4, 5, 6, 7]);
         clip.fadeIn = 2;

@@ -424,6 +424,22 @@ describe('planRemoteSpeech', () => {
         expect(planRemoteSpeech({ text: 'x', voice: 'paul', backend: 'VT', context: context(), features: { vtProsody: { fields: ['vtSpeed'] } } }).fields).toEqual({});
     });
 
+    it('applies TTS-ready (BMH) formatting before the dictionary', () => {
+        const text = '* WHAT...TORNADO IN ILLINOIS.\n* WHERE...COOK COUNTY.';
+        const plan = planRemoteSpeech({ text, voice: 'paul', backend: 'VT', prosody: { rate: 0 }, context: context(), features, ttsReady: true });
+        expect(plan.text).toBe('What...tornado In Illynois. Where...cook County.');
+        expect(plan.summary.ttsReady).toBe(true);
+        expect(plan.summary.pronunciations).toBe(true);
+        expect(planRemoteSpeech({ text, voice: 'paul', backend: 'VT', context: context(), features }).summary.ttsReady).toBe(false);
+    });
+
+    it('formats TTS-ready text even with NWS pronunciations off', () => {
+        const plan = planRemoteSpeech({ text: 'HELLO\n- THERE', voice: 'paul', backend: 'VT', prosody: { rate: 2 }, context: context({ enabled: false }), features, ttsReady: true });
+        expect(plan).toMatchObject({ text: 'Hello There', prosody: { rate: 2 }, fields: {}, applied: true, hits: [] });
+        expect(plan.summary).toMatchObject({ ttsReady: true, pronunciations: false, hits: 0 });
+        expect(planRemoteSpeech({ text: 'HELLO', voice: 'james', backend: 'VT', context: context({ enabled: false }), ttsReady: true }).text).toBe('HELLO');
+    });
+
     it('describes unverified speeds', () => {
         expect(describeSpeed({ speed: { value: 104, verified: false } })).toBe('speed 104 (not speed-tested)');
         expect(describeSpeed(null)).toBe('');

@@ -1655,8 +1655,15 @@ async function fetchAndStore() {
 
         const selectedVoiceRaw = (window.ttsVoice || '').trim();
         const normalizedVoice = selectedVoiceRaw.toLowerCase();
+        const alertLanguage = dasdecAlertLanguage(endecMode);
+        const englishSpoken = alertLanguage !== "es"
+            && (window.announcementType === "tts" || (allowCustomAudio && window.announcementType === "custom"));
 
-        if (window.announcementType === "tts") {
+        if (alertLanguage === "es") {
+            await appendDasdecSpanishPart(header, { afterEnglish: false });
+        }
+
+        else if (window.announcementType === "tts") {
             if (normalizedVoice === "wasm") {
                 if (await validateMarkupAndText(voiceBackendMap, window.ttsVoice, window.ttsText || "") !== true) {
                     addStatus("Your text contains invalid or incomplete phoneme codes for the selected backend. This text will not be processed by the voice correctly. There will instead be silence. Try getting rid of ANY phoneme markups, if you're trying to use the WebAssembly voices.", "ERROR");
@@ -1869,6 +1876,10 @@ async function fetchAndStore() {
                 addStatus("You must select a custom audio file when using Custom Audio! There will instead be silence.", "ERROR");
                 generate_silence(Math.floor(SAMPLE_RATE * 1));
             }
+        }
+
+        if (alertLanguage === "en-es") {
+            await appendDasdecSpanishPart(header, { afterEnglish: englishSpoken });
         }
 
         applyMessageTimeLimit();
@@ -2475,6 +2486,9 @@ async function fetchAndStore() {
             'silenceMessageToEom': document.getElementById('silenceMessageToEom')?.value ?? '1000',
             'silenceEomToEnd': document.getElementById('silenceEomToEnd')?.value ?? '1000',
             'ttsMatchEndec': document.getElementById('ttsMatchEndec')?.checked || false,
+            'productToTts': document.getElementById('productToTts')?.checked ?? true,
+            'dasdecLanguage': document.getElementById('dasdecLanguage')?.value || 'en',
+            'dasdecSpanishVoicePick': dasdecSpanishVoice(),
             'messageLimitEnabled': document.getElementById('messageLimitEnabled')?.checked || false,
             'messageLimitSeconds': document.getElementById('messageLimitSeconds')?.value ?? String(MESSAGE_LIMIT_DEFAULT_SECONDS),
             'preHeaderAudio': readPrePostChoice("pre"),
@@ -3636,6 +3650,7 @@ async function fetchAndStore() {
         })();
 
         addStatus("Loaded saved encoder settings!");
+        syncDasdecLanguageUi();
     }
 
     applyProfileSilenceDefaults(
@@ -3721,7 +3736,52 @@ async function fetchAndStore() {
         }
         updateHeaderPreview();
         addStatus("Loaded a header from another tool.");
+        fillTtsFromProduct(value);
     }
+
+    let normalizerLoad = null;
+
+    function loadNormalizer() {
+        if (!normalizerLoad) {
+            normalizerLoad = import("./normalizer-core.js")
+                .then(() => typeof window.normalizeNwsBulletin === "function")
+                .catch((error) => {
+                    console.error("Could not load the Product Normalizer.", error);
+                    normalizerLoad = null;
+                    return false;
+                });
+        }
+        return normalizerLoad;
+    }
+
+    function isAwipsProductInput(raw) {
+        const text = String(raw || "").trim();
+        if (!text || /^ZCZC/i.test(text)) return false;
+        try {
+            return parseAwipsProduct(text).ok === true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async function normalizedProductText(raw) {
+        if (!isAwipsProductInput(raw)) return "";
+        if (!(await loadNormalizer())) return "";
+        return String(window.normalizeNwsBulletin(String(raw).trim()) || "").trim();
+    }
+
+    async function fillTtsFromProduct(raw) {
+        if (!document.getElementById("productToTts")?.checked) return false;
+        const text = await normalizedProductText(raw);
+        if (!text) return false;
+        setTtsText(text);
+        addStatus("Put the product's normalized text in the TTS message.");
+        return true;
+    }
+
+    rawinput?.addEventListener("change", () => {
+        if (window.mode === "header") fillTtsFromProduct(rawinput.value);
+    });
 
     const ENDEC_TTS_VOICES = { DEFAULT: "nanotts", NWS: "paul", NWS_BMH: "paul", NWS_CRS: "Speechify Tom", DASDEC: "FestvoxKal", SAGE_DIGITAL_3644: "Loquendo Dave", DIGITAL_LEGACY: "Loquendo Dave" };
     const ENDEC_TEXT_STYLES = { TFT: "TFT", DASDEC: "DAS2PLUS", SAGE_DIGITAL_3644: "SAGE", SAGE_ANALOG_1822: "SAGE", DIGITAL_LEGACY: "SAGE", TRILITHIC: "TRILITHIC8PLUS", TRILITHIC_POP: "TRILITHIC8PLUS", HOLLYANNE: "HOLLYANNE" };
@@ -3781,6 +3841,120 @@ async function fetchAndStore() {
     originators?.addEventListener("change", matchTtsVoiceToEndec);
     document.getElementById("ttsMatchEndec")?.addEventListener("change", matchTtsVoiceToEndec);
     document.getElementById("ttsFillFromAlert")?.addEventListener("click", fillTtsFromAlert);
+
+    function isDasdecLanguage(value) {
+        return value === "en" || value === "en-es" || value === "es";
+    }
+
+    function dasdecAlertLanguage(mode) {
+        if (mode !== "DASDEC") return "en";
+        const value = document.getElementById("dasdecLanguage")?.value;
+        return isDasdecLanguage(value) ? value : "en";
+    }
+
+    function spanishVoiceChoices() {
+        const select = document.getElementById("ttsVoice");
+        if (!select) return [];
+        return Array.from(select.options)
+            .filter((opt) => !opt.disabled && opt.value && (/spanish/i.test(opt.textContent) || /^espeak:es\b/i.test(opt.value)))
+            .map((opt) => ({ id: opt.value, label: opt.textContent.trim() }));
+    }
+
+    function savedSpanishVoice() {
+        try {
+            return JSON.parse(localStorage.getItem("eas-tools-encoder-settings") || "{}").dasdecSpanishVoicePick || "";
+        } catch (error) {
+            return "";
+        }
+    }
+
+    function refreshSpanishVoices() {
+        const select = document.getElementById("dasdecSpanishVoice");
+        if (!select) return;
+        const choices = spanishVoiceChoices();
+        const wanted = select.dataset.wanted || select.value || savedSpanishVoice();
+        const current = Array.from(select.options).map((opt) => opt.value).join("|");
+        if (current !== choices.map((c) => c.id).join("|")) {
+            select.replaceChildren(...choices.map((c) => new Option(c.label, c.id)));
+        }
+        const pick = choices.find((c) => c.id === wanted)
+            || ["espeak:es-419", "VW Violeta", "Speechify Javier", "Speechify Paulina"].map((id) => choices.find((c) => c.id === id)).find(Boolean)
+            || choices[0];
+        if (pick) select.value = pick.id;
+        if (pick && pick.id === wanted) delete select.dataset.wanted;
+    }
+
+    function dasdecSpanishVoice() {
+        const select = document.getElementById("dasdecSpanishVoice");
+        return (select && (select.value || select.dataset.wanted)) || "";
+    }
+
+    function syncDasdecLanguageUi() {
+        const container = document.getElementById("dasdecLanguageContainer");
+        if (!container) return;
+        const dasdec = getOverallEndecMode() === "DASDEC";
+        container.hidden = !dasdec;
+        if (dasdec) refreshSpanishVoices();
+        const voiceRow = document.getElementById("dasdecSpanishVoiceRow");
+        if (voiceRow) voiceRow.hidden = dasdecAlertLanguage(getOverallEndecMode()) === "en";
+    }
+
+    async function dasdecSpanishText(header) {
+        const { translate } = await import("./dasdec-translate.js");
+        return translate(header, { lang: "es", context: "originated" }).text;
+    }
+
+    async function synthesizeVoicePcm(voice, text) {
+        const espeakVoice = parseEspeakVoiceId(voice.toLowerCase());
+        if (espeakVoice !== null) {
+            const result = await getEspeakEngine().synth(text, { reportStatus: piperReportStatus, onProgress: setVoiceDownloadProgress, voice: espeakVoice });
+            return result?.pcm?.length ? resamplePcmSinc(result.pcm, result.sampleRate, SAMPLE_RATE) : null;
+        }
+        const result = await fetchRemoteTtsAudio({ text, voice, backend: resolveVoiceBackend(voiceBackendMap, voice), pronunciation: false });
+        return result?.pcm?.length ? resamplePcm(result.pcm, result.sampleRate, SAMPLE_RATE) : null;
+    }
+
+    async function appendDasdecSpanishPart(header, { afterEnglish }) {
+        refreshSpanishVoices();
+        const voice = dasdecSpanishVoice();
+        if (!voice) {
+            addStatus("No Spanish voice is available, so the DASDEC Spanish part was skipped.", "ERROR");
+            return false;
+        }
+        let text;
+        try {
+            text = await dasdecSpanishText(header);
+        } catch (error) {
+            console.error(error);
+            addStatus("This header could not be worded in Spanish, so the DASDEC Spanish part was skipped.", "ERROR");
+            return false;
+        }
+        const label = spanishVoiceChoices().find((c) => c.id === voice)?.label || voice;
+        addStatus("Generating the DASDEC Spanish part with " + label + "...");
+        try {
+            const pcm = await synthesizeVoicePcm(voice, text);
+            if (!pcm) throw new Error("the voice returned no audio");
+            generate_silence(afterEnglish
+                ? SAMPLE_RATE
+                : silenceSamples("attentionToMessage"));
+            appendAnnouncementPcm(levelTtsPcm(pcm, { targetDb: TTS_TARGET_DB, maxGainDb: 24, softClip: cl, softClipK: 1.6 }));
+            addStatus("Added the DASDEC Spanish part.");
+            return true;
+        } catch (error) {
+            console.error(error);
+            addStatus("The Spanish voice failed (" + (error?.message || error) + "), so the DASDEC Spanish part was skipped.", "ERROR");
+            return false;
+        }
+    }
+
+    document.getElementById("overallEndecMode")?.addEventListener("change", syncDasdecLanguageUi);
+    document.getElementById("dasdecLanguage")?.addEventListener("change", syncDasdecLanguageUi);
+    if (document.getElementById("ttsVoice") && typeof MutationObserver === "function") {
+        new MutationObserver(() => {
+            if (!document.getElementById("dasdecLanguageContainer")?.hidden) refreshSpanishVoices();
+        }).observe(document.getElementById("ttsVoice"), { childList: true, subtree: true });
+    }
+    syncDasdecLanguageUi();
 
     function loadIncomingText(text) {
         announcementTypeSelect.value = "tts";
@@ -4353,7 +4527,7 @@ async function fetchAndStore() {
         });
 
         window.EASBridge.on('encoder:setNwrPronunciation', (params) => {
-            writePronunciationSelection({ enabled: params?.enabled, source: params?.source });
+            writePronunciationSelection({ enabled: params?.enabled, source: params?.source, ttsReady: params?.ttsReady });
         });
 
         let nwrEditorContext = null;
@@ -4548,7 +4722,7 @@ async function fetchAndStore() {
                 if (params.clip != null && el('clip')) el('clip').checked = params.clip;
                 if (params.endecResample != null && el('endecResample')) el('endecResample').checked = params.endecResample;
                 if (params.announcementType && el('announcementType')) { el('announcementType').value = params.announcementType; el('announcementType').dispatchEvent(new Event('change')); }
-                if (params.nwrPronunciation && typeof params.nwrPronunciation === 'object') writePronunciationSelection({ enabled: params.nwrPronunciation.enabled, source: params.nwrPronunciation.source });
+                if (params.nwrPronunciation && typeof params.nwrPronunciation === 'object') writePronunciationSelection({ enabled: params.nwrPronunciation.enabled, source: params.nwrPronunciation.source, ttsReady: params.nwrPronunciation.ttsReady });
                 if (params.ttsText != null) { window.ttsText = params.ttsText; if (el('ttsText')) el('ttsText').value = params.ttsText; }
                 if (params.ttsVoice) {
                     if (el('ttsVoice')) {
@@ -4579,6 +4753,8 @@ async function fetchAndStore() {
                 }
                 if (params.messageLimitEnabled != null && el('messageLimitEnabled')) el('messageLimitEnabled').checked = !!params.messageLimitEnabled;
                 if (params.messageLimitSeconds != null && el('messageLimitSeconds')) el('messageLimitSeconds').value = params.messageLimitSeconds.toString();
+                if (typeof params.dasdecLanguage === 'string' && el('dasdecLanguage') && isDasdecLanguage(params.dasdecLanguage)) el('dasdecLanguage').value = params.dasdecLanguage;
+                if (typeof params.dasdecSpanishVoice === 'string' && params.dasdecSpanishVoice && el('dasdecSpanishVoice')) el('dasdecSpanishVoice').dataset.wanted = params.dasdecSpanishVoice;
                 if (params.preHeaderAudio != null || params.postEomAudio != null) {
                     await loadPrePostManifest();
                 }
@@ -4841,13 +5017,19 @@ async function fetchAndStore() {
             window.EASBridge.send('encoder:fipsResolved', { results: results });
         });
 
-        window.EASBridge.on('normalizer:run', (params) => {
+        window.EASBridge.on('normalizer:run', async (params) => {
             const text = params?.text || '';
             const repeat = params?.repeat || false;
-            const result = window.normalizeNwsBulletin
-                ? window.normalizeNwsBulletin(text, { repeat })
-                : text;
+            const ready = await loadNormalizer();
+            const result = ready ? window.normalizeNwsBulletin(text, { repeat }) : text;
             window.EASBridge.send('normalizer:result', { result });
+        });
+
+        window.EASBridge.on('encoder:requestProductText', async (params) => {
+            const header = String(params?.header || '');
+            const product = isAwipsProductInput(header);
+            const text = product ? await normalizedProductText(header) : '';
+            window.EASBridge.send('encoder:productText', { header, product, text });
         });
 
         sendEncoderData();

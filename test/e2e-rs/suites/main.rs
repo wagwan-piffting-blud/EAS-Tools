@@ -4,12 +4,14 @@ mod common;
 mod crawl_atari;
 mod crawl_dasdec;
 mod crawl_dimension_inputs;
+mod crawl_easycap;
 mod crawl_easyplus_event_names;
 mod crawl_premade_locks;
 mod crawl_psc902;
 mod crawl_screen_builder;
 mod crawl_sender_override;
 mod crawl_top_left_manual;
+mod crawl_vds_edges;
 mod crawl_video_background;
 mod crawl_video_export_stall;
 mod custom_event_codes;
@@ -22,10 +24,12 @@ mod decoder_text_style;
 mod demo_wav_headers;
 mod demos_page;
 mod encoder_alert_options;
+mod encoder_dasdec_spanish;
 mod encoder_events;
 mod encoder_location_search;
 mod encoder_native_bridge;
 mod encoder_pre_post_audio;
+mod encoder_product_text;
 mod endec_rate;
 mod espeak_voice;
 mod marine_custom_fips;
@@ -36,13 +40,16 @@ mod nwr_pronunciation;
 mod silence_timing;
 mod site_tools;
 mod splicer_chain_level;
+mod splicer_clip_drag;
 mod tool_handoff;
 mod tts_prosody;
 mod warngen_flood_hazsimp;
+mod warngen_insets;
 mod warngen_map_cursor;
 mod warngen_radar;
 mod warngen_radar_export;
 mod warngen_radar_synth;
+mod warngen_right_click;
 mod warngen_searchable_selects;
 mod warngen_theme;
 mod warngen_zone_warnings;
@@ -54,6 +61,7 @@ fn main() -> std::process::ExitCode {
         ("crawl_atari", crawl_atari::cases()),
         ("crawl_dasdec", crawl_dasdec::cases()),
         ("crawl_dimension_inputs", crawl_dimension_inputs::cases()),
+        ("crawl_easycap", crawl_easycap::cases()),
         (
             "crawl_easyplus_event_names",
             crawl_easyplus_event_names::cases(),
@@ -63,6 +71,7 @@ fn main() -> std::process::ExitCode {
         ("crawl_screen_builder", crawl_screen_builder::cases()),
         ("crawl_sender_override", crawl_sender_override::cases()),
         ("crawl_top_left_manual", crawl_top_left_manual::cases()),
+        ("crawl_vds_edges", crawl_vds_edges::cases()),
         ("crawl_video_background", crawl_video_background::cases()),
         (
             "crawl_video_export_stall",
@@ -78,10 +87,12 @@ fn main() -> std::process::ExitCode {
         ("demo_wav_headers", demo_wav_headers::cases()),
         ("demos_page", demos_page::cases()),
         ("encoder_alert_options", encoder_alert_options::cases()),
+        ("encoder_dasdec_spanish", encoder_dasdec_spanish::cases()),
         ("encoder_events", encoder_events::cases()),
         ("encoder_location_search", encoder_location_search::cases()),
         ("encoder_native_bridge", encoder_native_bridge::cases()),
         ("encoder_pre_post_audio", encoder_pre_post_audio::cases()),
+        ("encoder_product_text", encoder_product_text::cases()),
         ("endec_rate", endec_rate::cases()),
         ("espeak_voice", espeak_voice::cases()),
         ("marine_custom_fips", marine_custom_fips::cases()),
@@ -92,13 +103,16 @@ fn main() -> std::process::ExitCode {
         ("silence_timing", silence_timing::cases()),
         ("site_tools", site_tools::cases()),
         ("splicer_chain_level", splicer_chain_level::cases()),
+        ("splicer_clip_drag", splicer_clip_drag::cases()),
         ("tool_handoff", tool_handoff::cases()),
         ("tts_prosody", tts_prosody::cases()),
         ("warngen_flood_hazsimp", warngen_flood_hazsimp::cases()),
+        ("warngen_insets", warngen_insets::cases()),
         ("warngen_map_cursor", warngen_map_cursor::cases()),
         ("warngen_radar", warngen_radar::cases()),
         ("warngen_radar_export", warngen_radar_export::cases()),
         ("warngen_radar_synth", warngen_radar_synth::cases()),
+        ("warngen_right_click", warngen_right_click::cases()),
         (
             "warngen_searchable_selects",
             warngen_searchable_selects::cases(),

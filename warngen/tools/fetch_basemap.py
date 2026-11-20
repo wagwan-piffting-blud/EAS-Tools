@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Pull the D2D map overlays the WarnGen map can't derive from its own county outlines (time
-zones, major rivers, lakes) from the mapdata.* tables on Unidata's public EDEX, and lay them
-out the way the map does: CONUS at true coordinates, Alaska, Hawaii and the territories moved
-into their insets. State and CWA borders come from us_counties.geojson in the page instead,
-so they sit exactly on the county lines.
+zones, major rivers, lakes) from the mapdata.* tables on Unidata's public EDEX, at true
+coordinates. The files shipped today still hold Alaska as the old map inset; the page moves
+either layout into place. State and CWA borders come from us_counties.geojson in the page
+instead, so they sit exactly on the county lines.
 
     C:/tmp/awenv/Scripts/python warngen/tools/fetch_basemap.py [timezones|rivers|lakes ...]
 
@@ -31,16 +31,12 @@ CACHE_DIR = os.path.join(HERE, "output")
 PLACES = 3
 FETCHED = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-# COMPOSITE_TRANSFORMS in warngen/index.html.
-INSETS = [
-    {"name": "AK", "src": (-152, 63), "dst": (-117, 21), "scale": (0.35, 0.75),
-     "boxes": [(-180, 50, -125, 72), (150, 50, 180, 72)]},
-    {"name": "HI", "src": (-157, 20), "dst": (-105, 26), "scale": (1, 1), "boxes": [(-161, 18, -154, 23)]},
-    {"name": "AS", "src": (-170, -14), "dst": (-101, 24), "scale": (1, 1), "boxes": [(-172, -15, -169, -13)]},
-    {"name": "GU", "src": (144, 13), "dst": (-112, 32), "scale": (1, 1), "boxes": [(143, 13, 146, 14)]},
-    {"name": "MP", "src": (145, 16), "dst": (-112, 34), "scale": (1, 1), "boxes": [(143, 14, 146, 21)]},
-    {"name": "PR", "src": (-66, 18), "dst": (-76, 25), "scale": (1, 1), "boxes": [(-68, 17, -65, 19)]},
-    {"name": "VI", "src": (-65, 18), "dst": (-75, 26), "scale": (1, 1), "boxes": [(-65, 17, -64, 19)]},
+# Alaska, Hawaii and the territories (realBoxes in warngen/src/geo/insets.js). Pieces east of
+# 180 are unwrapped below -180, the way the map draws them.
+REGIONS = [
+    (-180, 50, -125, 72), (150, 50, 180, 72),
+    (-161, 18, -154, 23), (-172, -15, -168, -11),
+    (143, 13, 146.5, 21), (-68, 17, -64, 19),
 ]
 CONUS_BOX = box(-126, 24, -66, 50)
 
@@ -71,19 +67,15 @@ def fetch(table, geom_field, fields):
 
 
 def composite(geom):
-    """Clip a true-coordinate geometry into its CONUS and inset pieces, insets moved into place."""
+    """Clip a true-coordinate geometry to the US regions, unwrapping east longitudes."""
     parts = [geom.intersection(CONUS_BOX)]
-    for t in INSETS:
-        for b in t["boxes"]:
-            piece = geom.intersection(box(*b))
-            if piece.is_empty:
-                continue
-            if b[0] > 0 and t["name"] == "AK":
-                piece = affinity.translate(piece, xoff=-360)
-            sx, sy = t["scale"]
-            piece = affinity.scale(piece, xfact=sx, yfact=sy, origin=t["src"])
-            piece = affinity.translate(piece, xoff=t["dst"][0] - t["src"][0], yoff=t["dst"][1] - t["src"][1])
-            parts.append(piece)
+    for b in REGIONS:
+        piece = geom.intersection(box(*b))
+        if piece.is_empty:
+            continue
+        if b[0] > 0:
+            piece = affinity.translate(piece, xoff=-360)
+        parts.append(piece)
     return unary_union([p for p in parts if not p.is_empty])
 
 
@@ -147,7 +139,7 @@ def build_timezones():
     edges = unary_union([g.boundary for g, _ in rows])
     # Only the borders between two zones; coastlines and the national edge are not drawn.
     outer = unary_union([g for g, _ in rows]).boundary.buffer(0.02)
-    # The table covers Canada and Mexico too, and Mexico's zones sit where the insets go.
+    # The table covers Canada and Mexico too; only borders inside the US are kept.
     us = unary_union([g for g, _ in fetch("mapdata.states", "the_geom_0_004", ["state"])]).buffer(0.01)
     inner = edges.difference(outer).intersection(us)
     lines = [x for l in lines_of(inner) for x in lines_of(composite(l))]

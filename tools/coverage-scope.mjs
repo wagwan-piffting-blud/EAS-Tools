@@ -4,7 +4,10 @@
  */
 export const measuredFiles = [
     'assets/js/custom-events.js',
+    'assets/js/bmh-format.js',
     'assets/js/custom-locations.js',
+    'assets/js/dasdec-translate.js',
+    'assets/js/easycap-screen.js',
     'assets/js/event-severity.js',
     'assets/js/nwr-pronunciation.js',
     'assets/js/nwr-pronunciation-store.js',
@@ -30,6 +33,8 @@ export const measuredFiles = [
 const measured = new Set(measuredFiles);
 
 const generatedFiles = new Set([
+    'assets/js/dasdec-translate/dasdec-2.6-0_a03.js',
+    'assets/js/dasdec-translate/dasdec-3.1-0_04.js',
     'assets/js/phoneme-webpack.js',
     'assets/js/seatty-same-wasm.js',
     'assets/js/sox.js',

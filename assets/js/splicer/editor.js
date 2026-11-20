@@ -214,7 +214,7 @@ export function createEditor(host) {
                 el('h3', { id: 'spHelpMouse' }, 'Mouse'),
                 el('ul', {},
                     el('li', {}, 'Click a clip to select it; double-click to select its time range.'),
-                    el('li', {}, 'Drag a clip to move it, onto another track too. It snaps to nearby clip edges.'),
+                    el('li', {}, 'Drag a clip to move it, onto another track too. It snaps to nearby clip edges, and clips after it shift later to make room.'),
                     el('li', {}, 'Drag a clip\'s left or right edge to trim it, or its fade handles to fade in and out.'),
                     el('li', {}, 'Click empty track space to move the playhead; drag across tracks to select time. Shift+click extends the selection.'),
                     el('li', {}, 'Click or drag the ruler to scrub the playhead.'),

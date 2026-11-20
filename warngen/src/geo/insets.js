@@ -8,14 +8,69 @@
     "use strict";
 
     /**
-     * Alaska, Hawaii and the territories are drawn as insets: shifted and scaled in lon/lat.
-     * Georeferenced layers (satellite, radar) have to follow them. The inset transform is
-     * linear per axis, so real lon depends only on inset lon and real lat only on inset lat,
-     * and a tile can be remapped with one lookup per column and one per row.
+     * The map draws everything at its real coordinates. Longitudes east of 180 (the western
+     * Aleutians, Guam and the Marianas) are unwrapped below -180 so shapes stay continuous across
+     * the antimeridian; anything printed or handed out is wrapped back to [-180, 180].
+     *
+     * The data files still lay Alaska, Hawaii and the territories out as the old map's insets:
+     * shifted, and for Alaska squashed, in lon/lat. Those are put back when they load.
      */
 
     var MAX_SOURCE_ZOOM = 13;
     var MAX_SOURCE_TILES = 48;
+
+    var DATA_INSETS = [
+        {
+            name: "AK", offices: ["AFC", "AFG", "AJK"], open: true,
+            src: [-152, 63], dst: [-117, 21], scaleLon: 0.35, scaleLat: 0.75,
+            realBoxes: [[-180, 50, -125, 73], [150, 50, 180, 73]],
+            compositeBbox: [-130, 11.5, -109, 29]
+        },
+        {
+            name: "HI", offices: ["HFO"], open: true,
+            src: [-157, 20], dst: [-105, 26], scaleLon: 1, scaleLat: 1,
+            realBoxes: [[-161, 18, -154, 23]],
+            compositeBbox: [-109, 24, -102, 28.9]
+        },
+        {
+            name: "AS", offices: ["PPG"],
+            src: [-170, -14], dst: [-101, 24], scaleLon: 1, scaleLat: 1,
+            realBoxes: [[-172, -15, -168, -11]],
+            compositeBbox: [-102.1, 23, -99, 27]
+        },
+        {
+            name: "GU", offices: ["GUM"],
+            src: [144, 13], dst: [-112, 32], scaleLon: 1, scaleLat: 1,
+            realBoxes: [[143, 13, 146.5, 14]],
+            compositeBbox: [-113, 31, -110, 33]
+        },
+        {
+            name: "MP", offices: ["GUM"],
+            src: [145, 16], dst: [-112, 34], scaleLon: 1, scaleLat: 1,
+            realBoxes: [[143, 14, 146.5, 21]],
+            compositeBbox: [-113, 31, -110, 39]
+        },
+        {
+            name: "PR", offices: ["SJU"], open: true,
+            src: [-66, 18], dst: [-76, 25], scaleLon: 1, scaleLat: 1,
+            realBoxes: [[-68, 17, -65.15, 19]],
+            compositeBbox: [-78, 24, -75.15, 26]
+        },
+        {
+            name: "VI", offices: ["SJU"], open: true,
+            src: [-65, 18], dst: [-75, 26], scaleLon: 1, scaleLat: 1,
+            realBoxes: [[-65.15, 17, -64, 19]],
+            compositeBbox: [-75.15, 25, -74, 27]
+        }
+    ];
+
+    function unwrapLon(lon) {
+        return lon > 0 ? lon - 360 : lon;
+    }
+
+    function wrapLon(lon) {
+        return lon < -180 ? lon + 360 : (lon > 180 ? lon - 360 : lon);
+    }
 
     function realLon(t, lon) {
         return (lon - t.dst[0]) / t.scaleLon + t.src[0];
@@ -25,27 +80,161 @@
         return (lat - t.dst[1]) / t.scaleLat + t.src[1];
     }
 
-    function insetLon(t, lon) {
-        if (t.normalizePositiveLon && lon > 0) lon -= 360;
-        return (lon - t.src[0]) * t.scaleLon + t.dst[0];
+    function inBox(b, lon, lat) {
+        return lon >= b[0] && lat >= b[1] && lon <= b[2] && lat <= b[3];
     }
 
-    function insetLat(t, lat) {
-        return (lat - t.src[1]) * t.scaleLat + t.dst[1];
+    function insetNamed(name) {
+        for (var i = 0; i < DATA_INSETS.length; i++) {
+            if (DATA_INSETS[i].name === name) return DATA_INSETS[i];
+        }
+        return null;
     }
 
-    function inRealBbox(t, lon, lat) {
-        var boxes = [t.realBbox, t.realBboxAlt].filter(Boolean);
-        return boxes.some(function (b) {
-            return lon >= b[0] && lat >= b[1] && lon <= b[2] && lat <= b[3];
+    function fromInset(t) {
+        return function (p) { return [unwrapLon(realLon(t, p[0])), realLat(t, p[1])]; };
+    }
+
+    function unwrapPoint(p) {
+        return [unwrapLon(p[0]), p[1]];
+    }
+
+    /**
+     * How to bring a data file's coordinate to the map, judged from one sample point. A known
+     * territory is either already real or in its old inset. Anything else is only moved out of
+     * the Alaska, Hawaii and Puerto Rico boxes, which sit on no state; the Guam and Samoa boxes
+     * cover Arizona and Mexico.
+     */
+    function mapperFor(state, p) {
+        var own = insetNamed(state);
+        if (own) {
+            var real = own.realBoxes.some(function (b) { return inBox(b, p[0], p[1]); });
+            return real ? unwrapPoint : fromInset(own);
+        }
+        for (var i = 0; i < DATA_INSETS.length; i++) {
+            var t = DATA_INSETS[i];
+            if (t.open && inBox(t.compositeBbox, p[0], p[1])) return fromInset(t);
+        }
+        return unwrapPoint;
+    }
+
+    function firstCoord(coords) {
+        while (coords && typeof coords[0] !== "number") coords = coords[0];
+        return coords;
+    }
+
+    function mapCoords(coords, fn) {
+        return typeof coords[0] === "number" ? fn(coords) : coords.map(function (c) { return mapCoords(c, fn); });
+    }
+
+    /** Nested [lon, lat] arrays of one state's shape, at map coordinates. */
+    function toMapCoordinates(coords, state) {
+        var p = coords && firstCoord(coords);
+        return p ? mapCoords(coords, mapperFor(state, p)) : coords;
+    }
+
+    function toMapGeometry(geometry, state) {
+        if (!geometry) return geometry;
+        var multi = /^Multi/.test(geometry.type);
+        // Merged basemap layers carry every region in one feature, so each part is placed alone.
+        var coords = multi && !insetNamed(state)
+            ? geometry.coordinates.map(function (part) { return toMapCoordinates(part, state); })
+            : toMapCoordinates(geometry.coordinates, state);
+        return { type: geometry.type, coordinates: coords };
+    }
+
+    /** A copy of a data file's collection at map coordinates. */
+    function toMapFeatures(geojson) {
+        return Object.assign({}, geojson, {
+            features: (geojson && geojson.features || []).map(function (f) {
+                if (!f.geometry) return f;
+                return Object.assign({}, f, { geometry: toMapGeometry(f.geometry, f.properties && f.properties.state) });
+            })
         });
     }
 
-    function territoryForPoint(transforms, lon, lat) {
-        for (var i = 0; i < transforms.length; i++) {
-            if (inRealBbox(transforms[i], lon, lat)) return transforms[i];
+    /** Moves { state, lat, lon } points to map coordinates in place; returns the list. */
+    function toMapPoints(list) {
+        (list || []).forEach(function (c) {
+            var q = mapperFor(c.state, [c.lon, c.lat])([c.lon, c.lat]);
+            c.lon = q[0];
+            c.lat = q[1];
+        });
+        return list;
+    }
+
+    function ringCenter(ring) {
+        var n = ring.length > 1 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1]
+            ? ring.length - 1 : ring.length;
+        var x = 0;
+        var y = 0;
+        for (var i = 0; i < n; i++) {
+            x += ring[i][0];
+            y += ring[i][1];
         }
-        return null;
+        return [x / n, y / n];
+    }
+
+    /**
+     * Which old inset a polygon saved by the composite map was drawn in. stateAt(lon, lat) names
+     * the state of the county under a real point. Guam's old box sits over Tucson, so a box alone
+     * only counts for the office that owns it, or for All US when no state is underneath.
+     */
+    function savedInset(ring, office, stateAt) {
+        var c = ringCenter(ring);
+        var landState = stateAt(c[0], c[1]);
+        var fallback = null;
+        for (var i = 0; i < DATA_INSETS.length; i++) {
+            var t = DATA_INSETS[i];
+            if (!inBox(t.compositeBbox, c[0], c[1])) continue;
+            var r = fromInset(t)(c);
+            if (stateAt(r[0], r[1]) === t.name && (t.offices.indexOf(office) !== -1 || office === "_ALL_US_")) return t;
+            if (!fallback && (t.offices.indexOf(office) !== -1 || (office === "_ALL_US_" && !landState))) fallback = t;
+        }
+        return fallback;
+    }
+
+    function convertPair(fn, lat, lon) {
+        var q = fn([lon, lat]);
+        return [q[1], wrapLon(q[0])];
+    }
+
+    /**
+     * Puts a saved session from the composite map back at real coordinates, once: the result is
+     * marked, and a marked session is returned untouched.
+     */
+    function migrateSavedState(saved, stateAt) {
+        if (!saved || saved.geo) return saved;
+        var base = saved.followupBaseline;
+        var ring = (saved.polygon && saved.polygon.length) ? saved.polygon : (base && (base.ring || base.drawnRing));
+        var form = saved.form || {};
+        var t = ring && ring.length ? savedInset(ring, form.office, stateAt) : null;
+        if (t) {
+            var fn = fromInset(t);
+            var move = function (r) { return r ? r.map(fn) : r; };
+            saved.polygon = move(saved.polygon);
+            if (base) {
+                base.ring = move(base.ring);
+                base.drawnRing = move(base.drawnRing);
+            }
+            var lat = parseFloat(form.centroidLat);
+            var lon = parseFloat(form.centroidLon);
+            if (isFinite(lat) && isFinite(lon)) {
+                var c = convertPair(fn, lat, lon);
+                form.centroidLat = c[0].toFixed(3);
+                form.centroidLon = c[1].toFixed(3);
+            }
+            if (form.lineVerts) {
+                form.lineVerts = String(form.lineVerts).split(",").map(function (pair) {
+                    var nums = pair.trim().split(/\s+/).map(parseFloat);
+                    if (nums.length !== 2 || !isFinite(nums[0]) || !isFinite(nums[1])) return pair.trim();
+                    var v = convertPair(fn, nums[0], nums[1]);
+                    return v[0].toFixed(3) + " " + v[1].toFixed(3);
+                }).join(", ");
+            }
+        }
+        saved.geo = 1;
+        return saved;
     }
 
     function lonToWorld(lon) {
@@ -229,6 +418,7 @@
         return new Layer(Object.assign({ maxNativeZoom: MAX_SOURCE_ZOOM, maxZoom: 22 }, options || {}));
     }
 
+    // Only the page bundled in the apps, which still draws the old insets, calls this.
     function createSatelliteLayer(L, archive, transforms, geojson, options) {
         var rings = ringsByTerritory(geojson, transforms);
         var fillBoxes = (options && options.fillBoxes) || [];
@@ -287,12 +477,14 @@
     }
 
     return {
+        DATA_INSETS: DATA_INSETS,
+        unwrapLon: unwrapLon,
+        wrapLon: wrapLon,
+        toMapFeatures: toMapFeatures,
+        toMapPoints: toMapPoints,
+        toMapCoordinates: toMapCoordinates,
+        migrateSavedState: migrateSavedState,
         createBaseLayer: createBaseLayer,
-        createSatelliteLayer: createSatelliteLayer,
-        territoryForPoint: territoryForPoint,
-        realLon: realLon,
-        realLat: realLat,
-        insetLon: insetLon,
-        insetLat: insetLat
+        createSatelliteLayer: createSatelliteLayer
     };
 }));

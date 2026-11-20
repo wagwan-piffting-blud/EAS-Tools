@@ -91,7 +91,8 @@ describe('selection', () => {
         expect(readSelection(null)).toEqual(defaultSelection());
         expect(readSelection(memoryStorage({ [SELECTION_KEY]: '{bad' }))).toEqual(defaultSelection());
         expect(readSelection(memoryStorage({ [SELECTION_KEY]: '[1]' }))).toEqual(defaultSelection());
-        expect(readSelection(memoryStorage({ [SELECTION_KEY]: JSON.stringify({ enabled: false, source: 'tx:KEC76' }) }))).toEqual({ version: 1, enabled: false, source: 'tx:KEC76' });
+        expect(readSelection(memoryStorage({ [SELECTION_KEY]: JSON.stringify({ enabled: false, source: 'tx:KEC76', ttsReady: true }) }))).toEqual({ version: 1, enabled: false, source: 'tx:KEC76', ttsReady: true });
+        expect(readSelection(memoryStorage({ [SELECTION_KEY]: JSON.stringify({ ttsReady: 'yes' }) })).ttsReady).toBe(false);
         expect(readSelection(memoryStorage({ [SELECTION_KEY]: JSON.stringify({ source: 'garbage' }) })).source).toBe('');
         expect(readSelection(memoryStorage({ [SELECTION_KEY]: JSON.stringify({ source: 'national' }) })).source).toBe('');
     });
@@ -99,15 +100,17 @@ describe('selection', () => {
     it('writes, validates and announces changes', () => {
         const storage = memoryStorage();
         const target = eventTarget();
-        expect(writeSelection({ source: 'wfo:LOT' }, { storage, target })).toEqual({ ok: true, selection: { version: 1, enabled: true, source: 'wfo:LOT' } });
-        expect(writeSelection({ enabled: false }, { storage, target }).selection).toEqual({ version: 1, enabled: false, source: 'wfo:LOT' });
+        expect(writeSelection({ source: 'wfo:LOT' }, { storage, target })).toEqual({ ok: true, selection: { version: 1, enabled: true, source: 'wfo:LOT', ttsReady: false } });
+        expect(writeSelection({ enabled: false }, { storage, target }).selection).toEqual({ version: 1, enabled: false, source: 'wfo:LOT', ttsReady: false });
+        expect(writeSelection({ ttsReady: true }, { storage, target }).selection.ttsReady).toBe(true);
+        expect(writeSelection({ ttsReady: 'on' }, { storage, target }).selection.ttsReady).toBe(true);
         expect(writeSelection({ source: 'national' }, { storage, target }).selection.source).toBe('');
         expect(writeSelection({ source: 'nope' }, { storage, target }).ok).toBe(false);
         expect(writeSelection({}, { storage: null }).ok).toBe(false);
         const failing = { getItem: () => null, setItem: () => { throw new Error('full'); } };
         expect(writeSelection({ enabled: true }, { storage: failing, target }).error).toMatch(/Could not save/);
-        expect(target.events.map((e) => e.type)).toEqual([SELECTION_CHANGE, SELECTION_CHANGE, SELECTION_CHANGE]);
-        expect(snapshotSelection(storage)).toEqual({ enabled: false, source: '' });
+        expect(target.events.map((e) => e.type)).toEqual([SELECTION_CHANGE, SELECTION_CHANGE, SELECTION_CHANGE, SELECTION_CHANGE, SELECTION_CHANGE]);
+        expect(snapshotSelection(storage)).toEqual({ enabled: false, source: '', ttsReady: true });
     });
 
     it('notifies listeners about local and cross-tab changes', () => {

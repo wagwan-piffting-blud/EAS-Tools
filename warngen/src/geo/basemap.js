@@ -191,6 +191,7 @@
     }
 
     function gridLabel(kind, value, step) {
+        if (kind === "lon") value = ((value + 180) % 360 + 360) % 360 - 180;
         var v = step < 1 ? Math.abs(value).toFixed(2).replace(/\.?0+$/, "") : String(Math.abs(value));
         if (kind === "lat") return v + "°" + (value < 0 ? "S" : value > 0 ? "N" : "");
         return v + "°" + (value < 0 ? "W" : value > 0 ? "E" : "");

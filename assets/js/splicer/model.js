@@ -170,6 +170,26 @@ export function resolveOverlap(t, clip) {
     return clip.start;
 }
 
+function pushFollowing(t, c) {
+    let edge = clipEnd(c);
+    for (const o of t.clips) {
+        if (o === c || o.start < c.start) continue;
+        if (o.start < edge) o.start = edge;
+        edge = Math.max(edge, clipEnd(o));
+    }
+    sortClips(t);
+}
+
+function settleClip(t, clip) {
+    sortClips(t);
+    for (const o of t.clips) {
+        if (o !== clip && o.start < clip.start && clipEnd(o) > clip.start) clip.start = clipEnd(o);
+    }
+    sortClips(t);
+    pushFollowing(t, clip);
+    return clip.start;
+}
+
 export function appendClip(p, trackId, sourceId, extra = {}) {
     const t = findTrack(p, trackId);
     const src = p.sources.get(sourceId);
@@ -196,7 +216,7 @@ export function moveClip(p, clipId, newStart, newTrackId) {
     f.track.clips.splice(f.index, 1);
     f.clip.start = Math.max(0, Math.round(newStart));
     dest.clips.push(f.clip);
-    resolveOverlap(dest, f.clip);
+    settleClip(dest, f.clip);
     return f.clip;
 }
 
@@ -254,13 +274,7 @@ export function setRenderedLength(p, clipId, outLen) {
     if (!f || !(outLen > 0) || f.clip.outLen === outLen) return false;
     const c = f.clip;
     c.outLen = outLen;
-    let edge = clipEnd(c);
-    for (const o of f.track.clips) {
-        if (o === c || o.start < c.start) continue;
-        if (o.start < edge) o.start = edge;
-        edge = Math.max(edge, clipEnd(o));
-    }
-    sortClips(f.track);
+    pushFollowing(f.track, c);
     return true;
 }
 
@@ -273,13 +287,7 @@ export function replaceClipAudio(p, clipId, sourceId, length) {
     c.length = length;
     c.outLen = null;
     clampFades(c);
-    let edge = clipEnd(c);
-    for (const o of f.track.clips) {
-        if (o === c || o.start < c.start) continue;
-        if (o.start < edge) o.start = edge;
-        edge = Math.max(edge, clipEnd(o));
-    }
-    sortClips(f.track);
+    pushFollowing(f.track, c);
     return c;
 }
 

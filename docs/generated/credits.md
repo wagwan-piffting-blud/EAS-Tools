@@ -9,6 +9,7 @@ Special thanks goes out to the following individuals, resources, and packages/or
 ### Libraries & Packages
 
 - [Hack font](https://github.com/source-foundry/Hack): Monospace font used for the site's UI typography.
+- [Bitstream Vera fonts](https://download.gnome.org/sources/ttf-bitstream-vera/1.10/) (Bitstream Vera license): Vera Sans, Serif and Sans Mono Bold, which have the same letters as the DejaVu fonts a Trilithic EASyCAP draws its alert screen in; used by the EASyCAP screens in the Text Crawl Generator.
 - [wavefile.js](https://rochars.github.io/wavefile/): WAV file writer used for generating downloadable WAV audio files in the Encoder and Audio Splicer tools.
 - [wave-resampler.js](https://github.com/rochars/wave-resampler): Audio resampling library used for converting audio sample rates in the Encoder and Audio Splicer tools.
 - [gifenc](https://github.com/mattdesl/gifenc): Fast pure-JavaScript GIF encoder used to export text crawl animations as GIF files in the Text Crawl Generator.

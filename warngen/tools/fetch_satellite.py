@@ -73,8 +73,9 @@ def lat2y(lat, z):
     return int(math.floor((1.0 - math.log(math.tan(r) + 1.0 / math.cos(r)) / math.pi) / 2.0 * (1 << z)))
 
 
-# Mirrors COMPOSITE_TRANSFORMS in warngen/index.html. us_counties.geojson stores these states
-# at their inset positions; the imagery has to come from where they really are.
+# Where us_counties.geojson stores these states (DATA_INSETS in warngen/src/geo/insets.js; the
+# page puts them back at real coordinates on load). The imagery has to come from where they
+# really are.
 INSETS = {
     "AK": {"src": (-152, 63), "dst": (-117, 21), "scale": (0.35, 0.75)},
     "HI": {"src": (-157, 20), "dst": (-105, 26), "scale": (1.0, 1.0)},

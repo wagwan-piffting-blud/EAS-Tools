@@ -15,7 +15,7 @@ const CONTROLS: [(&str, &str, &str, &str); 4] = [
     ("splicer", "ttsPitch2", "ttsPitch2Number", "ttsPitchReset2"),
 ];
 
-const WHEEL_CASES: [(&str, &str, &str); 12] = [
+const WHEEL_CASES: [(&str, &str, &str); 11] = [
     ("crawl", "crawlSpeed", "5"),
     ("crawl", "crawlFontSize", "24"),
     ("crawl", "crawlWidth", "800"),
@@ -25,7 +25,6 @@ const WHEEL_CASES: [(&str, &str, &str); 12] = [
     ("crawl", "crawlTextWidth", "100"),
     ("crawl", "crawlRepetitions", "5"),
     ("crawl", "crawlOutlineWidth", "5"),
-    ("crawl", "vdsFrameDelay", "30"),
     ("encoder", "tlen", "10"),
     ("encoder", "silencePreTone", "1000"),
 ];

@@ -23,7 +23,7 @@ const SIZE_AND_ORIGIN: &[&str] = &[
 ];
 const ORIGIN: &[&str] = &["crawlTopLeftPixelX", "crawlTopLeftPixelY"];
 
-const EXPECTED_LOCKS: [(&str, &[&str]); 10] = [
+const EXPECTED_LOCKS: [(&str, &[&str]); 12] = [
     ("atari:atari_800xl", SIZE_AND_ORIGIN),
     ("dasdec:dasdec", SIZE_AND_ORIGIN),
     ("dasdec:dasdec_black", SIZE_AND_ORIGIN),
@@ -33,6 +33,8 @@ const EXPECTED_LOCKS: [(&str, &[&str]); 10] = [
     ("gorman:eas_1cg", SIZE_AND_ORIGIN),
     ("image:assets/screens/directv.jpg", SIZE_AND_ORIGIN),
     ("image:assets/screens/xfinity.png", SIZE_AND_ORIGIN),
+    ("trilithic:easycap", SIZE_AND_ORIGIN),
+    ("trilithic:easycap_sdi", SIZE_AND_ORIGIN),
     ("trilithic:psc_902", SIZE_AND_ORIGIN),
 ];
 

@@ -52,6 +52,20 @@ const registry = [
         classification: 'derived checked-in data',
     },
     {
+        name: 'DASDEC header translator (English/Spanish)',
+        outputs: ['assets/js/dasdec-translate.js', 'assets/js/dasdec-translate/'],
+        inputs: ['external eas-translate project (reverse-engineered DASDEC eas_decoder 2.6-0_a03 / 3.1-0_04; tables extracted from the firmware; verified there against 473 translations captured on a DASDEC-1EN, which stay outside this repo)'],
+        generator: 'tools/build-dasdec-translate.mjs',
+        classification: 'synced first-party code + derived data',
+    },
+    {
+        name: 'BMH transformer parity fixture (TTS-ready output)',
+        outputs: ['test/fixtures/bmh-transform.json'],
+        inputs: ['external WRS port of AWIPS BMH MessageTransformer (wrs-main modules/bmh/transformer.py), run with no dictionary rules'],
+        generator: 'tools/bmh-oracle.py',
+        classification: 'derived checked-in test data',
+    },
+    {
         name: 'NWR transmitter registry',
         outputs: ['assets/nwr-pronunciation/transmitters.json'],
         inputs: ['external NWS county coverage listing https://www.weather.gov/source/nwr/JS/CCL.js (parsed as text)', 'warngen/data/civil_sites.json'],

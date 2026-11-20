@@ -331,10 +331,43 @@ impl Tab {
         Ok(())
     }
 
+    /// A real right-button click (trusted events), which fires the page's contextmenu event.
+    pub async fn right_click_at(&self, x: f64, y: f64) -> Result<()> {
+        let page = &self.0.page;
+        page.execute(mouse(DispatchMouseEventType::MouseMoved, x, y, None)?)
+            .await?;
+        for kind in [
+            DispatchMouseEventType::MousePressed,
+            DispatchMouseEventType::MouseReleased,
+        ] {
+            let params = DispatchMouseEventParams::builder()
+                .r#type(kind)
+                .x(x)
+                .y(y)
+                .button(MouseButton::Right)
+                .buttons(2)
+                .click_count(1)
+                .build()
+                .map_err(|e| anyhow!(e))?;
+            page.execute(params).await?;
+        }
+        Ok(())
+    }
+
     /// A real left-button drag from one element's center to another's, in steps so pointermove fires.
     pub async fn drag(&self, from: &str, to: &str) -> Result<()> {
         let (x0, y0) = self.center_of(from).await?;
         let (x1, y1) = self.center_of(to).await?;
+        self.drag_points(x0, y0, x1, y1).await
+    }
+
+    /// A real left-button drag from the element's center by a pixel offset.
+    pub async fn drag_by(&self, from: &str, dx: f64, dy: f64) -> Result<()> {
+        let (x0, y0) = self.center_of(from).await?;
+        self.drag_points(x0, y0, x0 + dx, y0 + dy).await
+    }
+
+    async fn drag_points(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> Result<()> {
         let page = &self.0.page;
         page.execute(mouse(DispatchMouseEventType::MouseMoved, x0, y0, None)?)
             .await?;

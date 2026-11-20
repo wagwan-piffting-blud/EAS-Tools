@@ -65,7 +65,7 @@ function emit(target, type, detail) {
 }
 
 export function defaultSelection() {
-    return { version: 1, enabled: true, source: '' };
+    return { version: 1, enabled: true, source: '', ttsReady: false };
 }
 
 export function readSelection(storage = defaultStorage()) {
@@ -73,6 +73,7 @@ export function readSelection(storage = defaultStorage()) {
     const out = defaultSelection();
     if (!isObject(raw)) return out;
     if (typeof raw.enabled === 'boolean') out.enabled = raw.enabled;
+    if (typeof raw.ttsReady === 'boolean') out.ttsReady = raw.ttsReady;
     if (typeof raw.source === 'string' && parseSourceId(raw.source)) out.source = parseSourceId(raw.source).type === 'national' ? '' : raw.source;
     return out;
 }
@@ -82,6 +83,7 @@ export function writeSelection(next, { storage = defaultStorage(), target = glob
     const current = readSelection(storage);
     const merged = { ...current };
     if (next && typeof next.enabled === 'boolean') merged.enabled = next.enabled;
+    if (next && typeof next.ttsReady === 'boolean') merged.ttsReady = next.ttsReady;
     if (next && next.source !== undefined) {
         const parsed = parseSourceId(next.source);
         if (!parsed) return { ok: false, error: 'Pick an office (wfo:XXX) or transmitter (tx:CALLSIGN).' };
@@ -107,8 +109,8 @@ export function onSelectionChange(handler, { target = globalThis, storage = defa
 }
 
 export function snapshotSelection(storage = defaultStorage()) {
-    const { enabled, source } = readSelection(storage);
-    return { enabled, source };
+    const { enabled, source, ttsReady } = readSelection(storage);
+    return { enabled, source, ttsReady };
 }
 
 function cleanPersonalEntry(raw) {

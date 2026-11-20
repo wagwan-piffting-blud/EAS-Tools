@@ -2,7 +2,8 @@ import { saveFile, responseOk, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEM
 import { createSendMenu, receive } from './handoff.js';
 import { stripArticle as stripEventArticle, unrecognizedEventName } from './custom-events.js';
 import { screenSeverity } from './event-severity.js';
-import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady } from '../E2T/EAS2Text-NG.js';
+import { E2T, allEndecModes, parseHeaderDetailed, resourcesReady, stateNameForLocation } from '../E2T/EAS2Text-NG.js';
+import { EASYCAP_FONTS, EASYCAP_SOURCES, isEasycapSource, normalizeEasycapSettings, easycapDimensions, easycapCharsPerSecond, easycapCrawlActive, easycapGeometry, easycapAreaText, easycapUntilText, easycapZoneName, easycapEventName, easycapMessage, easycapPlainText, wrapEasycapText, easycapHeaderLines, easycapPageLayout, paginateEasycapLines, easycapPageCounter, easycapPageDelayMs, easycapCrawlRow, easycapCrawlHeaderTop, easycapCrawlSpeed } from './easycap-screen.js';
 import { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, getFirstEncodableVideoCodec, Input, BlobSource, CanvasSink, ALL_FORMATS } from './mediabunny/mediabunny.min.js';
 import { SCREEN_TYPE, SCREEN_TOKENS, MAX_SCREEN_PAGES, EVERY_PAGE, openScreenBuilder, listScreens, getScreen, adoptScreen, saveScreen, deleteScreen, parseScreenJson, normalizeScreen, createScreenTemplate, renderScreenCanvas, screenElementBounds, renderScreenFrames, screenTopLeft, screenTextLines, templateChoices } from './crawl-screen-builder.js';
 
@@ -135,7 +136,9 @@ async function initCrawlEditor() {
         'dasdec_blue': { topLeft: { x: 9999, y: 9999 } },
         'eas_1cg': { topLeft: { x: 9999, y: 9999 } },
         'atari_800xl': { topLeft: { x: 9999, y: 9999 } },
-        'psc_902': { topLeft: { x: 0, y: 318 } }
+        'psc_902': { topLeft: { x: 0, y: 318 } },
+        'easycap': { topLeft: { x: 9999, y: 9999 } },
+        'easycap_sdi': { topLeft: { x: 9999, y: 9999 } }
     });
 
     const DASDEC_RENDER_DIMENSIONS = Object.freeze({ width: 640, height: 480 });
@@ -277,11 +280,13 @@ async function initCrawlEditor() {
             { family: 'VCREAS_4.5', file: 'VCREAS_4.5.ttf', description: 'serif font used on EASyPLUS screens/crawls' },
             { family: 'PJF CharGen', file: 'pjf-chargen.ttf', description: 'PajamaFrix\'s font based on the Ross MC1 chargen' },
             { family: 'Luxi Mono', file: 'luximb.ttf', description: 'monospace font used on DASDECs' },
-            { family: 'Bitstream Vera Sans', file: 'VeraBd.ttf', description: 'sans-serif font' },
+            { family: 'Bitstream Vera Sans', file: 'VeraBd.ttf', description: 'sans-serif font used on EASyCAP screens' },
+            { family: 'Bitstream Vera Serif', file: 'VeraSeBd.ttf', description: 'serif font used on EASyCAP screens' },
+            { family: 'Bitstream Vera Sans Mono', file: 'VeraMoBd.ttf', description: 'monospace font used on EASyCAP screens' },
             { family: 'Texscan', file: 'texscan.ttf', description: 'older style of sans-serif crawl font' },
             { family: 'Arial Bold', file: 'arialbd.ttf', description: 'sans-serif font used on Bevelled scrolls' },
             { family: 'EAS-1CG Neue', file: 'eas-1cg-neue.otf', description: 'font used on Gorman Redlich EAS-1CG crawls' },
-            { family: 'VDSwiss V1', file: 'vdswiss-v1.otf', description: 'sans-serif font used on VDS crawls (made by Gigabyte97)' },
+            { family: 'VDSwiss V1.2', file: 'vdswiss-v1.ttf', description: 'sans-serif font used on VDS crawls (made by GigabyteEAS)' },
             { family: 'XBOB-4 8x13', file: 'BDF-8x13.ttf', description: 'bitmap font used on XBOB-4 crawls' },
             { family: 'Atari 800XL', file: 'atari-800xl.ttf', description: 'Atari Classic font used on Atari 800XL override screens' },
             { family: 'Texscan PSC-902', file: 'texscan-psc902.ttf', description: 'Trilithic PSC-902 / Texscan-MSI SpectraGen font, from the character generator ROM' },
@@ -432,7 +437,9 @@ async function initCrawlEditor() {
         clearButton.disabled = true;
     }
 
-    const DEFAULT_VDS_BASE_DELAY = 10;
+    function vdsCharacterFits(charLeft, charRight, viewportLeft, viewportRight) {
+        return charLeft >= viewportLeft - 1e-6 && charRight <= viewportRight + 1e-6;
+    }
 
     function createVdsExportState(ctx, lines, scaleX) {
         const normalizedLines = Array.isArray(lines) ? lines : [];
@@ -451,8 +458,7 @@ async function initCrawlEditor() {
                     char,
                     offset: cursor,
                     width,
-                    state: 'pre',
-                    framesRemaining: 0
+                    state: 'hidden'
                 });
                 cursor += width;
             });
@@ -475,13 +481,12 @@ async function initCrawlEditor() {
         if (!state) return;
         state.charMetrics.forEach((metrics) => {
             metrics.forEach((metric) => {
-                metric.state = 'pre';
-                metric.framesRemaining = 0;
+                metric.state = 'hidden';
             });
         });
     }
 
-    function updateVdsExportState(state, offsetX, viewportWidth, frameDelay, viewportInset = 0) {
+    function updateVdsExportState(state, offsetX, viewportWidth, viewportInset = 0) {
         if (!state) return;
         const inset = Number.isFinite(viewportInset) ? viewportInset : 0;
         const safeWidth = Math.max(0, Number(viewportWidth) || 0);
@@ -495,40 +500,7 @@ async function initCrawlEditor() {
             metrics.forEach((metric) => {
                 const charLeft = lineLeft + metric.offset;
                 const charRight = charLeft + metric.width;
-
-                switch (metric.state) {
-                    case 'pre':
-                        if (charLeft <= viewportRight) {
-                            metric.state = 'delayIn';
-                            metric.framesRemaining = frameDelay;
-                        }
-                        break;
-                    case 'delayIn':
-                        if (charRight < viewportLeft) {
-                            metric.state = 'done';
-                            metric.framesRemaining = 0;
-                        } else if (metric.framesRemaining > 0) {
-                            metric.framesRemaining--;
-                        } else {
-                            metric.state = 'visible';
-                        }
-                        break;
-                    case 'visible':
-                        if (charLeft <= viewportLeft) {
-                            metric.state = 'delayOut';
-                            metric.framesRemaining = frameDelay;
-                        }
-                        break;
-                    case 'delayOut':
-                        if (metric.framesRemaining > 0) {
-                            metric.framesRemaining--;
-                        } else {
-                            metric.state = 'done';
-                        }
-                        break;
-                    default:
-                        break;
-                }
+                metric.state = vdsCharacterFits(charLeft, charRight, viewportLeft, viewportRight) ? 'visible' : 'hidden';
             });
         });
     }
@@ -964,10 +936,11 @@ async function initCrawlEditor() {
         });
     }
 
-    function createPageRotationState(pages, delayMs, image) {
+    function createPageRotationState(pages, delayMs, image, pageDelaysMs = null) {
         return {
             timer: null,
             delay: delayMs,
+            pageDelays: Array.isArray(pageDelaysMs) ? pageDelaysMs : null,
             pages,
             image,
             index: 0,
@@ -1031,6 +1004,10 @@ async function initCrawlEditor() {
                 }
                 this._scheduleNext();
             },
+            _delayFor(index) {
+                const own = this.pageDelays ? Number(this.pageDelays[index]) : NaN;
+                return Number.isFinite(own) && own > 0 ? own : this.delay;
+            },
             _scheduleNext() {
                 if (this.destroyed || this.paused || !Array.isArray(this.pages) || this.pages.length <= 1) {
                     return;
@@ -1043,7 +1020,7 @@ async function initCrawlEditor() {
                     this.index = (this.index + 1) % this.pages.length;
                     this.image.src = this.pages[this.index].src;
                     this._scheduleNext();
-                }, this.delay);
+                }, this._delayFor(this.index));
             }
         };
     }
@@ -1412,14 +1389,6 @@ async function initCrawlEditor() {
         const pxPerFrameMagnitude = (pxPerSecond / fps) * scaleX;
         const pxPerFrameSigned = speedPerSecond >= 0 ? pxPerFrameMagnitude : -pxPerFrameMagnitude;
 
-        const defaultVdsDelay = (Number.isFinite(generator.vdsBaseDelayFrames) && generator.vdsBaseDelayFrames > 0)
-            ? generator.vdsBaseDelayFrames
-            : DEFAULT_VDS_BASE_DELAY;
-        const vdsDelayAt60 = useVdsMode && typeof generator.getEffectiveVdsDelay === 'function'
-            ? generator.getEffectiveVdsDelay(pxPerSecond / TARGET_FRAMES_PER_SECOND)
-            : defaultVdsDelay;
-        const vdsDelay = Math.max(1, Math.round(vdsDelayAt60 * (fps / TARGET_FRAMES_PER_SECOND)));
-
         const framesNeeded = Math.max(1, Math.ceil(travelDistance / Math.max(pxPerFrameMagnitude, 0.01)));
         const restartDelayMs = Number(generator.crawlRestartDelay);
         const restartDelayFrames = (Number.isFinite(restartDelayMs) && restartDelayMs > 0)
@@ -1447,11 +1416,37 @@ async function initCrawlEditor() {
         const dasdecFramesPerPage = dasdecFramesPerPageExact
             ? Math.max(1, Math.round(dasdecFramesPerPageExact))
             : null;
-        const dasdecPageTimingExact = !dasdecFramesPerPageExact
-            || (dasdecFramesPerPageExact >= 1 && Math.abs(dasdecFramesPerPageExact - Math.round(dasdecFramesPerPageExact)) < 1e-6);
+        const dasdecPageDelays = dasdecPages && dasdecRotationDelay && Array.isArray(dasdecBackground.pageDelaysMs)
+            && dasdecBackground.pageDelaysMs.length === dasdecPages.length
+            ? dasdecBackground.pageDelaysMs.map((ms) => (Number(ms) > 0 ? Number(ms) : dasdecRotationDelay))
+            : null;
+        const framesAreWhole = (frames) => frames >= 1 && Math.abs(frames - Math.round(frames)) < 1e-6;
+        const inexactPageDelay = dasdecPageDelays
+            ? dasdecPageDelays.find((ms) => !framesAreWhole((ms * fps) / 1000))
+            : (dasdecFramesPerPageExact && !framesAreWhole(dasdecFramesPerPageExact) ? dasdecRotationDelay : undefined);
+        const dasdecPageTimingExact = inexactPageDelay === undefined;
+        const dasdecPageStarts = dasdecPageDelays
+            ? dasdecPageDelays.reduce((starts, ms) => {
+                starts.push(starts[starts.length - 1] + (ms * fps) / 1000);
+                return starts;
+            }, [0])
+            : null;
+        const dasdecCycleFrames = dasdecPageStarts ? dasdecPageStarts[dasdecPageStarts.length - 1] : 0;
         const dasdecDrivesTotalFrames = Boolean(dasdecBackground && dasdecBackground.drivesTotalFrames);
+        const pageIndexInCycle = (position) => {
+            let index = 0;
+            while (index < dasdecPageDelays.length - 1 && dasdecPageStarts[index + 1] <= position + 1e-9) {
+                index++;
+            }
+            return index;
+        };
         const getDasdecPageForFrame = (dasdecPages && dasdecFramesPerPage)
             ? (frameIndex) => {
+                if (dasdecPageStarts) {
+                    const lastCycle = dasdecDrivesTotalFrames ? dasdecRepetitionOverride * dasdecCycleFrames - 1e-6 : Infinity;
+                    const position = Math.min(frameIndex, lastCycle) % dasdecCycleFrames;
+                    return dasdecPages[pageIndexInCycle(position)];
+                }
                 const rawDisplayIndex = Math.floor(frameIndex / dasdecFramesPerPageExact + 1e-9);
                 const displayIndex = dasdecDrivesTotalFrames
                     ? Math.min(dasdecTotalDisplays - 1, rawDisplayIndex)
@@ -1460,8 +1455,13 @@ async function initCrawlEditor() {
             }
             : null;
         if (getDasdecPageForFrame && dasdecDrivesTotalFrames) {
-            totalFrames = Math.max(1, Math.round(dasdecTotalDisplays * dasdecFramesPerPageExact));
+            totalFrames = dasdecPageStarts
+                ? Math.max(1, Math.round(dasdecRepetitionOverride * dasdecCycleFrames))
+                : Math.max(1, Math.round(dasdecTotalDisplays * dasdecFramesPerPageExact));
         }
+        const dasdecPageStartFrame = (page) => (dasdecPageStarts
+            ? Math.round(dasdecPageStarts[page] || 0)
+            : page * (dasdecFramesPerPage || 0));
 
         const isTransparentBackground = Boolean(
             generator._transparentBg ||
@@ -1568,7 +1568,7 @@ async function initCrawlEditor() {
                 ctx.clip();
             }
             if (useVdsMode) {
-                updateVdsExportState(vdsState, translatedOffsetX, Math.max(0, width - inset * 2), vdsDelay, inset);
+                updateVdsExportState(vdsState, translatedOffsetX, Math.max(0, width - inset * 2), inset);
                 drawVdsExportFrame(ctx, vdsState, translatedOffsetX, centerY, scaledFontSize, renderText);
             } else {
                 lines.forEach((line, index) => {
@@ -1627,7 +1627,8 @@ async function initCrawlEditor() {
             transparentOutput,
             dasdecPageCount: dasdecPages ? dasdecPages.length : 0,
             dasdecFramesPerPage: dasdecFramesPerPage || 0,
-            dasdecRotationDelayMs: getDasdecPageForFrame ? dasdecRotationDelay : 0,
+            dasdecPageStartFrame,
+            dasdecRotationDelayMs: getDasdecPageForFrame ? (inexactPageDelay || dasdecRotationDelay) : 0,
             dasdecPageTimingExact: !getDasdecPageForFrame || dasdecPageTimingExact,
             drawFrame,
             renderAt,
@@ -1747,7 +1748,7 @@ async function initCrawlEditor() {
             paletteSource = createCrawlFrameSource(generator, canvas, { ...sourceOptions, ignoreVds: true });
             const sampleIndices = new Set([0, Math.floor(Math.max(1, paletteSource.framesPerCycle) / 2)]);
             for (let page = 0; page < Math.min(4, paletteSource.dasdecPageCount); page++) {
-                sampleIndices.add(Math.min(totalFrames - 1, page * paletteSource.dasdecFramesPerPage));
+                sampleIndices.add(Math.min(totalFrames - 1, paletteSource.dasdecPageStartFrame(page)));
             }
             const sampleBuffers = [];
             for (const index of sampleIndices) {
@@ -2249,8 +2250,6 @@ async function initCrawlEditor() {
             this.msPerFrame = 1000 / 30;
             this.lastTimestamp = null;
             this.vdsMode = false;
-            this.vdsBaseDelayFrames = DEFAULT_VDS_BASE_DELAY;
-            this.vdsReferenceSpeed = Math.max(0.01, Math.abs(this.speed) || 2);
             this.vdsState = null;
             this.fontFamily = 'Arial';
             this.fontStyle = 'normal';
@@ -2568,8 +2567,7 @@ async function initCrawlEditor() {
                 char: metric.char,
                 offset: metric.offset,
                 width: metric.width,
-                state: metric.state,
-                framesRemaining: metric.framesRemaining
+                state: metric.state
             })));
             return {
                 key: state.key,
@@ -2664,10 +2662,9 @@ async function initCrawlEditor() {
                     this._recordFrameSnapshot();
                 }
 
-                const effectiveDelay = this.getEffectiveVdsDelay();
                 this._runWithTopLeftTranslation(translation, () => {
                     if (advance) {
-                        this._updateVdsCharacters(state, effectiveDelay);
+                        this._updateVdsCharacters(state, Number.isFinite(translation.x) ? translation.x : 0);
                     }
                     this._drawVdsLines(state, renderText);
                 });
@@ -3103,8 +3100,7 @@ async function initCrawlEditor() {
                         char,
                         offset: cursor,
                         width,
-                        state: 'pre',
-                        framesRemaining: 0
+                        state: 'hidden'
                     });
                     cursor += width;
                 });
@@ -3129,68 +3125,24 @@ async function initCrawlEditor() {
         _resetVdsCharacters(state) {
             state.charMetrics.forEach((metrics) => {
                 metrics.forEach((metric) => {
-                    metric.state = 'pre';
-                    metric.framesRemaining = 0;
+                    metric.state = 'hidden';
                 });
             });
         }
 
-        getEffectiveVdsDelay(speedOverride) {
-            const referenceSpeed = Math.max(0.01, this.vdsReferenceSpeed);
-            const currentSpeed = Math.max(
-                0.01,
-                Number.isFinite(speedOverride) ? Math.abs(speedOverride) : Math.abs(this.speed) || referenceSpeed
-            );
-            const scaled = (this.vdsBaseDelayFrames * referenceSpeed) / currentSpeed;
-            return Math.max(1, Math.round(scaled));
-        }
-
-        _updateVdsCharacters(state, frameDelay) {
+        _updateVdsCharacters(state, translationX = 0) {
             const inset = this._getEffectiveInset();
             const viewportLeft = inset;
             const viewportRight = Math.max(inset, this.canvas.width - inset);
 
             state.charMetrics.forEach((metrics, lineIdx) => {
                 const width = state.lineWidths[lineIdx] || 0;
-                const lineLeft = this.offsetX - width / 2;
+                const lineLeft = this.offsetX + translationX - width / 2;
 
                 metrics.forEach((metric) => {
                     const charLeft = lineLeft + metric.offset;
                     const charRight = charLeft + metric.width;
-
-                    switch (metric.state) {
-                        case 'pre':
-                            if (charLeft <= viewportRight) {
-                                metric.state = 'delayIn';
-                                metric.framesRemaining = frameDelay;
-                            }
-                            break;
-                        case 'delayIn':
-                            if (charRight < viewportLeft) {
-                                metric.state = 'done';
-                                metric.framesRemaining = 0;
-                            } else if (metric.framesRemaining > 0) {
-                                metric.framesRemaining--;
-                            } else {
-                                metric.state = 'visible';
-                            }
-                            break;
-                        case 'visible':
-                            if (charLeft <= viewportLeft) {
-                                metric.state = 'delayOut';
-                                metric.framesRemaining = frameDelay;
-                            }
-                            break;
-                        case 'delayOut':
-                            if (metric.framesRemaining > 0) {
-                                metric.framesRemaining--;
-                            } else {
-                                metric.state = 'done';
-                            }
-                            break;
-                        default:
-                            break;
-                    }
+                    metric.state = vdsCharacterFits(charLeft, charRight, viewportLeft, viewportRight) ? 'visible' : 'hidden';
                 });
             });
         }
@@ -3418,7 +3370,7 @@ async function initCrawlEditor() {
         return { type, source };
     }
 
-    const ALERT_PICKER_SOURCES = new Set(['easyplus', 'easyplus_gray', 'atari_800xl', PSC_902_SOURCE]);
+    const ALERT_PICKER_SOURCES = new Set(['easyplus', 'easyplus_gray', 'atari_800xl', PSC_902_SOURCE, ...EASYCAP_SOURCES]);
 
     function premadeUsesAlertPickers(value) {
         const descriptor = parseBackgroundSelectionValue(value);
@@ -3434,6 +3386,7 @@ async function initCrawlEditor() {
             return;
         }
         settings.style.display = premadeUsesAlertPickers(value) ? 'block' : 'none';
+        syncEasycapSettingsVisibility(value);
     }
 
     let alertPickersSuppressed = false;
@@ -3677,6 +3630,11 @@ async function initCrawlEditor() {
                 height: PSC_902_RENDER_DIMENSIONS.height,
                 topLeft: initialTopLeft
             }, { premade: true });
+            return;
+        }
+
+        if (selectedEasycapSource(premadeSelect.value)) {
+            updateCrawlControlsFromAsset(easycapSizing(descriptor.source, readEasycapSettings()), { premade: true });
             return;
         }
 
@@ -4736,6 +4694,316 @@ async function initCrawlEditor() {
         return img;
     }
 
+    const EASYCAP_SETTING_IDS = Object.freeze({
+        title: 'crawlEasycapTitle',
+        showEvent: 'crawlEasycapShowEvent',
+        pageNumbersBottom: 'crawlEasycapPageNumbersBottom',
+        font: 'crawlEasycapFont',
+        speed: 'crawlEasycapSpeed',
+        background: 'crawlEasycapBackground',
+        displayMode: 'crawlEasycapDisplayMode',
+        crawl: 'crawlEasycapCrawl',
+        position: 'crawlEasycapPosition',
+        sdiSpeed: 'crawlEasycapSdiSpeed'
+    });
+    const EASYCAP_PREMADE_VALUES = Object.freeze({
+        easycap: 'trilithic:easycap',
+        easycap_sdi: 'trilithic:easycap_sdi'
+    });
+    const EASYCAP_LABELS = Object.freeze({
+        easycap: 'Trilithic EASyCAP',
+        easycap_sdi: 'Trilithic EASyCAP (SDI)'
+    });
+
+    function buildEasycapSettingsUi() {
+        if (document.getElementById('easycapSettings')) {
+            return;
+        }
+        const anchor = document.getElementById('easyplusSettings');
+        if (!anchor || !anchor.parentNode) {
+            return;
+        }
+        const defaults = normalizeEasycapSettings();
+        const container = document.createElement('div');
+        container.id = 'easycapSettings';
+        container.hidden = true;
+
+        const addRow = (scope, labelText, control) => {
+            const row = document.createElement('div');
+            row.className = 'easycap-setting';
+            if (scope) {
+                row.dataset.easycap = scope;
+            }
+            row.appendChild(document.createElement('br'));
+            const label = document.createElement('label');
+            label.htmlFor = control.id;
+            label.textContent = labelText;
+            row.appendChild(label);
+            row.appendChild(document.createTextNode(' '));
+            row.appendChild(control);
+            container.appendChild(row);
+        };
+        const input = (key, type, attrs = {}) => {
+            const node = document.createElement('input');
+            node.type = type;
+            node.id = EASYCAP_SETTING_IDS[key];
+            Object.entries(attrs).forEach(([name, value]) => node.setAttribute(name, String(value)));
+            if (type === 'checkbox') {
+                node.checked = defaults[key] === true;
+            } else {
+                node.value = String(defaults[key]);
+            }
+            return node;
+        };
+        const select = (key, options) => {
+            const node = document.createElement('select');
+            node.id = EASYCAP_SETTING_IDS[key];
+            options.forEach(([value, text]) => node.add(new Option(text, value)));
+            node.value = String(defaults[key]);
+            return node;
+        };
+
+        addRow('', 'Title Text (blank for none):', input('title', 'text', { maxlength: 80 }));
+        addRow('', 'Show Event Text:', input('showEvent', 'checkbox'));
+        addRow('', 'Show page numbers at the bottom of the screen (off puts them at the top):', input('pageNumbersBottom', 'checkbox'));
+        addRow('', 'Font:', select('font', [['sans', 'Sans'], ['serif', 'Serif'], ['mono', 'Monospace']]));
+        addRow('analog', 'Speed (characters per second, 1-99):', input('speed', 'number', { min: 1, max: 99 }));
+        addRow('', 'Background Color:', input('background', 'color'));
+        addRow('sdi', 'Display Mode:', select('displayMode', [['480i', '480i (640x480)'], ['720p', '720p (1280x720)'], ['1080i', '1080i (1920x1080)']]));
+        addRow('sdi', 'Enable Crawl:', input('crawl', 'checkbox'));
+        addRow('sdi', 'Crawl Position (1 is the top of the screen, 12 the bottom):', input('position', 'number', { min: 1, max: 12 }));
+        addRow('sdi', 'Speed (1-10; 1 is the slowest):', input('sdiSpeed', 'number', { min: 1, max: 10 }));
+
+        const note = document.createElement('p');
+        note.id = 'easycapSettingsNote';
+        note.className = 'inline-note';
+        note.textContent = 'These match the EASyCAP\'s Video Output Configuration. Each page stays up for its characters at the set speed, and "Repetitions" sets how many times the alert text repeats. With the SDI crawl on, the title stays on screen and the alert text crawls on the chosen row.';
+        container.appendChild(note);
+        anchor.insertAdjacentElement('afterend', container);
+    }
+
+    function readEasycapSettings() {
+        const raw = {};
+        Object.entries(EASYCAP_SETTING_IDS).forEach(([key, id]) => {
+            const node = document.getElementById(id);
+            if (node) {
+                raw[key] = node.type === 'checkbox' ? node.checked : node.value;
+            }
+        });
+        return normalizeEasycapSettings(raw);
+    }
+
+    function applyEasycapSettingsToControls(settings) {
+        if (!settings || typeof settings !== 'object') {
+            return;
+        }
+        Object.entries(EASYCAP_SETTING_IDS).forEach(([key, id]) => {
+            const node = document.getElementById(id);
+            if (!node || settings[key] === undefined || settings[key] === null) {
+                return;
+            }
+            if (node.type === 'checkbox') {
+                node.checked = settings[key] === true;
+            } else {
+                node.value = String(settings[key]);
+            }
+        });
+    }
+
+    function syncEasycapSettingsVisibility(value) {
+        const container = document.getElementById('easycapSettings');
+        if (!container) {
+            return;
+        }
+        const descriptor = parseBackgroundSelectionValue(value);
+        const source = descriptor && descriptor.type === 'trilithic' ? descriptor.source : '';
+        container.hidden = !isEasycapSource(source);
+        const sdi = source === 'easycap_sdi';
+        container.querySelectorAll('[data-easycap]').forEach((row) => {
+            row.hidden = row.dataset.easycap === 'sdi' ? !sdi : sdi;
+        });
+    }
+
+    function selectedEasycapSource(premadeValue) {
+        const descriptor = parseBackgroundSelectionValue(premadeValue);
+        return descriptor && descriptor.type === 'trilithic' && isEasycapSource(descriptor.source) ? descriptor.source : '';
+    }
+
+    function easycapTimeZone() {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        } catch (err) {
+            return 'UTC';
+        }
+    }
+
+    async function formatEasycap(rawText, e2tMode, alertChoice) {
+        const source = String(rawText ?? '').trim();
+        if (e2tMode === true && source) {
+            const overrideTzInput = document.getElementById('crawlUseOverrideTZ');
+            const timezoneOverride = overrideTzInput && overrideTzInput.value ? overrideTzInput.value : null;
+            try {
+                await resourcesReady;
+                const detail = parseHeaderDetailed(source, timezoneOverride, false, crawlSenderOverride());
+                const localZone = easycapTimeZone();
+                return {
+                    header: true,
+                    eventText: easycapEventName(detail.eventName),
+                    message: easycapMessage({
+                        originatorCode: detail.originator,
+                        originatorName: detail.originatorName,
+                        eventName: detail.eventName,
+                        areaText: easycapAreaText(detail.locationNames, (code) => stateNameForLocation(code)),
+                        untilText: easycapUntilText(detail.endTime, localZone, easycapZoneName(detail.endTime, timezoneOverride || localZone)),
+                        sender: detail.senderId
+                    })
+                };
+            } catch (error) {
+                console.error('Failed to parse the EAS header for the EASyCAP screen:', error);
+            }
+        }
+        const pickedEventCode = e2tMode !== true && alertChoice ? String(alertChoice.eventCode || '').trim() : '';
+        const pickedEventName = pickedEventCode ? mapEasyplusEventCodeToFullName(pickedEventCode) : '';
+        return {
+            header: false,
+            eventText: easycapEventName(pickedEventName),
+            message: source
+        };
+    }
+
+    function easycapFont(settings, size) {
+        return `normal ${Math.round(size * 100) / 100}px "${EASYCAP_FONTS[settings.font]}"`;
+    }
+
+    async function renderEasycapScreens(source, model, settings) {
+        const { width, height } = easycapDimensions(source, settings);
+        const geometry = easycapGeometry(width, height);
+        const titleFont = easycapFont(settings, geometry.titleSize);
+        const bodyFont = easycapFont(settings, geometry.bodySize);
+        await ensureFontsReady();
+        await Promise.all([document.fonts.load(titleFont), document.fonts.load(bodyFont)]);
+        const measureCtx = document.createElement('canvas').getContext('2d');
+        const measureWith = (font) => (text) => {
+            measureCtx.font = font;
+            return measureCtx.measureText(text).width;
+        };
+        const header = easycapHeaderLines({ title: settings.title, eventText: model.eventText, showEvent: settings.showEvent }, measureWith(titleFont), geometry.wrapWidth);
+
+        const draw = (headerBaselines, bodyLines, bodyStart, counter, counterBaseline) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = settings.background;
+            ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.font = titleFont;
+            header.forEach((line, index) => ctx.fillText(line, width / 2, headerBaselines[index]));
+            ctx.font = bodyFont;
+            bodyLines.forEach((line, index) => ctx.fillText(line, width / 2, bodyStart + index * geometry.bodyPitch));
+            if (counter) {
+                ctx.fillText(counter, width / 2, counterBaseline);
+            }
+            const img = new Image();
+            img.width = width;
+            img.height = height;
+            img.src = canvas.toDataURL('image/png');
+            return img;
+        };
+
+        const cps = easycapCharsPerSecond(source, settings);
+        if (easycapCrawlActive(source, settings)) {
+            const fontSize = Math.round(geometry.bodySize);
+            const row = easycapCrawlRow(settings.position, height, fontSize);
+            const top = easycapCrawlHeaderTop(geometry, header.length, row);
+            const page = draw(header.map((_, index) => top + index * geometry.titlePitch), [], 0, '', 0);
+            await waitForBackgroundImageLoad(page);
+            const crawlStyle = {
+                fontFamily: EASYCAP_FONTS[settings.font],
+                fontSize,
+                speed: easycapCrawlSpeed(cps, fontSize),
+                textColor: '#FFFFFF'
+            };
+            window.__easycapLastRender = { source, width, height, header, pages: [], delays: [], crawl: { ...crawlStyle, top: row.top, row: row.row } };
+            return { pages: [page], delays: [], width, height, crawl: { ...crawlStyle, top: row.top } };
+        }
+
+        const bodyLines = wrapEasycapText(model.message, measureWith(bodyFont), geometry.wrapWidth);
+        const counterAtTop = !settings.pageNumbersBottom;
+        let layout = easycapPageLayout(geometry, header.length, { counterAtTop });
+        const pages = paginateEasycapLines(bodyLines, layout.linesPerPage);
+        if (pages.length === 1 && counterAtTop) {
+            layout = easycapPageLayout(geometry, header.length);
+        }
+        const images = pages.map((lines, index) => draw(layout.headerBaselines, lines, layout.bodyStart, easycapPageCounter(index, pages.length), layout.counterBaseline));
+        await Promise.all(images.map(waitForBackgroundImageLoad));
+        const delays = pages.map((lines) => easycapPageDelayMs(lines, cps));
+        window.__easycapLastRender = { source, width, height, header, pages, delays, crawl: null };
+        return { pages: images, delays, width, height, crawl: null };
+    }
+
+    async function easycapHeaderText(rawHeader) {
+        const header = String(rawHeader ?? '').trim();
+        if (!crawlSenderOverride() && (!window.EASREGEX || !window.EASREGEX.test(header))) {
+            return null;
+        }
+        const model = await formatEasycap(header, true, null);
+        return model.header ? easycapPlainText(model.message) : null;
+    }
+
+    function easycapSizing(source, settings) {
+        const { width, height } = easycapDimensions(source, settings);
+        if (!easycapCrawlActive(source, settings)) {
+            return { width, height, topLeft: getPremadeTopLeft(source) };
+        }
+        const fontSize = Math.round(easycapGeometry(width, height).bodySize);
+        return { width, height, topLeft: { x: 0, y: easycapCrawlRow(settings.position, height, fontSize).top } };
+    }
+
+    let lastEasycapCrawlStyleKey = '';
+
+    function applyEasycapCrawlStyle(style, controls) {
+        if (!style) {
+            lastEasycapCrawlStyleKey = '';
+            return false;
+        }
+        const key = JSON.stringify(style);
+        if (key === lastEasycapCrawlStyleKey) {
+            return false;
+        }
+        lastEasycapCrawlStyleKey = key;
+        const set = (id, value) => {
+            const node = document.getElementById(id);
+            if (!node) return;
+            if (node.type === 'checkbox') {
+                node.checked = value === true;
+            } else {
+                node.value = String(value);
+            }
+        };
+        set('crawlFontFamily', style.fontFamily);
+        set('crawlFontSize', style.fontSize);
+        set('crawlSpeed', style.speed);
+        set('crawlTextColor', style.textColor);
+        set('crawlOutlineWidth', 0);
+        set('crawlKerning', 0);
+        set('crawlTextWidth', 100);
+        set('crawlUseVDSMode', false);
+        if (controls) {
+            controls.fontFamily = style.fontFamily;
+            controls.fontSize = String(style.fontSize);
+            controls.speed = String(style.speed);
+            controls.textColor = style.textColor;
+            controls.outlineWidth = '0';
+            controls.crawlKerning = '0';
+            controls.crawlTextWidth = '100';
+            controls.useVDSMode = false;
+        }
+        return true;
+    }
+
     async function loadCrawlBackgroundAssets(mode) {
         if (mode !== 'premade') {
             stopDasdecRotationState();
@@ -5011,6 +5279,61 @@ async function initCrawlEditor() {
                             };
                         }
                     }
+
+                    else if (selectedEasycapSource(premadeSelect.value)) {
+                        stopDasdecRotationState();
+                        window.__dasdecBackground = null;
+                        const crawlModeValue = document.getElementById('crawlMode').value;
+                        const rawText = crawlModeValue === 'header'
+                            ? document.getElementById('crawlRawHeader').value
+                            : document.getElementById('crawlText').value;
+                        const settings = readEasycapSettings();
+                        const model = await formatEasycap(rawText, crawlModeValue === 'header', readAlertPickerChoice());
+                        const rendered = await renderEasycapScreens(descriptor.source, model, settings);
+                        const sizing = easycapSizing(descriptor.source, settings);
+                        if (rendered.crawl) {
+                            return {
+                                image: rendered.pages[0],
+                                width: rendered.width,
+                                height: rendered.height,
+                                topLeft: sizing.topLeft,
+                                source: descriptor.source,
+                                crawlStyle: {
+                                    fontFamily: rendered.crawl.fontFamily,
+                                    fontSize: rendered.crawl.fontSize,
+                                    speed: rendered.crawl.speed,
+                                    textColor: rendered.crawl.textColor
+                                }
+                            };
+                        }
+                        if (rendered.pages.length) {
+                            const repetitionsEl = document.getElementById('crawlRepetitions');
+                            const repetitions = Math.max(1, Math.min(10, Math.round(Number(repetitionsEl ? repetitionsEl.value : 1) || 1)));
+                            const rotatingImage = new Image();
+                            rotatingImage.src = rendered.pages[0].src;
+                            await waitForBackgroundImageLoad(rotatingImage);
+                            window.__dasdecBackground = {
+                                pages: rendered.pages,
+                                rotationDelayMs: rendered.delays[0],
+                                pageDelaysMs: rendered.delays,
+                                repetitions,
+                                totalDisplays: repetitions * rendered.pages.length,
+                                drivesTotalFrames: true,
+                                width: rendered.width,
+                                height: rendered.height
+                            };
+                            const rotationState = createPageRotationState(rendered.pages, rendered.delays[0], rotatingImage, rendered.delays);
+                            window.__dasdecRotationState = rotationState;
+                            rotationState.resume();
+                            return {
+                                image: rotatingImage,
+                                width: rendered.width,
+                                height: rendered.height,
+                                topLeft: sizing.topLeft,
+                                source: descriptor.source
+                            };
+                        }
+                    }
                 }
             }
         }
@@ -5105,7 +5428,6 @@ async function initCrawlEditor() {
             overrideSender: value('crawlOverrideSender').trim(),
             endecMode: value('endecMode'),
             useVDSMode: checked('crawlUseVDSMode'),
-            vdsFrameDelay: value('vdsFrameDelay'),
             fontFamily: value('crawlFontFamily') || 'Arial',
             fontStyle: value('crawlFontStyle') || 'normal',
             outlineColor: value('crawlOutlineColor'),
@@ -5132,7 +5454,11 @@ async function initCrawlEditor() {
             crawlTopLeftManual: checked('crawlTopLeftManual'),
             repetitions: value('crawlRepetitions'),
             crawlKerning: value('crawlKerning'),
-            crawlTextWidth: value('crawlTextWidth')
+            crawlTextWidth: value('crawlTextWidth'),
+            ...Object.fromEntries(Object.values(EASYCAP_SETTING_IDS).map((id) => {
+                const node = document.getElementById(id);
+                return [id, node && node.type === 'checkbox' ? node.checked : (node ? node.value : '')];
+            }))
         };
     }
 
@@ -5162,7 +5488,8 @@ async function initCrawlEditor() {
             : null;
         const source = descriptor ? descriptor.source : '';
         const isScreen = Boolean(descriptor && descriptor.type === SCREEN_TYPE);
-        const usesCrawlText = isScreen || isDasdecSource(source) || source === 'eas_1cg' || source === 'atari_800xl' || source === PSC_902_SOURCE;
+        const easycap = Boolean(selectedEasycapSource(controls.crawlBackgroundPremade)) && controls.crawlBackgroundMode === 'premade';
+        const usesCrawlText = isScreen || isDasdecSource(source) || source === 'eas_1cg' || source === 'atari_800xl' || source === PSC_902_SOURCE || easycap;
         const screen = isScreen ? getScreen(source) : null;
         return [
             controls.crawlBackgroundMode,
@@ -5174,7 +5501,8 @@ async function initCrawlEditor() {
             controls.easyplusEventCode,
             usesCrawlText ? `${controls.crawlMode}:${controls.rawHeader}:${controls.text}` : '',
             usesCrawlText ? `${controls.useLocalTZ}:${controls.useOverrideTZ}:${controls.overrideSender}` : '',
-            usesCrawlText ? controls.repetitions : ''
+            usesCrawlText ? controls.repetitions : '',
+            easycap ? JSON.stringify(readEasycapSettings()) : ''
         ].join('|');
     }
 
@@ -5196,13 +5524,16 @@ async function initCrawlEditor() {
         if (!controls.rawHeader || !controls.rawHeader.trim()) {
             return null;
         }
-        const key = [controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.overrideSender, controls.endecMode].join('|');
+        const easycap = controls.crawlBackgroundMode === 'premade' && Boolean(selectedEasycapSource(controls.crawlBackgroundPremade));
+        const key = [controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.overrideSender, easycap ? 'easycap' : controls.endecMode].join('|');
         if (crawlAssetCache.headerKey === key) {
             return crawlAssetCache.headerText;
         }
         let readable = null;
         try {
-            readable = await header_to_readable(controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.endecMode, controls.overrideSender || null);
+            readable = easycap
+                ? await easycapHeaderText(controls.rawHeader)
+                : await header_to_readable(controls.rawHeader, controls.useLocalTZ, controls.useOverrideTZ, controls.endecMode, controls.overrideSender || null);
         } catch (err) {
             readable = null;
         }
@@ -5245,12 +5576,19 @@ async function initCrawlEditor() {
             barYInput.disabled = controls.crawlVideoBarPosition !== 'custom';
         }
 
-        const resolvedFontFamily = await resolveCrawlFontForApply(controls);
+        let resolvedFontFamily = await resolveCrawlFontForApply(controls);
         await ensureFontsReady();
         try {
             await document.fonts.load(`${controls.fontStyle} ${controls.fontSize}px "${resolvedFontFamily}"`);
         } catch (err) { }
         const backgroundAssets = await loadCrawlBackgroundForApply(controls);
+        const easycapStyle = controls.crawlBackgroundMode === 'premade' ? backgroundAssets.crawlStyle : null;
+        if (applyEasycapCrawlStyle(easycapStyle, controls)) {
+            resolvedFontFamily = await resolveCrawlFontForApply(controls);
+            try {
+                await document.fonts.load(`${controls.fontStyle} ${controls.fontSize}px "${resolvedFontFamily}"`);
+            } catch (err) { }
+        }
         const resolvedText = await resolveCrawlTextForApply(controls);
 
         if (token !== crawlApplyToken) return;
@@ -5321,7 +5659,6 @@ async function initCrawlEditor() {
             generator.clearTopLeftOffset();
         }
 
-        const parsedVdsDelay = Number(controls.vdsFrameDelay);
         generator.setSpeed(controls.speed);
         generator.setFontSize(controls.fontSize);
         generator.setTextColor(controls.textColor);
@@ -5333,9 +5670,6 @@ async function initCrawlEditor() {
         generator.setOutlineJoin(controls.outlineJoin);
         generator.setCrawlInset(controls.crawlInset);
         generator.setCrawlRestartDelay(controls.crawlRestartDelay);
-        generator.vdsBaseDelayFrames = Number.isFinite(parsedVdsDelay) && parsedVdsDelay > 0
-            ? parsedVdsDelay
-            : DEFAULT_VDS_BASE_DELAY;
         generator.setVDSMode(controls.useVDSMode);
         generator.setRepetitions(controls.repetitions);
         syncDasdecRepetitions(controls.repetitions);
@@ -5386,10 +5720,12 @@ async function initCrawlEditor() {
         }
     }
 
+    buildEasycapSettingsUi();
+
     const CRAWL_LIVE_INPUT_IDS = [
         'crawlText', 'crawlRawHeader', 'crawlSpeed', 'crawlFontSize', 'crawlTextColor',
         'crawlBgColor', 'crawlMode', 'crawlUseLocalTZ', 'crawlUseOverrideTZ', 'crawlOverrideSender', 'endecMode',
-        'crawlUseVDSMode', 'vdsFrameDelay', 'crawlFontFamily', 'crawlCustomFontFile',
+        'crawlUseVDSMode', 'crawlFontFamily', 'crawlCustomFontFile',
         'crawlFontStyle', 'crawlOutlineColor', 'crawlOutlineWidth', 'crawlOutlineJoin',
         'crawlWidth', 'crawlHeight', 'crawlInset', 'crawlTopLeftManual',
         'crawlTopLeftPixelX', 'crawlTopLeftPixelY',
@@ -5397,7 +5733,8 @@ async function initCrawlEditor() {
         'crawlBackgroundMode', 'crawlBackgroundImageFile', 'crawlBackgroundVideoFile', 'crawlBackgroundVideoFit', 'crawlBackgroundPremadeSelect',
         'crawlVideoBarPosition', 'crawlVideoBarY', 'crawlVideoBarHeight', 'crawlVideoBarOpacity',
         'crawlVideoStart', 'crawlVideoEnd', 'crawlVideoStopAtEnd',
-        'easyplusOriginator', 'easyplusEventCode'
+        'easyplusOriginator', 'easyplusEventCode',
+        ...Object.values(EASYCAP_SETTING_IDS)
     ];
 
     CRAWL_LIVE_INPUT_IDS.forEach((id) => {
@@ -5952,7 +6289,6 @@ async function initCrawlEditor() {
         crawlUseOverrideTZ: 'useOverrideTZ',
         endecMode: 'endecMode',
         crawlUseVDSMode: 'useVDSMode',
-        vdsFrameDelay: 'vdsFrameDelay',
         crawlFontFamily: 'fontFamily',
         crawlFontStyle: 'fontStyle',
         crawlOutlineColor: 'outlineColor',
@@ -6371,6 +6707,11 @@ async function initCrawlEditor() {
     if (!premadeSelectForPsc902.querySelector('option[value="trilithic:psc_902"]')) {
         premadeSelectForPsc902.add(new Option('Trilithic PSC-902 (Texscan-MSI)', 'trilithic:psc_902'));
     }
+    Object.entries(EASYCAP_PREMADE_VALUES).forEach(([source, value]) => {
+        if (!premadeSelectForPsc902.querySelector(`option[value="${value}"]`)) {
+            premadeSelectForPsc902.add(new Option(EASYCAP_LABELS[source], value));
+        }
+    });
 
     document.getElementById('crawlBackgroundPremadeSelect').addEventListener('change', (event) => {
         syncEasyplusSettingsVisibility(event.target.value);
@@ -6446,6 +6787,8 @@ async function initCrawlEditor() {
                 { id: 'dasdec_blue', label: 'DASDEC (blue)', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'dasdec:dasdec_blue', endecMode: 'DAS2PLUS' } },
                 { id: 'eas_1cg', label: 'Gorman Redlich EAS-1CG', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'gorman:eas_1cg', endecMode: 'GORMAN' } },
                 { id: 'atari_800xl', label: 'Atari 800XL Override Screen', settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: 'atari:atari_800xl' } },
+                { id: 'easycap', label: EASYCAP_LABELS.easycap, settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: EASYCAP_PREMADE_VALUES.easycap } },
+                { id: 'easycap_sdi', label: EASYCAP_LABELS.easycap_sdi, settings: { crawlBackgroundMode: 'premade', crawlBackgroundPremadeSelect: EASYCAP_PREMADE_VALUES.easycap_sdi } },
                 {
                     id: PSC_902_SOURCE,
                     label: 'Trilithic PSC-902 (Texscan-MSI)',
@@ -6841,7 +7184,9 @@ async function initCrawlEditor() {
                 const endecMode = params?.endecMode || null;
                 const useLocalTZ = document.getElementById('crawlUseLocalTZ')?.checked === true;
                 const overrideTZ = document.getElementById('crawlUseOverrideTZ')?.value || '';
-                const text = await header_to_readable(rawHeader, useLocalTZ, overrideTZ, endecMode, crawlSenderOverride());
+                const text = selectedEasycapSource(params?.premade)
+                    ? await easycapHeaderText(rawHeader)
+                    : await header_to_readable(rawHeader, useLocalTZ, overrideTZ, endecMode, crawlSenderOverride());
                 window.EASBridge.send('crawl:headerConverted', { text: text || '' });
 
                 try {
@@ -6875,6 +7220,7 @@ async function initCrawlEditor() {
                 setVal('easyplusEventCode', params?.easyplusEventCode);
                 setVal('crawlRepetitions', params?.repetitions);
                 setOverrideSender(params);
+                applyEasycapSettingsToControls(params?.easycap);
 
                 alertPickersSuppressed = params?.alertPickers !== true;
                 let assets;
@@ -6888,10 +7234,12 @@ async function initCrawlEditor() {
 
                 let images = [];
                 let rotationDelayMs = 0;
+                let rotationDelaysMs = [];
                 const dasdec = window.__dasdecBackground;
                 if (dasdec && Array.isArray(dasdec.pages) && dasdec.pages.length) {
                     images = dasdec.pages.map((p) => p && p.src).filter(Boolean);
                     rotationDelayMs = Number.isFinite(dasdec.rotationDelayMs) ? dasdec.rotationDelayMs : 4000;
+                    rotationDelaysMs = Array.isArray(dasdec.pageDelaysMs) && dasdec.pageDelaysMs.length === images.length ? dasdec.pageDelaysMs.slice() : [];
                 } else if (assets && assets.image && assets.image.src) {
                     images = [assets.image.src];
                 }
@@ -6907,11 +7255,14 @@ async function initCrawlEditor() {
                     applySizing: applySizing,
                     images: images,
                     rotationDelayMs: rotationDelayMs,
+                    rotationDelaysMs: rotationDelaysMs,
+                    crawlStyle: assets && assets.crawlStyle ? assets.crawlStyle : null,
                     width: assets && Number.isFinite(assets.width) ? assets.width : 0,
                     height: assets && Number.isFinite(assets.height) ? assets.height : 0,
                     topLeftX: tlx,
                     topLeftY: tly,
                     scroll: !PREMADE_STATIC_SOURCES.has(source)
+                        && !(selectedEasycapSource(premade) && !easycapCrawlActive(source, readEasycapSettings()))
                         && !(descriptor && descriptor.type === SCREEN_TYPE && getScreen(source) && getScreen(source).crawl && getScreen(source).crawl.enabled === false)
                 });
             } catch (err) {
@@ -6952,7 +7303,6 @@ async function initCrawlEditor() {
                 setVal('crawlRestartDelay', params.restartDelay);
                 setVal('crawlBackgroundMode', params.bgMode || 'solid');
                 setChk('crawlUseVDSMode', params.vdsMode);
-                setVal('vdsFrameDelay', params.vdsFrameDelay);
                 const premadeMode = (params.bgMode || 'solid') === 'premade';
                 setVal('crawlMode', premadeMode ? (params.crawlMode || nativePremadeCrawlMode || 'custom') : 'custom');
                 if (params.header != null) setVal('crawlRawHeader', params.header);
@@ -6974,6 +7324,7 @@ async function initCrawlEditor() {
                     await loadNativeCrawlFile('crawlBackgroundVideoFile', { path: params.bgVideoPath, name: params.bgVideoName, type: params.bgVideoType, token: params.bgVideoToken });
                 }
                 setVal('crawlRepetitions', params.repetitions);
+                applyEasycapSettingsToControls(params.easycap);
                 setVal('crawlExportGifFps', params.gifFps);
                 setVal('crawlExportVideoFps', params.videoFps);
                 setVal('crawlExportVideoFormat', params.videoFormat);
