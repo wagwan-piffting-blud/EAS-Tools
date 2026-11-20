@@ -15,10 +15,15 @@ RUN mkdir -p test/e2e-rs/src test/e2e-rs/suites && \
     rm -rf test/e2e-rs/src test/e2e-rs/suites
 COPY test/e2e-rs/src test/e2e-rs/src
 COPY test/e2e-rs/suites test/e2e-rs/suites
+# Cargo 1.100 moved test binaries out of target/release/deps, so take the path Cargo reports
+# instead of guessing the layout. Touching the sources makes the stub binary stale.
 RUN find test/e2e-rs/src test/e2e-rs/suites -type f -exec touch '{}' + && \
-    find test/e2e-rs/target/release/deps -maxdepth 1 -type f -name 'e2e-*' -perm /111 -delete && \
-    cargo test --locked --release --manifest-path test/e2e-rs/Cargo.toml --test e2e --no-run && \
-    find test/e2e-rs/target/release/deps -maxdepth 1 -type f -name 'e2e-*' -perm /111 -exec cp '{}' /tmp/eas-tools-e2e \; && \
+    cargo test --locked --release --manifest-path test/e2e-rs/Cargo.toml --test e2e --no-run \
+        --message-format=json-render-diagnostics > /tmp/e2e-build.json && \
+    exe="$(grep '"kind":\["test"\]' /tmp/e2e-build.json | grep '"name":"e2e"' \
+        | sed -n 's/.*"executable":"\([^"]*\)".*/\1/p' | tail -n 1)" && \
+    test -n "$exe" && \
+    cp "$exe" /tmp/eas-tools-e2e && \
     test -x /tmp/eas-tools-e2e
 
 FROM debian:trixie-slim AS chromium-runtime
