@@ -1,5 +1,6 @@
 import * as M from './model.js';
 import { drawPeaks } from './peaks.js';
+import { enhanceFilePicker } from '../file-picker.js';
 
 const ROLE_COLORS = {
     header: '#ff7800',
@@ -130,9 +131,10 @@ export function createEditor(host) {
     const projSaveBtn = btn('Save As', () => saveNamed());
     const projOpenBtn = btn('Open', () => openNamed());
     const projDelBtn = btn('Delete Saved', () => deleteNamed());
-    const projFileIn = el('input', { type: 'file', accept: '.zip,application/zip,application/x-zip-compressed', hidden: true, tabindex: '-1', 'aria-hidden': 'true' });
+    const projFileIn = el('input', { type: 'file', hidden: true, tabindex: '-1', 'aria-hidden': 'true' });
     const projExportBtn = btn('Export Project File', () => exportFile(), { title: 'Download this project and all of its audio as one .zip file' });
     const projImportBtn = btn('Open Project File…', () => projFileIn.click(), { title: 'Open a project .zip exported from the Splicer; it replaces the current project' });
+    enhanceFilePicker(projFileIn, { kind: 'zip', triggers: [projImportBtn] });
     projFileIn.addEventListener('change', () => {
         const f = projFileIn.files && projFileIn.files[0];
         projFileIn.value = '';

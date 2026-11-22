@@ -1,3 +1,5 @@
+import { acceptFor } from '../file-types.js';
+
 const VOICES = [
     ['wasm', '[WASM] WebAssembly (local) Voice (takes longer time depending on text length)', 'selected'],
     ['nanotts', '[NanoTTS] WebAssembly (local) Voice #2 (faster, but less natural)'],
@@ -33,7 +35,6 @@ const ZONES = [
     ['CHST', 'CHST (Chamorro Standard Time)'],
 ];
 
-const FILE_TYPES = 'audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a';
 
 const slider = (id, label, spoken, numberId, resetId, extra = '', tail = '') => `
                     <div class="splice-slider"${extra}>
@@ -59,8 +60,8 @@ const TEMPLATE = `
         <div class="splice-card-head">
             <h3 class="splice-card-title" id="spliceAddTitle">Add audio</h3>
             <div class="splice-quick" role="group" aria-label="Add a file or silence">
-                <input id="spliceFile" type="file" accept="${FILE_TYPES}" data-splice-file hidden>
-                <button type="button" data-splice-load title="Add an audio file to the timeline">Load File…</button>
+                <input id="spliceFile" type="file" accept="${acceptFor('audio')}" data-splice-file data-file-picker="audio" data-file-picker-trigger="[data-splice-load]" hidden>
+                <button type="button" data-splice-load title="Add an audio file, or a video's sound, to the timeline">Load File…</button>
                 <span class="splice-pair">
                     <label for="spliceSilence">Silence (s)</label>
                     <input id="spliceSilence" type="number" step="0.1" min="0.1" value="0.2" data-splice-silence>
@@ -106,7 +107,7 @@ const TEMPLATE = `
                 <button type="button" disabled data-splice-preview-macro>Preview Macro</button>
                 <button type="button" data-splice-macro-upload-btn title="Add an Audacity macro (.txt) to the list">Upload Macro…</button>
                 <button type="button" disabled data-splice-macro-remove-btn title="Remove the selected uploaded macro">Remove Macro</button>
-                <input id="spliceMacroUpload" type="file" accept=".txt,text/plain" data-splice-macro-upload hidden>
+                <input id="spliceMacroUpload" type="file" accept="${acceptFor('macro')}" data-splice-macro-upload data-file-picker="macro" data-file-picker-trigger="[data-splice-macro-upload-btn]" hidden>
             </div>
             <div class="splice-line" hidden>
                 <label for="spliceLoudness">Loudness (dB)</label>
@@ -148,8 +149,8 @@ const TEMPLATE = `
         </div>
         <div class="splice-out-actions">
         <div class="splice-action-grid">
-            <button type="button" disabled data-splice-export>Export WAV</button>
-            <button type="button" disabled data-splice-export-macro>Export WAV with Macro</button>
+            <button type="button" disabled data-splice-export>Export Audio</button>
+            <button type="button" disabled data-splice-export-macro>Export Audio with Macro</button>
         </div>
         <div class="splice-proj-line">
             <div class="splice-projects-slot"></div>

@@ -59,6 +59,41 @@ const done = arguments[arguments.length - 1];
 })();
 "#;
 
+/// Chooses a 320x180 animated GIF (one second red, one second green) as the background video.
+const LOAD_GIF_JS: &str = r#"
+const done = arguments[arguments.length - 1];
+(async () => {
+    try {
+        const { GIFEncoder } = await import(new URL('assets/js/gifenc/gifenc.esm.js', document.baseURI).href);
+        const gif = GIFEncoder();
+        const palette = [[255, 0, 0], [0, 255, 0]];
+        for (const index of [0, 1]) {
+            gif.writeFrame(new Uint8Array(320 * 180).fill(index), 320, 180, { palette, delay: 1000 });
+        }
+        gif.finish();
+        const transfer = new DataTransfer();
+        transfer.items.add(new File([gif.bytes()], 'background.gif', { type: 'image/gif' }));
+        const mode = document.getElementById('crawlBackgroundMode');
+        mode.value = 'video';
+        mode.dispatchEvent(new Event('change', { bubbles: true }));
+        const input = document.getElementById('crawlBackgroundVideoFile');
+        input.files = transfer.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        const deadline = Date.now() + 30000;
+        while (Date.now() < deadline) {
+            const video = window.crawlGenerator && window.crawlGenerator.bgVideo;
+            if (video && video.readyState >= 2) break;
+            await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        const video = window.crawlGenerator && window.crawlGenerator.bgVideo;
+        const status = (document.getElementById('crawlStatus') || document.body).innerText.slice(-300);
+        done(video ? { ok: true, width: video.videoWidth, height: video.videoHeight, duration: video.duration, name: video.__sourceFile && video.__sourceFile.name } : { ok: false, error: 'the GIF never loaded', status });
+    } catch (error) {
+        done({ ok: false, error: String(error) });
+    }
+})();
+"#;
+
 const PIXEL_JS: &str = r#"
 const canvas = window.crawlGenerator.canvas;
 const [r, g, b] = canvas.getContext('2d').getImageData(arguments[0], arguments[1], 1, 1).data;
@@ -328,6 +363,52 @@ pub fn cases() -> Vec<Case> {
         case(
             "video_export_falls_back_to_seeking_without_webcodecs_decode",
             |tab| async move { check_video_export(&tab, true).await },
+        ),
+        case(
+            "an_animated_gif_plays_as_the_background_video",
+            |tab| async move {
+                open_tool_tracking_errors(&tab, "crawl").await?;
+                set_field(&tab, "#crawlMode", "custom").await?;
+                tab.wait_until("!!window.crawlEditor", Duration::from_secs(20))
+                    .await?;
+                tab.exec("window.crawlEditor.setValue('TEST');", json!([]))
+                    .await?;
+                set_field(&tab, "#crawlVideoBarOpacity", "0").await?;
+                let loaded: Value = tab.js_async(LOAD_GIF_JS, json!([])).await?;
+                ensure!(loaded["ok"] == true, "{loaded}");
+                ensure!(
+                    loaded["width"] == 320 && loaded["height"] == 180,
+                    "{loaded}"
+                );
+                let duration = loaded["duration"].as_f64().unwrap_or_default();
+                ensure!(
+                    (1.8..=2.2).contains(&duration),
+                    "the GIF's two seconds became {duration} s"
+                );
+                let name = loaded["name"].as_str().unwrap_or_default();
+                ensure!(
+                    name == "background.webm" || name == "background.mp4",
+                    "{loaded}"
+                );
+                tab.wait_until(
+                "window.crawlGenerator.canvas.width === 320 && window.crawlGenerator.canvas.height === 180",
+                Duration::from_secs(10),
+            )
+            .await?;
+                wait_pixel(&tab, 2, 2, RED).await?;
+                tab.exec(
+                    "if (window.crawlGenerator.bgVideo.paused) document.getElementById('pauseCrawl').click();",
+                    json!([]),
+                )
+                .await?;
+                tab.wait_until(
+                    "window.crawlGenerator.bgVideo.currentTime > 1.1",
+                    Duration::from_secs(10),
+                )
+                .await?;
+                wait_pixel(&tab, 2, 2, GREEN).await?;
+                Ok(())
+            },
         ),
         case("gif_export_carries_the_video", |tab| async move {
             setup(&tab, 160, 90).await?;

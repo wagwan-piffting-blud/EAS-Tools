@@ -1,5 +1,7 @@
 import { ENDEC_MODE_OPTIONS, responseOk, getEndecModeProfile, normalizeEndecMode, saveFile, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, resamplePcm, resamplePcmSinc, emulateSampleRate, vmifyPcm, validateMarkupAndText, createNanoTtsEngine, createTtsTextEditor, ensurePiperLoaded, getPiperPcm, populateRemoteVoiceList, populateSpfyVoiceList, getSpfyEngine, getAcuEngine, parseSpfyVoiceId, getEspeakEngine, parseEspeakVoiceId, espeakRateFromSlider, espeakPitchFromSlider, bindSliderNumberPair, fetchRemoteTtsAudio, resolveVoiceBackend, readTtsProsodyControls, backendSupportsProsody, backendSupportsVolumeBoost, ttsVolumeGain, getPronunciationRepository, getRemoteTtsFeatures, TTS_BACKEND_URL } from './common-functions.js';
 import { createSendMenu, receive, handIn, audioFile } from './handoff.js';
+import { decodeAudioBlob } from './audio/decode.js';
+import { bindExportControls, describeExport, exportChoices, exportFileName, loadExportPrefs, normalizeExportPrefs, renderExport, saveExportPrefs } from './audio/export.js';
 import { addCustomEvent, removeCustomEvent, readCustomEvents, customEventTable, onCustomEventsChange } from './custom-events.js';
 import { addCustomLocation, removeCustomLocation, readCustomLocations, customLocationName, onCustomLocationsChange } from './custom-locations.js';
 import { mountPronunciationControls } from './nwr-pronunciation-ui.js';
@@ -316,46 +318,26 @@ async function fetchAndStore() {
     const __relayPopFileCache = new Map();
     const __relayPopFileLoaders = new Map();
 
-    function __mergeChannels(channels, length) {
-        const merged = new Float32Array(length);
-        const invChannels = 1 / Math.max(1, channels.length);
-        for (const channelData of channels) {
-            for (let i = 0; i < length; i++) {
-                merged[i] += channelData[i] * invChannels;
-            }
+    let encoderDecodeContext = null;
+
+    function getEncoderDecodeContext() {
+        if (!encoderDecodeContext) {
+            const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+            encoderDecodeContext = OfflineCtx
+                ? new OfflineCtx(1, 1, SAMPLE_RATE)
+                : new (window.AudioContext || window.webkitAudioContext)();
         }
-        return merged;
+        return encoderDecodeContext;
     }
 
-    function __decodeWavPcm(arrayBuffer) {
-        const wav = new wavefile.WaveFile(new Uint8Array(arrayBuffer));
-        wav.toBitDepth("32f");
-        const raw = wav.getSamples(false, Float32Array);
-        const channels = (raw instanceof Float32Array) ? [raw] : Array.from(raw);
-        const length = channels.length ? channels[0].length : 0;
-        if (!length || !wav.fmt.sampleRate) {
-            throw new Error("Empty or unreadable WAV.");
+    async function decodeEncoderAudio(source, mode = "mix") {
+        const blob = source instanceof Blob ? source : new Blob([source]);
+        const decoded = await decodeAudioBlob(blob, { context: getEncoderDecodeContext(), mode });
+        const pcm = decoded.channels[0];
+        if (!pcm || !pcm.length) {
+            throw new Error("The file has no audio.");
         }
-        return { merged: __mergeChannels(channels, length), sampleRate: wav.fmt.sampleRate };
-    }
-
-    async function __decodeWithAudioContext(arrayBuffer) {
-        const decodeContext = new (window.AudioContext || window.webkitAudioContext)();
-        const decode = decodeContext.decodeAudioData.bind(decodeContext);
-        try {
-            const audioBuffer = decode.length > 1
-                ? await new Promise((resolve, reject) => decode(arrayBuffer.slice(0), resolve, reject))
-                : await decode(arrayBuffer.slice(0));
-            const channels = [];
-            for (let channel = 0; channel < Math.max(1, audioBuffer.numberOfChannels); channel++) {
-                channels.push(audioBuffer.getChannelData(channel));
-            }
-            return { merged: __mergeChannels(channels, audioBuffer.length), sampleRate: audioBuffer.sampleRate };
-        } finally {
-            if (typeof decodeContext.close === "function") {
-                decodeContext.close().catch(() => { });
-            }
-        }
+        return { pcm, sampleRate: decoded.sampleRate };
     }
 
     function __loadRelayPopFile(file) {
@@ -369,17 +351,10 @@ async function fetchAndStore() {
                     throw new Error("Failed to fetch relay pop file.");
                 }
 
-                const arrayBuffer = await response.arrayBuffer();
-                let decoded;
-                try {
-                    decoded = __decodeWavPcm(arrayBuffer);
-                } catch (parseError) {
-                    decoded = await __decodeWithAudioContext(arrayBuffer);
-                }
-
+                const decoded = await decodeEncoderAudio(await response.arrayBuffer());
                 const pcm = (decoded.sampleRate === SAMPLE_RATE)
-                    ? decoded.merged
-                    : resamplePcm(decoded.merged, decoded.sampleRate, SAMPLE_RATE);
+                    ? decoded.pcm
+                    : resamplePcm(decoded.pcm, decoded.sampleRate, SAMPLE_RATE);
                 __relayPopFileCache.set(file, pcm);
                 return pcm;
             } catch (error) {
@@ -801,11 +776,57 @@ async function fetchAndStore() {
         return { buffer: wav.toBuffer().buffer, outRate, useEndecRate };
     }
 
-    async function saveToWav() {
-        addStatus("Generating wav file...");
-        const { buffer, outRate, useEndecRate } = buildEndecRateWav(getOverallEndecMode(), shouldEmulateEndecRate());
-        await saveFile('eas.wav', buffer, 'audio/wav');
-        addStatus(useEndecRate ? `Download started (${outRate} Hz ENDEC rate).` : "Download started...");
+    const ENCODER_EXPORT_KEY = "eas-encoder-export";
+    const ENCODER_EXPORT_GAIN = 0.5;
+    const ENCODER_ORIGINAL_RATE_LABEL = "Original (44.1 kHz, or the ENDEC rate)";
+    const encoderExportPrefs = loadExportPrefs(ENCODER_EXPORT_KEY);
+
+    function encoderExportRate(prefs) {
+        if (prefs.sampleRate) {
+            return prefs.sampleRate;
+        }
+        const endecRate = getEndecModeProfile(getOverallEndecMode()).sampleRate;
+        return shouldEmulateEndecRate() && endecRate ? endecRate : SAMPLE_RATE;
+    }
+
+    async function saveAudioFile(overrides = null) {
+        if (!samples.length) {
+            addStatus("Generate an alert before saving it.", "WARN");
+            return null;
+        }
+        const prefs = overrides ? normalizeExportPrefs(overrides, encoderExportPrefs) : encoderExportPrefs;
+        addStatus("Preparing the audio file...");
+        try {
+            const result = await renderExport([Float32Array.from(samples)], SAMPLE_RATE, prefs, {
+                resample: resamplePcmSinc,
+                gain: ENCODER_EXPORT_GAIN,
+                targetRate: encoderExportRate(prefs),
+            });
+            await saveFile(exportFileName("eas", result.format), result.blob, result.mime);
+            addStatus(`Download started: ${describeExport(result)}`);
+            return result;
+        } catch (err) {
+            console.error("Unable to save the alert audio.", err);
+            addStatus(`The audio file could not be saved: ${err && err.message ? err.message : err}`, "ERROR");
+            return null;
+        }
+    }
+
+    function bindEncoderExportControls() {
+        const format = document.getElementById("encoderExportFormat");
+        if (!format) {
+            return;
+        }
+        bindExportControls({
+            format,
+            bitrate: document.getElementById("encoderExportBitrate"),
+            bitrateRow: document.getElementById("encoderExportBitrateRow"),
+            channels: document.getElementById("encoderExportChannels"),
+            sampleRate: document.getElementById("encoderExportSampleRate"),
+        }, encoderExportPrefs, {
+            originalLabel: ENCODER_ORIGINAL_RATE_LABEL,
+            onChange: (prefs) => saveExportPrefs(ENCODER_EXPORT_KEY, prefs),
+        });
     }
 
     let decoderHandoffBlob = null;
@@ -1284,37 +1305,9 @@ async function fetchAndStore() {
         return prePostManifestPromise;
     }
 
-    async function decodePrePostAudio(arrayBuffer) {
-        const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-        const decodeContext = OfflineCtx
-            ? new OfflineCtx(1, 1, SAMPLE_RATE)
-            : new (window.AudioContext || window.webkitAudioContext)();
-        const decode = decodeContext.decodeAudioData.bind(decodeContext);
-        let audioBuffer;
-        try {
-            audioBuffer = decode.length > 1
-                ? await new Promise((resolve, reject) => decode(arrayBuffer.slice(0), resolve, reject))
-                : await decode(arrayBuffer.slice(0));
-        } finally {
-            if (!OfflineCtx && typeof decodeContext.close === "function") {
-                decodeContext.close().catch(() => { });
-            }
-        }
-
-        const channels = Math.max(1, audioBuffer.numberOfChannels);
-        const length = audioBuffer.length;
-        const merged = new Float32Array(length);
-        const invChannels = 1 / channels;
-        for (let channel = 0; channel < channels; channel++) {
-            const channelData = audioBuffer.getChannelData(channel);
-            for (let i = 0; i < length; i++) {
-                merged[i] += channelData[i] * invChannels;
-            }
-        }
-
-        return audioBuffer.sampleRate === SAMPLE_RATE
-            ? merged
-            : resamplePcmSinc(merged, audioBuffer.sampleRate, SAMPLE_RATE);
+    async function decodePrePostAudio(source) {
+        const { pcm, sampleRate } = await decodeEncoderAudio(source, "mix");
+        return sampleRate === SAMPLE_RATE ? pcm : resamplePcmSinc(pcm, sampleRate, SAMPLE_RATE);
     }
 
     function readPrePostChoice(slot) {
@@ -1855,15 +1848,10 @@ async function fetchAndStore() {
 
         else if (allowCustomAudio && window.announcementType === "custom") {
             let customAudioFile = document.getElementById("customAudioFile")?.files?.[0];
-            let arrayBuffer = customAudioFile
-                ? await customAudioFile.arrayBuffer()
-                : window._nativeCustomAudioBuffer;
-            if (arrayBuffer) {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const bufferCopy = arrayBuffer.slice(0);
-                const buffer = await audioContext.decodeAudioData(bufferCopy);
-                const pcmRaw = buffer.getChannelData(0);
-                let pcm = resamplePcm(pcmRaw, buffer.sampleRate, SAMPLE_RATE);
+            let customSource = customAudioFile || window._nativeCustomAudioBuffer;
+            if (customSource) {
+                const decodedCustom = await decodeEncoderAudio(customSource, 0);
+                let pcm = resamplePcm(decodedCustom.pcm, decodedCustom.sampleRate, SAMPLE_RATE);
                 if (document.getElementById("enable-vmify-custom")?.checked) {
                     const vmifyIntensityEl = document.getElementById("vmify-custom-intensity");
                     const vmifyIntensity = vmifyIntensityEl ? parseFloat(vmifyIntensityEl.value) : 1;
@@ -2010,7 +1998,8 @@ async function fetchAndStore() {
 
     const UNIMPLEMENTED_EVENT_KEYWORDS = ["INDUSTRIAL FIRE", "WILD FIRE WARNING", "DUST STORM WATCH", "CIVIL DANGER WATCH", "RADIOLOGICAL HAZARD WATCH", "HAZARDOUS MATERIALS WATCH", "EARTHQUAKE WATCH", "NUCLEAR PLANT TEST", "IMMEDIATE EVACUATION WARNING"];
 
-    saveb.addEventListener("click", saveToWav);
+    saveb.addEventListener("click", () => saveAudioFile());
+    bindEncoderExportControls();
 
     let lastSpeech = { text: "", voice: "", announcementType: "" };
     let lastWavBlob = null;
@@ -4890,12 +4879,19 @@ async function fetchAndStore() {
         new MutationObserver(() => _setupPlaybackReporting())
             .observe(document.querySelector('.control-panel') || document.body, { childList: true, subtree: true });
 
-        window.EASBridge.on('encoder:save', async () => {
+        window.EASBridge.on('encoder:save', async (params) => {
             try {
-                await saveToWav();
+                await saveAudioFile(params && params.export ? params.export : null);
             } catch (err) {
                 console.error('[EASBridge] Save error:', err);
             }
+        });
+
+        window.EASBridge.on('encoder:requestExportChoices', async () => {
+            window.EASBridge.send('encoder:exportChoices', {
+                ...(await exportChoices({ originalLabel: ENCODER_ORIGINAL_RATE_LABEL })),
+                prefs: encoderExportPrefs,
+            });
         });
 
         window.EASBridge.on('encoder:requestHeaderPreview', (params) => {

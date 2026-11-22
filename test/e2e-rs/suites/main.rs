@@ -1,5 +1,6 @@
 mod a11y;
 mod announcement_level;
+mod audio_export;
 mod common;
 mod crawl_atari;
 mod crawl_dasdec;
@@ -32,6 +33,7 @@ mod encoder_pre_post_audio;
 mod encoder_product_text;
 mod endec_rate;
 mod espeak_voice;
+mod file_pickers;
 mod marine_custom_fips;
 mod multiview;
 mod native_bridge_parity;
@@ -58,6 +60,7 @@ fn main() -> std::process::ExitCode {
     eas_tools_e2e::run(vec![
         ("a11y", a11y::cases()),
         ("announcement_level", announcement_level::cases()),
+        ("audio_export", audio_export::cases()),
         ("crawl_atari", crawl_atari::cases()),
         ("crawl_dasdec", crawl_dasdec::cases()),
         ("crawl_dimension_inputs", crawl_dimension_inputs::cases()),
@@ -95,6 +98,7 @@ fn main() -> std::process::ExitCode {
         ("encoder_product_text", encoder_product_text::cases()),
         ("endec_rate", endec_rate::cases()),
         ("espeak_voice", espeak_voice::cases()),
+        ("file_pickers", file_pickers::cases()),
         ("marine_custom_fips", marine_custom_fips::cases()),
         ("multiview", multiview::cases()),
         ("native_bridge_parity", native_bridge_parity::cases()),

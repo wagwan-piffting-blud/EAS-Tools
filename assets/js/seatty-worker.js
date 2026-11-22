@@ -1,96 +1,20 @@
 import { loadSeattyWasm, createSeattySameDemod } from './seatty-same-wasm.js';
+import { readWavInfo } from './audio/decode.js';
 
 const WAV_MIN_RATE = 8000;
 const WAV_MAX_RATE = 48000;
-const HEADER_WINDOW = 65536;
 const READ_SLICE = 16 << 20;
 const READ_DEPTH = 4;
 const READ_WINDOW = 6;
 
 export const SEATTY_EVENT_TONE = 4;
 
-function fourcc(view, at) {
-    return String.fromCharCode(view.getUint8(at), view.getUint8(at + 1), view.getUint8(at + 2), view.getUint8(at + 3));
-}
-
-function parseFmt(view, size) {
-    let format = view.getUint16(0, true);
-    const channels = view.getUint16(2, true);
-    const sampleRate = view.getUint32(4, true);
-    const blockAlign = view.getUint16(12, true);
-    const bits = view.getUint16(14, true);
-    if (format === 0xfffe && size >= 26 && view.byteLength >= 26) {
-        format = view.getUint16(24, true);
-    }
-    const float = format === 3;
-    if (format !== 1 && !float) {
-        return null;
-    }
-    const bitsOk = float ? (bits === 32 || bits === 64) : (bits === 8 || bits === 16 || bits === 24 || bits === 32);
-    if (!bitsOk || channels < 1 || blockAlign !== channels * bits / 8) {
-        return null;
-    }
-    if (sampleRate < WAV_MIN_RATE || sampleRate > WAV_MAX_RATE) {
-        return null;
-    }
-    return { sampleRate, channels, bits, float, blockAlign };
-}
-
 export async function readWavLayout(blob) {
-    if (!blob || typeof blob.slice !== 'function' || blob.size < 12) {
+    const info = await readWavInfo(blob);
+    if (!info || info.sampleRate < WAV_MIN_RATE || info.sampleRate > WAV_MAX_RATE) {
         return null;
     }
-    let windowStart = 0;
-    let bytes = new Uint8Array(0);
-    const at = async (pos, len) => {
-        if (pos + len > blob.size) {
-            return null;
-        }
-        if (pos < windowStart || pos + len > windowStart + bytes.length) {
-            windowStart = pos;
-            bytes = new Uint8Array(await blob.slice(pos, Math.min(blob.size, pos + Math.max(len, HEADER_WINDOW))).arrayBuffer());
-        }
-        return new DataView(bytes.buffer, bytes.byteOffset + pos - windowStart, len);
-    };
-    const riff = await at(0, 12);
-    const tag = fourcc(riff, 0);
-    if ((tag !== 'RIFF' && tag !== 'RF64') || fourcc(riff, 8) !== 'WAVE') {
-        return null;
-    }
-    let fmt = null;
-    let rf64Data = -1;
-    let pos = 12;
-    while (pos + 8 <= blob.size) {
-        const head = await at(pos, 8);
-        const id = fourcc(head, 0);
-        const size = head.getUint32(4, true);
-        const body = pos + 8;
-        if (id === 'ds64') {
-            const view = await at(body, 16);
-            if (!view) {
-                return null;
-            }
-            rf64Data = view.getUint32(8, true) + view.getUint32(12, true) * 4294967296;
-        } else if (id === 'fmt ') {
-            const view = size >= 16 ? await at(body, Math.min(size, 40)) : null;
-            if (!view) {
-                return null;
-            }
-            fmt = parseFmt(view, size);
-        } else if (id === 'data') {
-            if (!fmt) {
-                return null;
-            }
-            let dataBytes = (tag === 'RF64' && size === 0xffffffff && rf64Data >= 0) ? rf64Data : size;
-            if (dataBytes === 0 || body + dataBytes > blob.size) {
-                dataBytes = blob.size - body;
-            }
-            const frames = Math.floor(dataBytes / fmt.blockAlign);
-            return { ...fmt, dataOffset: body, frames, dataBytes: frames * fmt.blockAlign };
-        }
-        pos = body + size + (size & 1);
-    }
-    return null;
+    return info;
 }
 
 function extractChannel0(bytes, frames, layout, out) {

@@ -7,8 +7,12 @@ import {
     saveFile,
     isObject,
     responseOk,
+    resamplePcmSinc,
     USES_DARK_THEME
 } from './common-functions.js';
+import { decodeAudioBlob } from './audio/decode.js';
+import { bindExportControls, describeExport, exportChoices, exportFileName, loadExportPrefs, normalizeExportPrefs, renderExport, saveExportPrefs } from './audio/export.js';
+import { clearFilePicker } from './file-picker.js';
 
 import { E2T, allEndecModes, parseHeaderDetailed } from '../E2T/EAS2Text-NG.js';
 import { customLocationName } from './custom-locations.js';
@@ -2077,7 +2081,7 @@ function eventLabel(code) {
         recordingSampleRate = 0;
         if (wavBuffer) {
             Promise.resolve()
-                .then(function () { return triggerRecordingDownload(wavBuffer); })
+                .then(function () { return triggerRecordingDownload(wavBuffer, pcmData, outputSampleRate); })
                 .catch(function (e) {
                     console.error("[REC-SAVE] failed:", e);
                 });
@@ -2277,11 +2281,44 @@ function eventLabel(code) {
         }
     }
 
-    async function triggerRecordingDownload(buffer) {
-        const filename = `eas-recording-${new Date().toISOString().replace(/[:.]/g, "-")}.wav`;
-        lastSourceAudio = audioFile(buffer, filename);
+    const DECODER_RECORDING_EXPORT_KEY = "eas-decoder-recording-export";
+    const DECODER_RECORDING_ORIGINAL_LABEL = "Original (the input's rate)";
+    const decoderRecordingPrefs = loadExportPrefs(DECODER_RECORDING_EXPORT_KEY);
+
+    function setDecoderRecordingPrefs(next) {
+        Object.assign(decoderRecordingPrefs, normalizeExportPrefs(next, decoderRecordingPrefs));
+        saveExportPrefs(DECODER_RECORDING_EXPORT_KEY, decoderRecordingPrefs);
+    }
+
+    function bindDecoderRecordingControls() {
+        const format = document.getElementById("decoderRecordingFormat");
+        if (!format) { return; }
+        bindExportControls({
+            format,
+            bitrate: document.getElementById("decoderRecordingBitrate"),
+            bitrateRow: document.getElementById("decoderRecordingBitrateRow"),
+            channels: document.getElementById("decoderRecordingChannels"),
+            sampleRate: document.getElementById("decoderRecordingSampleRate"),
+        }, decoderRecordingPrefs, {
+            originalLabel: DECODER_RECORDING_ORIGINAL_LABEL,
+            onChange: (prefs) => saveExportPrefs(DECODER_RECORDING_EXPORT_KEY, prefs),
+        });
+    }
+    bindDecoderRecordingControls();
+
+    async function triggerRecordingDownload(buffer, pcm = null, rate = 0) {
+        const base = `eas-recording-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+        lastSourceAudio = audioFile(buffer, `${base}.wav`);
+        const prefs = decoderRecordingPrefs;
+        const plainWav = prefs.format === "pcm16" && prefs.channels === 1 && (!prefs.sampleRate || prefs.sampleRate === rate);
         try {
-            await saveFile(filename, buffer, "audio/wav");
+            if (plainWav || !pcm || !rate) {
+                await saveFile(`${base}.wav`, buffer, "audio/wav");
+                return;
+            }
+            const result = await renderExport([pcm], rate, prefs, { resample: resamplePcmSinc });
+            await saveFile(exportFileName(base, result.format), result.blob, result.mime);
+            console.log(`Recording saved: ${describeExport(result)}`);
         } catch (e) {
             console.error("saveFile failed:", e, e?.message, e?.stack);
             throw e;
@@ -2692,12 +2729,19 @@ function eventLabel(code) {
         return !!(toggle && toggle.checked);
     }
 
-    function decodeCustomAlarmBytes(bytes) {
-        if (!bytes || !bytes.byteLength) { return Promise.resolve(null); }
-        return decodeContext.decodeAudioData(bytes.slice(0)).catch((error) => {
+    async function decodeCustomAlarmBytes(bytes) {
+        if (!bytes || !bytes.byteLength) { return null; }
+        try {
+            const decoded = await decodeAudioBlob(new Blob([bytes]), { context: decodeContext, mode: "all" });
+            const length = decoded.channels[0].length;
+            if (!length) { return null; }
+            const buffer = decodeContext.createBuffer(decoded.channels.length, length, decoded.sampleRate);
+            decoded.channels.forEach((channel, index) => buffer.copyToChannel(channel, index));
+            return buffer;
+        } catch (error) {
             console.warn("Unable to decode a custom decoder alarm:", error);
             return null;
-        });
+        }
     }
 
     function setCustomAlarmStatus(message) {
@@ -2783,7 +2827,7 @@ function eventLabel(code) {
             customAlarmNames.clear();
             CUSTOM_ALARM_SLOTS.forEach((slot) => {
                 const input = document.getElementById(slot.inputId);
-                if (input) { input.value = ""; }
+                if (input) { clearFilePicker(input); }
             });
             renderCustomAlarmStatus("Cleared.");
         });
@@ -3532,13 +3576,16 @@ function eventLabel(code) {
         const zero = f.zeroHeaderRuns.length + f.zeroEomRuns.length;
         const pick = (key, rule) => ({ key, rule, features: f });
         if (ff > 0 && ff >= zero) {
-            const longRuns = f.ffRuns.filter((run) => run >= 3).length;
+            const multiRuns = f.ffRuns.filter((run) => run >= 2).length;
             if (f.leadZero > 0) {
                 return pick("SAGE_DIGITAL_3644", "ff_tails_lead_zero");
             }
-            return longRuns * 2 > ff
-                ? pick("SAGE_DIGITAL_3644", "ff_tails_3_plus")
-                : pick("SAGE_ANALOG_1822", "ff_tails_1_2");
+            if (f.leadMark > 0 && f.leadMark * 2 >= product.segments.length) {
+                return pick("SAGE_ANALOG_1822", "ff_tails_lead_marks");
+            }
+            return multiRuns * 2 > ff
+                ? pick("SAGE_DIGITAL_3644", "ff_tails_2_plus")
+                : pick("SAGE_ANALOG_1822", "ff_tail_1");
         }
         if (zero > 0) {
             const headerRun = medianOf(f.zeroHeaderRuns);
@@ -4483,10 +4530,14 @@ function eventLabel(code) {
     }
 
     async function decodeBufferedSource(worker, blob) {
-        const audioBuffer = await decodeContext.decodeAudioData(await readBlobBytes(blob));
-        const rate = audioBuffer.sampleRate;
+        const decoded = await decodeAudioBlob(blob, { context: decodeContext, mode: 0 });
+        let rate = decoded.sampleRate;
+        let samples = decoded.channels[0];
+        if (rate < 8000 || rate > 48000) {
+            samples = resamplePcmSinc(samples, rate, decodeContext.sampleRate);
+            rate = decodeContext.sampleRate;
+        }
         beginFileDecode(rate);
-        const samples = audioBuffer.getChannelData(0);
         if (worker) {
             await runSeattyWorkerJob(worker, {
                 type: 'decode',
@@ -6609,6 +6660,19 @@ function eventLabel(code) {
         });
 
         window.EASBridge.on('decoder:requestTextStyles', () => sendTextStylesToBridge());
+
+        window.EASBridge.on('decoder:requestExportChoices', async () => {
+            window.EASBridge.send('decoder:exportChoices', {
+                ...(await exportChoices({ originalLabel: DECODER_RECORDING_ORIGINAL_LABEL })),
+                prefs: decoderRecordingPrefs,
+            });
+        });
+
+        window.EASBridge.on('decoder:setRecordingExport', (params) => {
+            if (params && params.export) {
+                setDecoderRecordingPrefs(params.export);
+            }
+        });
 
         window.EASBridge.on('decoder:setTextStyle', (params) => {
             const select = document.getElementById(DECODER_TEXT_STYLE_ID);

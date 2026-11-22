@@ -64,7 +64,7 @@
             <button id="start-draw-btn" class="primary-btn">Draw polygon</button>
             <button id="clear-poly-btn" class="danger-btn danger-btn-outline">Clear</button>
             <button id="import-poly-btn" class="secondary-btn" title="Load a polygon from a GeoJSON or KML file (e.g. IEM vtec.kml from the NWS archive)">Import polygon</button>
-            <input type="file" id="import-poly-file" accept=".geojson,.json,.kml,application/json,application/geo+json,application/vnd.google-earth.kml+xml" style="display:none">
+            <input type="file" id="import-poly-file" data-file-picker="geo" data-file-picker-trigger="#import-poly-btn" style="display:none">
             <button id="importtxt-poly-btn" class="secondary-btn" title="Parse AWIPS bulletin from text">Import AWIPS .txt</button>
             <button id="export-poly-btn" class="secondary-btn" title="Download current polygon as GeoJSON">Export polygon</button>
             <button id="download-btn" class="secondary-btn">Export AWIPS .txt</button>
@@ -124,7 +124,7 @@
             <strong>Radar:</strong>
             <button type="button" id="radar-load-btn" class="mini-btn"
                 title="Open a NEXRAD Level II (Archive II) file, such as KHGX20260927_034129_V06 or a .ar2v, .gz or .bz2 copy. Real-time chunks can be opened together.">Open Level II file</button>
-            <input type="file" id="radar-file" multiple style="display:none">
+            <input type="file" id="radar-file" multiple data-file-picker="any" data-file-picker-trigger="#radar-load-btn" style="display:none">
             <button type="button" id="radar-synth-btn" class="mini-btn" aria-haspopup="dialog"
                 title="No Level II file? Build a made-up storm on a radar near your office for practice.">Generate storm</button>
             <label>Product <select id="radar-product" disabled></select></label>
@@ -136,7 +136,7 @@
             </label>
             <button type="button" id="radar-pal-btn" class="mini-btn" disabled
                 title="Load a GRLevelX .pal color table for the selected product">Color table</button>
-            <input type="file" id="radar-pal-file" accept=".pal,.txt" style="display:none">
+            <input type="file" id="radar-pal-file" data-file-picker="palette" data-file-picker-trigger="#radar-pal-btn" style="display:none">
             <button type="button" id="radar-save-png-btn" class="mini-btn" disabled
                 aria-label="Save PNG radar image"
                 title="Save the selected product and tilt as a PNG image with a legend, georeferenced to Web Mercator">Save PNG</button>
@@ -410,6 +410,7 @@
         <div id="status-live" class="visually-hidden" role="status" aria-atomic="true"></div>
         <div id="status-alert" class="visually-hidden" role="alert" aria-atomic="true"></div>
         <div id="map-live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+        <script type="module" src="../assets/js/file-picker.js"></script>
         <script src="vendor/leaflet/leaflet.js"></script>
         <script src="vendor/leaflet-draw/leaflet.draw.js"></script>
         <script src="vendor/pmtiles/pmtiles.js"></script>

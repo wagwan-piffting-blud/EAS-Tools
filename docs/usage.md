@@ -6,7 +6,8 @@ Serve the repository over HTTP and open `index.html`, or use
 
 ## Decoder
 
-1. Open **Decoder** and choose a microphone, direct stream, or uploaded audio file.
+1. Open **Decoder** and choose a microphone, direct stream, or an audio or video file
+   (the Decoder reads a video's sound).
 2. Grant microphone permission when prompted. Playback of the selected source is optional.
 3. Play an EAS/SAME signal, or use **Load/Analyze Raw ZCZC Header** for text input.
 4. Open the decoded alert to inspect the raw header, originator, event, locations,
@@ -14,12 +15,17 @@ Serve the repository over HTTP and open `index.html`, or use
 
 Decoded alerts can be transferred to the encoder for regeneration. Inference of
 an ENDEC profile is a best match, not proof of the originating hardware.
+**Recording format** sets the file type, channels and sample rate of saved recordings.
 
 ## Encoder
 
 1. Open **Encoder** and complete the SAME form, or provide a custom SAME header.
 2. Optionally enter spoken-message text and select a TTS voice.
-3. Select **Generate**, review the resulting audio, and save the WAV if required.
+3. Select **Generate**, review the resulting audio, and select **Save audio file** if required.
+   **Saved audio file** picks the format (WAV 16-bit by default; 24-bit and 32-bit float WAV,
+   FLAC, MP3, and Opus or AAC where the browser can encode them), the bitrate for MP3, Opus
+   and AAC, mono or stereo, and the sample rate. Original keeps 44.1 kHz, or the ENDEC's rate
+   when **Emulate ENDEC Sample Rate** is on.
 
 WebAssembly voices run locally. Other Web TTS voices are sent to the configured
 TTS service; see the [TTS documentation](./generated/tts.md) before using them.
@@ -48,15 +54,20 @@ reviewed before publishing).
 ## Text crawl generator
 
 1. Select custom text or generate text from a SAME header with EAS2Text.
-2. Configure speed, frame delay, dimensions, font, inset, and colors.
+2. Configure speed, frame delay, dimensions, font, inset, and colors. A background can be a
+   solid color, an image, a video, or an animated GIF (turned into a video when chosen).
 3. Preview with the start, pause, and stop controls.
 4. Export GIF or WebM output, or copy the resolved crawl text.
 
 ## Audio splicer
 
-1. Upload clips or synthesize TTS clips inside the splicer.
+1. Load audio clips (or the sound of a video), or synthesize TTS clips inside the splicer.
 2. Arrange, trim, split, and process clips; add silence or macros as needed.
-3. Review the timeline and select **Export WAV**.
+3. Pick the export format, then review the timeline and select **Export Audio**.
+
+Every file picker on the site (audio, video, images, fonts, presets, WarnGen imports) works
+the same way: a **Choose file…** button that shows the chosen file's name, and you can also
+drop a file onto it. Audio pickers accept video files too and use their sound.
 
 ## Phoneme converter and TTS
 

@@ -324,21 +324,28 @@ fn endec_framings() -> Result<Vec<(&'static str, &'static str, Framing)>> {
                 ..plain(11025, 1000.0)
             },
         ),
+        // SAGE 3644 firmware with DSP 1.29 or older sends each burst on its own as 16 x AB, the
+        // text and FF FF FF, about a second apart.
         (
             "sage_3644",
             "SAGE DIGITAL 3644",
             Framing {
-                frame: |i| {
-                    (
-                        match i {
-                            0 | 3 => vec![0x00],
-                            1 | 2 => vec![0xAB],
-                            _ => vec![],
-                        },
-                        vec![0xFF, 0xFF, 0xFF],
-                    )
-                },
+                frame: |_| (vec![], vec![0xFF, 0xFF, 0xFF]),
                 ..plain(44100, 1000.0)
+            },
+        ),
+        // With DSP 1.30 or newer (the in-house unit reports 1.33C) the firmware sends one stream:
+        // 16 x AB, the text and FF FF per burst,
+        // with 64 NUL bytes and FF FF (~1014 ms, silent on air) between bursts. This is what an
+        // in-house unit and two Nov 2026 NPT relays (all recorded at 12.5 kHz) sound like; the
+        // carrier ramp at the start of a burst can garble its first byte into a 0x00 "lead".
+        (
+            "sage_3644_measured",
+            "SAGE DIGITAL 3644",
+            Framing {
+                noise_floor: 0.02,
+                frame: |_| (vec![], vec![0xFF, 0xFF]),
+                ..plain(12500, 1011.0)
             },
         ),
         // Measured on real SAGE 1822 units (#145 videos -xZYY3N1Pw0, zddMfd6n54k, and TPT 2 from

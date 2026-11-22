@@ -32,6 +32,7 @@ vi.mock('../assets/js/mediabunny/mediabunny.min.js', () => {
         canEncodeAudio: async (_codec, cfg) => typeof mock.canEncode === 'function' ? mock.canEncode(cfg) : mock.canEncode,
         AudioSample, AudioSampleSource, BufferTarget, StreamTarget, Output,
         Mp3OutputFormat: class {}, FlacOutputFormat: class {}, OggOutputFormat: class {},
+        Mp4OutputFormat: class Mp4OutputFormat {},
     };
 });
 vi.mock('../assets/js/mediabunny/mp3-encoder.min.js', () => ({
@@ -43,9 +44,9 @@ vi.mock('../assets/js/mediabunny/flac-encoder.min.js', () => ({
 
 import {
     bitrateOf, canEncode, createWriter, encodeAll, formatOf, infoOf, isLossy, isWav, wavFormatOf,
-} from '../assets/js/splicer/encode.js';
+} from '../assets/js/audio/encode.js';
 
-describe('splicer format encoding', () => {
+describe('shared audio format encoding', () => {
     beforeEach(() => {
         mock.canEncode = true;
         mock.samples.length = 0;
@@ -91,6 +92,21 @@ describe('splicer format encoding', () => {
         expect(await canEncode('opus')).toBe(false);
         vi.stubGlobal('AudioEncoder', undefined);
         expect(await canEncode('opus')).toBe(false);
+    });
+
+    it('asks WebCodecs for AAC by its codec string and writes it as M4A', async () => {
+        const asked = [];
+        class RecordingAudioEncoder { static async isConfigSupported(cfg) { asked.push(cfg.codec); return { supported: true }; } }
+        vi.stubGlobal('AudioEncoder', RecordingAudioEncoder);
+        expect(await canEncode('aac')).toBe(true);
+        expect(asked).toEqual(['mp4a.40.2']);
+        expect(infoOf('aac').ext).toBe('m4a');
+
+        const writer = await createWriter('aac', { sampleRate: 48000, channels: 1, frames: 1, bitrate: 128 });
+        await writer.write([new Float32Array([0.25])], 0, 1);
+        const blob = await writer.finish();
+        expect(blob.type).toBe('audio/mp4');
+        expect(mock.samples.at(-1).format).toBe('f32-planar');
     });
 
     it('streams or returns WAV output', async () => {

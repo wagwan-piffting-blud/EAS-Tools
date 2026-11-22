@@ -90,8 +90,8 @@
                 <span>
                     <button type="button" data-decoder-toggle>Start Microphone Decoder</button>
                     <button type="button" data-decoder-stream-toggle>Start Stream Decoder</button>
-                    <input type="file" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;" tabindex="-1" aria-hidden="true" id="audiofile" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
-                    <button type="button" data-decoder-load>Upload Audio File</button>
+                    <input type="file" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;" tabindex="-1" aria-hidden="true" id="audiofile" data-file-picker="audio" data-file-picker-trigger="[data-decoder-load]">
+                    <button type="button" data-decoder-load>Load Audio or Video File</button>
                     <button type="button" data-decoder-load-raw>Load/Analyze Raw ZCZC Header</button>
                     <button type="button" data-decoder-record-toggle disabled>Start Recording (alerts toggle this automatically)</button>
                     <button type="button" data-decoder-clear disabled>Clear Logs</button>
@@ -129,6 +129,22 @@
                     <label for="decoder-auto-record">Auto-record decoded alerts?</label>
                     <input type="checkbox" id="decoder-auto-record" name="decoder-auto-record" checked>
                     <br>
+                    <span id="decoderRecordingExport" class="export-options" role="group" aria-label="Recording file">
+                        <label for="decoderRecordingFormat">Recording format:</label>
+                        <select id="decoderRecordingFormat"></select>
+                        <span id="decoderRecordingBitrateRow" hidden>
+                            <label for="decoderRecordingBitrate">Bitrate:</label>
+                            <select id="decoderRecordingBitrate"></select>
+                        </span>
+                        <label for="decoderRecordingChannels">Channels:</label>
+                        <select id="decoderRecordingChannels">
+                            <option value="1">Mono</option>
+                            <option value="2">Stereo (same audio on both sides)</option>
+                        </select>
+                        <label for="decoderRecordingSampleRate">Sample rate:</label>
+                        <select id="decoderRecordingSampleRate"></select>
+                    </span>
+                    <br>
                     <label for="decoder-alarm-beep">Sound on alert received?</label>
                     <input type="checkbox" id="decoder-alarm-beep" name="decoder-alarm-beep">
                     <br>
@@ -138,13 +154,13 @@
                 </div>
                 <div id="decoder-custom-beep-files" style="display: none;">
                     <label for="decoder-custom-beep-file1">Select custom file #1 for advisories/tests:</label>
-                    <input type="file" id="decoder-custom-beep-file1" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    <input type="file" id="decoder-custom-beep-file1" data-file-picker="audio">
                     <br>
                     <label for="decoder-custom-beep-file2">Select custom file #2 for watches:</label>
-                    <input type="file" id="decoder-custom-beep-file2" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    <input type="file" id="decoder-custom-beep-file2" data-file-picker="audio">
                     <br>
                     <label for="decoder-custom-beep-file3">Select custom file #3 for warnings:</label>
-                    <input type="file" id="decoder-custom-beep-file3" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    <input type="file" id="decoder-custom-beep-file3" data-file-picker="audio">
                     <br>
                     <button type="button" id="decoder-custom-beep-clear">Clear Custom Files</button>
                     <button type="button" id="decoder-custom-beep-save">Save Custom Files</button>
@@ -316,7 +332,7 @@
                 </select>
                 <br>
                 <br>
-                <label for="endecResample">Emulate ENDEC Sample Rate (exports the WAV at the ENDEC's native sample rate for authenticity; speed and pitch are unaffected):</label>
+                <label for="endecResample">Emulate ENDEC Sample Rate (saves the audio at the ENDEC's native sample rate for authenticity when the saved file's sample rate is Original; speed and pitch are unaffected):</label>
                 <input type="checkbox" id="endecResample" checked>
                 <br>
                 <br>
@@ -426,8 +442,8 @@
                 </div>
                 <div id="customAudioDiv" style="display: none;">
                     <br>
-                    <label for="customAudioFile">Upload Custom Audio File (WAV format):</label>
-                    <input type="file" id="customAudioFile" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                    <label for="customAudioFile">Custom audio file (audio, or a video's sound):</label>
+                    <input type="file" id="customAudioFile" data-file-picker="audio">
                     <br>
                     <br>
                     <label for="enable-vmify-custom">Enable "VM-Sounding" Effect:</label>
@@ -466,7 +482,7 @@
                     <span id="preHeaderAudioFileRow" hidden>
                         <br>
                         <label for="preHeaderAudioFile">Pre-alert audio file:</label>
-                        <input type="file" id="preHeaderAudioFile" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                        <input type="file" id="preHeaderAudioFile" data-file-picker="audio">
                     </span>
                     <span id="preHeaderGapRow" hidden>
                         <br>
@@ -482,7 +498,7 @@
                     <span id="postEomAudioFileRow" hidden>
                         <br>
                         <label for="postEomAudioFile">Post-alert audio file:</label>
-                        <input type="file" id="postEomAudioFile" accept="audio/*,.wav,.wave,.x-wav,.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.3gp,.mp4,audio/mp4,audio/x-m4a">
+                        <input type="file" id="postEomAudioFile" data-file-picker="audio">
                     </span>
                     <span id="postEomGapRow" hidden>
                         <br>
@@ -526,9 +542,31 @@
                     <p id="messageLimitHint" class="inline-note">Most ENDECs stop a message at 2 minutes (120 seconds) and send the EOM tones, even if the voice message has not finished.</p>
                 </div>
                 <hr>
+                <div id="encoderExportOptions" class="export-options" role="group" aria-labelledby="encoderExportTitle">
+                    <p id="encoderExportTitle" class="export-options-title">Saved audio file:</p>
+                    <label for="encoderExportFormat">Format:</label>
+                    <select id="encoderExportFormat"></select>
+                    <span id="encoderExportBitrateRow" hidden>
+                        <label for="encoderExportBitrate">Bitrate:</label>
+                        <select id="encoderExportBitrate"></select>
+                    </span>
+                    <br>
+                    <br>
+                    <label for="encoderExportChannels">Channels:</label>
+                    <select id="encoderExportChannels">
+                        <option value="1">Mono</option>
+                        <option value="2">Stereo (same audio on both sides)</option>
+                    </select>
+                    <br>
+                    <br>
+                    <label for="encoderExportSampleRate">Sample rate:</label>
+                    <select id="encoderExportSampleRate"></select>
+                    <p class="inline-note">MP3, Opus and AAC files are much smaller. Formats this browser cannot save are not listed.</p>
+                </div>
+                <hr>
                 <div class="control-panel">
                     <button type="button" data-encoder-generate id="generate">Generate</button>
-                    <button type="button" id="save" style="display: none;">Save as wav file</button>
+                    <button type="button" id="save" style="display: none;">Save audio file</button>
                     <button type="button" data-encoder-clear id="clr" style="display:none;">Clear Logs</button>
                     <br>
                     <br>
@@ -630,7 +668,7 @@
                     </select>
                     <br class="customFontUpload">
                     <label for="crawlCustomFontFile" class="customFontUpload">Upload your own font (must be .ttf or .otf format, you can convert other formats to these formats online):</label>
-                    <input type="file" id="crawlCustomFontFile" class="customFontUpload" accept=".ttf,.otf,font/*">
+                    <input type="file" id="crawlCustomFontFile" class="customFontUpload" data-file-picker="font">
                     <br>
                     <label for="crawlFontStyle">Font Style:</label>
                     <select id="crawlFontStyle">
@@ -695,12 +733,12 @@
                     <div id="crawlBackgroundImageDiv" style="display: none;">
                         <br>
                         <label for="crawlBackgroundImageFile">Upload Background Image File:</label>
-                        <input type="file" id="crawlBackgroundImageFile" accept="image/*">
+                        <input type="file" id="crawlBackgroundImageFile" data-file-picker="image">
                     </div>
                     <div id="crawlBackgroundVideoDiv" style="display: none;">
                         <br>
                         <label for="crawlBackgroundVideoFile">Upload Background Video File:</label>
-                        <input type="file" id="crawlBackgroundVideoFile" accept="video/*" aria-describedby="crawlBackgroundVideoNote">
+                        <input type="file" id="crawlBackgroundVideoFile" data-file-picker="video" aria-describedby="crawlBackgroundVideoNote">
                         <br>
                         <label for="crawlBackgroundVideoFit">Video Scaling:</label>
                         <select id="crawlBackgroundVideoFit">
@@ -733,7 +771,7 @@
                         <br>
                         <label for="crawlVideoStopAtEnd">Stop the export at the end of the video clip:</label>
                         <input type="checkbox" id="crawlVideoStopAtEnd">
-                        <p id="crawlBackgroundVideoNote" class="inline-note">The crawl runs in a bar over the video, colored with the Background Color above. Choosing a video sizes the crawl to the video; you can change the size afterwards. The video plays muted and loops between the start and end times while the crawl runs, and exports loop it for the length of the crawl, or stop at the end of the clip when that box is checked. MP4 (H.264) and WebM work in most browsers.</p>
+                        <p id="crawlBackgroundVideoNote" class="inline-note">The crawl runs in a bar over the video, colored with the Background Color above. Choosing a video sizes the crawl to the video; you can change the size afterwards. The video plays muted and loops between the start and end times while the crawl runs, and exports loop it for the length of the crawl, or stop at the end of the clip when that box is checked. MP4 (H.264) and WebM work in most browsers, and an animated GIF is turned into a video when you choose it.</p>
                     </div>
                     <div id="crawlBackgroundPremadeDiv" style="display: none;">
                         <br>
@@ -816,7 +854,7 @@
                     <button type="button" id="loadUserPreset">Load Currently Selected Preset</button>
                     <button type="button" id="exportUserPreset">Export Preset to File (.json)</button>
                     <button type="button" id="importUserPreset">Import Preset from File (.json)</button>
-                    <input type="file" id="importUserPresetFile" accept=".json,application/json" style="display:none;">
+                    <input type="file" id="importUserPresetFile" data-file-picker="json" data-file-picker-trigger="#importUserPreset" style="display:none;">
                     <button type="button" data-crawl-clear id="clr-crawl" style="display:none;">Clear Logs</button>
                     <div id="crawlExportProgressDiv" class="crawl-export-progress" style="display: none; background-color: rgba(0, 0, 0, 0.75);">
                         <label for="crawlExportProgress">Export Progress: <span id="crawlExportProgressLabel">0%</span></label>
@@ -992,6 +1030,7 @@
                 }
             })();
         </script>
+        <script type="module" src="assets/js/file-picker.js"></script>
         <script type="module" src="assets/js/decoder-bundle.js"></script>
         <script>
             (function () {

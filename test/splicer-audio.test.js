@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createLimiter, limitAll, overDb, peakRatio } from '../assets/js/splicer/limiter.js';
 import { columnRange, drawPeaks, getPeaks } from '../assets/js/splicer/peaks.js';
-import { encodeFrames, encodeWav, formatOf, FORMATS, wavHeader } from '../assets/js/splicer/wav.js';
+import { encodeFrames, encodeWav, formatOf, FORMATS, wavHeader } from '../assets/js/audio/wav.js';
 
 const ascii = (bytes, start, length) => String.fromCharCode(...bytes.slice(start, start + length));
 

@@ -105,12 +105,12 @@ const ENDEC_MODE_PROFILE_SOURCE = {
     },
     SAGE_DIGITAL_3644: {
         label: "SAGE 3644/DIGITAL",
-        signature: { tail: "FF FF FF", lead: "00 on first burst", burstGapMs: 1000 },
-        betweenGapMs: 1000,
-        afterGapMs: 1000,
+        signature: { tail: "FF FF", lead: "none", burstGapMs: 1013.76 },
+        betweenGapMs: 1013.76,
+        afterGapMs: 1013.76,
         sampleRate: 44100,
-        headerBursts: [{ prefix: "\x00", suffix: "\xFF\xFF\xFF" }, { prefix: "\xAB", suffix: "\xFF\xFF\xFF" }, { prefix: "\xAB", suffix: "\xFF\xFF\xFF" }],
-        eomBursts: [{ prefix: "\x00", suffix: "\xFF\xFF\xFF" }, { prefix: "", suffix: "\xFF\xFF\xFF" }, { prefix: "", suffix: "\xFF\xFF\xFF" }]
+        headerBursts: [{ prefix: "", suffix: "\xFF\xFF" }, { prefix: "", suffix: "\xFF\xFF" }, { prefix: "", suffix: "\xFF\xFF" }],
+        eomBursts: [{ prefix: "", suffix: "\xFF\xFF" }, { prefix: "", suffix: "\xFF\xFF" }, { prefix: "", suffix: "\xFF\xFF" }]
     },
     SAGE_ANALOG_1822: {
         label: "SAGE 1822/ANALOG",

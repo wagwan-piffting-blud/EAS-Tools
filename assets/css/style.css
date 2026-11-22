@@ -217,6 +217,47 @@ button[disabled] {
     border-color: #3a3a3a;
 }
 
+.file-picker {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 100%;
+    vertical-align: middle;
+    border-radius: 6px;
+}
+
+.file-picker-name {
+    min-width: 0;
+    font-family: 'Hack', monospace;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.file-picker-name.file-picker-empty {
+    opacity: 0.7;
+}
+
+.file-picker-input {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    clip-path: inset(50%);
+}
+
+.file-picker.file-picker-drop,
+.file-picker-button.file-picker-drop {
+    outline: 2px dashed var(--color-orange);
+    outline-offset: 3px;
+}
+
 select:disabled,
 input:disabled,
 textarea:disabled {

@@ -1,7 +1,7 @@
 """Regenerate test/fixtures/bmh-transform.json from the reference Python BMH transformer.
 
-    python -I tools/bmh-oracle.py C:/Users/mmhot/Documents/wrs-main/modules/bmh
-    python -I tools/bmh-oracle.py C:/Users/mmhot/Documents/wrs-main/modules/bmh --check
+    python -I tools/bmh-oracle.py /home/wags/Documents/wrs-main/modules/bmh
+    python -I tools/bmh-oracle.py /home/wags/Documents/wrs-main/modules/bmh --check
 
 The reference is the WRS port of AWIPS BMH's MessageTransformer (modules/bmh/transformer.py),
 run with no dictionary rules: assets/js/bmh-format.js bmhTransform() must match it exactly.

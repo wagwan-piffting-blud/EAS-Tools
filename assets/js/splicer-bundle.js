@@ -1,8 +1,10 @@
 import * as SM from './splicer/model.js';
 import * as SR from './splicer/render.js';
 import * as SG from './splicer/generators.js';
-import * as SW from './splicer/wav.js';
-import * as SE from './splicer/encode.js';
+import * as SW from './audio/wav.js';
+import * as SE from './audio/encode.js';
+import { decodeAudioBlob, readWavChannels, readWavInfo } from './audio/decode.js';
+import { bindExportControls } from './audio/export.js';
 import * as SZ from './splicer/zip.js';
 import * as SL from './splicer/limiter.js';
 import { openAlertDialog } from './splicer/alert-ui.js';
@@ -1543,51 +1545,18 @@ buildPanel(document.getElementById('splicer-panel'));
         const channelSel = panel.querySelector('#spliceOutChannels');
         const limBox = panel.querySelector('#spliceOutLimit');
         if (!formatSel || !channelSel || !limBox) return;
-        const rateRow = panel.querySelector('#spliceOutBitrateRow');
-        const rateSel = panel.querySelector('#spliceOutBitrate');
         const changed = () => {
             saveOutputPrefs();
             macroRenderBlobCache = null;
             if (playingSource || pausedPlayback) stopPlayback();
         };
-        const syncRates = () => {
-            if (!rateSel || !rateRow) return;
-            const info = outInfo();
-            rateRow.hidden = !info.bitrates;
-            rateSel.replaceChildren(...(info.bitrates || []).map((k) => new Option(`${k} kbps${k === info.bitrate ? ' (default)' : ''}`, String(k))));
-            if (info.bitrates) rateSel.value = String(outBitrate());
-        };
-        for (const [k, f] of Object.entries(SE.FORMATS)) formatSel.add(new Option(f.label, k));
-        formatSel.value = outFormat();
-        channelSel.value = String(outputPrefs.channels);
         limBox.checked = limitOn();
-        syncRates();
-        for (const opt of [...formatSel.options]) {
-            SE.canEncode(opt.value).then((ok) => {
-                if (ok) return;
-                opt.disabled = true;
-                opt.hidden = true;
-                if (formatSel.value === opt.value) {
-                    formatSel.value = 'pcm16';
-                    outputPrefs.format = 'pcm16';
-                    syncRates();
-                    changed();
-                }
-            });
-        }
-        formatSel.addEventListener('change', () => {
-            outputPrefs.format = SE.formatOf(formatSel.value);
-            syncRates();
-            changed();
-        });
-        rateSel?.addEventListener('change', () => {
-            outputPrefs.bitrates = { ...outputPrefs.bitrates, [outFormat()]: Number(rateSel.value) };
-            changed();
-        });
-        channelSel.addEventListener('change', () => {
-            outputPrefs.channels = channelSel.value === '2' ? 2 : 1;
-            changed();
-        });
+        bindExportControls({
+            format: formatSel,
+            bitrate: panel.querySelector('#spliceOutBitrate'),
+            bitrateRow: panel.querySelector('#spliceOutBitrateRow'),
+            channels: channelSel,
+        }, outputPrefs, { onChange: changed });
         limBox.addEventListener('change', () => {
             outputPrefs.limit = limBox.checked;
             changed();
@@ -1715,98 +1684,33 @@ buildPanel(document.getElementById('splicer-panel'));
     ]);
 
     const readWavStructure = async (file) => {
-        const readDV = async (off, len) =>
-            new DataView(await file.slice(off, off + len).arrayBuffer());
-        if (file.size < 44) return null;
-        const head = await readDV(0, 12);
-        if (head.getUint32(0, false) !== 0x52494646 || head.getUint32(8, false) !== 0x57415645) {
-            return null;
-        }
-        let offset = 12, fmt = null, dataOffset = -1, dataSize = 0;
-        while (offset + 8 <= file.size) {
-            const hdr = await readDV(offset, 8);
-            const id = hdr.getUint32(0, false);
-            const size = hdr.getUint32(4, true);
-            const body = offset + 8;
-            if (id === 0x666d7420) {
-                const f = await readDV(body, Math.min(Math.max(size, 16), 40));
-                let audioFormat = f.getUint16(0, true);
-                if (audioFormat === 0xFFFE && size >= 40) audioFormat = f.getUint16(24, true);
-                fmt = {
-                    audioFormat,
-                    channels: f.getUint16(2, true),
-                    sampleRate: f.getUint32(4, true),
-                    bitsPerSample: f.getUint16(14, true),
-                };
-            } else if (id === 0x64617461) {
-                dataOffset = body; dataSize = size; break;
-            }
-            if (size <= 0) break;
-            offset = body + size + (size & 1);
-        }
-        if (!fmt || dataOffset < 0) return null;
-        return { fmt, dataOffset, dataSize };
+        const info = await readWavInfo(file);
+        if (!info) return null;
+        return {
+            fmt: { audioFormat: info.float ? 3 : 1, channels: info.channels, sampleRate: info.sampleRate, bitsPerSample: info.bits },
+            dataOffset: info.dataOffset,
+            dataSize: info.dataBytes,
+        };
     };
 
     const loadWavMonoFloat32 = async (file) => {
-        const info = await readWavStructure(file);
-        if (!info) return null;
-        const { audioFormat, channels, sampleRate, bitsPerSample } = info.fmt;
-        if (!channels || !sampleRate || !bitsPerSample) return null;
-        const isFloat = audioFormat === 3;
-        const isPcmInt = audioFormat === 1;
-        if (!isFloat && !isPcmInt) return null;
-        const bytesPerSample = bitsPerSample >> 3;
-        const frameBytes = bytesPerSample * channels;
-        if (frameBytes <= 0) return null;
-        const dataSize = Math.min(info.dataSize || (file.size - info.dataOffset), file.size - info.dataOffset);
-        const numFrames = Math.floor(dataSize / frameBytes);
-        if (numFrames <= 0) return null;
-        if (numFrames * 4 > MAX_PCM_BYTES) {
-            const gb = (numFrames * 4 / (1024 * 1024 * 1024)).toFixed(1);
+        const info = await readWavInfo(file);
+        if (!info || info.frames <= 0) return null;
+        if (info.frames * 4 > MAX_PCM_BYTES) {
+            const gb = (info.frames * 4 / (1024 * 1024 * 1024)).toFixed(1);
             persistStatus(`File too large to load on this device (needs ~${gb} GB). Try a shorter clip or a lower sample rate.`);
             return { tooLarge: true };
         }
-        let out;
         try {
-            out = new Float32Array(numFrames);
+            const [pcm] = await readWavChannels(file, info, { mode: 0, yieldEvery: () => new Promise((r) => setTimeout(r)) });
+            return { pcm, sampleRate: info.sampleRate };
         } catch (e) {
-            persistStatus('File too large to load on this device.');
-            return { tooLarge: true };
-        }
-        const CHUNK_FRAMES = 1 << 20;
-        let frame = 0, pos = info.dataOffset;
-        while (frame < numFrames) {
-            const framesThis = Math.min(CHUNK_FRAMES, numFrames - frame);
-            const slice = await file.slice(pos, pos + framesThis * frameBytes).arrayBuffer();
-            if (isFloat && bitsPerSample === 32) {
-                const f32 = new Float32Array(slice);
-                if (channels === 1) out.set(f32.subarray(0, framesThis), frame);
-                else for (let i = 0; i < framesThis; i++) out[frame + i] = f32[i * channels];
-            } else if (isPcmInt && bitsPerSample === 16) {
-                const i16 = new Int16Array(slice);
-                for (let i = 0; i < framesThis; i++) out[frame + i] = i16[i * channels] / 32768;
-            } else {
-                const dv = new DataView(slice);
-                for (let i = 0; i < framesThis; i++) {
-                    const so = i * frameBytes;
-                    let v;
-                    if (isFloat && bitsPerSample === 64) v = dv.getFloat64(so, true);
-                    else if (bitsPerSample === 8) v = (dv.getUint8(so) - 128) / 128;
-                    else if (bitsPerSample === 24) {
-                        let x = dv.getUint8(so) | (dv.getUint8(so + 1) << 8) | (dv.getUint8(so + 2) << 16);
-                        if (x & 0x800000) x -= 0x1000000;
-                        v = x / 8388608;
-                    } else if (isPcmInt && bitsPerSample === 32) v = dv.getInt32(so, true) / 2147483648;
-                    else return null;
-                    out[frame + i] = v;
-                }
+            if (e instanceof RangeError) {
+                persistStatus('File too large to load on this device.');
+                return { tooLarge: true };
             }
-            frame += framesThis;
-            pos += framesThis * frameBytes;
-            await new Promise((r) => setTimeout(r));
+            throw e;
         }
-        return { pcm: out, sampleRate };
     };
 
     const HUGE_PEAK_BUCKET = 1024;
@@ -2145,13 +2049,10 @@ buildPanel(document.getElementById('splicer-panel'));
             return;
         }
         try {
-            const ab = await file.arrayBuffer();
-            const ctxAudio = getAudioCtx();
-            const decoded = await ctxAudio.decodeAudioData(ab);
-            const pcm = new Float32Array(decoded.getChannelData(0));
-            addSegment(pcm, decoded.sampleRate, name || 'File', '', true);
+            const decoded = await decodeAudioBlob(file, { context: getAudioCtx(), mode: 0 });
+            addSegment(decoded.channels[0], decoded.sampleRate, name || 'File', '', true);
         } catch (e) {
-            persistStatus('Could not decode this audio file.');
+            persistStatus('Could not find audio this browser can decode in this file.');
         }
     };
 

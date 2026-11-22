@@ -1,4 +1,6 @@
 import { saveFile, responseOk, CODEMIRROR_DARK_THEME_NAME, CODEMIRROR_LIGHT_THEME_NAME, USES_DARK_THEME } from './common-functions.js';
+import { gifFrames, parseGif } from './gif-decode.js';
+import { isAnimatedImageFile } from './file-types.js';
 import { createSendMenu, receive } from './handoff.js';
 import { stripArticle as stripEventArticle, unrecognizedEventName } from './custom-events.js';
 import { screenSeverity } from './event-severity.js';
@@ -730,8 +732,58 @@ async function initCrawlEditor() {
         return video;
     }
 
+    const gifVideoCache = new WeakMap();
+
+    function gifToVideoFile(file) {
+        if (gifVideoCache.has(file)) return gifVideoCache.get(file);
+        const task = (async () => {
+            const gif = parseGif(new Uint8Array(await file.arrayBuffer()));
+            const width = gif.width + (gif.width & 1);
+            const height = gif.height + (gif.height & 1);
+            const codec = await getFirstEncodableVideoCodec(['avc', 'vp9', 'vp8'], { width, height });
+            if (!codec) {
+                throw new Error('this browser cannot turn a GIF into video');
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            const image = new ImageData(gif.width, gif.height);
+            const mp4 = codec === 'avc';
+            const output = new Output({ format: mp4 ? new Mp4OutputFormat() : new WebMOutputFormat(), target: new BufferTarget() });
+            const source = new CanvasSource(canvas, { codec, bitrate: 6e6 });
+            output.addVideoTrack(source);
+            await output.start();
+            let timestamp = 0;
+            for (const frame of gifFrames(gif)) {
+                image.data.set(frame.rgba);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, width, height);
+                ctx.putImageData(image, 0, 0);
+                const duration = frame.delay / 1000;
+                await source.add(timestamp, duration);
+                timestamp += duration;
+            }
+            source.close();
+            await output.finalize();
+            const ext = mp4 ? 'mp4' : 'webm';
+            return new File([output.target.buffer], `${String(file.name || 'background').replace(/\.gif$/i, '')}.${ext}`, { type: `video/${ext}` });
+        })();
+        gifVideoCache.set(file, task);
+        task.catch(() => gifVideoCache.delete(file));
+        return task;
+    }
+
     async function loadBackgroundVideoFromFile(file) {
         if (!file) return null;
+        if (isAnimatedImageFile(file)) {
+            try {
+                file = await gifToVideoFile(file);
+            } catch (err) {
+                addStatus(`Could not use that GIF as a background video: ${err && err.message ? err.message : err}.`, 'ERROR');
+                return null;
+            }
+        }
         const url = URL.createObjectURL(file);
         const video = createBackgroundVideoElement(url);
         video.__objectUrl = url;

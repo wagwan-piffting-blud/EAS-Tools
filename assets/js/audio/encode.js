@@ -6,8 +6,9 @@ export const FORMATS = {
     float32: { kind: 'wav', name: 'WAV', label: 'WAV 32-bit float', ext: 'wav', mime: 'audio/wav' },
     flac16: { kind: 'mb', codec: 'flac', bits: 16, name: 'FLAC', label: 'FLAC 16-bit', ext: 'flac', mime: 'audio/flac' },
     flac24: { kind: 'mb', codec: 'flac', bits: 24, name: 'FLAC', label: 'FLAC 24-bit', ext: 'flac', mime: 'audio/flac' },
-    mp3: { kind: 'mb', codec: 'mp3', name: 'MP3', label: 'MP3', ext: 'mp3', mime: 'audio/mpeg', bitrates: [96, 128, 160, 192, 256, 320], bitrate: 192 },
-    opus: { kind: 'mb', codec: 'opus', name: 'Opus', label: 'Opus', ext: 'opus', mime: 'audio/ogg', bitrates: [64, 96, 128, 160, 192, 256], bitrate: 128 },
+    mp3: { kind: 'mb', codec: 'mp3', name: 'MP3', label: 'MP3', ext: 'mp3', mime: 'audio/mpeg', bitrates: [24, 32, 48, 64, 96, 128, 160, 192, 256, 320], bitrate: 192 },
+    opus: { kind: 'mb', codec: 'opus', name: 'Opus', label: 'Opus', ext: 'opus', mime: 'audio/ogg', bitrates: [12, 16, 24, 32, 48, 64, 96, 128, 160, 192, 256], bitrate: 128 },
+    aac: { kind: 'mb', codec: 'aac', webcodec: 'mp4a.40.2', name: 'AAC', label: 'AAC (M4A)', ext: 'm4a', mime: 'audio/mp4', bitrates: [96, 128, 160, 192, 256], bitrate: 128 },
 };
 
 export const formatOf = (f) => (FORMATS[f] ? f : 'pcm16');
@@ -47,11 +48,20 @@ export async function canEncode(f) {
     if (EXTENSIONS[info.codec]) return typeof WebAssembly === 'object' && typeof Worker === 'function';
     if (typeof AudioEncoder !== 'function') return false;
     try {
-        const r = await AudioEncoder.isConfigSupported({ codec: info.codec, sampleRate: 48000, numberOfChannels: 2, bitrate: info.bitrate * 1000 });
+        const r = await AudioEncoder.isConfigSupported({ codec: info.webcodec || info.codec, sampleRate: 48000, numberOfChannels: 2, bitrate: info.bitrate * 1000 });
         return !!r.supported;
     } catch {
         return false;
     }
+}
+
+export async function canEncodeConfig(f, { sampleRate, channels = 1, bitrate = 0 } = {}) {
+    const key = formatOf(f);
+    const info = FORMATS[key];
+    if (info.kind === 'wav') return true;
+    const mb = await loadMb();
+    const kbps = bitrateOf(key, bitrate);
+    return ensureCodec(mb, info.codec, { numberOfChannels: channels, sampleRate, ...(kbps ? { bitrate: kbps * 1000 } : {}) });
 }
 
 function toSample(mb, info, chans, from, n, gain, sampleRate, at) {
@@ -112,7 +122,10 @@ export async function createWriter(f, { sampleRate, channels, frames, bitrate, s
         throw new Error(`This browser cannot encode ${info.name} (${channels === 2 ? 'stereo' : 'mono'}, ${sampleRate} Hz).`);
     }
     const target = sink ? new mb.StreamTarget(sink, { chunked: true }) : new mb.BufferTarget();
-    const format = info.codec === 'mp3' ? new mb.Mp3OutputFormat() : (info.codec === 'flac' ? new mb.FlacOutputFormat() : new mb.OggOutputFormat());
+    const format = info.codec === 'mp3' ? new mb.Mp3OutputFormat()
+        : info.codec === 'flac' ? new mb.FlacOutputFormat()
+            : info.codec === 'aac' ? new mb.Mp4OutputFormat()
+                : new mb.OggOutputFormat();
     const output = new mb.Output({ format, target });
     const src = new mb.AudioSampleSource({ codec: info.codec, ...(kbps ? { bitrate: kbps * 1000 } : {}) });
     output.addAudioTrack(src);
